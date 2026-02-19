@@ -14,6 +14,7 @@
  */
 
 import type { EmailFlowTemplate } from '$lib/types/template';
+import type { HeaderTemplate } from '$lib/types/any-replacements';
 import type { EmailServiceUser } from '$lib/types/user';
 import { extractRecipientEmails as _extractRecipientEmails } from '$lib/types/templateConfig';
 import { resolveTemplate } from '$lib/utils/templateResolver';
@@ -124,7 +125,7 @@ export interface EmailLaunchResult {
  * ```
  */
 export function analyzeEmailFlow(
-	template: EmailFlowTemplate,
+	template: EmailFlowTemplate | HeaderTemplate,
 	user: EmailServiceUser | null,
 	options?: { trustTier?: number }
 ): EmailFlowResult {
@@ -267,7 +268,7 @@ interface MailtoUrlResult {
  * ```
  */
 export function generateMailtoUrl(
-	template: EmailFlowTemplate,
+	template: EmailFlowTemplate | HeaderTemplate,
 	user: EmailServiceUser | null,
 	options?: { trustTier?: number }
 ): MailtoUrlResult {

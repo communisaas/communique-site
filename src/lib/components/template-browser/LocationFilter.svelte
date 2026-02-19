@@ -765,13 +765,13 @@
 			.then((viewCounts) => {
 				const boosted = boostByUserBehavior(scored, viewCounts);
 				// ScoredTemplate.template is TemplateWithJurisdictions (subset of Template) — structural mismatch
-				const groups = createTemplateGroups(boosted as any, inferredLocation, currentScope); // eslint-disable-line @typescript-eslint/no-explicit-any
+				const groups = createTemplateGroups(boosted as unknown as Array<{ template: Template; score: number }>, inferredLocation, currentScope);
 
 				onFilterChange(groups);
 			})
 			.catch(() => {
 				// Fallback to location-only scoring
-				const groups = createTemplateGroups(scored as any, inferredLocation, currentScope); // eslint-disable-line @typescript-eslint/no-explicit-any
+				const groups = createTemplateGroups(scored as unknown as Array<{ template: Template; score: number }>, inferredLocation, currentScope);
 
 				onFilterChange(groups);
 			});

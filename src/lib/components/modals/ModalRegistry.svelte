@@ -45,7 +45,7 @@
 	{#snippet children(data)}
 		{#if data?.template}
 			<OnboardingContent
-				template={getTemplate(data) as any}
+				template={getTemplate(data)!}
 				source={getSource(data)}
 				onauth={(provider) => (window.location.href = `/auth/${provider}`)}
 				onclose={() => modalActions.closeModal('onboarding-modal')}

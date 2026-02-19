@@ -9,7 +9,7 @@ function createPopoverStore() {
 	let currentPopover = $state<Popover | null>(null);
 
 	// Track pending close timeouts
-	const pendingCloseTimeouts = new Map<string, number>();
+	const pendingCloseTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
 	const open = (id: string): void => {
 		// Cancel any pending close for this popover
@@ -55,7 +55,7 @@ function createPopoverStore() {
 		const timeoutId = setTimeout(() => {
 			pendingCloseTimeouts.delete(id);
 			close(id);
-		}, delay) as unknown as number;
+		}, delay);
 
 		pendingCloseTimeouts.set(id, timeoutId);
 	};

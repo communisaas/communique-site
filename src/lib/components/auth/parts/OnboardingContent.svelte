@@ -14,7 +14,7 @@
 			description: string;
 			slug: string;
 			deliveryMethod?: string;
-			metrics: { sent: number; views?: number };
+			metrics: { sent?: number; views?: number };
 		};
 		source?: 'social-link' | 'direct-link' | 'share';
 		onauth: (provider: string) => void;

@@ -14,6 +14,7 @@
  */
 
 import type { Template, EmailFlowTemplate } from '$lib/types/template';
+import type { HeaderTemplate } from '$lib/types/any-replacements';
 import type { EmailServiceUser } from '$lib/types/user';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import { z } from 'zod';
@@ -100,7 +101,7 @@ function isValidRepresentativesArray(reps: unknown): reps is Representative[] {
  * block variables with actual user context AT THE MOMENT OF INTERACTION.
  */
 export function resolveTemplate(
-	template: EmailFlowTemplate,
+	template: EmailFlowTemplate | HeaderTemplate,
 	user: EmailServiceUser | null,
 	options: { preserveVariables?: boolean } = {}
 ): ResolvedTemplate {

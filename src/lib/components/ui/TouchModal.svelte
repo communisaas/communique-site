@@ -22,10 +22,10 @@
 		children?: import('svelte').Snippet;
 	} = $props();
 
-	let dialogElement: HTMLDivElement = $state(undefined as unknown as HTMLDivElement);
+	let dialogElement: HTMLDivElement | undefined = $state(undefined);
 	let isOpen = $state(false);
 	let scrollPosition: number;
-	let modalContent: HTMLDivElement = $state(undefined as unknown as HTMLDivElement);
+	let modalContent: HTMLDivElement | undefined = $state(undefined);
 	let touchStart = 0;
 	let _currentTouchY = 0;
 	let isDismissing = false;

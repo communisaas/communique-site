@@ -20,7 +20,7 @@
 		children?: import('svelte').Snippet;
 	} = $props();
 
-	let dialogElement: HTMLDivElement = $state(undefined as unknown as HTMLDivElement);
+	let dialogElement: HTMLDivElement | undefined = $state(undefined);
 	let isOpen = $state(false);
 	let scrollPosition: number;
 	let mouseDownOnBackdrop = $state(false);

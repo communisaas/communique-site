@@ -16,7 +16,6 @@
 	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
-	import type { EmailFlowTemplate } from '$lib/types/template';
 	import type {
 		HeaderTemplate,
 		HeaderUser,
@@ -107,7 +106,7 @@
 	const ctaConfig = $derived.by(() => {
 		if (!template || !headerConfig.showCTA) return null;
 
-		const _emailFlow = analyzeEmailFlow(template as unknown as EmailFlowTemplate, toEmailServiceUser(user as Record<string, unknown> | null));
+		const _emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user as Record<string, unknown> | null));
 		const isCongressional = template.deliveryMethod === 'cwc';
 
 		if (isCongressional) {
@@ -186,7 +185,7 @@
 	function handleTemplateUse() {
 		if (!template || !onTemplateUse) return;
 
-		const emailFlow = analyzeEmailFlow(template as unknown as EmailFlowTemplate, toEmailServiceUser(user as Record<string, unknown> | null));
+		const emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user as Record<string, unknown> | null));
 		onTemplateUse({
 			template,
 			requiresAuth: emailFlow.requiresAuth

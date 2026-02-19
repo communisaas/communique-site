@@ -20,6 +20,22 @@ import type {
 	RelevantPassage
 } from './types';
 import { db } from '$lib/core/db';
+import type { Prisma } from '@prisma/client';
+
+// ============================================================================
+// Typed helpers for Prisma JSON ↔ ParsedDocument conversion
+// ============================================================================
+
+/** Extract ParsedDocument from Prisma JSON column value.
+ *  Prisma types JSON columns as JsonValue — this provides type-safe extraction. */
+function toParsedDocument(json: unknown): ParsedDocument {
+	return json as ParsedDocument;
+}
+
+/** Convert ParsedDocument to Prisma-compatible JSON input. */
+function toJsonValue(doc: ParsedDocument): Prisma.InputJsonValue {
+	return doc as unknown as Prisma.InputJsonValue;
+}
 
 // ============================================================================
 // Configuration
@@ -54,7 +70,7 @@ export class ReductoClient {
 		// Check cache first
 		const cached = await this.getFromCache(url);
 		if (cached) {
-			const doc = cached.document as unknown as ParsedDocument;
+			const doc = toParsedDocument(cached.document);
 			if (query && doc) {
 				doc.queryRelevance = await this.computeRelevance(doc, query);
 			}
@@ -119,7 +135,7 @@ export class ReductoClient {
 					document: { path: ['id'], equals: documentId }
 				}
 			});
-			return cached ? (cached.document as unknown as ParsedDocument) : null;
+			return cached ? toParsedDocument(cached.document) : null;
 		} catch (error) {
 			console.error('[ReductoClient] getById failed:', error);
 			return null;
@@ -139,7 +155,7 @@ export class ReductoClient {
 					expires_at: { gt: new Date() }
 				}
 			});
-			return cached ? (cached.document as unknown as ParsedDocument) : null;
+			return cached ? toParsedDocument(cached.document) : null;
 		} catch (error) {
 			console.error('[ReductoClient] getByUrl failed:', error);
 			return null;
@@ -160,7 +176,7 @@ export class ReductoClient {
 				take: limit
 			});
 
-			return cached.map((doc) => doc.document as unknown as ParsedDocument);
+			return cached.map((doc) => toParsedDocument(doc.document));
 		} catch (error) {
 			console.error('[ReductoClient] getByType failed:', error);
 			return [];
@@ -462,13 +478,13 @@ export class ReductoClient {
 					source_url: url,
 					source_url_hash: urlHash,
 					document_type: document.type,
-					document: document as unknown as Prisma.InputJsonValue,
+					document: toJsonValue(document),
 					expires_at: expiresAt,
 					hit_count: 0
 				},
 				update: {
 					document_type: document.type,
-					document: document as unknown as Prisma.InputJsonValue,
+					document: toJsonValue(document),
 					expires_at: expiresAt
 				}
 			});
@@ -477,9 +493,6 @@ export class ReductoClient {
 		}
 	}
 }
-
-// Need Prisma types for JSON operations
-import type { Prisma } from '@prisma/client';
 
 // ============================================================================
 // Singleton Instance

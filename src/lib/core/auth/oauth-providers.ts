@@ -19,6 +19,19 @@ import type {
 } from './oauth-callback-handler';
 import * as crypto from 'crypto';
 
+/** Wrap an arctic OAuth provider as our OAuthClient interface.
+ *  Arctic providers structurally satisfy OAuthClient but don't formally implement it.
+ *  The codeVerifier parameter accepts string | null | undefined because arctic classes
+ *  vary (some use `string | null`, others use optional `string`). */
+function asOAuthClient(provider: {
+	validateAuthorizationCode(
+		code: string,
+		codeVerifier: string | null | undefined
+	): Promise<unknown>;
+}): OAuthClient {
+	return provider as OAuthClient;
+}
+
 // =============================================================================
 // TIMEOUT AND RETRY UTILITIES
 // =============================================================================
@@ -282,11 +295,7 @@ function createGoogleConfig(): OAuthCallbackConfig {
 		scope: 'profile email',
 
 		createOAuthClient: (): OAuthClient => {
-			return new Google(
-				clientId,
-				clientSecret,
-				redirectUrl
-			) as unknown as OAuthClient;
+			return asOAuthClient(new Google(clientId, clientSecret, redirectUrl));
 		},
 
 		exchangeTokens: async (
@@ -375,11 +384,7 @@ function createFacebookConfig(): OAuthCallbackConfig {
 
 		createOAuthClient: (): OAuthClient => {
 			// Use custom FacebookOAuth class with PKCE support
-			return new FacebookOAuth(
-				clientId,
-				clientSecret,
-				redirectUrl
-			) as unknown as OAuthClient;
+			return asOAuthClient(new FacebookOAuth(clientId, clientSecret, redirectUrl));
 		},
 
 		exchangeTokens: async (
@@ -467,11 +472,7 @@ function createLinkedInConfig(): OAuthCallbackConfig {
 		scope: 'openid profile email',
 
 		createOAuthClient: (): OAuthClient => {
-			return new LinkedIn(
-				clientId,
-				clientSecret,
-				redirectUrl
-			) as unknown as OAuthClient;
+			return asOAuthClient(new LinkedIn(clientId, clientSecret, redirectUrl));
 		},
 
 		exchangeTokens: async (
@@ -550,11 +551,7 @@ function createTwitterConfig(): OAuthCallbackConfig {
 		scope: 'users.read tweet.read users.email offline.access',
 
 		createOAuthClient: (): OAuthClient => {
-			return new Twitter(
-				clientId,
-				clientSecret,
-				redirectUrl
-			) as unknown as OAuthClient;
+			return asOAuthClient(new Twitter(clientId, clientSecret, redirectUrl));
 		},
 
 		exchangeTokens: async (
@@ -672,11 +669,7 @@ function createDiscordConfig(): OAuthCallbackConfig {
 		scope: 'identify email',
 
 		createOAuthClient: (): OAuthClient => {
-			return new Discord(
-				clientId,
-				clientSecret,
-				redirectUrl
-			) as unknown as OAuthClient;
+			return asOAuthClient(new Discord(clientId, clientSecret, redirectUrl));
 		},
 
 		exchangeTokens: async (
@@ -776,11 +769,7 @@ function createCoinbaseConfig(): OAuthCallbackConfig {
 		scope: 'wallet:user:read wallet:user:email offline_access',
 
 		createOAuthClient: (): OAuthClient => {
-			return new CoinbaseOAuth(
-				clientId,
-				clientSecret,
-				redirectUrl
-			) as unknown as OAuthClient;
+			return asOAuthClient(new CoinbaseOAuth(clientId, clientSecret, redirectUrl));
 		},
 
 		exchangeTokens: async (

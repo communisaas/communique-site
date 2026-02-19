@@ -24,6 +24,28 @@ import { extractJsonFromGroundingResponse } from './utils/grounding-json';
 import { recoverTruncatedJson } from './utils/truncation-recovery';
 
 // ============================================================================
+// Gemini SDK Grounding Types
+// ============================================================================
+
+/** Gemini SDK grounding types — not exported by the SDK but present at runtime */
+interface GeminiGroundingChunk {
+	web?: { uri?: string; title?: string };
+}
+
+interface GeminiGroundingSupport {
+	segment?: { startIndex: number; endIndex: number };
+	groundingChunkIndices?: number[];
+	confidenceScores?: number[];
+}
+
+interface GeminiGroundingMetadata {
+	webSearchQueries?: string[];
+	groundingChunks?: GeminiGroundingChunk[];
+	groundingSupports?: GeminiGroundingSupport[];
+	searchEntryPoint?: { renderedContent?: string };
+}
+
+// ============================================================================
 // Client Singleton
 // ============================================================================
 
@@ -449,27 +471,20 @@ export async function* generateStreamWithThoughts<T = unknown>(
 			// Capture grounding metadata (typically in final chunks when using Google Search)
 			const chunkGrounding = chunk.candidates?.[0]?.groundingMetadata;
 			if (chunkGrounding) {
-				// Build our typed GroundingMetadata from the raw response
-				// Gemini SDK type doesn't expose web grounding fields
-				const rawChunks = chunkGrounding.groundingChunks as unknown as Array<{ web?: { uri?: string; title?: string } }> | undefined;
-				// Gemini SDK type doesn't expose grounding support fields
-				const rawSupports = chunkGrounding.groundingSupports as unknown as Array<{
-					segment?: { startIndex: number; endIndex: number };
-					groundingChunkIndices?: number[];
-					confidenceScores?: number[];
-				}> | undefined;
+				// Cast the parent object once — SDK types don't expose grounding fields
+				const typed = chunkGrounding as GeminiGroundingMetadata;
 
 				groundingMetadata = {
-					webSearchQueries: chunkGrounding.webSearchQueries as string[] | undefined,
-					groundingChunks: rawChunks?.map((gc) => ({
+					webSearchQueries: typed.webSearchQueries,
+					groundingChunks: typed.groundingChunks?.map((gc) => ({
 						web: gc.web
 					})),
-					groundingSupports: rawSupports?.map((gs) => ({
+					groundingSupports: typed.groundingSupports?.map((gs) => ({
 						segment: gs.segment,
 						groundingChunkIndices: gs.groundingChunkIndices,
 						confidenceScores: gs.confidenceScores
 					})),
-					searchEntryPoint: chunkGrounding.searchEntryPoint as { renderedContent?: string } | undefined
+					searchEntryPoint: typed.searchEntryPoint
 				};
 			}
 

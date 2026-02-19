@@ -16,6 +16,12 @@
 import { ed25519 } from '@noble/curves/ed25519';
 import { TIER_CREDENTIAL_TTL } from '$lib/core/identity/credential-policy';
 
+/** Type-safe BufferSource conversion — Uint8Array is a valid BufferSource at runtime;
+ *  this helper avoids cross-realm type issues in test environments (vitest/jsdom). */
+function toBufferSource(data: Uint8Array | ArrayBuffer): BufferSource {
+	return data as BufferSource;
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -287,12 +293,11 @@ async function verifyWithHmac(
 			['verify']
 		);
 
-		// Uint8Array is a valid BufferSource at runtime; casts needed due to TS cross-realm type limitation
 		return crypto.subtle.verify(
 			'HMAC',
 			key,
-			signatureBytes as unknown as BufferSource,
-			bodyBytes as unknown as BufferSource
+			toBufferSource(signatureBytes),
+			toBufferSource(bodyBytes)
 		);
 	} catch {
 		return false;

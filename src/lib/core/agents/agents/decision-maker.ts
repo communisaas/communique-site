@@ -231,6 +231,12 @@ interface ReadPageToolArgs {
 	maxCharacters?: number;
 }
 
+/** Narrow Gemini function call args to expected tool type.
+ *  SDK types args as Record<string, unknown> — we validate by function name. */
+function narrowToolArgs<T>(args: Record<string, unknown> | undefined): T {
+	return args as unknown as T;
+}
+
 /**
  * Function call request from Gemini
  */
@@ -496,8 +502,7 @@ export async function processGeminiFunctionCall(
 
 	switch (functionCall.name) {
 		case 'analyze_document': {
-			// Gemini SDK types functionCall.args as Record<string, unknown>
-			const args = functionCall.args as unknown as DocumentToolArgs;
+			const args = narrowToolArgs<DocumentToolArgs>(functionCall.args);
 			return await handleDocumentToolCall(args, emitter);
 		}
 
@@ -505,8 +510,7 @@ export async function processGeminiFunctionCall(
 			if (!context) {
 				return { success: false, error: 'search_web requires an agentic tool context' };
 			}
-			// Gemini SDK types functionCall.args as Record<string, unknown>
-			const args = functionCall.args as unknown as SearchWebToolArgs;
+			const args = narrowToolArgs<SearchWebToolArgs>(functionCall.args);
 			return await handleSearchWebToolCall(args, context, emitter);
 		}
 
@@ -514,8 +518,7 @@ export async function processGeminiFunctionCall(
 			if (!context) {
 				return { success: false, error: 'read_page requires an agentic tool context' };
 			}
-			// Gemini SDK types functionCall.args as Record<string, unknown>
-			const args = functionCall.args as unknown as ReadPageToolArgs;
+			const args = narrowToolArgs<ReadPageToolArgs>(functionCall.args);
 			return await handleReadPageToolCall(args, context, emitter);
 		}
 

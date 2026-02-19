@@ -29,7 +29,6 @@
 	import { toEmailServiceUser } from '$lib/types/user';
 	import { trackTemplateView } from '$lib/core/location/behavioral-tracker';
 	import type { TemplateJurisdiction } from '$lib/core/location/types';
-	import type { EmailFlowTemplate } from '$lib/types/template';
 	import type { ModalComponent } from '$lib/types/component-props';
 
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
@@ -81,9 +80,9 @@
 
 					if (result.success) {
 						// Zod-validated from sessionStorage — runtime shape matches Template
-						const { templateData } = result.data as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+						const { templateData } = result.data;
 						templateStore
-							.addTemplate(templateData)
+							.addTemplate(templateData as Omit<Template, 'id'>)
 							.then(() => {
 								sessionStorage.removeItem('pending_template_save');
 							})
@@ -274,7 +273,7 @@
 			return;
 		}
 
-		const flow = analyzeEmailFlow(template as unknown as EmailFlowTemplate, toEmailServiceUser(data.user as Record<string, unknown> | null));
+		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user as Record<string, unknown> | null));
 
 		if (flow.nextAction === 'address') {
 			modalActions.openModal('address-modal', 'address', {
@@ -464,7 +463,7 @@
 						return;
 					}
 
-					const flow = analyzeEmailFlow(selectedTemplate as unknown as EmailFlowTemplate, toEmailServiceUser(data.user as Record<string, unknown> | null));
+					const flow = analyzeEmailFlow(selectedTemplate, toEmailServiceUser(data.user as Record<string, unknown> | null));
 
 					if (flow.nextAction === 'address') {
 						modalActions.openModal('address-modal', 'address', {
