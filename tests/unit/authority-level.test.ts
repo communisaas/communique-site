@@ -1,0 +1,126 @@
+import { describe, it, expect } from 'vitest';
+import {
+	deriveAuthorityLevel,
+	deriveTrustTier,
+	trustTierToAuthorityLevel
+} from '$lib/core/identity/authority-level';
+
+describe('deriveAuthorityLevel', () => {
+	it('should return 5 for government credential (mDL with identity commitment)', () => {
+		const user = {
+			document_type: 'mdl',
+			identity_commitment: '0xabc',
+			trust_score: 0
+		};
+		expect(deriveAuthorityLevel(user)).toBe(5);
+	});
+
+	it('should return 4 for passport-verified via Didit', () => {
+		const user = {
+			verification_method: 'didit',
+			document_type: 'passport',
+			identity_commitment: '0xabc',
+			trust_score: 0
+		};
+		expect(deriveAuthorityLevel(user)).toBe(4);
+	});
+
+	it('should return 4 for passport-verified via self.xyz', () => {
+		const user = {
+			verification_method: 'self.xyz',
+			document_type: 'passport',
+			identity_commitment: '0xabc',
+			trust_score: 0
+		};
+		expect(deriveAuthorityLevel(user)).toBe(4);
+	});
+
+	it('should return 3 for identity commitment without passport', () => {
+		const user = {
+			identity_commitment: '0xabc',
+			trust_score: 0
+		};
+		expect(deriveAuthorityLevel(user)).toBe(3);
+	});
+
+	it('should return 2 for email verified (trust_score >= 100)', () => {
+		const user = { trust_score: 100 };
+		expect(deriveAuthorityLevel(user)).toBe(2);
+	});
+
+	it('should return 1 for trust_score below 100', () => {
+		const user = { trust_score: 50 };
+		expect(deriveAuthorityLevel(user)).toBe(1);
+	});
+
+	it('should return 1 for minimal user (trust_score 0)', () => {
+		const user = { trust_score: 0 };
+		expect(deriveAuthorityLevel(user)).toBe(1);
+	});
+});
+
+describe('deriveTrustTier', () => {
+	it('should return 4 for government credential (mDL with identity commitment)', () => {
+		const user = {
+			document_type: 'mdl',
+			identity_commitment: '0xabc'
+		};
+		expect(deriveTrustTier(user)).toBe(4);
+	});
+
+	it('should return 3 for ZK-verified (identity commitment without mDL)', () => {
+		const user = {
+			identity_commitment: '0xabc'
+		};
+		expect(deriveTrustTier(user)).toBe(3);
+	});
+
+	it('should return 2 for address-attested (district verified with timestamp)', () => {
+		const user = {
+			district_verified: true,
+			address_verified_at: new Date()
+		};
+		expect(deriveTrustTier(user)).toBe(2);
+	});
+
+	it('should return 0 for district_verified without address_verified_at', () => {
+		const user = {
+			district_verified: true
+		};
+		expect(deriveTrustTier(user)).toBe(0);
+	});
+
+	it('should return 1 for passkey-bound identity', () => {
+		const user = {
+			passkey_credential_id: 'pk_abc'
+		};
+		expect(deriveTrustTier(user)).toBe(1);
+	});
+
+	it('should return 0 for anonymous user (empty object)', () => {
+		const user = {};
+		expect(deriveTrustTier(user)).toBe(0);
+	});
+});
+
+describe('trustTierToAuthorityLevel', () => {
+	it('should map tier 0 to authority level 1', () => {
+		expect(trustTierToAuthorityLevel(0)).toBe(1);
+	});
+
+	it('should map tier 1 to authority level 1', () => {
+		expect(trustTierToAuthorityLevel(1)).toBe(1);
+	});
+
+	it('should map tier 2 to authority level 2', () => {
+		expect(trustTierToAuthorityLevel(2)).toBe(2);
+	});
+
+	it('should map tier 3 to authority level 3', () => {
+		expect(trustTierToAuthorityLevel(3)).toBe(3);
+	});
+
+	it('should map tier 4 to authority level 5', () => {
+		expect(trustTierToAuthorityLevel(4)).toBe(5);
+	});
+});
