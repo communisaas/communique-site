@@ -54,12 +54,12 @@ ACCESSIBILITY:
 		}
 	};
 
-	const scheme = statusSchemes[action.status];
-	const StatusIcon = scheme.icon;
+	const scheme = $derived(statusSchemes[action.status]);
+	const StatusIcon = $derived(scheme.icon);
 
 	// Calculate duration
-	const duration = action.endTime ? action.endTime - action.startTime : Date.now() - action.startTime;
-	const durationSeconds = (duration / 1000).toFixed(1);
+	const duration = $derived(action.endTime ? action.endTime - action.startTime : Date.now() - action.startTime);
+	const durationSeconds = $derived((duration / 1000).toFixed(1));
 
 	// Format target type
 	const targetTypeLabels: Record<string, string> = {

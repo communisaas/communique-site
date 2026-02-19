@@ -295,7 +295,7 @@
 				</div>
 
 				<div>
-					<label class="text-xs font-medium text-slate-600">Core message</label>
+					<span class="text-xs font-medium text-slate-600">Core message</span>
 					<p class="mt-0.5 text-xs text-slate-700 md:text-sm">
 						{currentSuggestion.core_message}
 					</p>

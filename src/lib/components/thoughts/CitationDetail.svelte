@@ -62,8 +62,8 @@ ACCESSIBILITY:
 		web: 'Web Source'
 	};
 
-	const scheme = sourceTypeSchemes[citation.sourceType];
-	const label = sourceTypeLabels[citation.sourceType];
+	const scheme = $derived(sourceTypeSchemes[citation.sourceType]);
+	const label = $derived(sourceTypeLabels[citation.sourceType]);
 </script>
 
 <div class="citation-detail space-y-4">

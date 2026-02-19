@@ -91,7 +91,7 @@
 		}
 	};
 
-	const scheme = colorSchemes[colorScheme];
+	const scheme = $derived(colorSchemes[colorScheme]);
 </script>
 
 <button

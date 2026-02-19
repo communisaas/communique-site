@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { ArrowRight, ArrowLeft, User, MapPin, Send } from '@lucide/svelte';
@@ -31,9 +32,9 @@
 	let currentStep: Step = $state('name');
 	let isTransitioning = $state(false);
 
-	// Form data
-	let name = $state(user?.name || '');
-	let address = $state(user?.address || '');
+	// Form data — snapshot user prop at init (one-shot default values)
+	let name = $state(untrack(() => user?.name || ''));
+	let address = $state(untrack(() => user?.address || ''));
 	let email = $state('');
 
 	// Validation states

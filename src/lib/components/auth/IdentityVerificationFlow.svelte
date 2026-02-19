@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { ChevronLeft, Check } from '@lucide/svelte';
 
 	import VerificationChoice from './address-steps/VerificationChoice.svelte';
@@ -43,8 +44,8 @@
 
 	type FlowStep = 'value-prop' | 'choice' | 'verify-nfc' | 'verify-id' | 'verify-mdl' | 'complete';
 
-	let currentStep = $state<FlowStep>(skipValueProp ? 'choice' : 'value-prop');
-	let selectedMethod = $state<'nfc' | 'government-id' | 'mdl' | null>(defaultMethod);
+	let currentStep = $state<FlowStep>(untrack(() => skipValueProp ? 'choice' : 'value-prop'));
+	let selectedMethod = $state<'nfc' | 'government-id' | 'mdl' | null>(untrack(() => defaultMethod));
 	let verificationComplete = $state(false);
 	let verificationData = $state<{
 		verified: boolean;

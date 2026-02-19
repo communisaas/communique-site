@@ -25,13 +25,13 @@
 	let popoverElement: HTMLDivElement | undefined = $state();
 	let containerElement: HTMLDivElement | undefined = $state();
 
-	// Create the trigger action
-	const triggerAction: TriggerAction = {
+	// Create the trigger action (derived so it stays reactive with id prop)
+	const triggerAction: TriggerAction = $derived({
 		trigger: () => {
 			open = !open;
 		},
 		'aria-controls': id
-	};
+	});
 
 	// Track events that should trigger position updates
 	function handleScroll() {

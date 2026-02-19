@@ -5,6 +5,7 @@ Coordinates with central modal system for proper z-index management,
 backdrop handling, and keyboard navigation.
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
 	import { createModalStore, type ModalType } from '$lib/stores/modalSystem.svelte';
@@ -31,8 +32,8 @@ backdrop handling, and keyboard navigation.
 		children: Snippet<[any]>;
 	} = $props();
 
-	// Connect to modal system
-	const modal = createModalStore(id, type);
+	// Connect to modal system (one-shot init with prop values)
+	const modal = untrack(() => createModalStore(id, type));
 
 	// Size classes
 	const sizeClasses = {

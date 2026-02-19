@@ -15,8 +15,8 @@
 		classNames?: string;
 	} = $props();
 
-	// Convert width to array if it's a single value
-	const widths = Array.isArray(width) ? width : Array(lines).fill(width);
+	// Convert width to array if it's a single value (reactive with props)
+	const widths = $derived(Array.isArray(width) ? width : Array(lines).fill(width));
 </script>
 
 <div class="skeleton-text {classNames}">

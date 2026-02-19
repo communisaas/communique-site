@@ -197,8 +197,10 @@
 			autocomplete="off"
 			spellcheck="false"
 			aria-label="Search for a location"
+			role="combobox"
 			aria-haspopup="listbox"
 			aria-expanded={isOpen}
+			aria-controls="location-picker-listbox"
 		/>
 
 		{#if query.length > 0}
@@ -221,7 +223,7 @@
 		<div
 			class="absolute left-0 top-full z-50 mt-1 min-w-[240px] rounded border border-slate-200 bg-white shadow-lg ring-1 ring-slate-900/5"
 		>
-			<ul role="listbox" class="max-h-56 overflow-y-auto py-0.5">
+			<ul role="listbox" id="location-picker-listbox" class="max-h-56 overflow-y-auto py-0.5">
 				<!-- Worldwide Option (always available) -->
 				<li
 					role="option"

@@ -145,11 +145,11 @@
 					<h3 class="body-heading">{bodyConfig.displayName}</h3>
 					<ul class="office-list" role="list">
 						{#each bodyResults as result (result.office)}
+							{@const OutcomeIcon = getIconComponent(result.outcome)}
 							<li class="office-item {getOutcomeColorClass(result.outcome)}">
 								<div class="office-status">
 									<span class="status-icon" aria-hidden="true">
-										<svelte:component
-											this={getIconComponent(result.outcome)}
+										<OutcomeIcon
 											size={20}
 											strokeWidth={2}
 										/>

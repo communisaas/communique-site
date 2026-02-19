@@ -138,7 +138,7 @@ ACCESSIBILITY:
 	}
 
 	// Focus trap - capture Tab within drawer
-	let drawerElement: HTMLElement;
+	let drawerElement = $state<HTMLElement>(null!);
 
 	function trapFocus(e: KeyboardEvent) {
 		if (!open || e.key !== 'Tab') return;
@@ -193,6 +193,7 @@ ACCESSIBILITY:
 	></div>
 
 	<!-- Drawer panel -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
 	<aside
 		bind:this={drawerElement}
 		class="detail-drawer fixed right-0 top-0 z-50 flex h-full w-full flex-col overflow-hidden shadow-2xl"

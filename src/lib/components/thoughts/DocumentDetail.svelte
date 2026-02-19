@@ -19,6 +19,7 @@ DESIGN:
 - Relevant passages highlighted with type color
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { ParsedDocument, DocumentSection, DocumentEntity } from '$lib/server/reducto/types';
 	import { getDocumentTypeIcon, getDocumentTypeColor } from '$lib/core/tools/document-helpers';
 	import {
@@ -43,8 +44,8 @@ DESIGN:
 
 	let { document, onClose }: Props = $props();
 
-	// Currently selected section
-	let activeSectionId = $state<string | null>(document.sections[0]?.id || null);
+	// Currently selected section (one-shot init from prop)
+	let activeSectionId = $state<string | null>(untrack(() => document.sections[0]?.id || null));
 
 	const icon = $derived(getDocumentTypeIcon(document.type));
 	const typeColor = $derived(getDocumentTypeColor(document.type));

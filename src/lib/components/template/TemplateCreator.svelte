@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, untrack } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { Building2, Users, Mail, Megaphone, ArrowRight, ArrowLeft, X } from '@lucide/svelte';
 	import type { TemplateCreationContext, TemplateFormData, Template } from '$lib/types/template';
@@ -32,18 +32,23 @@
 		onsave?: (data: Omit<Template, 'id'>) => void;
 	} = $props();
 
+	// Snapshot props at init time — these are one-shot values that don't change after mount.
+	// untrack() prevents Svelte from warning about stale reactive captures.
+	const _initialDraftId = untrack(() => initialDraftId);
+	const _initialText = untrack(() => initialText);
+
 	// --- Synchronous draft restoration ---
 	// MUST happen before child components render, because child onMount runs
 	// before parent onMount in Svelte. If we deferred to onMount, UnifiedObjectiveEntry
 	// would fire API calls before we could provide the restored suggestion.
 	// localStorage is synchronous, so this is safe at init time.
-	const _loadedDraft = initialDraftId ? templateDraftStore.getDraft(initialDraftId) : null;
+	const _loadedDraft = _initialDraftId ? templateDraftStore.getDraft(_initialDraftId) : null;
 
 	let currentStep: 'objective' | 'audience' | 'content' = $state(
 		_loadedDraft ? (_loadedDraft.currentStep as 'objective' | 'audience' | 'content') : 'objective'
 	);
 	let formErrors: string[] = $state([]);
-	let draftId = $state<string>(_loadedDraft ? initialDraftId : generateDraftId());
+	let draftId = $state<string>(_loadedDraft ? _initialDraftId : generateDraftId());
 	let lastSaved = $state<number | null>(_loadedDraft ? _loadedDraft.lastSaved : null);
 	let showDraftRecovery = $state(false);
 	let isTransitioning = $state(false);
@@ -117,8 +122,8 @@
 	// still shows the draft title — the user sees text, clicks continue, and expects it in the modal.
 	function _backfillDraftData(draft: typeof _loadedDraft): TemplateFormData {
 		const data = draft!.data;
-		if (!data.objective.rawInput?.trim() && initialText.trim()) {
-			data.objective.rawInput = initialText;
+		if (!data.objective.rawInput?.trim() && _initialText.trim()) {
+			data.objective.rawInput = _initialText;
 		}
 		return data;
 	}
@@ -128,7 +133,7 @@
 			? _backfillDraftData(_loadedDraft)
 			: {
 					objective: {
-						rawInput: initialText,
+						rawInput: _initialText,
 						title: '',
 						description: '',
 						category: '',

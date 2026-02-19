@@ -16,6 +16,7 @@
 	 * - Clear visual hierarchy
 	 */
 
+	import { untrack } from 'svelte';
 	import type { PhaseState, ThoughtSegment, Citation } from '$lib/core/thoughts/types';
 	import type { ParsedDocument } from '$lib/server/reducto/types';
 	import { ChevronDown, ChevronRight } from 'lucide-svelte';
@@ -33,8 +34,8 @@
 
 	let { phase, segments, oncitationclick, documents, onViewFullDocument }: Props = $props();
 
-	// Collapse state (completed phases start collapsed)
-	let collapsed = $state(phase.status === 'complete');
+	// Collapse state (completed phases start collapsed — one-shot init)
+	let collapsed = $state(untrack(() => phase.status === 'complete'));
 
 	// Derived state
 	const isActive = $derived(phase.status === 'active');

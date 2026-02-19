@@ -1162,7 +1162,7 @@
 										: index === suggestionHistory.length - 1
 											? 'bg-participation-primary-400 hover:bg-participation-primary-500'
 											: 'bg-participation-primary-300 hover:bg-participation-primary-400'}"
-								/>
+								></div>
 
 								<!-- Tooltip on hover -->
 								<div
@@ -1270,20 +1270,17 @@
 								focus:border-participation-primary-500 focus:outline-none focus:ring-2 focus:ring-participation-primary-500/30"
 						/>
 					{:else}
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<p
-							class="cursor-text rounded px-2 py-1.5 text-lg font-bold leading-tight text-slate-900
+						<button
+							type="button"
+							class="w-full cursor-text rounded px-2 py-1.5 text-left text-lg font-bold leading-tight text-slate-900
 								transition-colors duration-150
 								hover:bg-white/50
 								md:px-1 md:py-0.5"
 							onclick={() => startEditingField('subject')}
-							onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditingField('subject'); }}
-							role="button"
-							tabindex={0}
 							title="Tap to edit subject line"
 						>
 							{currentSuggestion.subject_line}
-						</p>
+						</button>
 					{/if}
 				</div>
 
@@ -1438,7 +1435,7 @@
                      text-base text-slate-900 transition-colors duration-200
                      placeholder:text-slate-500 focus:border-participation-primary-500 focus:bg-white
                      focus:outline-none focus:ring-2 focus:ring-participation-primary-500"
-					/>
+					></textarea>
 				</div>
 
 				<div class="flex justify-end gap-2">

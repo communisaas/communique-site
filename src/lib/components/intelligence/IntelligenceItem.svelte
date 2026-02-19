@@ -108,6 +108,7 @@
 	}
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
 <article
 	class="intelligence-item group {config.borderColor} {cardOpacity}
 		relative cursor-pointer overflow-hidden rounded-lg border border-l-4 border-slate-200
@@ -220,6 +221,7 @@
 	.line-clamp-2 {
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}

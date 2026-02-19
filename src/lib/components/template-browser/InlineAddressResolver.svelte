@@ -13,7 +13,7 @@
 	 * - Honeypot, timing, behavioral analysis
 	 */
 
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { slide, fade } from 'svelte/transition';
 	import { TIMING, type DistrictConfig } from '$lib/core/location/district-config';
 
@@ -34,9 +34,12 @@
 
 	let { config, locality, stateCode, isResolving, error, onsubmit, oncancel }: Props = $props();
 
-	// Form state
+	// Form state — snapshot props at init time (one-shot values from parent)
+	// untrack() prevents Svelte from warning about stale reactive captures.
+	const _locality = untrack(() => locality);
+	const _stateCode = untrack(() => stateCode);
 	let street = $state('');
-	let city = $state(locality || '');
+	let city = $state(_locality || '');
 	let postalCode = $state('');
 
 	// Security: behavioral analysis
@@ -55,7 +58,7 @@
 		setTimeout(() => {
 			if (config.requiresStreetAddress && streetInputRef) {
 				streetInputRef.focus();
-			} else if (!locality && cityInputRef) {
+			} else if (!_locality && cityInputRef) {
 				cityInputRef.focus();
 			} else if (postalInputRef) {
 				postalInputRef.focus();
@@ -81,7 +84,7 @@
 		if (config.requiresStreetAddress && !street.trim()) return false;
 
 		// City required if not pre-filled
-		if (!locality && !city.trim()) return false;
+		if (!_locality && !city.trim()) return false;
 
 		// Postal code always required and must match pattern
 		return isPostalValid;
@@ -107,8 +110,8 @@
 
 		onsubmit?.({
 			street: config.requiresStreetAddress ? street.trim() : undefined,
-			city: locality || city.trim(),
-			state: stateCode || selectedState || undefined,
+			city: _locality || city.trim(),
+			state: _stateCode || selectedState || undefined,
 			postalCode: postalCode.trim()
 		});
 	}
@@ -179,9 +182,10 @@
 		{ code: 'WY', name: 'Wyoming' }
 	];
 
-	let selectedState = $state(stateCode || 'CA');
+	let selectedState = $state(_stateCode || 'CA');
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <form
 	class="inline-resolver"
 	onsubmit={handleSubmit}

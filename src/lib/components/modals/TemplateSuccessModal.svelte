@@ -95,10 +95,12 @@
 	in:fade={{ duration: 200 }}
 	out:fade={{ duration: 150 }}
 >
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div
 		class="relative w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl"
-		role="document"
+		role="presentation"
 		onclick={(e) => e.stopPropagation()}
+		onkeydown={(e) => e.stopPropagation()}
 		in:scale={{
 			duration: 300,
 			start: 0.9,
@@ -262,6 +264,7 @@
 	.line-clamp-2 {
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}

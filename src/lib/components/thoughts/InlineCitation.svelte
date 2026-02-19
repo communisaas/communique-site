@@ -197,7 +197,6 @@
 	onmouseleave={handleMouseLeave}
 	aria-label={`Citation: ${citation.label}`}
 	aria-describedby={`citation-preview-${citation.id}`}
-	role="button"
 	tabindex={0}
 >
 	<!-- Citation label -->

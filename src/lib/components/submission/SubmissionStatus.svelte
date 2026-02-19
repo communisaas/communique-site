@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { CheckCircle2, Send, AlertCircle, ExternalLink, RotateCcw } from '@lucide/svelte';
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, untrack } from 'svelte';
 	import { z } from 'zod';
 
 	let {
@@ -15,7 +15,7 @@
 		onDelivered?: () => void;
 	} = $props();
 
-	let status = $state(initialStatus);
+	let status = $state(untrack(() => initialStatus));
 	let details = $state<string | null>(null);
 	let deliveryCount = $state<number | null>(null);
 	let canOverride = $state(true);

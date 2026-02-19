@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import {
 		Shield,
 		FileText,
@@ -20,7 +21,7 @@
 
 	let { compact = false, defaultMethod = null, onselect }: Props = $props();
 
-	let selectedMethod = $state<'nfc' | 'government-id' | 'mdl' | null>(defaultMethod);
+	let selectedMethod = $state<'nfc' | 'government-id' | 'mdl' | null>(untrack(() => defaultMethod));
 	let mdlSupported = isDigitalCredentialsSupported();
 
 	function selectMethod(method: 'nfc' | 'government-id' | 'mdl') {

@@ -192,9 +192,11 @@
 	});
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	bind:this={containerRef}
 	class="relative inline-flex"
+	role="group"
 	onmouseenter={() => (isHovering = true)}
 	onmouseleave={() => (isHovering = false)}
 >
@@ -205,6 +207,7 @@
 				closeDropdown();
 			} else {
 				handleFilterClick();
+				openDropdown();
 			}
 		}}
 		onkeydown={handleKeydown}
@@ -218,17 +221,13 @@
 	>
 		<span>{label}</span>
 
-		<!-- Edit icon (pencil) - shown on hover -->
+		<!-- Edit icon (pencil) - shown on hover, now a span to avoid nested button -->
 		{#if isHovering || isOpen}
-			<button
-				onclick={(e) => {
-					e.stopPropagation();
-					openDropdown();
-				}}
+			<span
 				class="inline-flex items-center transition-opacity"
 				class:opacity-100={isHovering || isOpen}
 				class:opacity-0={!isHovering && !isOpen}
-				aria-label="Edit {label}"
+				aria-hidden="true"
 			>
 				<svg
 					class="h-3 w-3 text-slate-400 transition-colors hover:text-slate-600"
@@ -243,7 +242,7 @@
 						d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
 					/>
 				</svg>
-			</button>
+			</span>
 		{/if}
 	</button>
 
@@ -320,7 +319,7 @@
 								}
 							}}
 							tabindex="0"
-							role="button"
+							role="option" aria-selected={false}
 						>
 							<div class="flex items-center gap-2">
 								<svg

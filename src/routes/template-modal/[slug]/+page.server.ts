@@ -56,7 +56,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		preview: template.preview,
 		metrics: extractTemplateMetrics(template.metrics),
 		delivery_config: template.delivery_config,
-		recipient_config: template.recipient_config,
+		recipient_config: (template.recipient_config as Record<string, unknown>) ?? undefined,
 		recipientEmails: extractRecipientEmails(template.recipient_config),
 		author: template.user
 			? {

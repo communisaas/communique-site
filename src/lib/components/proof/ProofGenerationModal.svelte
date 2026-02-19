@@ -41,7 +41,8 @@
 	let generationTime = $state(0);
 
 	// Educational messages (cycle through during proof generation)
-	const educationalMessages = [
+	// $derived so the template literal re-evaluates if `district` prop changes
+	const educationalMessages = $derived([
 		{
 			icon: Lock,
 			text: `Proving you're in ${district} without revealing your exact address`
@@ -54,7 +55,7 @@
 			icon: TrendingUp,
 			text: 'Building your civic reputation with each verified action'
 		}
-	];
+	]);
 
 	let currentEducationalIndex = $state(0);
 

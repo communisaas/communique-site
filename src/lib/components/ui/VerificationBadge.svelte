@@ -67,8 +67,8 @@
 		}
 	};
 
-	const config = statusConfig[verificationStatus];
-	const IconComponent = config.icon;
+	const config = $derived(statusConfig[verificationStatus]);
+	const IconComponent = $derived(config.icon);
 
 	// Enhanced tooltip for detailed verification info
 	const tooltipText = $derived(

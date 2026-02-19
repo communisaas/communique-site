@@ -89,6 +89,13 @@
 		onclick={(e) => {
 			if (e.target === e.currentTarget) showProvenance = false;
 		}}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') showProvenance = false;
+		}}
+		role="dialog"
+		aria-modal="true"
+		aria-label="Contact details"
+		tabindex="-1"
 	>
 		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
 			<h3 class="text-lg font-semibold text-slate-900">Contact Details</h3>

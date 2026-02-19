@@ -198,7 +198,7 @@
 
 	<!-- Success Icon -->
 	<div class="icon-wrapper">
-		<svelte:component this={IconComponent} size={48} strokeWidth={1.5} />
+		<IconComponent size={48} strokeWidth={1.5} />
 	</div>
 
 	<!-- Headline (Emotional Confirmation) -->
