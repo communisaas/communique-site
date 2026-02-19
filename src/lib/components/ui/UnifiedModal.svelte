@@ -121,7 +121,7 @@ backdrop handling, and keyboard navigation.
 
 			<!-- Modal Content -->
 			<div class="flex-1 overflow-y-auto">
-				{@render children((modal.data || {}) as any)}
+				{@render children((modal.data || {}) as Record<string, unknown>)}
 			</div>
 		</div>
 	</div>

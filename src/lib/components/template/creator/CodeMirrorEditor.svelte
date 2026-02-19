@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { EditorView, Decoration, keymap } from '@codemirror/view';
 	import { basicSetup } from 'codemirror';
-	import { EditorState, StateField, RangeSet } from '@codemirror/state';
+	import { EditorState, StateField, RangeSet, type TransactionSpec } from '@codemirror/state';
 	import { deleteCharBackward, deleteCharForward } from '@codemirror/commands';
 	import { getVariableMarkClasses, getVariableTipMessage } from '$lib/utils/variable-styling';
 
@@ -166,7 +166,8 @@
 					return true; // Signal that we handled it, prevent all defaults
 				}
 				// Otherwise let default backspace behavior run
-				return deleteCharBackward(view as any);
+				// @codemirror/commands bundles its own EditorView type — cast bridges version mismatch
+				return deleteCharBackward(view as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 			}
 		},
 		{
@@ -177,7 +178,8 @@
 					return true; // Signal that we handled it, prevent all defaults
 				}
 				// Otherwise let default delete behavior run
-				return deleteCharForward(view as any);
+				// @codemirror/commands bundles its own EditorView type — cast bridges version mismatch
+				return deleteCharForward(view as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 			}
 		}
 	]);
@@ -333,23 +335,23 @@
 		const docLength = editorView.state.doc.length;
 
 		// Append text to the end of the document
-		const dispatch = {
+		const spec: TransactionSpec = {
 			changes: {
 				from: docLength,
 				to: docLength,
 				insert: text
 			}
-		} as { changes: object; selection?: object };
+		};
 
 		// Preserve cursor position if requested
 		if (preserveCursor) {
-			dispatch.selection = {
+			spec.selection = {
 				anchor: currentPos,
 				head: currentPos
 			};
 		}
 
-		editorView.dispatch(dispatch as any);
+		editorView.dispatch(spec);
 
 		// Update the bound value
 		value = editorView.state.doc.toString();
@@ -416,23 +418,23 @@
 				value.length > currentDoc.length &&
 				value.startsWith(currentDoc.substring(0, Math.min(currentPos, currentDoc.length)));
 
-			const dispatch = {
+			const spec: TransactionSpec = {
 				changes: {
 					from: 0,
 					to: editorView.state.doc.length,
 					insert: value
 				}
-			} as { changes: object; selection?: object };
+			};
 
 			// If content was appended and cursor was in a reasonable position, preserve it
 			if (isContentAppended && currentPos <= currentDoc.length) {
-				dispatch.selection = {
+				spec.selection = {
 					anchor: currentPos,
 					head: currentPos
 				};
 			}
 
-			editorView.dispatch(dispatch as any);
+			editorView.dispatch(spec);
 		}
 	});
 </script>

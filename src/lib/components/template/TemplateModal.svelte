@@ -457,7 +457,7 @@
 						await goto(`/s/${template.slug}`, { replaceState: true });
 					},
 					1500,
-					'guest-navigation' as any,
+					'transition',
 					componentId
 				);
 
@@ -892,7 +892,7 @@
 						class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
 					>
 						<Share2 class="h-5 w-5" />
-						<span>{(typeof navigator !== 'undefined' && (navigator as any).share) ? 'Share template' : 'Copy share message'}</span>
+						<span>{(typeof navigator !== 'undefined' && 'share' in navigator) ? 'Share template' : 'Copy share message'}</span>
 					</button>
 				</div>
 

@@ -11,6 +11,26 @@
 	import { ProgressiveFormContent } from '$lib/components/template/parts';
 	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
+	import type { ComponentTemplate } from '$lib/types/component-props';
+
+	/** Type-safe accessors for modal data fields */
+	type ModalData = Record<string, unknown>;
+
+	function getTemplate(data: ModalData): ComponentTemplate | undefined {
+		return data?.template as ComponentTemplate | undefined;
+	}
+
+	function getUser(data: ModalData): { id: string; name: string; trust_tier?: number } | null {
+		return (data?.user as { id: string; name: string; trust_tier?: number }) ?? null;
+	}
+
+	function getSource(data: ModalData): 'social-link' | 'direct-link' | 'share' {
+		return (data?.source as 'social-link' | 'direct-link' | 'share') || 'direct-link';
+	}
+
+	function getCallback<T extends (...args: unknown[]) => void>(data: ModalData, key: string): T | undefined {
+		return data?.[key] as T | undefined;
+	}
 </script>
 
 <!-- Onboarding Modal -->
@@ -25,8 +45,8 @@
 	{#snippet children(data)}
 		{#if data?.template}
 			<OnboardingContent
-				template={data.template as any}
-				source={(data.source || 'direct-link') as any}
+				template={getTemplate(data) as any}
+				source={getSource(data)}
 				onauth={(provider) => (window.location.href = `/auth/${provider}`)}
 				onclose={() => modalActions.closeModal('onboarding-modal')}
 			/>
@@ -59,11 +79,10 @@
 	{#snippet children(data)}
 		<div class="overflow-hidden rounded-xl bg-white">
 			<AddressCollectionForm
-				_template={(data?.template as any) || {}}
+				_template={getTemplate(data) || { title: '', deliveryMethod: '' }}
 				oncomplete={(detail) => {
-					if (data?.onComplete) {
-						(data.onComplete as any)(detail);
-					}
+					const onComplete = getCallback<(d: unknown) => void>(data, 'onComplete');
+					onComplete?.(detail);
 					modalActions.closeModal('address-modal');
 				}}
 			/>
@@ -83,8 +102,8 @@
 	{#snippet children(data)}
 		{#if data?.template}
 			<TemplateModal
-				template={data.template as any}
-				user={(data.user as any) || null}
+				template={getTemplate(data)!}
+				user={getUser(data)}
 				onclose={() => modalActions.closeModal('template-modal')}
 				onused={() => {
 					// Template used - keep modal open for post-send flow
@@ -106,13 +125,12 @@
 	{#snippet children(data)}
 		{#if data?.template}
 			<ProgressiveFormContent
-				template={data.template as any}
-				user={(data.user as any) || null}
+				template={getTemplate(data)!}
+				user={getUser(data)}
 				_onclose={() => modalActions.closeModal('progressive-form-modal')}
 				onsend={(sendData) => {
-					if (data.onSend) {
-						(data.onSend as any)(sendData);
-					}
+					const onSend = getCallback<(d: unknown) => void>(data, 'onSend');
+					onSend?.(sendData);
 					modalActions.closeModal('progressive-form-modal');
 				}}
 			/>

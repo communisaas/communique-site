@@ -746,29 +746,32 @@
 		});
 
 		// Filter templates to only those with jurisdictions (for scoring)
+		// Note: TemplateWithJurisdictions is a structural subset of Template, so we cast
+		// after runtime narrowing to satisfy the scoring function signatures.
 		const templatesWithJurisdictions = countryFiltered.filter(
-			(t): t is any => 'jurisdictions' in t && Array.isArray(t.jurisdictions)
-		);
+			(t) => 'jurisdictions' in t && Array.isArray((t as Record<string, unknown>).jurisdictions)
+		) as unknown as TemplateWithJurisdictions[];
 
 		// Score templates by location relevance (0.0 = no match, 1.0 = district match)
 		// Pass currentScope to boost templates matching the selected breadcrumb level
 		const scored = scoreTemplatesByRelevance(
-			templatesWithJurisdictions as any,
-			inferredLocation as any,
+			templatesWithJurisdictions,
+			inferredLocation,
 			currentScope
 		);
 
 		// Apply behavioral boosting asynchronously, then create groups
 		getTemplateViewCounts()
 			.then((viewCounts) => {
-				const boosted = boostByUserBehavior(scored as any, viewCounts);
-				const groups = createTemplateGroups(boosted as any, inferredLocation as any, currentScope);
+				const boosted = boostByUserBehavior(scored, viewCounts);
+				// ScoredTemplate.template is TemplateWithJurisdictions (subset of Template) — structural mismatch
+				const groups = createTemplateGroups(boosted as any, inferredLocation, currentScope); // eslint-disable-line @typescript-eslint/no-explicit-any
 
 				onFilterChange(groups);
 			})
 			.catch(() => {
 				// Fallback to location-only scoring
-				const groups = createTemplateGroups(scored as any, inferredLocation as any, currentScope);
+				const groups = createTemplateGroups(scored as any, inferredLocation, currentScope); // eslint-disable-line @typescript-eslint/no-explicit-any
 
 				onFilterChange(groups);
 			});
@@ -875,8 +878,8 @@
 				city_name: result.city?.name || null,
 				country_code: countryCode,
 				county_fips: null,
-				latitude: (result.city as any)?.lat || (result.state as any)?.lat || null,
-				longitude: (result.city as any)?.lon || (result.state as any)?.lon || null,
+				latitude: result.city?.lat ?? null,
+				longitude: result.city?.lon ?? null,
 				source: 'user.breadcrumb_selection',
 				timestamp: new Date().toISOString(),
 				metadata: {

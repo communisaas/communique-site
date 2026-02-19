@@ -111,7 +111,7 @@
 		class="flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-200
 		{selected ? 'scale-110' : 'group-hover:scale-105'}"
 	>
-		<Icon {...({ class: `h-6 w-6 ${scheme.icon}`, strokeWidth: 2 } as any)} />
+		<Icon {...({ class: `h-6 w-6 ${scheme.icon}`, strokeWidth: 2 } as Record<string, unknown>)} />
 	</div>
 
 	<!-- Label -->

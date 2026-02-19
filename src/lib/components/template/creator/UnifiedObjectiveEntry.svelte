@@ -96,6 +96,23 @@
 		interactionId?: string;
 	}
 
+	/** Shape of response data when agent needs clarification */
+	interface ClarificationResponseData {
+		needs_clarification: boolean;
+		clarification_questions?: ClarificationQuestion[];
+		inferred_context?: InferredContext;
+		interactionId?: string;
+	}
+
+	const defaultInferredContext: InferredContext = {
+		detected_location: null,
+		detected_scope: null,
+		detected_target_type: null,
+		location_confidence: 0,
+		scope_confidence: 0,
+		target_type_confidence: 0
+	};
+
 	let suggestionState = $state<SuggestionState>({ status: 'idle' });
 	let showAISuggest = $state(false);
 	let attemptCount = $state(0);
@@ -300,31 +317,18 @@
 
 						case 'clarification':
 							if (event.data.data) {
-								const responseData = event.data.data as any;
+								// Stream generic types data as AISuggestion, but clarification events carry different shape
+								const responseData = event.data.data as unknown as ClarificationResponseData;
 								suggestionState = {
 									status: 'clarifying',
 									questions: responseData.clarification_questions || [],
-									inferredContext: responseData.inferred_context || {
-										detected_location: null,
-										detected_scope: null,
-										detected_target_type: null,
-										location_confidence: 0,
-										scope_confidence: 0,
-										target_type_confidence: 0
-									},
+									inferredContext: responseData.inferred_context || defaultInferredContext,
 									interactionId: crypto.randomUUID()
 								};
 								conversationContext = {
 									originalDescription: text,
 									questionsAsked: responseData.clarification_questions || [],
-									inferredContext: responseData.inferred_context || {
-										detected_location: null,
-										detected_scope: null,
-										detected_target_type: null,
-										location_confidence: 0,
-										scope_confidence: 0,
-										target_type_confidence: 0
-									}
+									inferredContext: responseData.inferred_context || defaultInferredContext
 								};
 								showAISuggest = true;
 							}
@@ -413,33 +417,20 @@
 
 			if (response.success && response.data) {
 				// Check if agent needs clarification
-				if ((response.data as any).needs_clarification) {
+				const clarificationData = response.data as ClarificationResponseData;
+				if (clarificationData.needs_clarification) {
 					suggestionState = {
 						status: 'clarifying',
-						questions: (response.data as any).clarification_questions || [],
-						inferredContext: (response.data as any).inferred_context || {
-							detected_location: null,
-							detected_scope: null,
-							detected_target_type: null,
-							location_confidence: 0,
-							scope_confidence: 0,
-							target_type_confidence: 0
-						},
-						interactionId: (response.data as any).interactionId || crypto.randomUUID()
+						questions: clarificationData.clarification_questions || [],
+						inferredContext: clarificationData.inferred_context || defaultInferredContext,
+						interactionId: clarificationData.interactionId || crypto.randomUUID()
 					};
 
 					// Store complete context for reconstruction on answer submission
 					conversationContext = {
 						originalDescription: text,
-						questionsAsked: (response.data as any).clarification_questions || [],
-						inferredContext: (response.data as any).inferred_context || {
-							detected_location: null,
-							detected_scope: null,
-							detected_target_type: null,
-							location_confidence: 0,
-							scope_confidence: 0,
-							target_type_confidence: 0
-						}
+						questionsAsked: clarificationData.clarification_questions || [],
+						inferredContext: clarificationData.inferred_context || defaultInferredContext
 					};
 
 					showAISuggest = true;

@@ -10,6 +10,14 @@
 	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 
+	interface ProfileRepresentative {
+		name: string;
+		party: string;
+		chamber: string;
+		state: string;
+		district: string;
+	}
+
 	let { data }: { data: PageData } = $props();
 
 	function handlePasskeyRegistered() {
@@ -216,9 +224,9 @@
 							<div class="space-y-3">
 								{#each representatives as rep}
 									<div class="rounded-lg bg-slate-50 p-3">
-										<div class="font-medium text-slate-900">{(rep as any).name}</div>
-										<div class="text-sm text-slate-600">{(rep as any).party} - {(rep as any).chamber}</div>
-										<div class="text-xs text-slate-500">{(rep as any).state}-{(rep as any).district}</div>
+										<div class="font-medium text-slate-900">{(rep as unknown as ProfileRepresentative).name}</div>
+										<div class="text-sm text-slate-600">{(rep as unknown as ProfileRepresentative).party} - {(rep as unknown as ProfileRepresentative).chamber}</div>
+										<div class="text-xs text-slate-500">{(rep as unknown as ProfileRepresentative).state}-{(rep as unknown as ProfileRepresentative).district}</div>
 									</div>
 								{/each}
 							</div>

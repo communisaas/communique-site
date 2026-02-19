@@ -29,6 +29,7 @@
 	import { toEmailServiceUser } from '$lib/types/user';
 	import { trackTemplateView } from '$lib/core/location/behavioral-tracker';
 	import type { TemplateJurisdiction } from '$lib/core/location/types';
+	import type { EmailFlowTemplate } from '$lib/types/template';
 	import type { ModalComponent } from '$lib/types/component-props';
 
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
@@ -79,9 +80,10 @@
 					const result = PendingTemplateSchema.safeParse(parsed);
 
 					if (result.success) {
-						const { templateData } = result.data as any;
+						// Zod-validated from sessionStorage — runtime shape matches Template
+						const { templateData } = result.data as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 						templateStore
-							.addTemplate(templateData as any)
+							.addTemplate(templateData)
 							.then(() => {
 								sessionStorage.removeItem('pending_template_save');
 							})
@@ -272,13 +274,13 @@
 			return;
 		}
 
-		const flow = analyzeEmailFlow(template as any, toEmailServiceUser(data.user as Record<string, unknown> | null));
+		const flow = analyzeEmailFlow(template as unknown as EmailFlowTemplate, toEmailServiceUser(data.user as Record<string, unknown> | null));
 
 		if (flow.nextAction === 'address') {
 			modalActions.openModal('address-modal', 'address', {
-				template: template as any,
+				template,
 				source: 'featured',
-				user: data.user as any,
+				user: data.user,
 				onComplete: async (detail: OnCompleteDetail) => {
 					if (detail?.address) {
 						// Client-side caching only - Cypherpunk ethos
@@ -412,8 +414,8 @@
 						</div>
 					{:else if selectedTemplate}
 						<TemplatePreview
-							template={selectedTemplate as any}
-							user={data.user as any}
+							template={selectedTemplate}
+							user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
 							onSendMessage={async () => handleSendMessage(selectedTemplate)}
 						/>
 					{:else}
@@ -450,8 +452,8 @@
 	>
 		<div class="h-full">
 			<TemplatePreview
-				template={selectedTemplate as any}
-				user={data.user as any}
+				template={selectedTemplate}
+				user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
 				onSendMessage={async () => {
 					if (!data.user) {
 						modalActions.openModal('onboarding-modal', 'onboarding', {
@@ -462,7 +464,7 @@
 						return;
 					}
 
-					const flow = analyzeEmailFlow(selectedTemplate as any, toEmailServiceUser(data.user as Record<string, unknown> | null));
+					const flow = analyzeEmailFlow(selectedTemplate as unknown as EmailFlowTemplate, toEmailServiceUser(data.user as Record<string, unknown> | null));
 
 					if (flow.nextAction === 'address') {
 						modalActions.openModal('address-modal', 'address', {

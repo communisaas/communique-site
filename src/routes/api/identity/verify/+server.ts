@@ -70,7 +70,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 
 		// Extract passport data from SDK response
 		const { discloseOutput } = result;
-		const credentialSubject = (discloseOutput as any).credentialSubject;
+		const credentialSubject = (discloseOutput as unknown as { credentialSubject: { dateOfBirth: string; documentNumber: string; nationality: string; documentType: string } }).credentialSubject;
 
 		// Map SDK data to our IdentityProof structure
 		const birthDate = new Date(credentialSubject.dateOfBirth);

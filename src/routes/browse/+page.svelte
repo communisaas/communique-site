@@ -149,7 +149,7 @@
 			<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3" data-testid="template-grid">
 				{#each filteredTemplates as template (template.id)}
 					<TemplateCard
-						template={template as any}
+						template={template as unknown as import('$lib/types/template').Template}
 						variant="grid"
 						onSelect={() => handleTemplateSelect(template.slug)}
 					/>

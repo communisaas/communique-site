@@ -236,7 +236,8 @@
 				await orchestratorModule.proverOrchestrator.init();
 
 				const proofResult = await orchestratorModule.proverOrchestrator.prove(
-					witness as any,
+					// witness-encryption.WitnessData ≠ prover-core.WitnessData (duplicate interfaces)
+					witness as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 					(stage, percent) => {
 						if (stage === 'generating-keys') {
 							proofState = { status: 'initializing-prover', progress: percent };

@@ -10,6 +10,7 @@
 	import { page } from '$app/stores';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
+	import type { EmailFlowTemplate } from '$lib/types/template';
 	import type { HeaderTemplate, HeaderUser, TemplateUseEvent } from '$lib/types/any-replacements';
 
 	let {
@@ -53,7 +54,7 @@
 	function handlePrimaryAction(): void {
 		if (!onTemplateUse) return;
 
-		const emailFlow = analyzeEmailFlow(template as any, toEmailServiceUser(user as any));
+		const emailFlow = analyzeEmailFlow(template as unknown as EmailFlowTemplate, toEmailServiceUser(user as Record<string, unknown> | null));
 		onTemplateUse({
 			template,
 			requiresAuth: emailFlow.requiresAuth

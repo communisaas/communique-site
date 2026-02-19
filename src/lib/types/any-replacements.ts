@@ -389,6 +389,11 @@ export interface HeaderTemplate {
 	message_body?: string;
 	status?: string;
 	user_id?: string;
+	deliveryMethod?: string;
+	preview?: string;
+	subject?: string | null;
+	recipient_config?: unknown;
+	recipientEmails?: string[];
 	[key: string]: unknown;
 }
 

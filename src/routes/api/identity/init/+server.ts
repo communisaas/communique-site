@@ -61,7 +61,8 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 			userId,
 			userIdType: 'uuid',
 			endpoint,
-			endpointType: (url.hostname === 'localhost' ? 'staging_https' : 'mainnet_https') as any,
+			// Self SDK EndpointType enum not exported — cast required
+			endpointType: (url.hostname === 'localhost' ? 'staging_https' : 'mainnet_https') as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 			userDefinedData: JSON.stringify({
 				templateSlug: templateSlug || '',
 				timestamp: Date.now()
@@ -78,7 +79,7 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 
 		// Get QR code data (universal link format)
 		// User scans this with Self mobile app
-		const qrCodeData = (app as any).getUniversalLink();
+		const qrCodeData = (app as unknown as { getUniversalLink(): string }).getUniversalLink();
 
 		console.log('[self.xyz] QR code generated:', {
 			userId,

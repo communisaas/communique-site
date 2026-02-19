@@ -13,7 +13,8 @@
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 	import { syncOAuthLocation } from '$lib/core/location/oauth-location-sync';
-	import type { Template as _Template } from '$lib/types/template';
+	import type { Template as _Template, EmailFlowTemplate } from '$lib/types/template';
+	import type { HeaderUser, HeaderTemplate } from '$lib/types/any-replacements';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
 
@@ -65,7 +66,7 @@
 	function handleTemplateUse(__event: { template: _Template; requiresAuth: boolean }): void {
 		const { template } = __event;
 
-		const flow = analyzeEmailFlow(template as any, toEmailServiceUser(data.user as Record<string, unknown> | null));
+		const flow = analyzeEmailFlow(template as unknown as EmailFlowTemplate, toEmailServiceUser(data.user as Record<string, unknown> | null));
 
 		if (flow.nextAction === 'auth') {
 			// Navigate to auth or show modal
@@ -87,9 +88,10 @@
 </script>
 
 <!-- HeaderSystem handles context-aware header rendering -->
-<HeaderSystem user={data.user as any} template={data.template as any} onTemplateUse={handleTemplateUse as any} />
+<!-- HeaderTemplate is a structural subset of Template — handler only reads common fields at runtime -->
+<HeaderSystem user={data.user as HeaderUser | null} template={data.template as HeaderTemplate | null} onTemplateUse={handleTemplateUse as any} />
 
-{#if (data.user as any)?.id === 'user-demo-1'}
+{#if (data.user as Record<string, unknown> | null)?.id === 'user-demo-1'}
 	<div class="pointer-events-none fixed top-0 left-0 right-0 z-[9999] bg-amber-500/10 text-amber-200 text-center text-xs py-1 font-mono tracking-wide">
 		DEMO MODE — communique.app
 	</div>

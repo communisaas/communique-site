@@ -185,7 +185,7 @@
 					case 'complete': {
 						const result = event.data as { decision_makers?: unknown[] };
 						const rawDecisionMakers = result.decision_makers || [];
-						const processed = processDecisionMakers(rawDecisionMakers as any);
+						const processed = processDecisionMakers(rawDecisionMakers as Parameters<typeof processDecisionMakers>[0]);
 
 						// Initialize audience data if not already set
 						if (!formData.audience) {
