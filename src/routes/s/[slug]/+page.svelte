@@ -12,7 +12,7 @@
 	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 	import { trackTemplateView } from '$lib/core/analytics/client';
-	// import ShareButton from '$lib/components/ui/ShareButton.svelte';
+	import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import ActionBar from '$lib/components/template-browser/parts/ActionBar.svelte';
 
 	import { spring } from 'svelte/motion';
@@ -34,7 +34,6 @@
 
 	const template: TemplateType = $derived(data.template as unknown as TemplateType);
 	const channel = $derived(data.channel);
-	const topDistricts = $derived(data.topDistricts || []);
 	const totalDistricts = $derived((data.totalDistricts as number) || 0);
 	const totalStates = $derived((data.totalStates as number) || 0);
 	const userDistrictCount = $derived((data.userDistrictCount as number) || 0);
@@ -275,6 +274,7 @@
 						<Eye class="h-4 w-4" />
 						<span>{(template.metrics?.views || 0).toLocaleString()} views</span>
 					</div>
+					<ShareButton url={shareUrl} _title={template.title} variant="secondary" size="sm" />
 				</div>
 			</div>
 		</div>
@@ -327,19 +327,16 @@
 		</div>
 	</div>
 
-	<!-- Social Proof Banner (show if > 10 actions) -->
-	{#if (template.metrics?.sent || 0) > 10}
-		<div class="mb-6">
-			<SocialProofBanner
-				totalActions={template.metrics?.sent || 0}
-				{topDistricts}
-				{totalDistricts}
-				{totalStates}
-				{userDistrictCount}
-				{userDistrictCode}
-			/>
-		</div>
-	{/if}
+	<!-- Social Proof Banner (always visible — SocialProofBanner handles visual tiers internally) -->
+	<div class="mb-6">
+		<SocialProofBanner
+			totalActions={template.metrics?.sent || 0}
+			{totalDistricts}
+			{totalStates}
+			{userDistrictCount}
+			{userDistrictCode}
+		/>
+	</div>
 
 	<!-- Template Preview -->
 	<div class="rounded-xl border border-slate-200 bg-white shadow-sm">

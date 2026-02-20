@@ -6,7 +6,6 @@
 
 	let {
 		totalActions,
-		topDistricts = [],
 		totalDistricts = 0,
 		totalStates = 0,
 		userDistrictCount = 0,
@@ -14,7 +13,6 @@
 		showTrending = true
 	}: {
 		totalActions: number;
-		topDistricts?: Array<{ district: string; count: number }>;
 		totalDistricts?: number;
 		totalStates?: number;
 		userDistrictCount?: number;
@@ -139,17 +137,6 @@
 					<MapPin class="h-3 w-3 shrink-0" />
 					<span>
 						Active in {totalDistricts.toLocaleString()} district{totalDistricts === 1 ? '' : 's'} across {totalStates} state{totalStates === 1 ? '' : 's'}
-					</span>
-				</div>
-			{:else if topDistricts.length > 0}
-				<!-- Fallback: top districts by hash -->
-				<div class="mt-2 flex items-center gap-2 text-xs text-slate-600 sm:text-sm">
-					<MapPin class="h-3 w-3 shrink-0" />
-					<span>
-						Top districts: {topDistricts
-							.slice(0, 3)
-							.map((d) => `${d.district} (${d.count.toLocaleString()})`)
-							.join(', ')}
 					</span>
 				</div>
 			{/if}

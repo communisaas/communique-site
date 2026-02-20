@@ -7,7 +7,6 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 
 	// Load district-level aggregates for social proof (privacy-preserving)
 	// NOTE: Messages are pseudonymous - we aggregate by district_hash (SHA-256), not user linkage
-	let topDistricts: Array<{ district: string; count: number }> = [];
 	let totalDistricts = 0;
 	let totalStates = 0;
 	let userDistrictCount = 0;
@@ -39,15 +38,6 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 			);
 
 			totalDistricts = Object.keys(districtCounts).length;
-
-			// Top 3 district hashes by engagement
-			topDistricts = Object.entries(districtCounts)
-				.sort((a, b) => b[1] - a[1])
-				.slice(0, 3)
-				.map(([districtHash, count]) => ({
-					district: districtHash.substring(0, 8) + '...',
-					count
-				}));
 
 			// Personalized "in YOUR district" — only for authenticated users with district_hash
 			const userDistrictHash = locals.user?.district_hash;
@@ -96,7 +86,6 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		user: locals.user,
 		template: parentData.template,
 		channel: parentData.channel,
-		topDistricts,
 		totalDistricts,
 		totalStates: totalStates || 50, // Fallback
 		userDistrictCount,
