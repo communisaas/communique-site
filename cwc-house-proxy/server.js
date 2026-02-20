@@ -15,7 +15,7 @@ const crypto = require('crypto');
 const app = express();
 
 // --- Configuration ---
-const PORT = parseInt(process.env.PORT || '8080', 10);
+const PORT = parseInt(process.env.PORT || '80', 10);
 const AUTH_TOKEN = process.env.AUTH_TOKEN;
 const HOUSE_CWC_ENDPOINT = process.env.HOUSE_CWC_ENDPOINT || 'https://cwc.house.gov/';
 const MAX_XML_BYTES = 64 * 1024; // 64KB
