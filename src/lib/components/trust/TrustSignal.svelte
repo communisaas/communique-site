@@ -16,7 +16,7 @@
 
 	// Clamp to valid tier range
 	const safeTier: TrustTier = $derived(
-		(Math.max(0, Math.min(4, Math.floor(trustTier))) as TrustTier)
+		(Math.max(0, Math.min(5, Math.floor(trustTier))) as TrustTier)
 	);
 
 	const label = $derived(TRUST_TIER_LABELS[safeTier]);
@@ -28,7 +28,8 @@
 			1: 'text-blue-700 bg-blue-50 border-blue-200',
 			2: 'text-emerald-700 bg-emerald-50 border-emerald-200',
 			3: 'text-purple-700 bg-purple-50 border-purple-200',
-			4: 'text-amber-700 bg-amber-50 border-amber-200'
+			4: 'text-indigo-700 bg-indigo-50 border-indigo-200',
+			5: 'text-amber-700 bg-amber-50 border-amber-200'
 		})[safeTier]
 	);
 
@@ -38,7 +39,8 @@
 			1: 'text-blue-500',
 			2: 'text-emerald-500',
 			3: 'text-purple-500',
-			4: 'text-amber-500'
+			4: 'text-indigo-500',
+			5: 'text-amber-500'
 		})[safeTier]
 	);
 
@@ -67,6 +69,8 @@
 	{:else if safeTier === 3}
 		<ShieldCheck class="h-3 w-3 {iconColorClass}" />
 	{:else if safeTier === 4}
+		<ShieldCheck class="h-3 w-3 {iconColorClass}" />
+	{:else if safeTier === 5}
 		<BadgeCheck class="h-3 w-3 {iconColorClass}" />
 	{/if}
 

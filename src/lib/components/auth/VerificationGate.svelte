@@ -5,7 +5,8 @@
  * Supports graduated trust tiers (Wave 3A + Cycle 9):
  *   - Tier 2 (address-attested): AddressVerificationFlow (district credential)
  *   - Tier 3 (ZK-verified):      IdentityVerificationFlow (full identity)
- *   - Tier 4 (government-cred):  IdentityVerificationFlow (with mDL option)
+ *   - Tier 4 (passport-verified): IdentityVerificationFlow (passport path)
+ *   - Tier 5 (government-cred):  IdentityVerificationFlow (with mDL option)
  *
  * Flow:
  * 1. User clicks "Send Message" on Congressional template
@@ -57,7 +58,7 @@
 
 	// Derived: which verification flow to show
 	let needsTier2: boolean = $derived(minimumTier <= 2 && userTrustTier < 2);
-	let needsTier4: boolean = $derived(minimumTier >= 4 && userTrustTier < 4);
+	let needsTier4Plus: boolean = $derived(minimumTier >= 4 && userTrustTier < minimumTier);
 
 	/**
 	 * Check if user meets the minimum trust tier or has valid session credential.
@@ -138,14 +139,14 @@
 			</button>
 
 			<!-- Header (tier-aware) -->
-			{#if needsTier4}
+			{#if needsTier4Plus}
 				<div class="border-b border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 px-8 py-6">
 					<h2 id="verification-gate-title" class="text-2xl font-bold text-slate-900">
-						Verify with Government Credential
+						Verify with Passport or Government Credential
 					</h2>
 					<p class="mt-2 text-slate-600">
-						This action requires government-level verification. Use your digital driver's
-						license or passport for the fastest, most private verification available.
+						This action requires document-level verification. Use your passport, digital driver's
+						license, or government credential for the fastest, most private verification available.
 					</p>
 				</div>
 			{:else if needsTier2}

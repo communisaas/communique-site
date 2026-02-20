@@ -344,8 +344,9 @@ export function formatValidationError(validation: CredentialValidation): {
  * - Tier 0: Guest (no account, no credential)
  * - Tier 1: Authenticated (OAuth), 1 year TTL (session-based)
  * - Tier 2: Address attestation, 90 days (population moves ~2% annually)
- * - Tier 3: Identity verification, 6 months (government ID expiry patterns)
- * - Tier 4: Government credential, 1 year (follows issuer TTL)
+ * - Tier 3: Identity verification, 6 months (ID card / drivers license)
+ * - Tier 4: Passport verification, 6 months (NFC passport)
+ * - Tier 5: Government credential, 1 year (follows issuer TTL)
  *
  * Note: Action-based TTL applies ON TOP of tier TTL.
  * Example: Tier 2 user sending constituent_message needs credential < 30 days old,
@@ -356,7 +357,8 @@ export const TIER_CREDENTIAL_TTL: Record<number, number> = {
 	1: 365 * 24 * 60 * 60 * 1000, // Authenticated (OAuth): 1 year
 	2: 90 * 24 * 60 * 60 * 1000, // Address attestation: 90 days
 	3: 180 * 24 * 60 * 60 * 1000, // Identity verification: 6 months
-	4: 365 * 24 * 60 * 60 * 1000 // Government credential: follows issuer TTL (typically 1-5 years)
+	4: 180 * 24 * 60 * 60 * 1000, // Passport verification: 6 months
+	5: 365 * 24 * 60 * 60 * 1000 // Government credential: follows issuer TTL (typically 1-5 years)
 };
 
 /**
@@ -365,7 +367,7 @@ export const TIER_CREDENTIAL_TTL: Record<number, number> = {
  * This checks the tier's base TTL, NOT the action-based TTL.
  * For action-specific validation, use isCredentialValidForAction().
  *
- * @param tier - Trust tier (0-4)
+ * @param tier - Trust tier (0-5)
  * @param verifiedAt - When the credential was issued/verified
  * @returns True if credential is within tier's TTL window
  */

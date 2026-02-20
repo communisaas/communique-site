@@ -60,15 +60,33 @@ describe('deriveAuthorityLevel', () => {
 });
 
 describe('deriveTrustTier', () => {
-	it('should return 4 for government credential (mDL with identity commitment)', () => {
+	it('should return 5 for government credential (mDL with identity commitment)', () => {
 		const user = {
 			document_type: 'mdl',
 			identity_commitment: '0xabc'
 		};
+		expect(deriveTrustTier(user)).toBe(5);
+	});
+
+	it('should return 4 for passport-verified (passport via self.xyz)', () => {
+		const user = {
+			identity_commitment: '0xabc',
+			verification_method: 'self.xyz',
+			document_type: 'passport'
+		};
 		expect(deriveTrustTier(user)).toBe(4);
 	});
 
-	it('should return 3 for ZK-verified (identity commitment without mDL)', () => {
+	it('should return 4 for passport-verified (passport via didit)', () => {
+		const user = {
+			identity_commitment: '0xabc',
+			verification_method: 'didit',
+			document_type: 'passport'
+		};
+		expect(deriveTrustTier(user)).toBe(4);
+	});
+
+	it('should return 3 for identity-verified (ID card / license)', () => {
 		const user = {
 			identity_commitment: '0xabc'
 		};
@@ -120,7 +138,11 @@ describe('trustTierToAuthorityLevel', () => {
 		expect(trustTierToAuthorityLevel(3)).toBe(3);
 	});
 
-	it('should map tier 4 to authority level 5', () => {
-		expect(trustTierToAuthorityLevel(4)).toBe(5);
+	it('should map tier 4 to authority level 4', () => {
+		expect(trustTierToAuthorityLevel(4)).toBe(4);
+	});
+
+	it('should map tier 5 to authority level 5', () => {
+		expect(trustTierToAuthorityLevel(5)).toBe(5);
 	});
 });

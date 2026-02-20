@@ -59,7 +59,7 @@ model User {
 
   // === GRADUATED TRUST (see docs/architecture/graduated-trust.md) ===
   trust_tier Int @default(1) @map("trust_tier")
-  // 0=guest(conceptual), 1=authenticated(OAuth), 2=address-attested, 3=ZK-verified, 4=gov-credential
+  // 0=guest(conceptual), 1=authenticated, 2=address-attested, 3=identity-verified, 4=passport-verified, 5=gov-credential
 
   // === PASSKEY / WEBAUTHN (Tier 1) ===
   passkey_credential_id  String?   @unique @map("passkey_credential_id")
