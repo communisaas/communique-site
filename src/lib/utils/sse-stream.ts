@@ -34,6 +34,9 @@ export async function* parseSSEStream<T = unknown>(
 
 	const decoder = new TextDecoder();
 	let buffer = '';
+	// Persists across chunks — an event: line in one chunk may pair
+	// with a data: line in the next chunk after network buffering splits them.
+	let currentEventType = '';
 
 	try {
 		while (true) {
@@ -43,8 +46,6 @@ export async function* parseSSEStream<T = unknown>(
 			buffer += decoder.decode(value, { stream: true });
 			const lines = buffer.split('\n');
 			buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-			let currentEventType = '';
 
 			for (const line of lines) {
 				if (line.startsWith('event: ')) {
@@ -56,6 +57,9 @@ export async function* parseSSEStream<T = unknown>(
 					} catch (error) {
 						console.warn('[SSE Stream] Failed to parse SSE data:', error);
 					}
+					currentEventType = '';
+				} else if (line.trim() === '') {
+					// Empty line resets event type per SSE spec (event boundary)
 					currentEventType = '';
 				}
 			}
