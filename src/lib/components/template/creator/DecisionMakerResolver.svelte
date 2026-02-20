@@ -77,6 +77,11 @@
 		);
 	}
 
+	/** Normalize a string for fuzzy matching (lowercase, strip leading "the", trim). */
+	function norm(s: string): string {
+		return s.toLowerCase().replace(/^the\s+/, '').trim();
+	}
+
 	let authRetried = false;
 
 	async function resolveDecisionMakers() {
@@ -92,6 +97,11 @@
 		pendingIdentities = [];
 		identitiesRevealed = false;
 
+		// Client-side timeout: 3 minutes. Prevents the SSE connection from
+		// hanging indefinitely if the server stalls.
+		const controller = new AbortController();
+		const clientTimeout = setTimeout(() => controller.abort(), 180_000);
+
 		try {
 			// Resolve decision-makers via streaming endpoint
 			stage = 'resolving';
@@ -104,6 +114,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include', // Ensure session cookie is sent after OAuth return
+				signal: controller.signal,
 				body: JSON.stringify({
 					subject_line: formData.objective.title,
 					core_message: formData.objective.description,
@@ -190,10 +201,20 @@
 							name: string; title: string; organization: string;
 							email?: string; status: string; reasoning?: string;
 						};
-						// Find matching pending identity by org+title and upgrade it
+						// Match pending identity using normalized fuzzy comparison.
+						// Phase 2b model output may rephrase titles/orgs vs Phase 2a placeholders.
+						const candOrg = norm(candidate.organization);
+						const candTitle = norm(candidate.title);
+						let matched = false;
+
 						pendingIdentities = pendingIdentities.map(id => {
-							if (id.organization === candidate.organization &&
-								id.title === candidate.title) {
+							if (matched) return id;
+							const idOrg = norm(id.organization);
+							const idTitle = norm(id.title);
+							const orgMatch = idOrg === candOrg || idOrg.includes(candOrg) || candOrg.includes(idOrg);
+							const titleMatch = idTitle === candTitle || idTitle.includes(candTitle) || candTitle.includes(idTitle);
+							if (orgMatch && titleMatch) {
+								matched = true;
 								return {
 									...id,
 									name: candidate.name || id.name,
@@ -204,6 +225,24 @@
 							}
 							return id;
 						});
+
+						// Fallback: match by org only against the first still-pending card
+						if (!matched) {
+							pendingIdentities = pendingIdentities.map(id => {
+								if (matched || id.status !== 'pending') return id;
+								if (norm(id.organization) === candOrg) {
+									matched = true;
+									return {
+										...id,
+										name: candidate.name || id.name,
+										email: candidate.email,
+										reasoning: candidate.reasoning,
+										status: candidate.status as PendingIdentity['status']
+									};
+								}
+								return id;
+							});
+						}
 						break;
 					}
 
@@ -244,7 +283,7 @@
 				rateLimitResetAt = err.resetAt ?? null;
 				stage = 'rate-limited';
 			} else if (err instanceof Error && err.name === 'AbortError') {
-				errorMessage = 'Request was cancelled. Please try again.';
+				errorMessage = 'Research took too long and was stopped. Please try again — it may go faster on retry.';
 				stage = 'error';
 			} else {
 				errorMessage =
@@ -254,6 +293,7 @@
 				stage = 'error';
 			}
 		} finally {
+			clearTimeout(clientTimeout);
 			isResolving = false;
 		}
 	}
@@ -288,17 +328,19 @@
 			console.log('[DecisionMakerResolver] No decision-makers, starting resolution', { fromOAuth });
 			resolveDecisionMakers();
 		} else {
-			// Check for stale/broken data (missing emails/sources from old drafts)
-			const hasInvalidData = formData.audience.decisionMakers.some(
-				(dm) => dm.isAiResolved && (!dm.email || !dm.source)
+			// Already have decision-makers from a previous resolution or draft.
+			// DMs without email are legitimate — the agent searched and found none.
+			// Only re-resolve if every single AI-resolved DM is missing its name,
+			// which signals truly corrupted draft data (not just "no email found").
+			const isCorrupted = formData.audience.decisionMakers.every(
+				(dm) => dm.isAiResolved && !dm.name
 			);
 
-			if (hasInvalidData) {
-				console.log('[DecisionMakerResolver] Found stale draft data (missing fields), re-resolving...');
+			if (isCorrupted) {
+				console.log('[DecisionMakerResolver] Corrupted draft data (no names), re-resolving...');
 				resolveDecisionMakers();
 			} else {
-				// Already have decision-makers, skip to results
-				console.log('[DecisionMakerResolver] Decision-makers already resolved, skipping to results');
+				console.log('[DecisionMakerResolver] Restoring', formData.audience.decisionMakers.length, 'decision-makers from state');
 				stage = 'results';
 			}
 		}
@@ -343,7 +385,7 @@
 				<AgentThinking {thoughts} isActive={true} context="Searching contacts" compact />
 
 				<div class="progressive-cards">
-					{#each pendingIdentities as identity, i (identity.organization + '::' + identity.title)}
+					{#each pendingIdentities as identity, i (i)}
 						<div
 							class="identity-card"
 							class:resolved={identity.status === 'resolved' || identity.status === 'cached'}
