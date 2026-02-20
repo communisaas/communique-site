@@ -162,7 +162,7 @@ export function analyzeEmailFlow(
 		// Enforce address gating for authenticated users on congressional delivery
 		// Tier 2+ users are already district-verified — skip address collection
 		// Guests bypass address gate entirely — they use the mailto relay
-		const trustTier = options?.trustTier ?? 1;
+		const trustTier = options?.trustTier ?? 0;
 		const isDistrictVerified = trustTier >= 2;
 		const hasCompleteAddress = user
 			? Boolean(user.street && user.city && user.state && user.zip)
@@ -448,8 +448,8 @@ export function getEmailFlowAnalytics(
 	let flowStage = 'unknown';
 
 	if (!user) {
-		flowStage = 'authentication_required';
-		blockers.push('user_not_authenticated');
+		flowStage = 'guest_send';
+		// Guests are valid mailto senders — no blocker
 	} else if (
 		template.deliveryMethod === 'cwc' &&
 		!(user.street && user.city && user.state && user.zip)

@@ -41,7 +41,7 @@
 
 	// Button text and variant based on trust tier + delivery method
 	const buttonVariant = $derived(
-		isCwcTemplate || isVerifiedConstituent ? 'verified' : 'primary'
+		isCwcTemplate && isVerifiedConstituent ? 'verified' : 'primary'
 	);
 	const buttonText = $derived(
 		isModerating

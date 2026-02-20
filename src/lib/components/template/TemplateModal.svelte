@@ -490,15 +490,17 @@
 
 			if (isCongressional) {
 				// STEP 1: Check if user has address (for congressional routing)
+				// Tier 2+ users are already district-verified — skip address collection.
 				// Address is collected via AddressCollectionForm and stored in verifiedAddress state.
 				// User model does NOT have street/city/state/zip fields (privacy-by-design).
+				const isAlreadyDistrictVerified = (user?.trust_tier ?? 0) >= 2;
 				const hasAddress = verifiedAddress &&
 					verifiedAddress.street &&
 					verifiedAddress.city &&
 					verifiedAddress.state &&
 					verifiedAddress.zip;
 
-				if (!hasAddress) {
+				if (!hasAddress && !isAlreadyDistrictVerified) {
 					// Need address for congressional routing - collect it inline
 					console.log(
 						'[Template Modal] Congressional template needs address - showing inline collection'
