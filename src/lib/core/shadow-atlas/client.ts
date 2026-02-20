@@ -426,6 +426,72 @@ export async function getCellProof(cellId: string): Promise<CellProofResult> {
 }
 
 // ============================================================================
+// Engagement Registration (Tree 3)
+// ============================================================================
+
+/**
+ * Register an identity for engagement tracking (Tree 3).
+ *
+ * Creates a tier-0 leaf in the engagement tree, enabling participation
+ * metrics to be tracked for this identity.
+ *
+ * Idempotent: returns { alreadyRegistered: true } if the identity or signer
+ * is already registered (catches 400 from oracle-resistant duplicate handling).
+ *
+ * @param signerAddress - Ethereum address (from User.wallet_address or scroll_address)
+ * @param identityCommitment - Hex-encoded identity commitment (from User.identity_commitment)
+ * @returns Leaf index and engagement root, or alreadyRegistered flag
+ */
+export async function registerEngagement(
+	signerAddress: string,
+	identityCommitment: string,
+): Promise<{ leafIndex: number; engagementRoot: string } | { alreadyRegistered: true }> {
+	const url = `${SHADOW_ATLAS_URL}/v1/engagement/register`;
+
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+		'X-Client-Version': 'communique-v1',
+	};
+	if (SHADOW_ATLAS_REGISTRATION_TOKEN) {
+		headers['Authorization'] = `Bearer ${SHADOW_ATLAS_REGISTRATION_TOKEN}`;
+	}
+
+	const response = await fetch(url, {
+		method: 'POST',
+		headers,
+		body: JSON.stringify({ signerAddress, identityCommitment }),
+	});
+
+	if (!response.ok) {
+		// The engagement endpoint returns 400 INVALID_PARAMETERS for duplicates
+		// (oracle-resistant — identical to other validation errors).
+		// Treat any 400 as "already registered" since we validated inputs before calling.
+		if (response.status === 400) {
+			return { alreadyRegistered: true };
+		}
+
+		const errorData = await response.json().catch(() => ({
+			error: { code: 'NETWORK_ERROR', message: response.statusText },
+		}));
+
+		const code = errorData.error?.code || 'UNKNOWN';
+		const msg = errorData.error?.message || response.statusText;
+		throw new Error(`Shadow Atlas engagement registration failed [${code}]: ${msg}`);
+	}
+
+	const result = await response.json();
+
+	if (!result.success || !result.data) {
+		throw new Error('Shadow Atlas returned invalid engagement registration response');
+	}
+
+	return {
+		leafIndex: result.data.leafIndex,
+		engagementRoot: result.data.engagementRoot,
+	};
+}
+
+// ============================================================================
 // Health
 // ============================================================================
 

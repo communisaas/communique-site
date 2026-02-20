@@ -72,7 +72,7 @@ export default defineConfig({
 	assetsInclude: ['**/*.wasm'],
 
 	ssr: {
-		noExternal: ['@selfxyz/qrcode', '@voter-protocol/client']
+		noExternal: ['@selfxyz/qrcode']
 	},
 
 	worker: {

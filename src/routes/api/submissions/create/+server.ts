@@ -8,6 +8,7 @@ import {
 } from '$lib/core/identity/credential-policy';
 import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
 import { processSubmissionDelivery } from '$lib/server/delivery-worker';
+import { registerEngagement } from '$lib/core/shadow-atlas/client';
 
 /**
  * Submission Creation Endpoint
@@ -197,6 +198,30 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 				console.error('[Submission] Trust tier promotion failed:', err);
 			});
 
+		// Auto-register for engagement tracking (Tree 3) on first proof submission.
+		// The signer→identityCommitment mapping already exists server-side (both fields
+		// are on the User row). This just sends it to Shadow Atlas for Tree 3 insertion.
+		// Idempotent: registerEngagement returns { alreadyRegistered: true } for duplicates.
+		const signerAddress = locals.user.wallet_address;
+		const identityCommitment = locals.user.identity_commitment;
+		const engagementPromise = (signerAddress && identityCommitment)
+			? registerEngagement(signerAddress, identityCommitment)
+				.then((result) => {
+					if ('alreadyRegistered' in result) {
+						// Expected for repeat submissions — no action needed
+					} else {
+						console.log('[Submission] Engagement auto-registered:', {
+							userId,
+							leafIndex: result.leafIndex,
+						});
+					}
+				})
+				.catch((err: unknown) => {
+					// Non-fatal: engagement registration failure must not block proof submission
+					console.error('[Submission] Engagement auto-registration failed:', err);
+				})
+			: Promise.resolve();
+
 		// Trigger background CWC delivery
 		// Decrypts witness, looks up representatives, submits to CWC API
 		// delivery_status transitions: pending → processing → delivered | failed | partial
@@ -205,9 +230,10 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		);
 
 		if (platform?.context?.waitUntil) {
-			// Cloudflare Workers: keep isolate alive until delivery + promotion complete
+			// Cloudflare Workers: keep isolate alive until delivery + promotion + engagement complete
 			platform.context.waitUntil(deliveryPromise);
 			platform.context.waitUntil(promotionPromise);
+			platform.context.waitUntil(engagementPromise);
 		}
 		// Non-CF environments (dev): promises run fire-and-forget
 
