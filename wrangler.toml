@@ -7,6 +7,24 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 PUBLIC_SCROLL_RPC_URL = "https://rpc.scroll.io"
 # IDENTITY_SIGNING_KEY = "set in Cloudflare dashboard (openssl rand -hex 32)"
 
+# Secrets (set via `npx wrangler pages secret put <KEY> --project-name communique-site`):
+#
+# CWC Congressional Delivery:
+#   CWC_API_KEY              - Senate CWC API key (soapbox.senate.gov)
+#   CWC_PRODUCTION           - Set to "true" for live Senate delivery (default: testing endpoint)
+#   GCP_PROXY_URL            - House CWC proxy base URL (e.g., https://35.209.173.125)
+#   GCP_PROXY_AUTH_TOKEN     - Bearer token for the GCP proxy
+#
+# Identity & Security:
+#   IDENTITY_SIGNING_KEY     - Ed25519 signing key for district credentials
+#   JWT_SECRET               - Session token signing
+#   IDENTITY_HASH_SALT       - Sybil-resistant identity hashing
+#
+# AI Services:
+#   GEMINI_API_KEY           - Gemini API for agents
+#   OPENAI_API_KEY           - Embeddings and scope extraction
+#   GROQ_API_KEY             - Llama Guard safety moderation
+
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "870ed0ebca654838bc0df0d83c4e2645"
