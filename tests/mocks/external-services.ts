@@ -381,13 +381,18 @@ export const censusAndCongressHandlers = [
     });
   }),
 
-  // CWC House API via proxy (will fail without proper config)
-  http.post(/http:\/\/.*:8080\/api\/house\/submit.*/, () => {
+  // CWC House API via proxy (expects XML in JSON envelope)
+  http.post(/http:\/\/.*\/api\/house\/submit.*/, async ({ request }) => {
+    const body = await request.json() as { xml?: string; jobId?: string };
+    if (body.xml && body.xml.includes('<CWC')) {
+      return HttpResponse.json({
+        submissionId: body.jobId || 'house-mock-id',
+        status: 'submitted'
+      });
+    }
     return HttpResponse.json(
-      {
-        error: 'House CWC delivery not configured'
-      },
-      { status: 500 }
+      { error: 'Invalid request: missing XML payload', status: 'failed' },
+      { status: 400 }
     );
   })
 ];

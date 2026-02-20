@@ -185,6 +185,76 @@ describe('CWC House Delivery', () => {
 		});
 	});
 
+	describe('XML Generation and JSON Envelope', () => {
+		it('should generate House CWC XML and send in JSON envelope to proxy', async () => {
+			process.env.GCP_PROXY_URL = 'http://localhost:9999';
+			process.env.GCP_PROXY_AUTH_TOKEN = 'test-token';
+
+			const fetchSpy = vi.fn().mockResolvedValue({
+				ok: true,
+				json: async () => ({ submissionId: 'house-test-123', status: 'submitted' })
+			});
+			globalThis.fetch = fetchSpy;
+
+			const client = new CWCClient();
+			const result = await client.submitToHouse(
+				mockTemplate as Template,
+				mockUser,
+				mockHouseRep,
+				'Personal message about climate action.'
+			);
+
+			expect(result.success).toBe(true);
+			expect(result.status).toBe('submitted');
+
+			// Verify the request was sent to the proxy
+			expect(fetchSpy).toHaveBeenCalled();
+			const [url, options] = fetchSpy.mock.calls[0];
+			expect(url).toContain('/api/house/submit');
+			expect(options.headers['Authorization']).toBe('Bearer test-token');
+
+			// Verify JSON envelope contains XML
+			const requestBody = JSON.parse(options.body);
+			expect(requestBody).toHaveProperty('xml');
+			expect(requestBody).toHaveProperty('jobId');
+			expect(requestBody).toHaveProperty('officeCode');
+
+			// Verify the XML is valid House CWC format
+			expect(requestBody.xml).toContain('<?xml version="1.0"');
+			expect(requestBody.xml).toContain('<CWC version="2.0">');
+			expect(requestBody.xml).toContain('<OfficeCode>');
+			expect(requestBody.xml).toContain('<ConstituentData>');
+			expect(requestBody.xml).toContain('climate action');
+		});
+
+		it('should include sender details in generated XML', async () => {
+			process.env.GCP_PROXY_URL = 'http://localhost:9999';
+			process.env.GCP_PROXY_AUTH_TOKEN = 'test-token';
+
+			const fetchSpy = vi.fn().mockResolvedValue({
+				ok: true,
+				json: async () => ({ submissionId: 'house-test-456', status: 'submitted' })
+			});
+			globalThis.fetch = fetchSpy;
+
+			const client = new CWCClient();
+			await client.submitToHouse(
+				mockTemplate as Template,
+				mockUser,
+				mockHouseRep,
+				'Test message'
+			);
+
+			const requestBody = JSON.parse(fetchSpy.mock.calls[0][1].body);
+			// Verify constituent data is in the XML (name is split into First/Last elements)
+			expect(requestBody.xml).toContain('<First>Test</First>');
+			expect(requestBody.xml).toContain('<Last>Constituent</Last>');
+			expect(requestBody.xml).toContain('test@example.com');
+			expect(requestBody.xml).toContain('San Francisco');
+			expect(requestBody.xml).toContain('94102');
+		});
+	});
+
 	describe('Logging Standards', () => {
 		it('should use consistent [CWC House] log prefix', async () => {
 			delete process.env.GCP_PROXY_URL;

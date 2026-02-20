@@ -361,38 +361,80 @@ export class CWCClient {
 		}
 
 		try {
+			// Convert CongressionalOffice to UserRepresentative format for CWC Generator
+			// (Same pattern as submitToSenate)
+			const targetRep = {
+				bioguideId: representative.bioguideId,
+				name: representative.name,
+				party: representative.party,
+				state: representative.state,
+				district: representative.district,
+				chamber: representative.chamber,
+				officeCode: representative.officeCode
+			};
+
+			const mockSenateRep = {
+				bioguideId: '',
+				name: '',
+				party: '',
+				state: '',
+				district: '',
+				chamber: 'senate' as const,
+				officeCode: ''
+			};
+
+			// Build CWC message structure (same as Senate path)
+			const cwcMessage = {
+				template,
+				user: {
+					id: user.id,
+					name: user.name || 'Constituent',
+					email: user.email,
+					phone: user.phone || undefined,
+					address: {
+						street: user.street || '',
+						city: user.city || '',
+						state: user.state || '',
+						zip: user.zip || ''
+					},
+					representatives: {
+						house: targetRep,
+						senate: [mockSenateRep]
+					}
+				},
+				_targetRep: targetRep,
+				personalizedMessage
+			};
+
+			// Generate CWC XML for House (generateUserAdvocacyXML detects
+			// chamber !== 'senate' and produces House-format CWC 2.0 XML)
+			const cwcXml = CWCGenerator.generateUserAdvocacyXML(cwcMessage);
+
+			// Validate XML before submission
+			const validation = CWCGenerator.validateXML(cwcXml);
+			if (!validation.valid) {
+				console.error('[CWC House] XML validation failed:', validation.errors);
+				return {
+					...baseResult,
+					success: false,
+					status: 'failed',
+					error: `XML validation failed: ${validation.errors.join(', ')}`
+				};
+			}
+
+			const jobId = `house-${Date.now()}-${representative.bioguideId}`;
+
 			console.debug('[CWC House] Attempting submission via GCP proxy:', {
 				office: representative.name,
 				bioguideId: representative.bioguideId,
 				district: `${representative.state}-${representative.district}`,
-				proxyUrl: proxyUrl.replace(/\/\/.*@/, '//<REDACTED>@'), // Redact auth in URL if present
+				proxyUrl: proxyUrl.replace(/\/\/.*@/, '//<REDACTED>@'),
 				hasAuthToken: !!proxyAuthToken,
+				xmlSize: cwcXml.length,
 				timestamp
 			});
 
-			// Prepare House CWC submission payload
-			const jobId = `house-${Date.now()}-${representative.bioguideId}`;
-			const submission = {
-				jobId,
-				officeCode: representative.officeCode,
-				recipientName: representative.name,
-				recipientEmail: `${representative.bioguideId}@house.gov`,
-				subject: template.title,
-				message: personalizedMessage,
-				senderName: user.name,
-				senderEmail: user.email,
-				senderAddress: `${user.street}, ${user.city}, ${user.state} ${user.zip}`,
-				senderPhone: user.phone || '',
-				priority: 'normal' as const,
-				metadata: {
-					templateId: template.id,
-					userId: user.id,
-					bioguideId: representative.bioguideId,
-					submissionTime: timestamp
-				}
-			};
-
-			// Submit to GCP proxy with timeout and retry
+			// Submit pre-built XML to GCP proxy in JSON envelope
 			const response = await this.fetchWithRetry(`${proxyUrl}/api/house/submit`, {
 				method: 'POST',
 				headers: {
@@ -400,7 +442,11 @@ export class CWCClient {
 					Authorization: proxyAuthToken ? `Bearer ${proxyAuthToken}` : '',
 					'X-Request-ID': jobId
 				},
-				body: JSON.stringify(submission)
+				body: JSON.stringify({
+					xml: cwcXml,
+					jobId,
+					officeCode: representative.officeCode
+				})
 			});
 
 			if (!response.ok) {
