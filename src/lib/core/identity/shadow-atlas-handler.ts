@@ -5,7 +5,7 @@
  *
  * 1. User completes identity verification (self.xyz or Didit.me)
  * 2. Browser generates user_secret and registration_salt
- * 3. Browser computes leaf = Poseidon2_H3(user_secret, cell_id, registration_salt)
+ * 3. Browser computes leaf = Poseidon2_H4(user_secret, cell_id, registration_salt, authority_level)
  * 4. Browser sends ONLY the leaf hash to communique server
  * 5. Server proxies to Shadow Atlas POST /v1/register → Tree 1 proof
  * 6. Browser requests Tree 2 cell proof (separate call)
@@ -153,6 +153,8 @@ export async function registerTwoTree(
 			registrationSalt: request.registrationSalt,
 
 			verificationMethod: request.verificationMethod,
+			// Server-derived authority level (from User.authority_level via deriveAuthorityLevel)
+			authorityLevel: tree1Data.authorityLevel as 1 | 2 | 3 | 4 | 5 | undefined,
 			// Wave 39d: Signed receipt from operator (anti-censorship proof)
 			receipt: tree1Data.receipt,
 			createdAt: now,

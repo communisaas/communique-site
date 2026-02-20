@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Required for nullifier binding — prevents Sybil via re-registration.
 		const user = await prisma.user.findUnique({
 			where: { id: session.userId },
-			select: { identity_commitment: true, verification_method: true },
+			select: { identity_commitment: true, verification_method: true, authority_level: true },
 		});
 
 		if (!user?.identity_commitment) {
@@ -141,6 +141,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					userPath: replacementResult.userPath,
 					pathIndices: replacementResult.pathIndices,
 					identityCommitment,
+					authorityLevel: user.authority_level ?? 1,
 				});
 			}
 
@@ -157,6 +158,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				pathIndices,
 				alreadyRegistered: true,
 				identityCommitment,
+				authorityLevel: user.authority_level ?? 1,
 			});
 		}
 
@@ -204,6 +206,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			userPath: registrationResult.userPath,
 			pathIndices: registrationResult.pathIndices,
 			identityCommitment,
+			authorityLevel: user.authority_level ?? 1,
 			receipt: registrationResult.receipt, // Wave 39d: signed registration receipt
 		});
 	} catch (error) {

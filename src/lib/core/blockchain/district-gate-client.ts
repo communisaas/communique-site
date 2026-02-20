@@ -12,7 +12,7 @@
  * - EIP-712 prevents front-running (proof bound to signer + deadline)
  *
  * DEPLOYED CONTRACT:
- * - Address: 0x6eD37CC3D42c788d09657Af3D81e35A69e295930 (Scroll Sepolia)
+ * - Address: 0x0085DFAd6DB867e7486A460579d768BD7C37181e (Scroll Sepolia v4, bb.js keccak)
  * - Function: verifyTwoTreeProof(signer, proof, publicInputs[29], depth, deadline, sig)
  * - 29 public inputs: [0]=userRoot, [1]=cellMapRoot, [26]=nullifier, [27]=actionDomain, [28]=authorityLevel
  * - Features: actionDomain timelock whitelist (SA-001), root lifecycle checks (SA-004)

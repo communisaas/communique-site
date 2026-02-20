@@ -324,7 +324,9 @@ export async function generateTwoTreeProof(
 
 	try {
 		// Generate proof via TwoTreeNoirProver
-		const result: NoirTwoTreeProofResult = await prover.generateProof(circuitInputs);
+		// keccak: true produces proofs compatible with on-chain Solidity HonkVerifier.
+		// Without this flag, proofs use Poseidon2 mode (off-chain only) and will fail on-chain.
+		const result: NoirTwoTreeProofResult = await prover.generateProof(circuitInputs, { keccak: true });
 
 		onProgress?.({ stage: 'complete', percent: 100, message: 'Two-tree proof generated' });
 
