@@ -95,7 +95,9 @@
 	// Submission error message for error state UI
 	let submissionError = $state<string | null>(null);
 
-	// Senate delivery tracking (populated by TEE delivery confirmation in Phase 2)
+	// TODO(Phase 2): Wire to delivery-worker SSE/polling response.
+	// Currently false: delivery-worker runs via waitUntil(), modal can't await result.
+	// UI block at ~line 993 is correctly gated behind this flag.
 	let hasSenateDelivery = $state(false);
 
 	// Generate share URL for template

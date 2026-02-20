@@ -43,16 +43,14 @@ export class CWCGenerator {
 	/**
 	 * Generate proper CWC office code from representative data
 	 * House: H{STATE}{DISTRICT} format (e.g., HCA13 for CA-13)
-	 * Senate: S{STATE}{01-03} format (e.g., SCA01 for CA senators)
+	 * Senate: bioguide ID directly (accepted by SOAPBox API)
 	 */
 	static generateOfficeCode(rep: UserRepresentative): string {
 		if (rep.chamber === 'senate') {
-			// Senate uses S{STATE}{01-03} format based on state
-			const state = rep.state.toUpperCase();
-			// For demo purposes, use position-based suffix (01, 02, 03)
-			// In production, this would map to actual Senate seat positions
-			const suffix = rep.bioguideId.endsWith('1') ? '01' : '02';
-			return `S${state}${suffix}`;
+			// Senate SOAPBox API accepts bioguide IDs as member office codes.
+			// The previous heuristic (bioguideId.endsWith('1') ? '01' : '02')
+			// was wrong — bioguide IDs don't follow a predictable suffix pattern.
+			return rep.officeCode || rep.bioguideId;
 		} else {
 			// House uses H{STATE}{DISTRICT} format
 			const state = rep.state.toUpperCase();

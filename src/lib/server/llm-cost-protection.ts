@@ -26,7 +26,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 // Trust Tier Definitions
 // ============================================
 
-export type TrustTier = 'guest' | 'authenticated' | 'verified';
+export type LLMTrustTier = 'guest' | 'authenticated' | 'verified';
 
 /**
  * Quota configuration per operation and trust tier
@@ -34,7 +34,7 @@ export type TrustTier = 'guest' | 'authenticated' | 'verified';
  * Format: [requests, windowMs]
  * Window is in milliseconds (1 hour = 3600000)
  */
-const QUOTAS: Record<string, Record<TrustTier, [number, number]>> = {
+const QUOTAS: Record<string, Record<LLMTrustTier, [number, number]>> = {
 	// Subject line: exploration-friendly, but not infinite
 	'subject-line': {
 		guest: [5, 3600000], // 5 per hour (matches client expectation)
@@ -72,7 +72,7 @@ interface UserContext {
 	userId: string | null;
 	isAuthenticated: boolean;
 	isVerified: boolean;
-	tier: TrustTier;
+	tier: LLMTrustTier;
 	identifier: string; // For rate limit key (userId or IP)
 }
 
@@ -115,7 +115,7 @@ export function getUserContext(event: RequestEvent): UserContext {
 
 	const isAuthenticated = !!userId;
 
-	let tier: TrustTier = 'guest';
+	let tier: LLMTrustTier = 'guest';
 	if (isVerified) {
 		tier = 'verified';
 	} else if (isAuthenticated) {
@@ -140,7 +140,7 @@ export interface RateLimitCheck {
 	remaining: number;
 	limit: number;
 	resetAt: Date;
-	tier: TrustTier;
+	tier: LLMTrustTier;
 	reason?: string;
 }
 
@@ -211,7 +211,7 @@ export async function checkRateLimit(
 /**
  * Get human-readable reason for blocked operation
  */
-function getBlockedReason(operation: string, tier: TrustTier): string {
+function getBlockedReason(operation: string, tier: LLMTrustTier): string {
 	if (tier === 'guest') {
 		switch (operation) {
 			case 'decision-makers':
@@ -230,7 +230,7 @@ function getBlockedReason(operation: string, tier: TrustTier): string {
  */
 function getRateLimitReason(
 	operation: string,
-	tier: TrustTier,
+	tier: LLMTrustTier,
 	opResult: { success: boolean; reset: number },
 	dailyResult: { success: boolean; reset: number }
 ): string {
