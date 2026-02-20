@@ -892,7 +892,7 @@
 					</div>
 				{/if}
 
-				<!-- Guest upgrade CTA -->
+				<!-- Upgrade CTAs (mutually exclusive: guest → auth, tier 1 → address verification) -->
 				{#if !user}
 					<div
 						class="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4"
@@ -920,6 +920,30 @@
 							class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.98]"
 						>
 							Create free account
+						</button>
+					</div>
+				{:else if user && (user.trust_tier ?? 0) < 2}
+					<div
+						class="rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-4"
+						in:fly={{ y: 10, duration: 400, delay: 300 }}
+					>
+						<p class="mb-1 text-sm font-semibold text-indigo-900">
+							Verify your address for faster delivery
+						</p>
+						<p class="mb-3 text-xs text-indigo-700">
+							Congressional offices prioritize verified constituents. Add your address to ensure your voice is counted.
+						</p>
+						<button
+							onclick={() => {
+								onclose?.();
+								modalActions.openModal('address-modal', 'address', {
+									template,
+									source: 'post-send-tier-upgrade'
+								});
+							}}
+							class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 active:scale-[0.98]"
+						>
+							Verify your address
 						</button>
 					</div>
 				{/if}

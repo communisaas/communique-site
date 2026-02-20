@@ -2,9 +2,11 @@
  * Verification Gate Component
  *
  * Progressive verification interceptor that gates Congressional message submission.
- * Supports graduated trust tiers (Wave 3A + Cycle 9):
+ * Supports graduated trust tiers (0-5):
+ *   - Tier 0 (guest):            Not handled here (requires authentication first)
+ *   - Tier 1 (authenticated):    Passthrough (minimum for non-congressional actions)
  *   - Tier 2 (address-attested): AddressVerificationFlow (district credential)
- *   - Tier 3 (ZK-verified):      IdentityVerificationFlow (full identity)
+ *   - Tier 3 (identity-verified): IdentityVerificationFlow (ID card / license)
  *   - Tier 4 (passport-verified): IdentityVerificationFlow (passport path)
  *   - Tier 5 (government-cred):  IdentityVerificationFlow (with mDL option)
  *

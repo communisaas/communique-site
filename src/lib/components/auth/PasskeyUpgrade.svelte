@@ -9,7 +9,7 @@
  -->
 
 <script lang="ts">
-	import { Fingerprint, X } from 'lucide-svelte';
+	import { Fingerprint, X } from '@lucide/svelte';
 	import { browser } from '$app/environment';
 	import PasskeyRegistration from './PasskeyRegistration.svelte';
 
@@ -74,19 +74,19 @@
 		</div>
 	{:else}
 		<!-- Upgrade nudge banner -->
-		<div class="mb-6 overflow-hidden rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 shadow-sm">
+		<div class="mb-6 overflow-hidden rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-sky-50 shadow-sm">
 			<div class="flex items-center gap-4 p-4">
 				<!-- Icon -->
-				<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-teal-100">
-					<Fingerprint class="h-5 w-5 text-emerald-700" />
+				<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-sky-100">
+					<Fingerprint class="h-5 w-5 text-blue-700" />
 				</div>
 
 				<!-- Content -->
 				<div class="flex-1">
-					<h3 class="mb-0.5 text-sm font-semibold text-emerald-900">
+					<h3 class="mb-0.5 text-sm font-semibold text-blue-900">
 						Upgrade Your Security
 					</h3>
-					<p class="text-sm text-emerald-700">
+					<p class="text-sm text-blue-700">
 						Add a passkey for faster, more secure sign-in
 					</p>
 				</div>
@@ -95,14 +95,14 @@
 				<div class="flex items-center gap-2">
 					<button
 						onclick={handleUpgradeClick}
-						class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-md active:scale-[0.98]"
+						class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md active:scale-[0.98]"
 					>
 						Add Passkey
 					</button>
 
 					<button
 						onclick={handleDismiss}
-						class="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-100"
+						class="flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 transition-colors hover:bg-blue-100"
 						aria-label="Dismiss"
 					>
 						<X class="h-4 w-4" />
