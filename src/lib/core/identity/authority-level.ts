@@ -16,8 +16,8 @@
  *   DistrictGate.actionDomainMinAuthority mapping (Wave 14d).
  *
  * Trust Tiers (Graduated Trust - see docs/architecture/graduated-trust.md):
- *   0 — Anonymous (no account)
- *   1 — Passkey-bound identity (persistent pseudonym)
+ *   0 — Guest (no account, conceptual — never returned by deriveTrustTier)
+ *   1 — Authenticated (OAuth login, any logged-in user)
  *   2 — Address-attested (district verified via civic data)
  *   3 — ZK-verified constituent (cryptographic proof of district)
  *   4 — Government credential (mDL / EUDIW via Digital Credentials API)
@@ -73,8 +73,8 @@ export function deriveAuthorityLevel(user: {
  * Trust tier labels for UI display
  */
 export const TRUST_TIER_LABELS: Record<TrustTier, string> = {
-	0: 'Anonymous',
-	1: 'Account Verified',
+	0: 'Guest',
+	1: 'Authenticated',
 	2: 'District Verified',
 	3: 'Identity Verified',
 	4: 'Government Verified'
@@ -89,7 +89,7 @@ export const TRUST_TIER_LABELS: Record<TrustTier, string> = {
  * Wave 1C: Graduated Trust implementation
  *
  * @param user - User verification fields
- * @returns Trust tier (0-4), where 0 is handled at call site (no user object)
+ * @returns Trust tier (1-4) for authenticated users. Tier 0 (Guest) is conceptual only.
  */
 export function deriveTrustTier(user: {
 	passkey_credential_id?: string | null;
@@ -117,15 +117,10 @@ export function deriveTrustTier(user: {
 		return 2;
 	}
 
-	// Tier 1: Passkey-bound identity (has registered a passkey)
-	if (user.passkey_credential_id) {
-		return 1;
-	}
-
-	// Tier 0: Anonymous (no passkey, no verification)
-	// This represents an authenticated OAuth user who hasn't added a passkey yet
-	// True anonymous (no user object at all) is handled at the call site
-	return 0;
+	// Tier 1: Authenticated (any logged-in user)
+	// Passkey is an upgrade within this tier, not a separate tier.
+	// Tier 0 (Guest) is conceptual — means no user object at all.
+	return 1;
 }
 
 /**
@@ -140,9 +135,9 @@ export function deriveTrustTier(user: {
 export function trustTierToAuthorityLevel(tier: TrustTier): AuthorityLevel {
 	switch (tier) {
 		case 0:
-			return 1; // Anonymous → OAuth-only equivalent
+			return 1; // Guest → OAuth-only equivalent (conceptual, no user object)
 		case 1:
-			return 1; // Passkey-bound → OAuth-only equivalent (no identity verification yet)
+			return 1; // Authenticated (OAuth) → OAuth-only equivalent
 		case 2:
 			return 2; // Address-attested → Verified email equivalent
 		case 3:

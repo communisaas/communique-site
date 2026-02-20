@@ -83,23 +83,23 @@ describe('deriveTrustTier', () => {
 		expect(deriveTrustTier(user)).toBe(2);
 	});
 
-	it('should return 0 for district_verified without address_verified_at', () => {
+	it('should return 1 for district_verified without address_verified_at', () => {
 		const user = {
 			district_verified: true
 		};
-		expect(deriveTrustTier(user)).toBe(0);
+		expect(deriveTrustTier(user)).toBe(1);
 	});
 
-	it('should return 1 for passkey-bound identity', () => {
+	it('should return 1 for user with passkey (passkey is upgrade within tier 1)', () => {
 		const user = {
 			passkey_credential_id: 'pk_abc'
 		};
 		expect(deriveTrustTier(user)).toBe(1);
 	});
 
-	it('should return 0 for anonymous user (empty object)', () => {
+	it('should return 1 for authenticated user (empty object)', () => {
 		const user = {};
-		expect(deriveTrustTier(user)).toBe(0);
+		expect(deriveTrustTier(user)).toBe(1);
 	});
 });
 

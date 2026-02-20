@@ -2,14 +2,23 @@
 	import { Users, TrendingUp, MapPin, Flame } from '@lucide/svelte';
 	import { spring } from 'svelte/motion';
 	import { onMount } from 'svelte';
+	import { formatDistrictName } from '$lib/utils/district-names';
 
 	let {
 		totalActions,
 		topDistricts = [],
+		totalDistricts = 0,
+		totalStates = 0,
+		userDistrictCount = 0,
+		userDistrictCode = null,
 		showTrending = true
 	}: {
 		totalActions: number;
 		topDistricts?: Array<{ district: string; count: number }>;
+		totalDistricts?: number;
+		totalStates?: number;
+		userDistrictCount?: number;
+		userDistrictCode?: string | null;
 		showTrending?: boolean;
 	} = $props();
 
@@ -17,21 +26,19 @@
 	let displayCount = spring(0, { stiffness: 0.2, damping: 0.8 });
 
 	onMount(() => {
-		// Animate counter on mount
 		displayCount.set(totalActions);
 	});
 
-	// Update when totalActions changes
 	$effect(() => {
 		displayCount.set(totalActions);
 	});
 
 	// Determine visual style based on action count
 	const visualStyle = $derived(() => {
-		if (totalActions >= 10000) return 'viral'; // 10K+ = viral
-		if (totalActions >= 1000) return 'trending'; // 1K+ = trending
-		if (totalActions >= 100) return 'growing'; // 100+ = growing
-		return 'starting'; // < 100 = starting
+		if (totalActions >= 10000) return 'viral';
+		if (totalActions >= 1000) return 'trending';
+		if (totalActions >= 100) return 'growing';
+		return 'starting';
 	});
 
 	const styleConfig = {
@@ -79,6 +86,11 @@
 
 	const config = $derived(styleConfig[visualStyle()]);
 	const Icon = $derived(config.icon);
+
+	// Human-readable district name for the user's district
+	const userDistrictLabel = $derived(
+		userDistrictCode ? formatDistrictName(userDistrictCode) : null
+	);
 </script>
 
 <div
@@ -113,8 +125,24 @@
 				{/if}
 			</div>
 
-			<!-- District Breakdown -->
-			{#if topDistricts.length > 0}
+			<!-- Personalized "in YOUR district" -->
+			{#if userDistrictCount > 0 && userDistrictLabel}
+				<div class="mt-2 flex items-center gap-2 text-sm font-medium text-participation-primary-700">
+					<MapPin class="h-3.5 w-3.5 shrink-0" />
+					<span>
+						{userDistrictCount.toLocaleString()} constituent{userDistrictCount === 1 ? '' : 's'} in your district ({userDistrictLabel}) sent this
+					</span>
+				</div>
+			{:else if totalDistricts > 0}
+				<!-- Aggregate district coverage (no user context) -->
+				<div class="mt-2 flex items-center gap-2 text-xs text-slate-600 sm:text-sm">
+					<MapPin class="h-3 w-3 shrink-0" />
+					<span>
+						Active in {totalDistricts.toLocaleString()} district{totalDistricts === 1 ? '' : 's'} across {totalStates} state{totalStates === 1 ? '' : 's'}
+					</span>
+				</div>
+			{:else if topDistricts.length > 0}
+				<!-- Fallback: top districts by hash -->
 				<div class="mt-2 flex items-center gap-2 text-xs text-slate-600 sm:text-sm">
 					<MapPin class="h-3 w-3 shrink-0" />
 					<span>

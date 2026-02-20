@@ -8,7 +8,7 @@
  *   2. Options + challenge stored in VerificationSession (5-minute TTL)
  *   3. Browser calls navigator.credentials.create() with those options
  *   4. Browser posts attestation response to verifyPasskeyRegistration()
- *   5. Server verifies attestation, stores credential, upgrades trust_tier to 1
+ *   5. Server verifies attestation, stores credential (trust_tier stays 1 — passkey is a security upgrade within Tier 1)
  *
  * Storage format:
  *   - passkey_credential_id: base64url string (the credential's raw ID)

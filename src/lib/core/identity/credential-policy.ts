@@ -33,13 +33,13 @@ export type CredentialAction =
  * Rationale:
  * - view_content: 6 months - minimal risk, just viewing
  * - community_discussion: 3 months - community participation
- * - constituent_message: 30 days - messages to officials need fresh verification
+ * - constituent_message: 90 days - aligned with Tier 2 district credential TTL
  * - official_petition: 7 days - legal documents require very fresh credentials
  */
 export const CREDENTIAL_TTL: Record<CredentialAction, number> = {
 	view_content: 180 * 24 * 60 * 60 * 1000, // 6 months
 	community_discussion: 90 * 24 * 60 * 60 * 1000, // 3 months
-	constituent_message: 30 * 24 * 60 * 60 * 1000, // 30 days
+	constituent_message: 90 * 24 * 60 * 60 * 1000, // 90 days (aligned with Tier 2 district credential)
 	official_petition: 7 * 24 * 60 * 60 * 1000 // 7 days
 } as const;
 
@@ -49,7 +49,7 @@ export const CREDENTIAL_TTL: Record<CredentialAction, number> = {
 export const CREDENTIAL_TTL_DISPLAY: Record<CredentialAction, string> = {
 	view_content: '6 months',
 	community_discussion: '3 months',
-	constituent_message: '30 days',
+	constituent_message: '90 days',
 	official_petition: '7 days'
 };
 
@@ -341,8 +341,8 @@ export function formatValidationError(validation: CredentialValidation): {
  * TTL configuration for credentials at each trust tier (in milliseconds)
  *
  * Rationale:
- * - Tier 0: No credential (anonymous users)
- * - Tier 1: Passkey is device-bound, 1 year TTL (user keeps device)
+ * - Tier 0: Guest (no account, no credential)
+ * - Tier 1: Authenticated (OAuth), 1 year TTL (session-based)
  * - Tier 2: Address attestation, 90 days (population moves ~2% annually)
  * - Tier 3: Identity verification, 6 months (government ID expiry patterns)
  * - Tier 4: Government credential, 1 year (follows issuer TTL)
@@ -352,8 +352,8 @@ export function formatValidationError(validation: CredentialValidation): {
  * even though the district credential itself is valid for 90 days.
  */
 export const TIER_CREDENTIAL_TTL: Record<number, number> = {
-	0: 0, // No credential
-	1: 365 * 24 * 60 * 60 * 1000, // Passkey: 1 year (device-bound)
+	0: 0, // Guest: no credential
+	1: 365 * 24 * 60 * 60 * 1000, // Authenticated (OAuth): 1 year
 	2: 90 * 24 * 60 * 60 * 1000, // Address attestation: 90 days
 	3: 180 * 24 * 60 * 60 * 1000, // Identity verification: 6 months
 	4: 365 * 24 * 60 * 60 * 1000 // Government credential: follows issuer TTL (typically 1-5 years)

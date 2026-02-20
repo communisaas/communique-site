@@ -112,6 +112,9 @@ export interface EmailServiceUser {
 	verification_method?: string | null;
 	verified_at?: Date | null;
 
+	/** District credential hash for verify URL in email footer */
+	credentialHash?: string | null;
+
 	/** VOTER Protocol integration */
 	wallet_address?: string | null;
 	trust_score?: number;

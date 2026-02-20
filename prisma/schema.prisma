@@ -58,8 +58,8 @@ model User {
   authority_level Int @default(1) @map("authority_level")
 
   // === GRADUATED TRUST (see docs/architecture/graduated-trust.md) ===
-  trust_tier Int @default(0) @map("trust_tier")
-  // 0=anonymous, 1=passkey-bound, 2=address-attested, 3=ZK-verified, 4=gov-credential
+  trust_tier Int @default(1) @map("trust_tier")
+  // 0=guest(conceptual), 1=authenticated(OAuth), 2=address-attested, 3=ZK-verified, 4=gov-credential
 
   // === PASSKEY / WEBAUTHN (Tier 1) ===
   passkey_credential_id  String?   @unique @map("passkey_credential_id")
@@ -1119,6 +1119,12 @@ model Submission {
   reputation_delta   Int?    @map("reputation_delta") // Reputation change (+5, +10, etc.)
   reputation_tx_hash String? @map("reputation_tx_hash") // Reputation update transaction
 
+  // === WITNESS EXPIRY ===
+  // Encrypted witness data auto-expires after 30 days for data minimization.
+  // Cleanup cron NULLs out encrypted_witness, witness_nonce, ephemeral_public_key.
+  // Proof, nullifier, and delivery status are preserved (not PII).
+  witness_expires_at DateTime? @map("witness_expires_at")
+
   // === METADATA ===
   created_at DateTime @default(now()) @map("created_at")
   updated_at DateTime @updatedAt @map("updated_at")
@@ -1128,6 +1134,7 @@ model Submission {
   @@index([delivery_status])
   @@index([verification_status])
   @@index([created_at])
+  @@index([witness_expires_at])
   @@map("submission")
 }
 

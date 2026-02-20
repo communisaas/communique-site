@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Shield, MapPin, ShieldCheck, BadgeCheck, User } from '@lucide/svelte';
+	import { MapPin, ShieldCheck, BadgeCheck, User } from '@lucide/svelte';
 	import { TRUST_TIER_LABELS, type TrustTier } from '$lib/core/identity/authority-level';
 
 	let {
@@ -57,9 +57,11 @@
 >
 	<!-- Tier-appropriate icon -->
 	{#if safeTier === 0}
+		<!-- Guest: conceptual tier, rarely rendered -->
 		<User class="h-3 w-3 {iconColorClass}" />
 	{:else if safeTier === 1}
-		<Shield class="h-3 w-3 {iconColorClass}" />
+		<!-- Authenticated (OAuth) -->
+		<User class="h-3 w-3 {iconColorClass}" />
 	{:else if safeTier === 2}
 		<MapPin class="h-3 w-3 {iconColorClass}" />
 	{:else if safeTier === 3}

@@ -51,6 +51,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				is_verified: locals.user.is_verified || false,
 				verification_method: locals.user.verification_method,
 				verified_at: locals.user.verified_at,
+				// Passkey status (needed for PasskeyUpgrade component)
+				passkey_credential_id: userWithRepresentatives?.passkey_credential_id ?? null,
 				// Privacy-preserving district (hash only)
 				district_hash: locals.user.district_hash,
 				district_verified: locals.user.district_verified,
@@ -70,6 +72,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				is_verified: locals.user.is_verified || false,
 				verification_method: locals.user.verification_method,
 				verified_at: locals.user.verified_at,
+				passkey_credential_id: null, // Not available in fallback path
 				district_hash: locals.user.district_hash,
 				district_verified: locals.user.district_verified,
 				representatives: []

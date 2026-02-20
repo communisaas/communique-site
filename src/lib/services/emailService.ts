@@ -152,29 +152,23 @@ export function analyzeEmailFlow(
 			};
 		}
 
-		// DEMO MODE: Allow guests to access non-congressional templates
+		// Guests can access ALL templates — congressional goes through mailto relay
 		const isCongressional = template.deliveryMethod === 'cwc';
 		if (!user) {
-			if (isCongressional) {
-				// Congressional templates require authentication
-				return {
-					requiresAuth: true,
-					nextAction: 'auth',
-					analytics: { ...analytics, step: 'require_auth' }
-				};
-			}
-			// For non-CWC templates, guests can proceed to mailto generation
+			// Guests proceed to mailto generation for all templates.
+			// Congressional templates use congress@communi.email relay.
 		}
 
 		// Enforce address gating for authenticated users on congressional delivery
 		// Tier 2+ users are already district-verified — skip address collection
-		const trustTier = options?.trustTier ?? 0;
+		// Guests bypass address gate entirely — they use the mailto relay
+		const trustTier = options?.trustTier ?? 1;
 		const isDistrictVerified = trustTier >= 2;
 		const hasCompleteAddress = user
 			? Boolean(user.street && user.city && user.state && user.zip)
 			: false;
 
-		if (isCongressional && !hasCompleteAddress && !isDistrictVerified) {
+		if (user && isCongressional && !hasCompleteAddress && !isDistrictVerified) {
 			return {
 				requiresAuth: false,
 				requiresAddress: true,
@@ -307,9 +301,11 @@ export function generateMailtoUrl(
 				`[From: ${user?.email || 'Guest'}]`;
 
 			// District attestation footer for Tier 2+ verified constituents
-			if (trustTier >= 2 && user?.id) {
-				const credentialHash = btoa(user.id).replace(/[+/=]/g, '').substring(0, 16);
-				footer += `\n[District: Verified Constituent | communique.io/verify/${credentialHash}]`;
+			// Only include verify URL when a real credential hash is available
+			if (trustTier >= 2 && user?.credentialHash) {
+				footer += `\n[District: Verified Constituent | communique.io/verify/${user.credentialHash}]`;
+			} else if (trustTier >= 2) {
+				footer += '\n[District: Verified Constituent]';
 			}
 
 			const enhancedBody =

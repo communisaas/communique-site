@@ -136,13 +136,15 @@
 		// Don't manipulate scroll here - UnifiedModal handles it
 		// Don't call modalActions.open - parent component handles it
 
-		// Check if this is a congressional template (ZKP flow)
-		// Route through handleSendConfirmation which checks address + verification
-		// before reaching submitCongressionalMessage. Without this, verifiedAddress
-		// is never set and the delivery worker has no address to route to Congress.
+		// Congressional templates: guests get mailto relay, authenticated get ZKP/CWC
 		if (template.deliveryMethod === 'cwc') {
-			console.log('[TemplateModal] Congressional template detected, initiating CWC flow');
-			handleSendConfirmation(true);
+			if (!user) {
+				console.log('[TemplateModal] Guest on congressional template — mailto relay');
+				handleUnifiedEmailFlow();
+			} else {
+				console.log('[TemplateModal] Authenticated user on congressional — CWC flow');
+				handleSendConfirmation(true);
+			}
 			return;
 		}
 
@@ -466,21 +468,23 @@
 				return;
 			}
 
-			// For Congressional templates, guest users need to create account first
+			// Guest on congressional template: already sent via mailto relay.
+			// Go to celebration with upgrade CTA (same as non-congressional guest path).
 			if (!user && isCongressional) {
-				console.log('[Template Modal] Guest user on Congressional template - showing onboarding');
+				console.log('[Template Modal] Guest confirmed send on congressional — celebration + upgrade CTA');
 
-				// Close template modal
-				onclose?.();
+				modalActions.confirmSend();
 
-				// Open onboarding modal to create account
-				modalActions.openModal('onboarding-modal', 'onboarding', {
-					template,
-					source: 'template-modal' as const,
-					// Store that they already sent the message
-					skipDirectSend: true
-				});
+				coordinated.setTimeout(
+					async () => {
+						await goto(`/s/${template.slug}`, { replaceState: true });
+					},
+					1500,
+					'transition',
+					componentId
+				);
 
+				celebrationScale.set(1.05).then(() => celebrationScale.set(1));
 				return;
 			}
 
@@ -884,6 +888,38 @@
 					</div>
 				{/if}
 
+				<!-- Guest upgrade CTA -->
+				{#if !user}
+					<div
+						class="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4"
+						in:fly={{ y: 10, duration: 400, delay: 300 }}
+					>
+						<p class="mb-1 text-sm font-semibold text-blue-900">
+							{template.deliveryMethod === 'cwc'
+								? 'Want verified constituent delivery?'
+								: 'Want to track your impact?'}
+						</p>
+						<p class="mb-3 text-xs text-blue-700">
+							{template.deliveryMethod === 'cwc'
+								? 'Create a free account to send through official congressional channels with verified constituent status.'
+								: 'Create a free account to track delivery and join the movement.'}
+						</p>
+						<button
+							onclick={() => {
+								onclose?.();
+								modalActions.openModal('onboarding-modal', 'onboarding', {
+									template,
+									source: 'post-send-upgrade' as const,
+									skipDirectSend: true
+								});
+							}}
+							class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.98]"
+						>
+							Create free account
+						</button>
+					</div>
+				{/if}
+
 				<!-- Next Steps / Share -->
 				<div class="space-y-3">
 					<!-- Primary: Universal Share Button -->
@@ -1206,7 +1242,7 @@
 		userId={user.id}
 		templateSlug={template.slug}
 		cellId={verifiedCellId}
-		userTrustTier={user.trust_tier ?? 0}
+		userTrustTier={user.trust_tier ?? 1}
 		bind:showModal={showVerificationGate}
 		onverified={(data) => handleVerificationComplete(data)}
 		oncancel={() => handleVerificationCancel()}

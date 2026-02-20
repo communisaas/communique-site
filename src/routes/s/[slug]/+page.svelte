@@ -35,6 +35,10 @@
 	const template: TemplateType = $derived(data.template as unknown as TemplateType);
 	const channel = $derived(data.channel);
 	const topDistricts = $derived(data.topDistricts || []);
+	const totalDistricts = $derived((data.totalDistricts as number) || 0);
+	const totalStates = $derived((data.totalStates as number) || 0);
+	const userDistrictCount = $derived((data.userDistrictCount as number) || 0);
+	const userDistrictCode = $derived((data.userDistrictCode as string | null) ?? null);
 	// Simplified - no query parameters needed, default to direct-link
 	const source = 'direct-link';
 	const shareUrl = $derived(
@@ -323,6 +327,10 @@
 			<SocialProofBanner
 				totalActions={template.metrics?.sent || 0}
 				{topDistricts}
+				{totalDistricts}
+				{totalStates}
+				{userDistrictCount}
+				{userDistrictCode}
 			/>
 		</div>
 	{/if}

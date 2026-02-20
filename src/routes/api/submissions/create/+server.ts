@@ -24,7 +24,7 @@ import { processSubmissionDelivery } from '$lib/server/delivery-worker';
  * 6. TEE processes encrypted witness → CWC delivery (async)
  *
  * Security:
- * - Action-based TTL (ISSUE-005): constituent_message requires verification within 30 days
+ * - Action-based TTL (ISSUE-005): constituent_message requires verification within 90 days
  * - Chain = source of truth: verification_status set only after on-chain confirmation (BR5-003)
  * - User PII is in encrypted witness, never in plaintext request fields
  */
@@ -144,6 +144,9 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			// Create submission atomically
 			// Extract action_id from ZK public inputs when available (two-tree proofs)
 			const publicInputsTyped = publicInputs as Record<string, unknown> | undefined;
+			// Witness data expires after 30 days (data minimization)
+			const WITNESS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
 			return await tx.submission.create({
 				data: {
 					pseudonymous_id: pseudonymousId,
@@ -158,7 +161,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 					tee_key_id: teeKeyId,
 					idempotency_key: idempotencyKey,
 					delivery_status: 'pending',
-					verification_status: 'pending'
+					verification_status: 'pending',
+					witness_expires_at: new Date(Date.now() + WITNESS_TTL_MS)
 				}
 			});
 		});

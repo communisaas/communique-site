@@ -1,7 +1,8 @@
 <!--
  * PasskeyUpgrade.svelte
  *
- * Nudge banner for OAuth users (trust_tier: 0) to upgrade to passkey (trust_tier: 1).
+ * Nudge banner for authenticated users without a passkey to add one.
+ * Passkey is a security upgrade within Tier 1, not a separate tier.
  * Dismissible with localStorage persistence (7 days).
  *
  * Design: Subtle, non-intrusive banner that encourages security upgrade.
@@ -16,7 +17,7 @@
 		user,
 		onregistered
 	}: {
-		user: { trust_tier: number; [key: string]: unknown };
+		user: { passkey_credential_id?: string | null; [key: string]: unknown };
 		onregistered?: () => void;
 	} = $props();
 
@@ -59,9 +60,9 @@
 		onregistered?.();
 	}
 
-	// Only show for trust_tier 0 users
+	// Show for authenticated users who haven't added a passkey yet
 	const shouldShow = $derived(
-		user.trust_tier === 0 && !isDismissed && browser && window.PublicKeyCredential
+		!user.passkey_credential_id && !isDismissed && browser && window.PublicKeyCredential
 	);
 </script>
 
