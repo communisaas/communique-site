@@ -191,7 +191,7 @@
 
 		// Use unified email service
 		const currentUser = $page.data?.user || user;
-		const flow = analyzeEmailFlow(template, currentUser);
+		const flow = analyzeEmailFlow(template, currentUser, { trustTier: currentUser?.trust_tier ?? 0 });
 
 		// Store mailto URL for later use
 		if (flow.mailtoUrl) {

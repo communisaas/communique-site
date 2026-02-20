@@ -273,7 +273,8 @@
 			return;
 		}
 
-		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user as Record<string, unknown> | null));
+		const trustTier = (data.user as Record<string, unknown> | null)?.trust_tier as number ?? 0;
+		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user as Record<string, unknown> | null), { trustTier });
 
 		if (flow.nextAction === 'address') {
 			modalActions.openModal('address-modal', 'address', {
@@ -463,7 +464,8 @@
 						return;
 					}
 
-					const flow = analyzeEmailFlow(selectedTemplate, toEmailServiceUser(data.user as Record<string, unknown> | null));
+					const mobileTrustTier = (data.user as Record<string, unknown> | null)?.trust_tier as number ?? 0;
+					const flow = analyzeEmailFlow(selectedTemplate, toEmailServiceUser(data.user as Record<string, unknown> | null), { trustTier: mobileTrustTier });
 
 					if (flow.nextAction === 'address') {
 						modalActions.openModal('address-modal', 'address', {

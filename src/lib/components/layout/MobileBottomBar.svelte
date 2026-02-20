@@ -53,7 +53,7 @@
 	function handlePrimaryAction(): void {
 		if (!onTemplateUse) return;
 
-		const emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user as Record<string, unknown> | null));
+		const emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user as Record<string, unknown> | null), { trustTier: (user as Record<string, unknown> | null)?.trust_tier as number ?? 0 });
 		onTemplateUse({
 			template,
 			requiresAuth: emailFlow.requiresAuth

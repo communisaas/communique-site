@@ -258,7 +258,7 @@
 				<span class="rounded bg-slate-100 px-2 py-1 text-sm text-slate-600">
 					{template.category}
 				</span>
-				{#if data.user?.is_verified && template.deliveryMethod === 'cwc'}
+				{#if (data.user?.trust_tier ?? 0) >= 2 && template.deliveryMethod === 'cwc'}
 					<div class="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-sm text-green-700">
 						<VerificationBadge showText={false} />
 						<span>Enhanced Credibility</span>
@@ -288,7 +288,7 @@
 							template.metrics?.sent || 0
 						).toLocaleString()} who sent this
 					</span>
-					{#if data.user.is_verified}
+					{#if (data.user.trust_tier ?? 0) >= 2}
 						<VerificationBadge />
 					{/if}
 				</div>
@@ -314,6 +314,12 @@
 					bind:actionProgress
 					onEmailModalClose={() => {
 						/* Intentionally empty - modal close handled elsewhere */
+					}}
+					onVerifyAddress={() => {
+						modalActions.openModal('address-modal', 'address', {
+							template,
+							source
+						});
 					}}
 					componentId="template-page-action"
 				/>

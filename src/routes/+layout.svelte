@@ -65,7 +65,8 @@
 	function handleTemplateUse(__event: TemplateUseEvent): void {
 		const { template } = __event;
 
-		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user as Record<string, unknown> | null));
+		const layoutTrustTier = (data.user as Record<string, unknown> | null)?.trust_tier as number ?? 0;
+		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user as Record<string, unknown> | null), { trustTier: layoutTrustTier });
 
 		if (flow.nextAction === 'auth') {
 			// Navigate to auth or show modal

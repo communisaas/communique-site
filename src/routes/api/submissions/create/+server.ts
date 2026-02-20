@@ -179,16 +179,18 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		// would throw "No request-scoped PrismaClient found".
 		const db = getRequestClient();
 
-		// Promote user to Tier 3 (ZK-verified) if currently lower
+		// Promote user to Tier 2 (address-attested) if currently lower.
+		// ZKP submission proves district membership → Tier 2, not Tier 3.
+		// Tier 3 (identity-verified) requires identity_commitment via a separate flow.
 		// Fire-and-forget: uses captured client, registered with waitUntil
 		const promotionPromise = db.user
 			.updateMany({
-				where: { id: userId, trust_tier: { lt: 3 } },
-				data: { trust_tier: 3 }
+				where: { id: userId, trust_tier: { lt: 2 } },
+				data: { trust_tier: 2 }
 			})
 			.then((result: { count: number }) => {
 				if (result.count > 0) {
-					console.log('[Submission] User promoted to trust_tier 3:', userId);
+					console.log('[Submission] User promoted to trust_tier 2:', userId);
 				}
 			})
 			.catch((err: unknown) => {
