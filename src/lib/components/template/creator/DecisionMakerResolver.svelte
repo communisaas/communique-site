@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
+	import { page } from '$app/stores';
+	import { invalidateAll } from '$app/navigation';
 	import type { TemplateFormData } from '$lib/types/template';
 
 	import {
@@ -75,6 +77,8 @@
 		);
 	}
 
+	let authRetried = false;
+
 	async function resolveDecisionMakers() {
 		// Prevent concurrent calls
 		if (isResolving) {
@@ -123,6 +127,27 @@
 
 				// Guest with zero quota → auth gate
 				if (response.status === 401 || errorData.tier === 'guest') {
+					// Check if client-side page data says we're logged in.
+					// If so, this is likely a transient auth error (DB hiccup),
+					// not a genuine unauthenticated state. Retry once.
+					const pageUser = $page.data.user;
+					if (pageUser && !authRetried) {
+						console.log('[DecisionMakerResolver] Page shows logged in but server rejected — retrying');
+						authRetried = true;
+						isResolving = false;
+						// Refresh layout data to re-validate session
+						await invalidateAll();
+						// Brief delay for session re-establishment
+						await new Promise(r => setTimeout(r, 500));
+						return resolveDecisionMakers();
+					}
+
+					// If page also shows no user, or retry already failed → genuine auth gate
+					if (pageUser && authRetried) {
+						// Page STILL says logged in after retry — transient server issue.
+						// Show retryable error instead of misleading auth gate.
+						throw new Error('Could not verify your session. Please refresh and try again.');
+					}
 					throw { _kind: 'auth-required' };
 				}
 

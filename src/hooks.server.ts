@@ -103,12 +103,17 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 
 		return resolve(event);
 	} catch (error) {
-		// If authentication fails for any reason, clear session and continue
-		console.error('[Hooks] Authentication failed:', { path: event.url.pathname, error: error instanceof Error ? error.message : String(error) });
+		// Transient error (DB unreachable, Hyperdrive hiccup, etc.)
+		// CRITICAL: Do NOT delete the session cookie here. The session may still
+		// be valid — we just couldn't verify it right now. Deleting the cookie
+		// would permanently log out the user due to a temporary glitch.
+		// Proceed without auth; endpoints handle unauthenticated state gracefully.
+		console.error('[Hooks] Session validation error (transient):', {
+			path: event.url.pathname,
+			error: error instanceof Error ? error.message : String(error)
+		});
 		event.locals.user = null;
 		event.locals.session = null;
-		// Clear the session cookie on error
-		event.cookies.delete(auth.sessionCookieName, { path: '/' });
 		return resolve(event);
 	}
 };
