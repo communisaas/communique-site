@@ -17,7 +17,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 			district_verified: locals.user.district_verified,
 			trust_score: locals.user.trust_score,
 			reputation_tier: locals.user.reputation_tier,
-			trust_tier: locals.user.trust_tier
+			trust_tier: locals.user.trust_tier,
+			passkey_credential_id: locals.user.passkey_credential_id || null
 		}
 	};
 };

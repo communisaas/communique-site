@@ -19,6 +19,8 @@ declare global {
 				verified_at: Date | null;
 				// Graduated trust (Wave 1C)
 				trust_tier: number;
+				// Passkey (security upgrade within Tier 1)
+				passkey_credential_id: string | null;
 				// did:key identifier derived from WebAuthn public key (Wave 2B)
 				did_key: string | null;
 				// Privacy-preserving district (hash only, no PII)

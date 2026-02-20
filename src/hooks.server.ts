@@ -79,6 +79,8 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 						document_type: user.document_type,
 						trust_score: user.trust_score
 					}),
+					// Passkey (security upgrade within Tier 1)
+					passkey_credential_id: user.passkey_credential_id ?? null,
 					// did:key from WebAuthn public key (Wave 2B)
 					did_key: user.did_key ?? null,
 					// Privacy-preserving district (hash only, no PII)

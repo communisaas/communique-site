@@ -108,11 +108,10 @@ export function getUserContext(event: RequestEvent): UserContext {
 			'unknown';
 	}
 
-	// Check verification status from user record in locals
-	// SECURITY FIX: Use correct field name (is_verified: boolean, not verificationStatus)
-	// User is set directly on event.locals.user by hooks.server.ts:28-55
+	// Check verification status from graduated trust tier model
+	// Tier 2+ (address-attested) qualifies for verified quotas
 	const user = event.locals.user;
-	const isVerified = user?.is_verified === true;
+	const isVerified = (user?.trust_tier ?? 0) >= 2;
 
 	const isAuthenticated = !!userId;
 
