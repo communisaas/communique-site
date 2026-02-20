@@ -30,7 +30,7 @@
 export interface PromptGuardResult {
 	/** Whether input is safe (below injection probability threshold) */
 	safe: boolean;
-	/** Raw probability score (0-1, higher = more likely attack) */
+	/** Raw probability score: 0-1 from model, or -1 if guard was unavailable */
 	score: number;
 	/** Threshold used for classification */
 	threshold: number;

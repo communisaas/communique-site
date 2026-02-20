@@ -36,7 +36,7 @@ const DEFAULT_THRESHOLD = 0.5;
 export interface PromptGuardResult {
 	/** Whether input is likely safe (below threshold) */
 	safe: boolean;
-	/** Raw probability score (0-1) */
+	/** Raw probability score: 0-1 from model, or -1 if guard was unavailable */
 	score: number;
 	/** Threshold used for classification */
 	threshold: number;
@@ -47,12 +47,32 @@ export interface PromptGuardResult {
 }
 
 /**
+ * Fail-open result returned when the guard service is unreachable.
+ * score = -1 is a sentinel: real scores are [0, 1]. Callers and traces
+ * can distinguish "guard unavailable" from "guard said safe" (score ~0).
+ */
+function unavailableResult(threshold: number, reason: string): PromptGuardResult {
+	console.error(`[prompt-guard] Guard unavailable — failing open: ${reason}`);
+	return {
+		safe: true,
+		score: -1,
+		threshold,
+		timestamp: new Date().toISOString(),
+		model: 'llama-prompt-guard-2-86m'
+	};
+}
+
+/**
  * Detect prompt injection attacks using Llama Prompt Guard 2
+ *
+ * Fail-open design: if GROQ is down, rate-limited, or returns garbage,
+ * the function returns safe=true with score=-1 (sentinel). A third-party
+ * outage must never become a denial-of-service against our own users.
+ * The guard protects agents from manipulation — it is not a user-blocking gate.
  *
  * @param content - User input to check for injection attempts
  * @param threshold - Score threshold (default 0.5, higher = more permissive)
- * @returns PromptGuardResult with score and classification
- * @throws Error if GROQ API fails
+ * @returns PromptGuardResult with score and classification (never throws)
  */
 export async function detectPromptInjection(
 	content: string,
@@ -62,13 +82,7 @@ export async function detectPromptInjection(
 
 	if (!apiKey) {
 		console.warn('[prompt-guard] GROQ_API_KEY not configured, allowing by default');
-		return {
-			safe: true,
-			score: 0,
-			threshold,
-			timestamp: new Date().toISOString(),
-			model: 'llama-prompt-guard-2-86m'
-		};
+		return unavailableResult(threshold, 'GROQ_API_KEY not configured');
 	}
 
 	const startTime = Date.now();
@@ -77,35 +91,42 @@ export async function detectPromptInjection(
 	// Truncate long inputs to avoid context overflow
 	const truncatedContent = content.slice(0, 2000);
 
-	const response = await fetch(GROQ_API_URL, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${apiKey}`
-		},
-		body: JSON.stringify({
-			model: MODEL,
-			messages: [{ role: 'user', content: truncatedContent }],
-			temperature: 0
-		})
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-
-		// Handle rate limiting gracefully
-		if (response.status === 429) {
-			console.error('[prompt-guard] Rate limited by GROQ:', errorText);
-			throw new Error('Security check rate limited. Please try again in a moment.');
-		}
-
-		console.error('[prompt-guard] GROQ API error:', response.status, errorText);
-		throw new Error(`Prompt injection check failed: ${response.status}`);
+	let response: Response;
+	try {
+		response = await fetch(GROQ_API_URL, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${apiKey}`
+			},
+			body: JSON.stringify({
+				model: MODEL,
+				messages: [{ role: 'user', content: truncatedContent }],
+				temperature: 0
+			})
+		});
+	} catch (err) {
+		return unavailableResult(threshold, `fetch failed: ${err instanceof Error ? err.message : err}`);
 	}
 
-	const data = await response.json();
-	const scoreString = data.choices?.[0]?.message?.content || '0';
+	if (!response.ok) {
+		const errorText = await response.text().catch(() => '(unreadable)');
+		return unavailableResult(threshold, `GROQ ${response.status}: ${errorText.slice(0, 200)}`);
+	}
+
+	let data: Record<string, unknown>;
+	try {
+		data = await response.json();
+	} catch {
+		return unavailableResult(threshold, 'GROQ returned unparseable JSON');
+	}
+
+	const scoreString = (data.choices as Array<{ message?: { content?: string } }>)?.[0]?.message?.content || '0';
 	const score = parseFloat(scoreString);
+
+	if (Number.isNaN(score)) {
+		return unavailableResult(threshold, `GROQ returned non-numeric score: "${scoreString}"`);
+	}
 
 	const latencyMs = Date.now() - startTime;
 	const safe = score < threshold;

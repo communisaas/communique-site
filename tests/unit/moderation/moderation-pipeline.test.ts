@@ -305,12 +305,19 @@ describe('Moderation Pipeline', () => {
 	});
 
 	describe('Error Handling', () => {
-		it('should propagate prompt guard errors', async () => {
-			mockDetectPromptInjection.mockRejectedValue(new Error('GROQ API error'));
+		it('should proceed when prompt guard is unavailable (fail-open)', async () => {
+			// Real detectPromptInjection never throws — returns safe=true, score=-1
+			// when GROQ is down. Pipeline should proceed to safety check.
+			mockDetectPromptInjection.mockResolvedValue(makePromptGuardResult(true, -1));
+			mockClassifySafety.mockResolvedValue(makeSafetyResult(true));
 
-			await expect(
-				moderateTemplate({ title: 'Test', message_body: 'Content' })
-			).rejects.toThrow('GROQ API error');
+			const result = await moderateTemplate(
+				{ title: 'Test', message_body: 'Content' },
+				{ skipQuality: true }
+			);
+
+			expect(result.approved).toBe(true);
+			expect(mockClassifySafety).toHaveBeenCalled();
 		});
 
 		it('should propagate safety check errors', async () => {
