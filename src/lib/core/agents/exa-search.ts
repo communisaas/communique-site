@@ -15,6 +15,25 @@ import { getExaClient, getSearchRateLimiter } from '$lib/server/exa';
 import { getFirecrawlClient, getFirecrawlRateLimiter } from '$lib/server/firecrawl';
 
 // ============================================================================
+// Timeout Helper
+// ============================================================================
+
+/** Race a promise against a deadline. Rejects with a descriptive error on timeout. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+	let timer: ReturnType<typeof setTimeout>;
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(
+			() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)),
+			ms
+		);
+	});
+	return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+const SEARCH_TIMEOUT_MS = 15_000;
+const SCRAPE_TIMEOUT_MS = 25_000;
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -60,11 +79,15 @@ export async function searchWeb(
 	console.debug(`[exa-search] searchWeb: "${query}"`);
 
 	const result = await rateLimiter.execute(
-		async () => exa.search(query, {
-			numResults: maxResults,
-			type: 'auto',
-			contents: false as const
-		}),
+		async () => withTimeout(
+			exa.search(query, {
+				numResults: maxResults,
+				type: 'auto',
+				contents: false as const
+			}),
+			SEARCH_TIMEOUT_MS,
+			`exa-search "${query.slice(0, 40)}"`
+		),
 		`exa-search-${query.slice(0, 40)}`
 	);
 
@@ -114,7 +137,11 @@ export async function readPage(
 	console.debug(`[page-fetch] readPage: ${url}`);
 
 	const result = await rateLimiter.execute(
-		async () => firecrawl.scrapeUrl(url, { formats: ['markdown', 'links'] }),
+		async () => withTimeout(
+			firecrawl.scrapeUrl(url, { formats: ['markdown', 'links'] }),
+			SCRAPE_TIMEOUT_MS,
+			`firecrawl "${url.slice(0, 60)}"`
+		),
 		`firecrawl-${url.slice(0, 60)}`
 	);
 

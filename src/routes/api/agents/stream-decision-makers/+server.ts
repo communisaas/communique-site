@@ -152,6 +152,11 @@ export const POST: RequestHandler = async (event) => {
 		let streamSuccess = false;
 		let resultTokenUsage: import('$lib/core/agents/types').TokenUsage | undefined;
 
+		// Server-side abort: 4-minute ceiling prevents runaway resolutions
+		// from holding the SSE connection (and Worker CPU) indefinitely.
+		const abortController = new AbortController();
+		const serverTimeout = setTimeout(() => abortController.abort(), 240_000);
+
 		try {
 			const context = {
 				targetType: body.target_type || 'local_government',
@@ -159,7 +164,8 @@ export const POST: RequestHandler = async (event) => {
 				subjectLine: subject_line,
 				coreMessage: core_message,
 				topics,
-				voiceSample: voice_sample
+				voiceSample: voice_sample,
+				signal: abortController.signal
 			};
 
 			const result = await resolveDecisionMakers(context, (segment: SegmentOrRevealEvent) => {
@@ -208,6 +214,7 @@ export const POST: RequestHandler = async (event) => {
 			console.error('[stream-decision-makers] Resolution failed:', error);
 			emitter.error(error instanceof Error ? error.message : 'Resolution failed');
 		} finally {
+			clearTimeout(serverTimeout);
 			logLLMOperation(
 				'decision-makers',
 				userContext,

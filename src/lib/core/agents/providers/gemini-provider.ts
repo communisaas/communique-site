@@ -594,7 +594,8 @@ async function huntContactsParallel(
 	const uncached: Array<{ identity: ResolvedIdentity; reasoning: string }> = [];
 	const cachedCandidates: Candidate[] = [];
 
-	for (const identity of identities) {
+	for (let i = 0; i < identities.length; i++) {
+		const identity = identities[i];
 		const orgKey = identity.organization
 			.toLowerCase()
 			.replace(/^the\s+/, '')
@@ -604,11 +605,19 @@ async function huntContactsParallel(
 
 		const cached = cacheMap.get(`${orgKey}::${identity.title.toLowerCase()}`);
 
-		// Match Phase 1 reasoning by position + organization
-		const roleReasoning = roles.find(r =>
-			r.position.toLowerCase() === identity.position.toLowerCase() &&
-			r.organization.toLowerCase() === identity.organization.toLowerCase()
-		)?.reasoning || '';
+		// Match Phase 1 reasoning: try exact match first, then org-only match,
+		// then fall back to index correspondence (roles and identities are 1:1
+		// from the extraction prompt, though the model may reorder).
+		const roleReasoning =
+			roles.find(r =>
+				r.position.toLowerCase() === identity.position.toLowerCase() &&
+				r.organization.toLowerCase() === identity.organization.toLowerCase()
+			)?.reasoning ||
+			roles.find(r =>
+				r.organization.toLowerCase() === identity.organization.toLowerCase()
+			)?.reasoning ||
+			roles[i]?.reasoning ||
+			'';
 
 		if (cached?.email) {
 			// Inject cached contact as pre-verified candidate
@@ -636,14 +645,55 @@ async function huntContactsParallel(
 		}
 	}
 
-	// Fan out mini-agents — each emits its candidate immediately on completion
+	// Fan out mini-agents — each emits its candidate immediately on completion.
+	// Per-agent timeout prevents one slow Firecrawl/Gemini call from blocking the batch.
+	const MINI_AGENT_TIMEOUT_MS = 45_000;
+
 	const settled = await Promise.allSettled(
 		uncached.map(async ({ identity, reasoning }) => {
-			const result = await huntSingleContact(identity, reasoning, streaming, signal);
-			// Inject Phase 1 reasoning — the mini-agent doesn't have issue context,
-			// so we overwrite whatever generic description it produced.
+			let result: Awaited<ReturnType<typeof huntSingleContact>>;
+
+			try {
+				let timer: ReturnType<typeof setTimeout>;
+				const timeout = new Promise<never>((_, reject) => {
+					timer = setTimeout(
+						() => reject(new Error('timeout')),
+						MINI_AGENT_TIMEOUT_MS
+					);
+				});
+				result = await Promise.race([
+					huntSingleContact(identity, reasoning, streaming, signal),
+					timeout
+				]).finally(() => clearTimeout(timer!));
+			} catch (err) {
+				// Timeout or other failure — emit a placeholder so UI cards update
+				const reason = err instanceof Error ? err.message : 'failed';
+				console.warn(`[gemini-provider] Mini-agent [${identity.name}]: ${reason}`);
+				if (onCandidateProcessed) {
+					onCandidateProcessed({
+						name: identity.name,
+						title: identity.title,
+						organization: identity.organization,
+						reasoning,
+						email: '',
+						recency_check: '',
+						contact_notes: reason === 'timeout'
+							? 'Search timed out — try again later.'
+							: 'Contact search failed.'
+					}, []);
+				}
+				return {
+					candidates: [] as Candidate[],
+					fetchedPages: new Map<string, ExaPageContent>(),
+					tokenUsage: undefined
+				};
+			}
+
+			// Always inject Phase 1 reasoning — the mini-agent's prompt doesn't ask
+			// for reasoning (it only hunts contacts), so this field is the sole source
+			// of "why this person matters to the issue."
 			for (const candidate of result.candidates) {
-				if (reasoning) candidate.reasoning = reasoning;
+				candidate.reasoning = reasoning || candidate.reasoning || '';
 			}
 			// Immediately emit this candidate to the UI
 			if (onCandidateProcessed && result.candidates.length > 0) {
