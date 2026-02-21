@@ -243,6 +243,18 @@
 								return id;
 							});
 						}
+
+						// Discovered contacts have no matching pending identity — append as new card
+						if (!matched && candidate.name) {
+							pendingIdentities = [...pendingIdentities, {
+								name: candidate.name,
+								title: candidate.title,
+								organization: candidate.organization,
+								email: candidate.email,
+								reasoning: candidate.reasoning,
+								status: candidate.status as PendingIdentity['status']
+							}];
+						}
 						break;
 					}
 

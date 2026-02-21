@@ -139,7 +139,7 @@ describe('readPage', () => {
 		mockScrapeUrl.mockReset();
 	});
 
-	it('calls firecrawl.scrapeUrl with markdown+links format', async () => {
+	it('calls firecrawl.scrapeUrl with markdown+links+rawHtml format', async () => {
 		mockScrapeUrl.mockResolvedValue({
 			success: true,
 			markdown: '# Test Page\nSome content',
@@ -152,7 +152,7 @@ describe('readPage', () => {
 		expect(mockScrapeUrl).toHaveBeenCalledTimes(1);
 		const [url, options] = mockScrapeUrl.mock.calls[0];
 		expect(url).toBe('https://example.com');
-		expect(options.formats).toEqual(['markdown', 'links']);
+		expect(options.formats).toEqual(['markdown', 'links', 'rawHtml']);
 	});
 
 	it('returns page content with correct shape', async () => {
@@ -277,6 +277,68 @@ describe('readPage', () => {
 
 		expect(result!.title).toBe('');
 		expect(result!.text).toBe('# Content here');
+	});
+
+	it('extracts emails from rawHtml that markdown missed', async () => {
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: 'Mayor Mike Johnston\nContact the office for inquiries.',
+			links: [],
+			rawHtml: '<html><body><p><strong>Media inquiries only</strong><br/>720-805-8487<br/>MOComms@denvergov.org</p></body></html>',
+			metadata: { title: 'Contact', statusCode: 200 }
+		});
+
+		const result = await readPage('https://denvergov.org/contact');
+
+		expect(result!.text).toContain('MOComms@denvergov.org');
+		expect(result!.text).toContain('CONTACT EMAILS (from page HTML)');
+		expect(result!.highlights).toContain('MOComms@denvergov.org');
+	});
+
+	it('does not duplicate emails already in markdown', async () => {
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: 'Contact: mayor@city.gov for questions.',
+			links: [],
+			rawHtml: '<html><body><p>Contact: mayor@city.gov</p></body></html>',
+			metadata: { title: 'Contact', statusCode: 200 }
+		});
+
+		const result = await readPage('https://example.com');
+
+		// Email already in markdown — should NOT appear in "from page HTML" block
+		expect(result!.text).not.toContain('CONTACT EMAILS (from page HTML)');
+		// Should still be in the text from markdown
+		expect(result!.text).toContain('mayor@city.gov');
+	});
+
+	it('filters false positive emails from HTML (image filenames, noreply)', async () => {
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: 'Some content here',
+			links: [],
+			rawHtml: '<html><body><img src="logo@2x.png"/><a href="mailto:noreply@system.gov">No reply</a><p>real@agency.gov</p></body></html>',
+			metadata: { title: 'Page', statusCode: 200 }
+		});
+
+		const result = await readPage('https://example.com');
+
+		expect(result!.text).toContain('real@agency.gov');
+		// noreply should be filtered
+		expect(result!.highlights).not.toContain('noreply@system.gov');
+	});
+
+	it('works when rawHtml is not returned', async () => {
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: 'Content without HTML',
+			links: [],
+			metadata: { title: 'Page', statusCode: 200 }
+		});
+
+		const result = await readPage('https://example.com');
+
+		expect(result!.text).toBe('Content without HTML');
 	});
 });
 

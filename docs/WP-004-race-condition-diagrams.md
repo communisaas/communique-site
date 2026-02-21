@@ -197,7 +197,7 @@ Layer 2: Database Unique Constraints
 
 Layer 3: ZK Proof Verification (Future)
 │
-├─ Verify Halo2 proof on-chain
+├─ Verify UltraHonk proof on-chain
 ├─ Check nullifier against Merkle tree
 │
 └─ Protects against: All application/database failures

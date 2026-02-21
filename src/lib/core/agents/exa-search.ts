@@ -32,7 +32,27 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 const SEARCH_TIMEOUT_MS = 15_000;
-const SCRAPE_TIMEOUT_MS = 12_000;
+const SCRAPE_TIMEOUT_MS = 20_000;
+
+/** Extract email addresses from raw HTML, filtering common false positives */
+function extractEmailsFromHtml(html: string): string[] {
+	const emailRe = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+	const raw = [...new Set(html.match(emailRe) || [])];
+	return raw.filter(e => {
+		const lower = e.toLowerCase();
+		return !lower.endsWith('.png') &&
+			!lower.endsWith('.jpg') &&
+			!lower.endsWith('.gif') &&
+			!lower.endsWith('.svg') &&
+			!lower.endsWith('.webp') &&
+			!lower.includes('noreply') &&
+			!lower.includes('no-reply') &&
+			!lower.includes('example.com') &&
+			!lower.includes('sentry.io') &&
+			!lower.includes('webpack') &&
+			!lower.includes('localhost');
+	});
+}
 
 // ============================================================================
 // Types
@@ -144,7 +164,7 @@ export async function readPage(
 
 	const result = await rateLimiter.execute(
 		async () => withTimeout(
-			firecrawl.scrapeUrl(url, { formats: ['markdown', 'links'] }),
+			firecrawl.scrapeUrl(url, { formats: ['markdown', 'links', 'rawHtml'] }),
 			SCRAPE_TIMEOUT_MS,
 			`firecrawl "${url.slice(0, 60)}"`
 		),
@@ -177,6 +197,23 @@ export async function readPage(
 		const emailBlock = '\n\n--- CONTACT EMAILS (from page links) ---\n' + mailtoEmails.join('\n');
 		text += emailBlock;
 		console.debug(`[page-fetch] readPage: ${mailtoEmails.length} mailto emails appended for ${url}`);
+	}
+
+	// Extract emails from raw HTML that markdown conversion may have missed.
+	// Government CMS pages often have emails as plain text in <p> tags
+	// or in HTML attributes that don't survive markdown conversion.
+	if (scrapeData.rawHtml) {
+		const htmlEmails = extractEmailsFromHtml(scrapeData.rawHtml);
+		const existingLower = new Set(
+			[...(text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/gi) || [])]
+				.map(e => e.toLowerCase())
+		);
+		const newEmails = htmlEmails.filter(e => !existingLower.has(e.toLowerCase()));
+		if (newEmails.length > 0) {
+			text += '\n\n--- CONTACT EMAILS (from page HTML) ---\n' + newEmails.join('\n');
+			mailtoEmails.push(...newEmails);
+			console.debug(`[page-fetch] readPage: ${newEmails.length} HTML-only emails appended for ${url}`);
+		}
 	}
 
 	const content: ExaPageContent = {

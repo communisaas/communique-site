@@ -85,6 +85,8 @@ interface Candidate {
 	recency_check: string;
 	/** Alternative contact info when no email found */
 	contact_notes?: string;
+	/** true if discovered from page content, not from the input identity list */
+	discovered?: boolean;
 }
 
 /** Phase 2a identity resolution response */
@@ -623,6 +625,7 @@ async function huntContactsFanOutSynthesize(
 	identities: ResolvedIdentity[],
 	cachedContacts: CachedContactInfo[],
 	roles: DiscoveredRole[],
+	issueContext?: { subjectLine: string; coreMessage: string; topics: string[] },
 	streaming?: StreamingCallbacks,
 	signal?: AbortSignal,
 	/** Called per-identity as each candidate is resolved (for progressive UI streaming) */
@@ -759,7 +762,7 @@ async function huntContactsFanOutSynthesize(
 		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
 	}
 
-	const MAX_PAGES_TOTAL = Math.min(uncached.length * 2, 20);
+	const MAX_PAGES_TOTAL = Math.min(uncached.length * 2, 15);
 
 	const pageSelectionSystem = PAGE_SELECTION_PROMPT
 		.replace(/{CURRENT_DATE}/g, currentDate)
@@ -942,7 +945,8 @@ async function huntContactsFanOutSynthesize(
 		.replace(/{DOMAIN_CONTEXT}/g, domainContext || '');
 	const synthesisUser = buildContactSynthesisPrompt(
 		uncached.map(u => ({ identity: u.identity, reasoning: u.reasoning })),
-		pagesForSynthesis
+		pagesForSynthesis,
+		issueContext
 	);
 
 	console.debug('[gemini-provider] Stage 4: Contact synthesis call');
@@ -1214,7 +1218,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				rolePrompt,
 				{
 					systemInstruction: ROLE_DISCOVERY_PROMPT,
-					temperature: 0.3,
+					temperature: 0.1,
 					thinkingLevel: 'medium',
 					maxOutputTokens: 65536
 				},
@@ -1323,12 +1327,20 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 			streaming?.onPhase?.('contact', `Searching for contact information...`);
 
+			const emittedNames = new Set<string>();
+
 			const contactResult = await huntContactsFanOutSynthesize(
-				identities, cachedContacts, roles, streaming, context.signal,
+				identities, cachedContacts, roles,
+				{ subjectLine: context.subjectLine, coreMessage: context.coreMessage, topics: context.topics },
+				streaming, context.signal,
 				// Per-identity streaming callback — emit as each mini-agent completes
 				(candidate, pages) => {
-					const nameLower = (candidate.name || '').toLowerCase().trim();
+					const nameLower = (candidate.name || '').toLowerCase().replace(/\s+/g, ' ').trim();
 					if (!nameLower || nameLower === 'unknown' || nameLower === 'n/a') return;
+
+					// Skip duplicate person (same person resolved for multiple positions)
+					if (emittedNames.has(nameLower)) return;
+					emittedNames.add(nameLower);
 
 					// Cache hits have no pages — email was verified in a prior run.
 					// Skip processOneCandidate which would strip the email when it
@@ -1341,7 +1353,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 							email: candidate.email,
 							emailSource: candidate.email_source,
 							reasoning: candidate.reasoning,
-							status: 'resolved'
+							status: 'resolved',
+							discovered: candidate.discovered
 						});
 						return;
 					}
@@ -1361,7 +1374,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 						email: final.email,
 						emailSource: final.emailSource,
 						reasoning: final.reasoning,
-						status: final.email ? 'resolved' : 'no-email'
+						status: final.email ? 'resolved' : 'no-email',
+					discovered: candidate.discovered
 					});
 				}
 			);
@@ -1452,13 +1466,37 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				}
 			}
 
-			const withVerifiedEmail = filtered.filter(dm => dm.email);
-			const withoutEmail = filtered.filter(dm => !dm.email);
-			console.debug(`[gemini-provider] Returning ${filtered.length} candidates: ${withVerifiedEmail.length} with verified email, ${withoutEmail.length} without email`);
+			// Deduplicate candidates by name: when the same person appears for
+			// multiple positions (e.g., "President" and "Chair"), keep the entry
+			// with the best email coverage.
+			const seenNames = new Map<string, number>();
+			const deduped: typeof filtered = [];
+
+			for (const dm of filtered) {
+				const normalized = dm.name.toLowerCase().replace(/\s+/g, ' ').trim();
+				const existingIdx = seenNames.get(normalized);
+
+				if (existingIdx !== undefined) {
+					const existing = deduped[existingIdx];
+					if (!existing.email && dm.email) {
+						deduped[existingIdx] = dm;
+					} else if (existing.email && dm.email && dm.emailGrounded && !existing.emailGrounded) {
+						deduped[existingIdx] = dm;
+					}
+					console.debug(`[gemini-provider] Dedup: merged duplicate "${dm.name}" (title: "${dm.title}") into existing (title: "${existing.title}")`);
+				} else {
+					seenNames.set(normalized, deduped.length);
+					deduped.push(dm);
+				}
+			}
+
+			const withVerifiedEmail = deduped.filter(dm => dm.email);
+			const withoutEmail = deduped.filter(dm => !dm.email);
+			console.debug(`[gemini-provider] Returning ${deduped.length} candidates: ${withVerifiedEmail.length} with verified email, ${withoutEmail.length} without email`);
 
 			// Cache write — fire-and-forget, never blocks the response
 			upsertResolvedContacts(
-				filtered.map(dm => ({
+				deduped.map(dm => ({
 					organization: dm.organization,
 					title: dm.title,
 					name: dm.name,
@@ -1469,15 +1507,15 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 			streaming?.onPhase?.(
 				'complete',
-				filtered.length > 0
+				deduped.length > 0
 					? withVerifiedEmail.length > 0
-						? `Found ${filtered.length} decision-makers (${withVerifiedEmail.length} with verified email)`
-						: `Found ${filtered.length} decision-makers — email addresses not found in public sources`
+						? `Found ${deduped.length} decision-makers (${withVerifiedEmail.length} with verified email)`
+						: `Found ${deduped.length} decision-makers — email addresses not found in public sources`
 					: `No decision-makers found`
 			);
 
 			return {
-				decisionMakers: filtered,
+				decisionMakers: deduped,
 				provider: this.name,
 				cacheHit: false,
 				latencyMs,
@@ -1487,7 +1525,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					identitiesResolved: identities.filter(id => id.name !== 'UNKNOWN').length,
 					cacheHits: cachedContacts.filter(c => c.email).length,
 					candidatesFound: data.decision_makers?.length || 0,
-					verified: filtered.length,
+					verified: deduped.length,
 					withVerifiedEmail: withVerifiedEmail.length,
 					emailsFilteredOut: withUngroundedEmail.length
 				},
@@ -1622,7 +1660,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			emailGrounded: hasEmail ? emailGrounded : undefined,
 			emailSource: emailGrounded ? emailSource : undefined,
 			emailSourceTitle: emailGrounded ? emailSourceTitle : undefined,
-			contactNotes: candidate.contact_notes || undefined
+			contactNotes: candidate.contact_notes || undefined,
+			discovered: candidate.discovered || false
 		};
 	}
 

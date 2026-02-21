@@ -191,7 +191,8 @@ export const POST: RequestHandler = async (event) => {
 					reasoning: dm.reasoning,
 					sourceUrl: dm.emailSource || dm.source || '',
 					sourceTitle: dm.emailSourceTitle || '',
-					provenance: dm.provenance
+					provenance: dm.provenance,
+					discovered: dm.discovered || false
 				})),
 				research_summary: result.researchSummary || 'Decision-makers resolved successfully.',
 				pipeline_stats: {

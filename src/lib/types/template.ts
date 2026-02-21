@@ -195,6 +195,8 @@ export interface ProcessedDecisionMaker {
 	emailSourceTitle?: string; // Title of email source page
 	/** Free-form notes about alternative contact paths discovered by the agent */
 	contactNotes?: string;
+	/** true if discovered from page content rather than the initial identity list */
+	discovered?: boolean;
 }
 
 /**

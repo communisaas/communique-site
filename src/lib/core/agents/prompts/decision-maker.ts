@@ -408,11 +408,12 @@ Search results:\n${hitLines}`;
  *
  * Template variables: {CURRENT_DATE}, {DOMAIN_CONTEXT}
  */
-export const CONTACT_SYNTHESIS_PROMPT = `You are a contact extraction system. Given page content fetched from the web, extract email addresses and contact information for specific people.
+export const CONTACT_SYNTHESIS_PROMPT = `You are a contact extraction system. Given page content fetched from the web, extract email addresses and contact information for specific people AND discover additional relevant decision-makers found in the pages.
 
 ## Mission
 
-For each person listed, find their email address from the provided page content. Cross-reference across all pages — an email for person A may appear on a page originally selected for person B.
+1. For each person listed in the "search hints" section, find their email address from the provided page content. Cross-reference across all pages — an email for person A may appear on a page originally selected for person B.
+2. ALSO extract other relevant decision-makers you discover in the page content who have direct authority, gatekeeping power, coalition leverage, or amplification reach over the issue described in the Issue Context section. For example: if a page lists a council directory with members, extract ALL members whose roles are relevant to the issue — not just the ones in the search hints.
 
 ## Rules
 
@@ -424,6 +425,7 @@ For each person listed, find their email address from the provided page content.
 6. Cross-reference across pages: if person A's email appears on a page attributed to person B, still capture it for person A.
 7. Verify identity recency: note evidence from the page content that the person currently holds the stated position in recency_check.
 8. Pre-extracted contact_hints are provided for convenience — but you MUST still verify any email appears in the actual page text before reporting it.
+9. For discovered contacts (not in the search hints): set discovered to true and provide issue-specific reasoning explaining why this person is relevant. Only include discovered contacts who have a clear connection to the issue — not every person on a staff page.
 {DOMAIN_CONTEXT}
 Today's date: {CURRENT_DATE}
 
@@ -441,13 +443,15 @@ Return a JSON object matching this schema:
       "email_source": "URL where email appeared verbatim",
       "reasoning": "Person-specific justification (2-3 sentences)",
       "recency_check": "Evidence this person currently holds position",
-      "contact_notes": "Alternative contacts if no email, or empty string"
+      "contact_notes": "Alternative contacts if no email, or empty string",
+      "discovered": false
     }
   ],
   "research_summary": "Brief summary of what was found across all pages"
 }
 
-Include ALL people from the input, even those for whom no email was found.
+Include ALL people from the search hints, even those for whom no email was found (set discovered to false for these).
+For newly discovered contacts from the pages, set discovered to true.
 
 Return JSON directly — no markdown code blocks.`;
 
@@ -466,8 +470,24 @@ export function buildContactSynthesisPrompt(
 		text: string;
 		contactHints: { emails: string[]; phones: string[]; socialUrls: string[] };
 		attributedTo: number[];
-	}>
+	}>,
+	issueContext?: {
+		subjectLine: string;
+		coreMessage: string;
+		topics: string[];
+	}
 ): string {
+	// Section 0: Issue context (enables relevance judgment for discovered contacts)
+	const issueSection = issueContext
+		? `## Issue Context
+
+Subject: ${issueContext.subjectLine}
+Core Message: ${issueContext.coreMessage}
+Topics: ${issueContext.topics.join(', ')}
+
+`
+		: '';
+
 	// Section 1: People to find contacts for
 	const peopleSection = identities
 		.map((entry, i) => {
@@ -508,9 +528,9 @@ ${page.text}`;
 		})
 		.join('\n\n---\n\n');
 
-	return `Find contact information for each person using the page content below.
+	return `Find contact information for each person using the page content below. Also identify any OTHER relevant decision-makers found in the pages who have direct authority, gatekeeping power, or influence over this issue.
 
-## People to find contacts for
+${issueSection}## People to find contacts for (search hints)
 
 ${peopleSection}
 

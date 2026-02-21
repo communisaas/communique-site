@@ -76,6 +76,8 @@ export interface IdentityPlaceholder {
 	title: string;
 	organization: string;
 	status: 'pending' | 'cached';
+	/** true if this identity was discovered from page content during Stage 4 */
+	discovered?: boolean;
 }
 
 /** Per-identity resolution result from Phase 2b contact hunting */
@@ -87,6 +89,8 @@ export interface ResolvedCandidate {
 	emailSource?: string;
 	reasoning?: string;
 	status: 'resolved' | 'no-email' | 'failed';
+	/** true if this contact was discovered from page content during Stage 4 */
+	discovered?: boolean;
 }
 
 // ============================================================================
