@@ -167,12 +167,17 @@ export async function readPage(
 		.filter((l: string) => l.startsWith('mailto:'))
 		.map((l: string) => l.replace('mailto:', '').split('?')[0]);
 
+	// Append mailto emails and then truncate. Reserve space for the email block
+	// so structural contact data (often the most valuable content) isn't cut off
+	// when the page text approaches maxCharacters.
 	if (mailtoEmails.length > 0) {
-		text += '\n\n--- CONTACT EMAILS (from page links) ---\n' + mailtoEmails.join('\n');
+		const emailBlock = '\n\n--- CONTACT EMAILS (from page links) ---\n' + mailtoEmails.join('\n');
+		const reservedForEmails = emailBlock.length + 100; // padding
+		text = text.slice(0, maxCharacters - reservedForEmails) + emailBlock;
 		console.debug(`[page-fetch] readPage: ${mailtoEmails.length} mailto emails appended for ${url}`);
+	} else {
+		text = text.slice(0, maxCharacters);
 	}
-
-	text = text.slice(0, maxCharacters);
 
 	const content: ExaPageContent = {
 		url,

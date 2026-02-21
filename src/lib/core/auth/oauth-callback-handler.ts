@@ -141,7 +141,7 @@ export class OAuthCallbackHandler {
 	 */
 	async handleCallback(config: OAuthCallbackConfig, url: URL, cookies: Cookies): Promise<Response> {
 		try {
-			// Step 1: Validate OAuth parameters
+			// Step 1: Validate OAuth parameters (cookies preserved until success)
 			const {
 				code,
 				state: _state,
@@ -149,10 +149,30 @@ export class OAuthCallbackHandler {
 				returnTo
 			} = this.validateParameters(url, cookies, config.requiresCodeVerifier);
 
-			// Step 2: Exchange authorization code for tokens
+			// Step 2: Exchange authorization code for tokens (with retry for transient failures)
 			const oauthClient = config.createOAuthClient();
-			const tokens = await config.exchangeTokens(oauthClient, code, codeVerifier);
+			let tokens: OAuthTokens;
+			try {
+				tokens = await config.exchangeTokens(oauthClient, code, codeVerifier);
+			} catch (exchangeErr) {
+				// Retry once on transient fetch failures (ArcticFetchError / network hiccup)
+				const isTransient = exchangeErr instanceof Error &&
+					(exchangeErr.message.includes('Failed to send request') ||
+					 exchangeErr.message.includes('fetch failed'));
+				if (isTransient) {
+					console.warn(`[OAuth] Token exchange failed transiently, retrying:`, exchangeErr.message);
+					await new Promise(r => setTimeout(r, 500));
+					tokens = await config.exchangeTokens(oauthClient, code, codeVerifier);
+				} else {
+					throw exchangeErr;
+				}
+			}
 			const tokenData = config.extractTokenData(tokens);
+
+			// Token exchange succeeded — safe to delete OAuth state cookies now.
+			// Before this point, a transient failure leaves cookies intact so the
+			// user can refresh the callback URL to retry.
+			this.cleanupOAuthCookies(cookies, config.requiresCodeVerifier);
 
 			// Step 3: Fetch user information from provider
 			const rawUserData = await config.getUserInfo(tokenData.accessToken, config.clientSecret);
@@ -206,12 +226,9 @@ export class OAuthCallbackHandler {
 		const returnTo = cookies.get('oauth_return_to') || '/profile';
 		const codeVerifier = requiresCodeVerifier ? cookies.get('oauth_code_verifier') : undefined;
 
-		// Clean up cookies
-		cookies.delete('oauth_state', { path: '/' });
-		cookies.delete('oauth_return_to', { path: '/' });
-		if (requiresCodeVerifier) {
-			cookies.delete('oauth_code_verifier', { path: '/' });
-		}
+		// NOTE: Cookie cleanup deferred to after successful token exchange.
+		// If token exchange fails transiently, preserving cookies lets the user
+		// refresh the callback URL to retry instead of restarting the entire flow.
 
 		// Validate required parameters
 		if (!code || !state || !storedState) {
@@ -511,6 +528,19 @@ export class OAuthCallbackHandler {
 				: `Authentication failed: ${err instanceof Error ? err.message : 'Unknown error'}`;
 
 		throw error(500, errorMessage);
+	}
+
+	/**
+	 * Remove OAuth state cookies after successful token exchange.
+	 * Called only after the token exchange succeeds — preserving cookies on
+	 * transient failure lets the user refresh the callback URL to retry.
+	 */
+	private cleanupOAuthCookies(cookies: Cookies, requiresCodeVerifier: boolean): void {
+		cookies.delete('oauth_state', { path: '/' });
+		cookies.delete('oauth_return_to', { path: '/' });
+		if (requiresCodeVerifier) {
+			cookies.delete('oauth_code_verifier', { path: '/' });
+		}
 	}
 
 	/**
