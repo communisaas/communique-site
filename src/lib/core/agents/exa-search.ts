@@ -13,6 +13,7 @@
 
 import { getExaClient, getSearchRateLimiter } from '$lib/server/exa';
 import { getFirecrawlClient, getFirecrawlRateLimiter } from '$lib/server/firecrawl';
+import { extractContactHints } from '$lib/core/agents/agents/decision-maker';
 
 // ============================================================================
 // Timeout Helper
@@ -123,14 +124,14 @@ export async function searchWeb(
  * Rate-limited to 10 RPS with exponential backoff.
  *
  * @param url - URL to fetch content from
- * @param options - Optional: maxCharacters (default 12000)
+ * @param options - Optional: maxCharacters (default 30000)
  * @returns Page content or null if fetch failed
  */
 export async function readPage(
 	url: string,
 	options?: { maxCharacters?: number }
 ): Promise<ExaPageContent | null> {
-	const maxCharacters = options?.maxCharacters ?? 12000;
+	const maxCharacters = options?.maxCharacters ?? 30000;
 	const firecrawl = getFirecrawlClient();
 	const rateLimiter = getFirecrawlRateLimiter();
 
@@ -190,4 +191,181 @@ export async function readPage(
 
 	console.debug(`[page-fetch] readPage: ${content.text.length} chars from "${content.title.slice(0, 60)}"`);
 	return content;
+}
+
+// ============================================================================
+// prunePageContent — Contact-priority content assembly
+// ============================================================================
+
+const PRUNE_TARGET_CHARS = 15_000;
+const LINK_CLUSTER_MIN_LINKS = 3;
+const LINK_CLUSTER_RATIO = 0.5;
+
+const BOILERPLATE_PATTERNS = [
+	'cookie', 'privacy policy', 'terms of service', 'terms of use',
+	'subscribe to our newsletter', 'sign up for', 'skip to content',
+	'skip to main', 'all rights reserved', '©'
+];
+
+/** Count markdown link syntax characters in a string: `[text](url)` */
+function countLinkChars(text: string): number {
+	let total = 0;
+	for (const match of text.matchAll(/\[[^\]]*\]\([^)]*\)/g)) {
+		total += match[0].length;
+	}
+	return total;
+}
+
+/** Count markdown links in a string */
+function countLinks(text: string): number {
+	return (text.match(/\[[^\]]*\]\([^)]*\)/g) || []).length;
+}
+
+/**
+ * Prune page content for Gemini synthesis while preserving all contact signals.
+ *
+ * Strips navigation link clusters, boilerplate, and duplicate paragraphs.
+ * Paragraphs containing email/phone/social/name signals are never stripped.
+ * Falls back to simple truncation if any contact signal would be lost.
+ *
+ * @param text - Full page markdown text
+ * @param protectedNames - Identity names to protect from stripping
+ * @returns Pruned text ≤ PRUNE_TARGET_CHARS
+ */
+export function prunePageContent(text: string, protectedNames?: string[]): string {
+	// Short-circuit: if text fits in budget, return as-is
+	if (text.length <= PRUNE_TARGET_CHARS) {
+		return text;
+	}
+
+	// Extract contact signals from the FULL text for safety invariant
+	const fullSignals = extractContactHints(text);
+
+	// Split into paragraphs (double newline boundaries)
+	const paragraphs = text.split(/\n{2,}/);
+
+	// Build lowercase name fragments for matching (skip single-word names < 3 chars)
+	const nameFragments = (protectedNames || [])
+		.filter(n => n && n !== 'UNKNOWN')
+		.flatMap(n => {
+			const parts: string[] = [n.toLowerCase()];
+			// Also match last name alone if multi-word (e.g., "Johnston" from "Mike Johnston")
+			const words = n.split(/\s+/);
+			if (words.length >= 2) {
+				const last = words[words.length - 1].toLowerCase();
+				if (last.length >= 3) parts.push(last);
+			}
+			return parts;
+		});
+
+	// Classify each paragraph
+	const enum ParagraphClass { PROTECTED, NOISE, CONTEXT }
+	const classes: ParagraphClass[] = new Array(paragraphs.length);
+	const seen = new Set<string>();
+
+	for (let i = 0; i < paragraphs.length; i++) {
+		const para = paragraphs[i];
+		const paraLower = para.toLowerCase();
+
+		// Check for contact signals
+		const hasContactSignal =
+			/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/.test(para) ||
+			/(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(para) ||
+			/https?:\/\/(?:www\.)?(?:twitter|x|linkedin|facebook)\.com\/[^\s)"\]]+/i.test(para) ||
+			nameFragments.some(name => paraLower.includes(name));
+
+		if (hasContactSignal) {
+			classes[i] = ParagraphClass.PROTECTED;
+			continue;
+		}
+
+		// Check for noise
+		const linkCount = countLinks(para);
+		const linkCharCount = countLinkChars(para);
+		const isLinkCluster = linkCount >= LINK_CLUSTER_MIN_LINKS &&
+			para.length > 0 &&
+			(linkCharCount / para.length) >= LINK_CLUSTER_RATIO;
+
+		const isBoilerplate = BOILERPLATE_PATTERNS.some(p => paraLower.includes(p));
+
+		const trimmed = para.trim();
+		const isDuplicate = seen.has(trimmed) && trimmed.length > 0;
+		if (trimmed.length > 0) seen.add(trimmed);
+
+		if (isLinkCluster || isBoilerplate || isDuplicate) {
+			classes[i] = ParagraphClass.NOISE;
+		} else {
+			classes[i] = ParagraphClass.CONTEXT;
+		}
+	}
+
+	// Context expansion: paragraphs adjacent to PROTECTED get upgraded
+	for (let i = 0; i < paragraphs.length; i++) {
+		if (classes[i] === ParagraphClass.PROTECTED) {
+			if (i > 0 && classes[i - 1] !== ParagraphClass.PROTECTED) {
+				classes[i - 1] = ParagraphClass.PROTECTED;
+			}
+			if (i < paragraphs.length - 1 && classes[i + 1] !== ParagraphClass.PROTECTED) {
+				classes[i + 1] = ParagraphClass.PROTECTED;
+			}
+		}
+	}
+
+	// Assembly: PROTECTED always included, then CONTEXT until budget, NOISE dropped
+	const protectedParts: string[] = [];
+	const contextParts: string[] = [];
+	let noiseCount = 0;
+
+	for (let i = 0; i < paragraphs.length; i++) {
+		if (classes[i] === ParagraphClass.PROTECTED) {
+			protectedParts.push(paragraphs[i]);
+		} else if (classes[i] === ParagraphClass.CONTEXT) {
+			contextParts.push(paragraphs[i]);
+		} else {
+			noiseCount++;
+		}
+	}
+
+	// Build output: protected first, then context to fill budget
+	let result = protectedParts.join('\n\n');
+	let charsRemaining = PRUNE_TARGET_CHARS - result.length;
+
+	if (charsRemaining > 0 && contextParts.length > 0) {
+		const contextBlock: string[] = [];
+		for (const part of contextParts) {
+			if (part.length + 2 > charsRemaining) break; // +2 for \n\n separator
+			contextBlock.push(part);
+			charsRemaining -= (part.length + 2);
+		}
+		if (contextBlock.length > 0) {
+			result = contextBlock.join('\n\n') + '\n\n' + result;
+		}
+	}
+
+	// Safety invariant: verify no contact signals lost
+	const prunedSignals = extractContactHints(result);
+	const emailsLost = fullSignals.emails.filter(
+		e => !prunedSignals.emails.some(pe => pe.toLowerCase() === e.toLowerCase())
+	);
+	const phonesLost = fullSignals.phones.filter(
+		p => !prunedSignals.phones.includes(p)
+	);
+
+	if (emailsLost.length > 0 || phonesLost.length > 0) {
+		console.warn(
+			`[prune] Safety invariant failed: lost ${emailsLost.length} emails, ${phonesLost.length} phones. Falling back to truncation.`,
+			{ emailsLost, phonesLost }
+		);
+		return text.slice(0, PRUNE_TARGET_CHARS);
+	}
+
+	// Truncate to hard limit if protected content alone exceeds budget
+	if (result.length > PRUNE_TARGET_CHARS) {
+		result = result.slice(0, PRUNE_TARGET_CHARS);
+	}
+
+	console.debug(
+		`[prune] ${text.length} → ${result.length} chars (dropped ${noiseCount} noise paragraphs, kept ${protectedParts.length} protected + ${contextParts.length} context)`
+	);
+	return result;
 }

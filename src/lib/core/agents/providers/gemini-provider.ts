@@ -39,7 +39,7 @@ import {
 } from '../prompts/decision-maker';
 import { getCachedContacts, upsertResolvedContacts } from '../utils/contact-cache';
 import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
-import { searchWeb, readPage, type ExaPageContent } from '../exa-search';
+import { searchWeb, readPage, prunePageContent, type ExaPageContent } from '../exa-search';
 import {
 	getAgentToolDeclarations,
 	processGeminiFunctionCall,
@@ -841,9 +841,16 @@ async function huntContactsFanOutSynthesize(
 
 	console.debug(`[gemini-provider] Stage 3: ${selectedUrls.length} parallel page reads`);
 
+	// Fetch more content than we'll send to Gemini — pruning strips noise,
+	// and the full text stays in fetchedPages for email grounding.
 	const pageReadResults = await Promise.allSettled(
-		selectedUrls.map(url => readPage(url, { maxCharacters: 12000 }))
+		selectedUrls.map(url => readPage(url, { maxCharacters: 30000 }))
 	);
+
+	// Build identity name list for contact-priority pruning
+	const identityNamesForPruning = uncached
+		.map(u => u.identity.name)
+		.filter(n => n !== 'UNKNOWN');
 
 	const pagesForSynthesis: Array<{
 		url: string;
@@ -868,11 +875,14 @@ async function huntContactsFanOutSynthesize(
 			continue;
 		}
 
-		// Store in fetchedPages map
+		// Store FULL text in fetchedPages — grounding verifier checks against this
 		fetchedPages.set(url, page);
 
-		// Extract contact hints
+		// Extract contact hints from full text (before pruning)
 		const contactHints = extractContactHints(page.text);
+
+		// Prune for synthesis prompt — Gemini gets cleaner signal
+		const prunedText = prunePageContent(page.text, identityNamesForPruning);
 
 		// Track identity attribution from Stage 2
 		const attributedTo = Array.from(selectedUrlToIdentities.get(url) || []);
@@ -880,7 +890,7 @@ async function huntContactsFanOutSynthesize(
 		pagesForSynthesis.push({
 			url: page.url,
 			title: page.title,
-			text: page.text,
+			text: prunedText,
 			contactHints,
 			attributedTo
 		});

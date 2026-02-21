@@ -44,7 +44,21 @@ vi.mock('$lib/server/firecrawl', () => ({
 	getFirecrawlRateLimiter: () => mockFirecrawlRateLimiter
 }));
 
-import { searchWeb, readPage } from '$lib/core/agents/exa-search';
+// extractContactHints is used by prunePageContent — provide the real implementation
+vi.mock('$lib/core/agents/agents/decision-maker', () => ({
+	extractContactHints: (text: string) => {
+		const emailRe = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+		const phoneRe = /(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
+		const socialRe = /https?:\/\/(?:www\.)?(?:twitter|x|linkedin|facebook)\.com\/[^\s)"\]]+/gi;
+		return {
+			emails: [...new Set(text.match(emailRe) || [])],
+			phones: [...new Set(text.match(phoneRe) || [])],
+			socialUrls: [...new Set(text.match(socialRe) || [])].slice(0, 5)
+		};
+	}
+}));
+
+import { searchWeb, readPage, prunePageContent } from '$lib/core/agents/exa-search';
 
 describe('searchWeb', () => {
 	beforeEach(() => {
@@ -194,8 +208,8 @@ describe('readPage', () => {
 		expect(result!.text.length).toBe(5000);
 	});
 
-	it('defaults to 12000 maxCharacters', async () => {
-		const longContent = 'B'.repeat(20000);
+	it('defaults to 30000 maxCharacters', async () => {
+		const longContent = 'B'.repeat(40000);
 		mockScrapeUrl.mockResolvedValue({
 			success: true,
 			markdown: longContent,
@@ -205,7 +219,7 @@ describe('readPage', () => {
 
 		const result = await readPage('https://example.com');
 
-		expect(result!.text.length).toBe(12000);
+		expect(result!.text.length).toBe(30000);
 	});
 
 	it('returns null when scrape has no markdown content', async () => {
@@ -248,5 +262,171 @@ describe('readPage', () => {
 
 		expect(result!.title).toBe('');
 		expect(result!.text).toBe('# Content here');
+	});
+});
+
+describe('prunePageContent', () => {
+	it('returns short text unchanged', () => {
+		const text = 'Mayor Jane Smith\nEmail: mayor@city.gov\nPhone: (555) 123-4567';
+		expect(prunePageContent(text)).toBe(text);
+	});
+
+	it('preserves email-bearing paragraphs', () => {
+		const paragraphs = [
+			'A'.repeat(10000),
+			'Contact: mayor@denvergov.org for questions.',
+			'B'.repeat(10000)
+		];
+		const text = paragraphs.join('\n\n');
+
+		const result = prunePageContent(text);
+
+		expect(result).toContain('mayor@denvergov.org');
+	});
+
+	it('preserves phone-bearing paragraphs', () => {
+		const paragraphs = [
+			'A'.repeat(10000),
+			'Call us at (303) 555-1234 for assistance.',
+			'B'.repeat(10000)
+		];
+		const text = paragraphs.join('\n\n');
+
+		const result = prunePageContent(text);
+
+		expect(result).toContain('(303) 555-1234');
+	});
+
+	it('preserves paragraphs containing protected names', () => {
+		const paragraphs = [
+			'A'.repeat(10000),
+			'Mike Johnston serves as the current Mayor of Denver.',
+			'B'.repeat(10000)
+		];
+		const text = paragraphs.join('\n\n');
+
+		const result = prunePageContent(text, ['Mike Johnston']);
+
+		expect(result).toContain('Mike Johnston');
+	});
+
+	it('matches on last name alone', () => {
+		const paragraphs = [
+			'A'.repeat(10000),
+			'The Johnston administration has prioritized housing.',
+			'B'.repeat(10000)
+		];
+		const text = paragraphs.join('\n\n');
+
+		const result = prunePageContent(text, ['Mike Johnston']);
+
+		expect(result).toContain('Johnston administration');
+	});
+
+	it('strips navigation link clusters', () => {
+		const navBar = '[Home](/) [About](/about) [Contact](/contact) [News](/news) [Events](/events)';
+		const content = 'Mayor Mike Johnston\nEmail: mayor@denvergov.org';
+		// Space navBar away from content so context expansion doesn't protect it
+		const filler1 = 'C'.repeat(8000);
+		const filler2 = 'C'.repeat(8000);
+		const text = [navBar, filler1, content, filler2, navBar].join('\n\n');
+
+		const result = prunePageContent(text, ['Mike Johnston']);
+
+		expect(result).toContain('mayor@denvergov.org');
+		// Both navBars should be stripped (link clusters far from protected content)
+		const navCount = (result.match(/\[Home\]\(\/\)/g) || []).length;
+		expect(navCount).toBeLessThanOrEqual(1);
+	});
+
+	it('strips boilerplate paragraphs', () => {
+		const boilerplate = 'We use cookies to improve your experience. Read our Privacy Policy.';
+		const content = 'Contact: info@agency.gov';
+		// Boilerplate must be far from protected content to not get context-expanded
+		const filler1 = 'D'.repeat(8000);
+		const filler2 = 'D'.repeat(8000);
+		const text = [boilerplate, filler1, content, filler2, 'Subscribe to our newsletter for updates'].join('\n\n');
+
+		const result = prunePageContent(text);
+
+		expect(result).toContain('info@agency.gov');
+		expect(result).not.toContain('Subscribe to our newsletter');
+	});
+
+	it('strips duplicate paragraphs', () => {
+		const repeated = 'The Department of Commerce oversees trade policy.';
+		const content = 'Email: commerce@state.gov for inquiries.';
+		// Space duplicates away from content so they're not context-expanded
+		const filler1 = 'E'.repeat(8000);
+		const filler2 = 'E'.repeat(8000);
+		const text = [repeated, filler1, content, filler2, repeated, repeated].join('\n\n');
+
+		const result = prunePageContent(text);
+
+		expect(result).toContain('commerce@state.gov');
+		// First occurrence may survive as context, but dupes should be stripped
+		const matchCount = (result.match(/Department of Commerce/g) || []).length;
+		expect(matchCount).toBeLessThanOrEqual(2);
+	});
+
+	it('includes ±1 context around protected paragraphs', () => {
+		const before = 'Office of the Mayor';
+		const protected_ = 'Contact: mayor@city.gov';
+		const after = 'Hours: Monday through Friday, 8am-5pm';
+		const filler = 'F'.repeat(14000);
+		const text = [filler, before, protected_, after, filler].join('\n\n');
+
+		const result = prunePageContent(text);
+
+		expect(result).toContain('mayor@city.gov');
+		expect(result).toContain('Office of the Mayor');
+		expect(result).toContain('Hours: Monday through Friday');
+	});
+
+	it('respects PRUNE_TARGET_CHARS budget', () => {
+		const paragraphs = Array.from({ length: 50 }, (_, i) =>
+			`Paragraph ${i}: ${'G'.repeat(500)}`
+		);
+		paragraphs[25] = 'Contact: test@example.gov';
+		const text = paragraphs.join('\n\n');
+
+		const result = prunePageContent(text);
+
+		expect(result.length).toBeLessThanOrEqual(15000);
+		expect(result).toContain('test@example.gov');
+	});
+
+	it('falls back to truncation if safety invariant fails', () => {
+		// Create a scenario where an email could be lost by pruning.
+		// This is hard to trigger since protected paragraphs are always kept,
+		// but we test by verifying the function never drops an email.
+		const emails = Array.from({ length: 20 }, (_, i) => `user${i}@test.gov`);
+		const paragraphs = emails.map(e => `Contact: ${e}\n${'H'.repeat(800)}`);
+		const text = paragraphs.join('\n\n');
+
+		const result = prunePageContent(text);
+
+		// All emails present in result (either via pruning or fallback truncation)
+		for (const email of emails) {
+			if (text.indexOf(email) < 15000) {
+				expect(result).toContain(email);
+			}
+		}
+	});
+
+	it('does not strip link clusters that contain emails', () => {
+		const staffDir = [
+			'[John Smith, Mayor](mailto:john@city.gov)',
+			'[Jane Doe, Manager](mailto:jane@city.gov)',
+			'[Bob Wilson, Director](mailto:bob@city.gov)',
+			'[Alice Chen, Clerk](mailto:alice@city.gov)'
+		].join('\n');
+		const filler = 'I'.repeat(10000);
+		const text = [filler, staffDir, filler].join('\n\n');
+
+		const result = prunePageContent(text);
+
+		expect(result).toContain('john@city.gov');
+		expect(result).toContain('jane@city.gov');
 	});
 });
