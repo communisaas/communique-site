@@ -32,7 +32,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 const SEARCH_TIMEOUT_MS = 15_000;
-const SCRAPE_TIMEOUT_MS = 25_000;
+const SCRAPE_TIMEOUT_MS = 12_000;
 
 // ============================================================================
 // Types

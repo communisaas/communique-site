@@ -707,6 +707,7 @@ async function huntContactsFanOutSynthesize(
 		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
 	}
 
+	onThought?.(`Searching for contact information across ${uncached.length} positions...`);
 	console.debug(`[gemini-provider] Stage 1: ${uncached.length} parallel contact searches`);
 
 	const searchQueries = uncached.map(({ identity }) => {
@@ -748,6 +749,7 @@ async function huntContactsFanOutSynthesize(
 
 	const totalHits = identitySearchResults.reduce((sum, isr) => sum + isr.hits.length, 0);
 	console.debug(`[gemini-provider] Stage 1 complete: ${totalHits} total hits across ${uncached.length} searches`);
+	onThought?.(`Found ${totalHits} potential sources. Selecting the most promising pages to read...`);
 
 	// ================================================================
 	// Stage 2: Page Selection (1 Gemini call, ~3-5s)
@@ -839,6 +841,7 @@ async function huntContactsFanOutSynthesize(
 		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
 	}
 
+	onThought?.(`Reading ${selectedUrls.length} pages for contact details...`);
 	console.debug(`[gemini-provider] Stage 3: ${selectedUrls.length} parallel page reads`);
 
 	// Full page content for grounding; prunePageContent() trims for Gemini.
@@ -896,6 +899,7 @@ async function huntContactsFanOutSynthesize(
 	}
 
 	console.debug(`[gemini-provider] Stage 3 complete: ${pagesForSynthesis.length} pages readable, ${fetchedPages.size} stored`);
+	onThought?.(`Retrieved ${pagesForSynthesis.length} pages. Analyzing contacts...`);
 
 	// If zero pages readable: return all uncached identities as no-email candidates
 	if (pagesForSynthesis.length === 0) {
