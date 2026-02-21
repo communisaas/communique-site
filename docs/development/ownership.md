@@ -1,5 +1,7 @@
 # Codebase Ownership: voter-protocol vs communique
 
+> **SUPERSEDED** — This document contains extensive stale references (Halo2, @voter-protocol/client, wrong contract paths, wrong TEE provider). Do not use as implementation reference. Current integration spec: see voter-protocol `specs/COMMUNIQUE-INTEGRATION-SPEC.md`.
+
 **Purpose:** Define clear engineering boundaries between protocol layer (voter-protocol) and application layer (communique)
 **Principle:** Protocol primitives vs. application implementation
 
@@ -330,7 +332,7 @@ export class CommuniqueUser {
 - ✅ Template creator/editor
 - ✅ Congressional office lookup
 - ✅ CWC API integration
-- ✅ Supabase database schema (metadata only, NO PII)
+- ✅ pgvector/Prisma database schema (metadata only, NO PII)
 - ✅ SvelteKit routes/pages
 - ❌ Halo2 circuit design
 - ❌ Cryptographic primitives

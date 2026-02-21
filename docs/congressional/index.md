@@ -207,12 +207,12 @@ npm run test:integration -- congressional-delivery.test.ts
 2. Verify API key is valid
 3. Check rate limits (user may have hit limit)
 4. Check TEE enclave health
-5. Review error logs in Fly.io
+5. Review error logs in Cloudflare Pages
 
 **Proof generation failed**:
 1. Check TEE enclave is running
 2. Verify address is valid (geocoding succeeded)
-3. Check Halo2 proving timeout (should be <10s)
+3. Check Noir proving timeout (should be <10s)
 4. Review TEE logs
 
 **Congressional office reports message not received**:
@@ -239,7 +239,7 @@ npm run test:integration -- congressional-delivery.test.ts
 
 **Privacy questions**:
 - "Can you see constituent addresses?" → No, we store only commitment hashes
-- "How do you verify district?" → Zero-knowledge proof (Halo2 circuit)
+- "How do you verify district?" → Zero-knowledge proof (Noir circuit)
 - "Can constituents fake verification?" → No, proof is cryptographically secure
 
 ---

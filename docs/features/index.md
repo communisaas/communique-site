@@ -15,7 +15,7 @@
 - ✅ Universal sharing (navigator.share API)
 
 **voter-protocol owns** (Communiqué just calls as thin client):
-- ❌ District verification (Shadow Atlas, geocoding, Halo2 proofs)
+- ❌ District verification (Shadow Atlas, geocoding, Noir proofs)
 - ❌ Merkle trees (built off-chain, published to IPFS)
 - ❌ Smart contracts (Scroll zkEVM)
 - ❌ Reputation tracking (ERC-8004 on-chain)
@@ -146,10 +146,10 @@ Adapter pattern for different legislative bodies (US Congress, state legislature
 
 **These are voter-protocol responsibilities** (NOT Communiqué features):
 
-❌ **District verification** → voter-protocol provides `@voter-protocol/client`
+❌ **District verification** → voter-protocol provides `@voter-protocol/noir-prover`
 - Shadow Atlas (Merkle trees, district boundaries)
 - Geocoding services (Geocodio/Nominatim abstraction)
-- Halo2 WASM proving (browser-native ZK proofs)
+- Noir WASM proving (browser-native ZK proofs)
 - See: `/docs/DISTRICT-VERIFICATION-RESPONSIBILITIES.md`
 
 ❌ **Reputation tracking** → voter-protocol smart contracts
@@ -160,7 +160,7 @@ Adapter pattern for different legislative bodies (US Congress, state legislature
 
 ❌ **Blockchain infrastructure** → voter-protocol contracts
 - Scroll zkEVM deployment
-- DistrictRegistry.sol, DistrictGate.sol, Halo2Verifier.sol
+- DistrictRegistry.sol, DistrictGate.sol, HonkVerifier.sol
 - See: voter-protocol repository
 
 ---

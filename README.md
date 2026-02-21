@@ -103,7 +103,7 @@ npm run dev        # http://localhost:5173
 
 **Deployment:**
 
-- Fly.io (production + staging)
+- Cloudflare Pages (production + staging)
 - GitHub Actions (CI/CD)
 
 ---

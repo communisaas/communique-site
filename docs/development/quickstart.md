@@ -83,7 +83,7 @@ npm run preview          # Preview production build
 ### Prerequisites
 
 - **Node.js**: 20.x or later
-- **PostgreSQL**: 15.x or later (via Supabase or local)
+- **PostgreSQL**: 15.x or later (via pgvector/Prisma or local Docker Compose)
 - **Environment Variables**: See `.env.example` for required configuration
 
 ### Environment Configuration
@@ -91,8 +91,8 @@ npm run preview          # Preview production build
 **Required Variables:**
 
 ```bash
-# Database
-SUPABASE_DATABASE_URL=postgresql://user:password@db.supabase.co:5432/postgres
+# Database (pgvector via Docker Compose or managed Neon)
+DATABASE_URL=postgresql://communique:communique@localhost:5432/communique
 
 # Congressional Delivery (Optional)
 CWC_API_KEY=your-cwc-api-key
@@ -118,16 +118,7 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 
 ### Local Database Setup
 
-**Option 1: Supabase (Recommended)**
-
-```bash
-# Use Supabase cloud database
-SUPABASE_DATABASE_URL=postgresql://...
-npm run db:push
-npm run db:seed
-```
-
-**Option 2: Docker Compose**
+**Option 1: Docker Compose (Recommended)**
 
 ```bash
 # Start local Postgres
@@ -725,7 +716,7 @@ npm run test:run
 
 ```bash
 NODE_ENV=production
-SUPABASE_DATABASE_URL=postgresql://...
+DATABASE_URL=postgresql://...
 CWC_API_KEY=...
 OAUTH_REDIRECT_BASE_URL=https://communi.email
 
@@ -871,13 +862,12 @@ Error: P1001: Can't reach database server at `db.supabase.co`
 
 ```bash
 # Check DATABASE_URL format
-echo $SUPABASE_DATABASE_URL
+echo $DATABASE_URL
 
 # Test connection
 npx prisma db pull
 
-# Verify Supabase project is active
-# Check Supabase dashboard for connection string
+# Verify database is running (docker compose up -d)
 ```
 
 #### Test Failures

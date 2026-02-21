@@ -9,7 +9,7 @@ For comprehensive deployment documentation, see:
 ```bash
 npm run build        # Verify production build
 npm run test         # Run test suite
-flyctl deploy        # Deploy to Fly.io (staging/production)
+npx wrangler pages deploy .svelte-kit/cloudflare  # Deploy to Cloudflare Pages
 ```
 
 For detailed AWS infrastructure setup, TEE configuration, and monitoring, see the AWS Deployment Guide.

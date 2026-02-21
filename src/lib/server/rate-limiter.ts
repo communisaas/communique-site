@@ -16,7 +16,7 @@
  *
  * TRADEOFFS:
  * - State resets on deploy (acceptable: deploy <5/day, circuit breaker protects)
- * - Single-instance only (OK: Fly.io starter, not scaling yet)
+ * - Single-instance only (OK: Cloudflare Pages, not scaling yet)
  * - Memory growth with unique IPs (acceptable: cleanup every 5 minutes)
  *
  * MIGRATION PATH (when you have 10+ instances, 50K+ MAU):

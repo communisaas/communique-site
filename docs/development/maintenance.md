@@ -53,7 +53,7 @@ npm run preview  # Manual verification of build
 
 **Database Layer:**
 
-- Supabase (Postgres) with Prisma ORM
+- pgvector (Postgres) with Prisma ORM
 - Migrations managed via `npm run db:migrate`
 - Type generation via `npm run db:generate`
 

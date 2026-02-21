@@ -183,7 +183,7 @@ npm run typecheck
 ```
 Browser (Client)
 ├─ XChaCha20-Poly1305 encryption
-├─ ZK proof generation (Halo2, 4-6 seconds)
+├─ ZK proof generation (Noir/UltraHonk, 4-6 seconds)
 └─ HTTPS POST to TEE endpoint
 
 ↓ Internet (HTTPS)
@@ -782,8 +782,8 @@ TEE_EXPECTED_CODE_HASH=sha256:1a1b1c1d1e1f...  # From PCR2
 ### 4. Deploy Application Updates
 
 ```bash
-# On Communiqué app server (Fly.io)
-fly deploy --config fly.production.toml
+# On Communiqué app server (Cloudflare Pages)
+# Deploy via Cloudflare Pages CI/CD pipeline
 
 # Verify TEE integration
 curl https://communi.email/api/health/tee

@@ -8,7 +8,7 @@ Daily analytics snapshot materialization at 00:05 UTC.
 
 | Solution | Cost | Reliability | Jitter | Setup Complexity | Notes |
 |----------|------|-------------|--------|------------------|-------|
-| **GitHub Actions** | Free (public repos) / 2000 min/month (private) | Good | 5-30 min typical | Easy | Recommended for Fly.io |
+| **GitHub Actions** | Free (public repos) / 2000 min/month (private) | Good | 5-30 min typical | Easy | Recommended for Cloudflare Pages |
 | **cron-job.org** | Free (unlimited jobs) | Excellent | <1 min | Very Easy | Best precision, external service |
 | **Upstash QStash** | Free (1000 msg/day) | Excellent | <1 min | Medium | Guaranteed delivery, serverless |
 | **Vercel Cron** | Free (2 jobs) | Excellent | <1 min | Easy | Only for Vercel deployments |
@@ -19,7 +19,7 @@ Daily analytics snapshot materialization at 00:05 UTC.
 
 ## Recommended: GitHub Actions + cron-job.org Backup
 
-For Fly.io deployments, use **GitHub Actions as primary** with **cron-job.org as backup** for maximum reliability at zero cost.
+For Cloudflare Pages deployments, use **GitHub Actions as primary** with **cron-job.org as backup** for maximum reliability at zero cost.
 
 ### Why This Combination?
 
@@ -39,11 +39,9 @@ openssl rand -hex 32
 # Example output: a3f8c2d1e4b5a6f7c8d9e0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1
 ```
 
-### Step 2: Add Secret to Fly.io
+### Step 2: Add Secret to Cloudflare Pages
 
-```bash
-fly secrets set CRON_SECRET=<your-generated-secret>
-```
+Add `CRON_SECRET` as an environment variable in the Cloudflare Pages dashboard under Settings > Environment variables.
 
 ### Step 3: Add Secrets to GitHub
 
@@ -52,7 +50,7 @@ Go to your repo Settings > Secrets and variables > Actions, add:
 | Secret Name | Value |
 |-------------|-------|
 | `CRON_SECRET` | The same secret from Step 1 |
-| `APP_URL` | Your Fly.io app URL (e.g., `https://communique.fly.dev`) |
+| `APP_URL` | Your Cloudflare Pages URL (e.g., `https://communique.pages.dev`) |
 
 ### Step 4: Create GitHub Workflow
 
@@ -62,7 +60,7 @@ The workflow file should already exist at `.github/workflows/analytics-snapshot.
 
 1. Create free account at [cron-job.org](https://cron-job.org)
 2. Add new cron job:
-   - **URL**: `https://communique.fly.dev/api/cron/analytics-snapshot`
+   - **URL**: `https://communique.pages.dev/api/cron/analytics-snapshot`
    - **Schedule**: `10 0 * * *` (00:10 UTC - 5 min after GitHub Actions)
    - **Request Method**: GET
    - **Headers**: `Authorization: Bearer <your-cron-secret>`
@@ -147,7 +145,7 @@ If a day is missed, manually trigger the endpoint:
 ```bash
 # Trigger yesterday's snapshot (default behavior)
 curl -H "Authorization: Bearer $CRON_SECRET" \
-  https://communique.fly.dev/api/cron/analytics-snapshot
+  https://communique.pages.dev/api/cron/analytics-snapshot
 
 # Check response
 # Success: {"success":true,"date":"2025-01-11","snapshots_created":5,"epsilon_spent":0.5,"budget_remaining":0.5}
@@ -187,7 +185,7 @@ SELECT cron.schedule(
   '5 0 * * *',
   $$
   SELECT net.http_get(
-    'https://communique.fly.dev/api/cron/analytics-snapshot',
+    'https://communique.pages.dev/api/cron/analytics-snapshot',
     headers := '{"Authorization": "Bearer YOUR_SECRET"}'::jsonb
   )
   $$
@@ -228,28 +226,23 @@ Consider:
 ### Snapshot Not Running
 
 1. Check GitHub Actions run history
-2. Verify `CRON_SECRET` matches between GitHub and Fly.io
+2. Verify `CRON_SECRET` matches between GitHub and Cloudflare Pages
 3. Check `APP_URL` is correct and accessible
 4. Try manual trigger via `workflow_dispatch`
 
 ### 401 Unauthorized
 
 ```bash
-# Verify secret is set correctly
-fly secrets list  # Should show CRON_SECRET
+# Verify secret is set correctly in Cloudflare Pages dashboard
 
 # Test locally
 curl -v -H "Authorization: Bearer $CRON_SECRET" \
-  https://communique.fly.dev/api/cron/analytics-snapshot
+  https://communique.pages.dev/api/cron/analytics-snapshot
 ```
 
 ### 500 Internal Server Error
 
-Check application logs:
-
-```bash
-fly logs --app communique
-```
+Check application logs in the Cloudflare Pages dashboard under Deployments > Functions logs.
 
 Common causes:
 - Database connection issues
@@ -279,8 +272,8 @@ To rotate the cron secret:
 # 1. Generate new secret
 NEW_SECRET=$(openssl rand -hex 32)
 
-# 2. Update Fly.io
-fly secrets set CRON_SECRET=$NEW_SECRET
+# 2. Update Cloudflare Pages
+# Update CRON_SECRET in Cloudflare Pages dashboard > Settings > Environment variables
 
 # 3. Update GitHub secret (manual via UI)
 

@@ -38,7 +38,7 @@ This document defines how Communiqué communicates. We cut through bullshit. We 
 
 **Users don't need to know the mechanism unless they ask.**
 
-❌ "Halo2 zero-knowledge proofs verify you live in the district without revealing your address"
+❌ "UltraHonk zero-knowledge proofs verify you live in the district without revealing your address"
 ✅ Primary: "Verify residency"
 ✅ Popover: "Zero-knowledge proof. Congress sees verification, not your address."
 
@@ -161,7 +161,7 @@ This document defines how Communiqué communicates. We cut through bullshit. We 
 
 **Example 3: Proof generation**
 - Primary: "Generating proof"
-- Popover: "Halo2 ZK proof in AWS Nitro Enclave (2-5s)"
+- Popover: "Noir ZK proof in AWS Nitro Enclave (2-5s)"
 
 ### Error Messages
 
@@ -339,7 +339,7 @@ This document defines how Communiqué communicates. We cut through bullshit. We 
 
 ### 2. Wearing Cypherpunk on Our Sleeve
 
-❌ "Halo2 zero-knowledge proofs verify you live in the district"
+❌ "UltraHonk zero-knowledge proofs verify you live in the district"
 ✅ Primary: "Verify residency"
 ✅ Popover: "Zero-knowledge proof. We verify residency without storing your address. Congress sees your message + address when you send."
 
@@ -446,7 +446,7 @@ Before shipping copy, verify:
 **WRONG (over-explaining in primary UI):**
 ```
 Your address is encrypted in your browser using XChaCha20-Poly1305,
-sent to an AWS Nitro Enclave that generates a Halo2 zero-knowledge proof,
+sent to an AWS Nitro Enclave that generates a Noir zero-knowledge proof,
 then deleted. The proof goes on-chain. Your address never touches our servers.
 ```
 

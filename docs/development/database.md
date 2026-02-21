@@ -113,7 +113,7 @@ npx prisma validate --schema=prisma/experimental.prisma
 ├─────────────────────────────────────────────────────────────┤
 │ - Decrypts address                                           │
 │ - Geocodes to congressional district                        │
-│ - Generates Halo2 zero-knowledge proof                      │
+│ - Generates Noir zero-knowledge proof                       │
 │ - Computes district hash (salted)                           │
 │ - DESTROYS address after use                                │
 │ - Returns only: district hash + ZK proof                    │
@@ -380,7 +380,7 @@ async function verifyInTEE(encryptedAddress: string) {
   // Geocode to congressional district (in-memory only)
   const district = await geocodeToDistrict(address);
 
-  // Generate Halo2 zero-knowledge proof
+  // Generate Noir zero-knowledge proof
   const zkProof = await generateProof({
     claim: "User is verified constituent in a congressional district",
     witness: address,

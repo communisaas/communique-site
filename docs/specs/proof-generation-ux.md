@@ -9,7 +9,7 @@ They care about three things:
 2. **Authenticity** - "I want my representative to know I'm really from their district"
 3. **Impact** - "I want my voice to matter more than bot spam"
 
-They don't need to know it's "zero-knowledge proofs" or "Halo2 SHPLONK verifiers." They need to **feel** that their privacy is protected while their authenticity is guaranteed.
+They don't need to know it's "zero-knowledge proofs" or "UltraHonk verifiers." They need to **feel** that their privacy is protected while their authenticity is guaranteed.
 
 ## The Cypherpunk Philosophy (Subtle, Not Overt)
 
@@ -18,7 +18,7 @@ They don't need to know it's "zero-knowledge proofs" or "Halo2 SHPLONK verifiers
 
 **What's actually happening beneath:**
 - XChaCha20-Poly1305 encryption to TEE public key
-- Halo2 zero-knowledge proof generation in browser
+- Noir zero-knowledge proof generation in browser
 - Poseidon-based Merkle tree witness
 - BN254 elliptic curve cryptography
 - AWS Nitro Enclaves (ARM Graviton, no Intel ME/AMD PSP)
@@ -140,7 +140,7 @@ export async function checkVerification(): Promise<boolean> {
 - Congressional office gets cryptographic proof of district membership
 - Proof is publicly verifiable on-chain
 
-**Trust requirement:** User trusts math (Halo2 SHPLONK soundness = 2^-128)
+**Trust requirement:** User trusts math (UltraHonk soundness = 2^-128)
 
 ### Where WASM Prover Fits in User Journey
 
@@ -249,7 +249,7 @@ export async function generateDistrictProof(
 > Each verified action strengthens your voice in democracy.
 
 **Visual treatment:**
-- Animated progress bar (Halo2 circuit gate progress)
+- Animated progress bar (proof circuit gate progress)
 - Lock icon → unlocking animation
 - District map highlight (subtle visual of their district)
 
@@ -405,7 +405,7 @@ If proof fails (invalid inputs) or times out:
 
 1. **Mathematics > Trust**
    - Phase 1: Trust AWS Nitro Enclaves (hardware TEE)
-   - Phase 2: Trust Halo2 soundness (math proof)
+   - Phase 2: Trust UltraHonk/Noir soundness (math proof)
    - ZK proofs are cryptographic guarantees, not promises
 
 2. **Privacy = Power**
@@ -424,7 +424,7 @@ If proof fails (invalid inputs) or times out:
    - Reputation follows you across platforms
 
 5. **Open Infrastructure**
-   - Halo2 circuit is open-source (audit trail)
+   - Noir circuit is open-source (audit trail)
    - Shadow Atlas is reproducible (Census Bureau data)
    - Verifier contract is on-chain (immutable logic)
 

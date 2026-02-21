@@ -10,7 +10,7 @@
 
 14 implementation cycles completed across Graduated Trust Architecture. The core identity verification, ZK proof generation, encrypted delivery, and congressional submission pipeline are implemented. Government credential (mDL) verification added as Tier 4 with full COSE_Sign1 issuer signature verification. Production deployment on Cloudflare Workers with Hyperdrive connection pooling. Cycle 14 added 36 security-critical tests covering authority level derivation, pseudonymous ID generation, user secret derivation, and witness encryption round-trip. Production hygiene: debug console floods removed, HACKATHON limits tightened, demo pages dev-gated.
 
-**What works end-to-end:** User verifies identity (NFC passport / government ID / mDL) → address encrypted client-side (XChaCha20-Poly1305) → ZK proof generated in browser (Halo2/WASM) → submission created with nullifier uniqueness → encrypted witness decrypted server-side → CWC API delivery to congressional offices → status tracking with polling.
+**What works end-to-end:** User verifies identity (NFC passport / government ID / mDL) → address encrypted client-side (XChaCha20-Poly1305) → ZK proof generated in browser (Noir/WASM) → submission created with nullifier uniqueness → encrypted witness decrypted server-side → CWC API delivery to congressional offices → status tracking with polling.
 
 **What doesn't work yet:** IACA root certificates (trust store structure ready, production certs pending AAMVA VICAL download), COSE_Sign1 issuer certificate chain validation (direct match implemented, full chain walking deferred).
 
@@ -23,7 +23,7 @@
 | 0 | Anonymous Guest | **IMPLEMENTED** | Email path via `mailto:`, template browsing, no auth |
 | 1 | Passkey-bound | **IMPLEMENTED** | WebAuthn registration/authentication, did:key derivation, PasskeyRegistration/Login/Upgrade components |
 | 2 | Address-attested | **IMPLEMENTED** | AddressVerificationFlow, district credential (W3C VC 2.0), VerificationGate with tier-aware routing |
-| 3 | ZK-verified | **IMPLEMENTED** | Browser Halo2 prover, Shadow Atlas registration, ProofGenerator, encrypted witness, CWC delivery |
+| 3 | ZK-verified | **IMPLEMENTED** | Browser Noir prover, Shadow Atlas registration, ProofGenerator, encrypted witness, CWC delivery |
 | 4 | Government credential | **IMPLEMENTED** | W3C Digital Credentials API, mDL selective disclosure, privacy boundary function, ephemeral ECDH keys |
 
 ---
@@ -40,7 +40,7 @@
 - **Credential policy** — Action-based TTL (constituent_message: 30 days)
 
 ### Zero-Knowledge Proofs (Cycles 4-5)
-- **Browser WASM prover** — Halo2 circuits (K=14, 4096-leaf Merkle trees), 600ms-10s proving time
+- **Browser WASM prover** — Noir circuits (UltraHonk backend, 4096-leaf Merkle trees), 600ms-10s proving time
 - **Shadow Atlas registration** — Identity commitment, district Merkle trees, two-tree architecture
 - **ProofGenerator component** — Credential → proof inputs → generate → encrypt witness → submit
 - **Nullifier enforcement** — Unique constraint in DB, checked in transaction
@@ -118,7 +118,7 @@
 | 1 | Cleanup + Foundation | 3 | Deprecated code removed, schema consolidated, trust_tier field established |
 | 2 | Passkey Identity (Tier 1) | 3 | WebAuthn registration/auth, did:key derivation, client UI components |
 | 3 | Address Attestation (Tier 2) | 3 | AddressVerificationFlow, district credential, TrustSignal, VerificationGate |
-| 4 | ZK Proofs + Encryption (Tier 3) | 3 | Real Halo2 prover integration, XChaCha20-Poly1305, proof-verified delivery |
+| 4 | ZK Proofs + Encryption (Tier 3) | 3 | Real Noir prover integration, XChaCha20-Poly1305, proof-verified delivery |
 | 5 | Delivery Pipeline | 4 | Address flow fix, server-side decryption, CWC delivery worker, Opus review |
 | 6 | UX Fixes | 4 | Status tracking, modal dead ends, dead code cleanup |
 | 7 | Correctness | 4 | Nullifier fix (BR5-010), trust tier propagation, Svelte 5 event migration |

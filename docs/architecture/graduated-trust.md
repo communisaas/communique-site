@@ -741,7 +741,7 @@ Each tier is an independent workstream. They should be implemented in order (Tie
 
 ### Tier 3 agent context
 
-**Background needed:** Zero-knowledge proofs (Halo2/UltraHonk circuits), Poseidon2 hash function, Merkle tree proofs, XChaCha20-Poly1305 witness encryption, AWS Nitro Enclaves, CWC API specification, Scroll zkEVM.
+**Background needed:** Zero-knowledge proofs (UltraHonk/Noir circuits), Poseidon2 hash function, Merkle tree proofs, XChaCha20-Poly1305 witness encryption, AWS Nitro Enclaves, CWC API specification, Scroll zkEVM.
 
 **Key constraint:** The voter-protocol repo contains the actual prover. The integration is a bridge between repos — the Communique browser client must load the WASM prover, construct witnesses from Shadow Atlas credentials, and submit proofs. Do not reimplement the prover.
 

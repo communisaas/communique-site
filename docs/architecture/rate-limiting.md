@@ -7,7 +7,7 @@ Multi-instance rate limiting design for Communique, optimized for single-maintai
 ## TL;DR
 
 - **Current**: In-memory rate limiting (works for single instance)
-- **Upgrade path**: Postgres-based (works across Fly.io instances)
+- **Upgrade path**: Postgres-based (works across Cloudflare Pages instances)
 - **No Redis**: Operational overhead not worth it for one person
 - **Privacy note**: For differential privacy, exact rate limiting is NOT required
 
@@ -50,7 +50,7 @@ const rateLimits = new Map<string, { count: number; windowStart: number }>();
 - Per-instance only (no cross-instance coordination)
 - Memory growth with unique IPs (mitigated by cleanup)
 
-**When to use**: MVP, single-instance Fly.io deployment
+**When to use**: MVP, single-instance Cloudflare Pages deployment
 
 ---
 
@@ -127,7 +127,7 @@ await cleanupOldRateLimits(2);
 - Connection pool usage
 - Requires cleanup cron job
 
-**When to use**: Multi-instance Fly.io deployment, or when exact cross-instance coordination matters
+**When to use**: Multi-instance Cloudflare Pages deployment, or when exact cross-instance coordination matters
 
 ---
 
@@ -194,7 +194,7 @@ For privacy purposes, approximate rate limiting is actually fine. Document that 
 
 ### MVP (Now)
 1. Use in-memory rate limiting
-2. Single Fly.io instance
+2. Single Cloudflare Pages instance
 3. Circuit breaker ($5/day) as ultimate protection
 
 ### Growth (When Needed)

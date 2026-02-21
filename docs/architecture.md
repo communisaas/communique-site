@@ -536,7 +536,7 @@ DIDIT_API_KEY=<didit-api-key>
 
 **Deployment Steps:**
 1. Set environment variables in production
-2. Deploy updated Communique to Fly.io (or Vercel)
+2. Deploy updated Communique to Cloudflare Pages
 3. Verify `/api/expertise/verify` calls voter-protocol successfully
 4. Verify `/api/tee/public-key` returns valid key
 5. Test identity verification flow (self.xyz + Didit.me)

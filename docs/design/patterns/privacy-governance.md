@@ -12,7 +12,7 @@
 
 ### Federal Level (Fully Cryptographic - CURRENT)
 ```
-✅ Zero-knowledge district proof (Halo2 browser-native, address never leaves device)
+✅ Zero-knowledge district proof (Noir browser-native, address never leaves device)
 ✅ Address encrypted in browser (XChaCha20-Poly1305 to TEE public key)
 ✅ AWS Nitro Enclave verifies address, generates proof (2-5s TEE-based)
 ✅ CWC API delivery (SOAP XML, whitelisted static IP)
@@ -616,7 +616,7 @@ Response: { acknowledged: true }
 ### Phase 1 Launch (3 months):
 
 **Federal Delivery:**
-- ✅ Zero-knowledge proofs (Halo2 browser-native, address never leaves device)
+- ✅ Zero-knowledge proofs (Noir browser-native, address never leaves device)
 - ✅ AWS Nitro Enclave verification (address seen only in TEE during proving, then destroyed)
 - ✅ CWC API delivery (verified on-chain, congressional offices receive address + message)
 - ✅ Platform operators never see address or message content

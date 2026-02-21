@@ -236,10 +236,10 @@ Code ownership map, who maintains what, escalation paths.
 ## Emergency Procedures
 
 **Production is down**:
-1. Check Fly.io logs: `fly logs`
+1. Check Cloudflare Pages logs via Cloudflare dashboard
 2. Check database connection
 3. Check environment variables
-4. Rollback deploy if needed: `fly releases list` → `fly rollback`
+4. Rollback deploy if needed via Cloudflare Pages dashboard
 
 **Database migration failed**:
 1. Check migration status: `npx prisma migrate status`

@@ -137,7 +137,7 @@ export async function verifyEmailDelivery(
   }
 
   // 5. Generate zero-knowledge proof
-  const proof = await generateHalo2Proof({
+  const proof = await generateProof({
     publicInputs: {
       congressionalOffice: hash(congressionalOffice),
       timestamp: message.internalDate,
@@ -231,7 +231,7 @@ const proof = await generateProofInBrowser({
 - WASM-based proving (no TEE needed)
 
 **Blockers**:
-- Browser WASM Halo2 proving is slow (30-60s vs 2-5s in TEE)
+- Browser WASM Barretenberg proving is slow (30-60s vs 2-5s in TEE)
 - Gmail API CORS restrictions
 - UX complexity (users must understand browser proving)
 
@@ -251,7 +251,7 @@ const proof = await generateProofInBrowser({
 - [ ] TEE email verification module (`src/lib/core/tee/email-verifier.ts`)
 - [ ] AWS Nitro Enclave deployment configuration
 - [ ] Gmail API integration in TEE
-- [ ] Halo2 proof generation for email delivery
+- [ ] Noir proof generation for email delivery
 - [ ] Verification API endpoint (`/api/verify-delivery`)
 - [ ] Frontend verification UI component
 - [ ] Integration tests (mocked TEE)
@@ -266,7 +266,7 @@ const proof = await generateProofInBrowser({
 - [ ] Documentation for congressional IT teams
 
 ### Phase 4: Browser-Native Verification 🔮 FUTURE (12-18 months)
-- [ ] Browser WASM Halo2 optimization
+- [ ] Browser WASM Barretenberg optimization
 - [ ] WebAuthn integration
 - [ ] Gmail API CORS workaround
 - [ ] Browser proving UI/UX design
@@ -361,7 +361,7 @@ const proof = await generateProofInBrowser({
 - **Mitigation**: Hypervisor isolation (ARM Graviton, no Intel ME backdoors)
 
 **Threat 3**: Forged verification proofs
-- **Mitigation**: Halo2 zero-knowledge proofs are cryptographically secure
+- **Mitigation**: UltraHonk/Noir zero-knowledge proofs are cryptographically secure
 - **Mitigation**: Proof verification on-chain (public verifiability)
 - **Mitigation**: TEE attestation prevents proof forgery
 
@@ -392,7 +392,7 @@ const proof = await generateProofInBrowser({
 1. TEE email verification module
 2. AWS Nitro Enclave deployment
 3. Gmail API integration
-4. Halo2 proof generation
+4. Noir proof generation
 5. Frontend UI + API endpoint
 6. Integration tests + security audit
 
@@ -402,6 +402,6 @@ const proof = await generateProofInBrowser({
 3. Pilot program
 
 **Phase 4 research** (12-18 months):
-1. Browser WASM Halo2 optimization
+1. Browser WASM Barretenberg optimization
 2. WebAuthn integration
 3. Performance benchmarking

@@ -11,7 +11,7 @@
 
 **CHOSEN: Browser-Native WebAssembly Proving**
 
-Zero-knowledge proofs will be generated entirely client-side in the user's browser using WebAssembly-compiled Halo2 circuits. User addresses will never leave the browser in any form—encrypted or unencrypted.
+Zero-knowledge proofs will be generated entirely client-side in the user's browser using WebAssembly-compiled Noir circuits (UltraHonk backend via Barretenberg). User addresses will never leave the browser in any form—encrypted or unencrypted.
 
 ---
 
@@ -31,7 +31,7 @@ VOTER Protocol requires zero-knowledge proofs of congressional district membersh
 1. User enters residential address in browser
 2. Browser loads Shadow Atlas district tree from IPFS (cached in IndexedDB after first use)
 3. Web Workers generate Merkle witness (4 parallel workers for Poseidon hashing)
-4. Halo2 circuit compiled to WASM generates zero-knowledge proof (600ms-10s device-dependent)
+4. Noir circuit compiled to WASM generates zero-knowledge proof (600ms-10s device-dependent)
 5. Proof sent to blockchain for on-chain verification
 6. **Address never leaves browser, never sent anywhere**
 
@@ -72,7 +72,7 @@ Users don't need to trust:
 - ❌ Attestation verification (no remote attestation needed)
 
 **Only trust requirements**:
-- ✅ Open-source Halo2 implementation (auditable)
+- ✅ Open-source Noir implementation (auditable)
 - ✅ Browser cryptographic primitives (WebAssembly, Web Crypto API)
 - ✅ Blockchain verification contract (open-source, audited)
 
@@ -219,10 +219,10 @@ Encrypted data today may become decryptable tomorrow:
 
 ### Phase 1 Complete (January 2026)
 
-**Halo2 Circuit Implementation (voter-protocol):**
-- Halo2 two-tier Merkle circuit (Rust)
+**Noir Circuit Implementation (voter-protocol):**
+- Noir two-tier Merkle circuit
 - Shadow Atlas generation script (535 district trees + 1 global tree)
-- WASM compilation pipeline (wasm-pack)
+- WASM compilation pipeline (Barretenberg)
 - NPM package: `@voter-protocol/crypto`
 
 **Browser WASM Integration (communiqué):**
@@ -259,7 +259,7 @@ Encrypted data today may become decryptable tomorrow:
 - [ ] Error recovery for failed Shadow Atlas downloads
 
 **Security**:
-- [ ] Halo2 circuits audited (voter-protocol responsibility)
+- [ ] Noir circuits audited (voter-protocol responsibility)
 - [ ] WASM compilation verified bit-for-bit reproducible
 - [ ] No memory leaks during proving (DevTools profiling)
 - [ ] Proof verification gas costs verified on testnet
@@ -286,9 +286,9 @@ Encrypted data today may become decryptable tomorrow:
 ## References
 
 **Technical Specifications**:
-- [voter-protocol/specs/ZK-PROOF-SPEC-REVISED.md](https://github.com/communisaas/voter-protocol/specs/ZK-PROOF-SPEC-REVISED.md) - Halo2 circuit design
+- [voter-protocol/specs/ZK-PROOF-SPEC-REVISED.md](https://github.com/communisaas/voter-protocol/specs/ZK-PROOF-SPEC-REVISED.md) - Noir circuit design
 - [voter-protocol/ARCHITECTURE.md](https://github.com/communisaas/voter-protocol/ARCHITECTURE.md) - Complete cryptographic architecture
-- [Halo2 Book](https://zcash.github.io/halo2/) - Zero-knowledge proof system
+- [Noir Language](https://noir-lang.org/) - Zero-knowledge DSL (UltraHonk backend)
 
 **Privacy Frameworks**:
 - GDPR Article 25: Privacy by design and by default

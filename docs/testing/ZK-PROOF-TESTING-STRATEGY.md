@@ -143,7 +143,7 @@ npx playwright test tests/e2e/zk-proof-generation.spec.ts --headed
 2. Click "Send Message"
 3. Complete identity verification (use mock providers)
 4. ProofGenerationModal appears
-5. Stage 1: "Initializing Halo2 prover..." (5-10s first time)
+5. Stage 1: "Initializing Noir prover..." (5-10s first time)
 6. Stage 2: "Generating zero-knowledge proof..." (1-2s desktop)
 7. Educational messages cycle (3s intervals)
 8. Stage 3: "Proof generated successfully!" (shows time)

@@ -347,7 +347,7 @@ function handleSendMessage(template: Template) {
 - **Not spam**: Each message proves district membership (cryptographically unforgeable)
 
 ### Privacy architecture:
-- Constituents' addresses verified via zero-knowledge proofs (Halo2 ZK circuits)
+- Constituents' addresses verified via zero-knowledge proofs (UltraHonk/Noir ZK circuits)
 - You see proof of district membership, NOT plaintext addresses
 - Can't be forged, can't be faked, cryptographically secure
 

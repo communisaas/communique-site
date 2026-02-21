@@ -15,7 +15,7 @@
 
 **Implementation**: Week 13 Complete (October 22, 2025)
 - Files: `tee-workload/` - Universal TEE container
-- Cloud providers: GCP Confidential Space (primary), AWS Nitro (future), Azure (future)
+- Cloud provider: AWS Nitro Enclaves (current target, mock/Phase 2)
 - Cost: ~$350-400/month
 
 **Flow**:
@@ -28,7 +28,7 @@
 
 ## What TEE IS NOT Used For: ZK Proof Generation ❌
 
-**Zero-knowledge proofs are generated entirely in browser** using WebAssembly-compiled Halo2 circuits.
+**Zero-knowledge proofs are generated entirely in browser** using WebAssembly-compiled Noir circuits (UltraHonk backend via Barretenberg).
 
 **Why Browser WASM, Not TEE**:
 - ✅ **Absolute Privacy**: Address never leaves browser (not even encrypted)
@@ -39,7 +39,7 @@
 **Implementation**: Week 9-10 (Browser WASM Integration)
 - Shadow Atlas loaded from IPFS (progressive loading, IndexedDB caching)
 - Web Workers for parallel Poseidon hashing
-- Halo2 proof generation in browser (600ms-10s device-dependent)
+- Noir proof generation in browser (600ms-10s device-dependent)
 - Address never sent to any server
 
 **See**: `docs/architecture/ARCHITECTURE-DECISION-RECORD.md` for detailed rationale.
