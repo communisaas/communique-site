@@ -624,7 +624,7 @@ DIDIT_API_KEY=<didit-api-key>
 ## The Reality-Based Narrative
 
 **What we're solving (Phase 1):**
-- ✅ Systematic pathway problem (McDonald 2018 documented this)
+- ✅ Systematic pathway problem ([McDonald et al., 2020](https://doi.org/10.1080/19331681.2020.1740907) documented this)
 - ✅ Signal-from-noise filtering (reputation + verification)
 - ✅ Tool inadequacy (replace "painfully slow" databases with fast dashboard)
 - ✅ Employment protection (subset who can't participate due to career risk)
@@ -637,7 +637,7 @@ DIDIT_API_KEY=<didit-api-key>
 **The Honest Claim:**
 > Congressional offices can't hear you. Not because they don't care, but because they can't verify you're real.
 >
-> 66% of emails dismissed as spam (McDonald 2018). Staffers desperate for quality signals.
+> Staff report most digital contact has minimal policy value ([McDonald et al., 2020](https://doi.org/10.1080/19331681.2020.1740907)). Staffers desperate for quality signals.
 >
 > We're building cryptographic verification + congressional CMS.
 >

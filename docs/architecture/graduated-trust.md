@@ -30,6 +30,72 @@ Each tier is strictly additive. A Tier 3 user has everything Tier 2 has, plus a 
 
 ---
 
+## The Template Link: Primary Trust Graduation Surface
+
+Most users encounter communique through a shared template link (`/s/[slug]`). This is where trust graduation happens — not in a settings page, not in a profile flow, but in the moment someone wants to take civic action. The template link is the ramp.
+
+### Design principle: action first, trust graduation after
+
+Never gate the primary action (sending a message) behind trust requirements. Let the user send at whatever tier they're at. Then show them the delta — what their message would gain with the next tier.
+
+A Tier 0 guest clicking "Send to Decision-Makers" opens their mail app. That's correct. The mail app IS the Tier 0 action. The graduated trust ramp is what happens around it: the trust signal below the send button, the celebration screen's upgrade CTA, the social proof showing how many verified constituents have already sent.
+
+### What happens at each tier when someone hits a template link
+
+```
+Tier 0 → Landing page → "Send" → mailto: opens mail app → "Did you send it?" → celebration + "Create account" CTA
+Tier 1 → Landing page → "Send" → (congressional? address gate) → mailto: → celebration + "Verify address" CTA
+Tier 2 → Landing page → "Send" → email_attested (district attestation footer) → celebration + "Verify identity" CTA
+Tier 3 → Landing page → "Send as Verified Constituent" → ZK proof generation → CWC submission → delivery tracking
+Tier 4 → Same as Tier 3, with government-backed authority level
+```
+
+### The delta that matters
+
+Congressional offices process thousands of messages. The signal hierarchy:
+
+| Tier | Delivery | What the office sees | Typical handling |
+|------|----------|---------------------|-----------------|
+| 0 | Raw email | Unknown sender, no verification | Bulk-counted or ignored |
+| 1 | Same email | Same — OAuth doesn't add signal | Same as Tier 0 |
+| 2 | Email + attestation | "Verified constituent of [District]" with verification link | Read by staff, logged as constituent contact |
+| 3+ | CWC official channel | Cryptographic proof of district, delivered through official intake | Highest priority, enters casework system |
+
+The jump from Tier 0 to Tier 2 is the highest-ROI graduation. Address entry takes 10 seconds. The user goes from "unknown sender" to "verified constituent." Tier 3 adds cryptographic guarantees and anonymous delivery, but the recipient-facing signal improvement is smaller than 0→2.
+
+### Where trust graduation appears in the template flow
+
+**Before send:** The `ActionBar` trust signal shows current tier and what the next tier unlocks. This is not a nag — it's an honest description of how the message will be received.
+
+**During send (Tier 0-2):** The `mailto:` flow is identical across tiers. The difference is the email content — Tier 2 includes a verifiable district attestation link in the footer.
+
+**During send (Tier 3+):** The `ProofGenerator` replaces the mailto flow. The user sees proof generation progress, then delivery tracking. This is a qualitatively different experience — the interface shifts from "open your mail app" to "we're delivering this through official channels."
+
+**After send:** The celebration screen is the primary trust graduation surface. The user just took an action they care about. They're emotionally invested. This is when "Your message was sent as an unverified email. Verify your address to send as a confirmed constituent (10 seconds)" actually converts.
+
+### What this means for implementation
+
+1. **Tier 0 is correct as-is.** Opening the mail app is the right action. Don't add friction.
+2. **The trust signal in ActionBar needs to become dynamic** (currently static disclaimer text). See [UI Trust Signal Integration](#ui-trust-signal-integration).
+3. **The celebration screen is under-leveraged.** It currently shows share options. It should also show the tier delta: what the user gained, what they'd gain at the next tier.
+4. **Congressional templates at Tier 0-1 should still work via mailto.** The address gate for congressional templates (currently blocks Tier 1 users until they provide an address) is correct — it's the Tier 1→2 graduation happening inline. But it should be framed as "strengthen your message" not "required to send."
+5. **The `analyzeEmailFlow()` function in emailService.ts is the routing brain.** It determines which tier's delivery path to use. This is where graduated trust becomes operational code.
+
+### Route and component mapping
+
+| Flow stage | Component | Trust-relevant behavior |
+|-----------|-----------|------------------------|
+| Landing | `/s/[slug]/+page.svelte` | Social proof metrics, trust-tier-aware CTA text |
+| Action | `ActionBar.svelte` | Dynamic trust signal, delivery method preview |
+| Modal | `TemplateModal.svelte` | Tier routing via `analyzeEmailFlow()` |
+| Address gate | `AddressCollectionForm.svelte` | Tier 1→2 inline graduation, `zk_eligible` warning |
+| Email send | `emailService.ts:launchEmail()` | Mailto generation, attestation footer for Tier 2 |
+| ZK send | `ProofGenerator.svelte` | Tier 3+ proof generation, `onreverify` for expired credentials |
+| Delivery | `SubmissionStatus.svelte` | Tier 3+ CWC delivery tracking |
+| Celebration | `TemplateModal.svelte` (celebration state) | Upgrade CTA to next tier |
+
+---
+
 ## Tier 0: Anonymous Guest
 
 ### Definition
