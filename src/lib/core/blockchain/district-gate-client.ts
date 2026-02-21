@@ -23,7 +23,7 @@
  */
 
 import { env } from '$env/dynamic/private';
-import { PUBLIC_SCROLL_RPC_URL } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import {
 	Contract,
 	JsonRpcProvider,
@@ -303,7 +303,7 @@ let _nonceManager: NonceManager | null = null;
 
 export function getConfig(): BlockchainConfig {
 	return {
-		rpcUrl: env.SCROLL_RPC_URL || PUBLIC_SCROLL_RPC_URL || 'https://sepolia-rpc.scroll.io',
+		rpcUrl: env.SCROLL_RPC_URL || publicEnv.PUBLIC_SCROLL_RPC_URL || 'https://sepolia-rpc.scroll.io',
 		contractAddress: env.DISTRICT_GATE_ADDRESS || '',
 		privateKey: env.SCROLL_PRIVATE_KEY
 	};
