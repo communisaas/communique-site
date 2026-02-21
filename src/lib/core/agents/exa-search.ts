@@ -117,21 +117,26 @@ export async function searchWeb(
 // readPage — Firecrawl headless browser scrape
 // ============================================================================
 
+/** Safety cap: discard content beyond this to prevent pathological pages from consuming memory. */
+const PAGE_CONTENT_HARD_CAP = 200_000;
+
 /**
  * Fetch full rendered page content via Firecrawl headless browser.
  * Renders JavaScript, captures mailto: links, dynamic contact widgets,
  * and everything the browser actually sees.
  * Rate-limited to 10 RPS with exponential backoff.
  *
+ * Returns the full page text (up to 200K safety cap). Downstream consumers
+ * use prunePageContent() to trim for Gemini's synthesis prompt while the
+ * full text stays available for email grounding verification.
+ *
  * @param url - URL to fetch content from
- * @param options - Optional: maxCharacters (default 30000)
  * @returns Page content or null if fetch failed
  */
 export async function readPage(
 	url: string,
-	options?: { maxCharacters?: number }
+	_options?: { maxCharacters?: number }
 ): Promise<ExaPageContent | null> {
-	const maxCharacters = options?.maxCharacters ?? 30000;
 	const firecrawl = getFirecrawlClient();
 	const rateLimiter = getFirecrawlRateLimiter();
 
@@ -157,8 +162,8 @@ export async function readPage(
 		return null;
 	}
 
-	// Start with the rendered markdown
-	let text = scrapeData.markdown;
+	// Start with the rendered markdown (apply safety cap to prevent pathological pages)
+	let text = scrapeData.markdown.slice(0, PAGE_CONTENT_HARD_CAP);
 
 	// Extract emails from mailto: links — these are structurally extracted
 	// and may include addresses that appear only as link targets, not in
@@ -168,16 +173,10 @@ export async function readPage(
 		.filter((l: string) => l.startsWith('mailto:'))
 		.map((l: string) => l.replace('mailto:', '').split('?')[0]);
 
-	// Append mailto emails and then truncate. Reserve space for the email block
-	// so structural contact data (often the most valuable content) isn't cut off
-	// when the page text approaches maxCharacters.
 	if (mailtoEmails.length > 0) {
 		const emailBlock = '\n\n--- CONTACT EMAILS (from page links) ---\n' + mailtoEmails.join('\n');
-		const reservedForEmails = emailBlock.length + 100; // padding
-		text = text.slice(0, maxCharacters - reservedForEmails) + emailBlock;
+		text += emailBlock;
 		console.debug(`[page-fetch] readPage: ${mailtoEmails.length} mailto emails appended for ${url}`);
-	} else {
-		text = text.slice(0, maxCharacters);
 	}
 
 	const content: ExaPageContent = {

@@ -841,10 +841,9 @@ async function huntContactsFanOutSynthesize(
 
 	console.debug(`[gemini-provider] Stage 3: ${selectedUrls.length} parallel page reads`);
 
-	// Fetch more content than we'll send to Gemini — pruning strips noise,
-	// and the full text stays in fetchedPages for email grounding.
+	// Full page content for grounding; prunePageContent() trims for Gemini.
 	const pageReadResults = await Promise.allSettled(
-		selectedUrls.map(url => readPage(url, { maxCharacters: 30000 }))
+		selectedUrls.map(url => readPage(url))
 	);
 
 	// Build identity name list for contact-priority pruning

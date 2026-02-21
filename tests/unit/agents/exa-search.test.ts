@@ -194,7 +194,7 @@ describe('readPage', () => {
 		expect(result!.highlights).toEqual(['opa@ftc.gov']);
 	});
 
-	it('truncates content to maxCharacters', async () => {
+	it('ignores legacy maxCharacters option (returns full text)', async () => {
 		const longContent = 'A'.repeat(20000);
 		mockScrapeUrl.mockResolvedValue({
 			success: true,
@@ -205,11 +205,12 @@ describe('readPage', () => {
 
 		const result = await readPage('https://example.com', { maxCharacters: 5000 });
 
-		expect(result!.text.length).toBe(5000);
+		// maxCharacters is no longer honored — full text returned for grounding
+		expect(result!.text.length).toBe(20000);
 	});
 
-	it('defaults to 30000 maxCharacters', async () => {
-		const longContent = 'B'.repeat(40000);
+	it('returns full page content (no artificial truncation)', async () => {
+		const longContent = 'B'.repeat(50000);
 		mockScrapeUrl.mockResolvedValue({
 			success: true,
 			markdown: longContent,
@@ -219,7 +220,21 @@ describe('readPage', () => {
 
 		const result = await readPage('https://example.com');
 
-		expect(result!.text.length).toBe(30000);
+		expect(result!.text.length).toBe(50000);
+	});
+
+	it('applies 200K safety cap on pathological pages', async () => {
+		const hugeContent = 'X'.repeat(300000);
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: hugeContent,
+			links: [],
+			metadata: { title: 'Huge Page', statusCode: 200 }
+		});
+
+		const result = await readPage('https://example.com');
+
+		expect(result!.text.length).toBe(200000);
 	});
 
 	it('returns null when scrape has no markdown content', async () => {

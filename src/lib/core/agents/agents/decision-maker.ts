@@ -347,10 +347,10 @@ async function handleReadPageToolCall(
 	context.pageReadCount++;
 	const action = emitter.startAction('analyze', reason || `Reading: ${url}`);
 
-	// Clamp maxCharacters to [1000, 15000]
+	// Legacy path: clamp maxCharacters (readPage now returns full text regardless)
 	const maxChars = requestedMax
 		? Math.min(Math.max(requestedMax, 1000), 15000)
-		: undefined; // let readPage use its default (12000)
+		: undefined;
 
 	try {
 		const page = await readPage(url, maxChars ? { maxCharacters: maxChars } : undefined);
