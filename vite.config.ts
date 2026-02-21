@@ -9,6 +9,9 @@ const bufferShimPath = fileURLToPath(
 	new URL('./src/lib/core/proof/buffer-shim.ts', import.meta.url)
 );
 const pinoShimPath = fileURLToPath(new URL('./src/lib/core/proof/pino-shim.ts', import.meta.url));
+const voterProtocolStubPath = fileURLToPath(
+	new URL('./src/lib/core/crypto/voter-protocol-stub.ts', import.meta.url)
+);
 
 export default defineConfig({
 	plugins: [
@@ -31,11 +34,9 @@ export default defineConfig({
 			external: [
 				// 'redis' is optionally imported in rate-limiter.ts (only when REDIS_URL is set).
 				// Not available on Cloudflare Workers (no TCP).
-				'redis',
-				// voter-protocol/noir-prover resolved as local path (../voter-protocol/packages/noir-prover)
-				// in package-lock.json. Not available on CF Pages. ZK proving runs client-side
-				// in Web Workers — doesn't need to be in the SSR/Worker bundle.
-				'@voter-protocol/noir-prover'
+				'redis'
+				// Note: @voter-protocol/noir-prover is resolved via resolve.alias to a stub.
+				// SSR only needs BN254_MODULUS; client workers use worker.rollupOptions config.
 			]
 		}
 	},
@@ -47,7 +48,10 @@ export default defineConfig({
 			// This ensures consistent resolution in both dev and build modes
 			buffer: bufferShimPath,
 			// Shim pino for @aztec/bb.js - browser.js uses CJS but bb.js expects named export
-			pino: pinoShimPath
+			pino: pinoShimPath,
+			// Stub @voter-protocol/noir-prover — SSR only needs BN254_MODULUS (a constant).
+			// Client-side workers use their own bundling config (worker.rollupOptions).
+			'@voter-protocol/noir-prover': voterProtocolStubPath
 		}
 	},
 
@@ -61,8 +65,7 @@ export default defineConfig({
 			// CRITICAL: Exclude bb.js so its internal worker URL resolution works correctly
 			// When pre-bundled, new URL('./main.worker.js', import.meta.url) breaks
 			// because import.meta.url points to .vite/deps/ instead of node_modules/
-			'@aztec/bb.js',
-			'@voter-protocol/noir-prover'
+			'@aztec/bb.js'
 		]
 		// Note: Buffer alias is applied via resolve.alias which works even without pre-bundling
 	},
