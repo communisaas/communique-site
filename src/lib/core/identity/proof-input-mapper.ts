@@ -1,20 +1,26 @@
 /**
- * SessionCredential → TwoTreeProofInputs Mapper (CR-009)
+ * SessionCredential → ThreeTreeProofInputs Mapper (CR-009)
  *
  * Bridges the stored credential format (SessionCredential in IndexedDB) to
- * the prover input format (TwoTreeProofInputs for circuit execution).
+ * the prover input format (ThreeTreeProofInputs for circuit execution).
  *
  * FIELD MAPPING:
- *   SessionCredential.merkleRoot    → TwoTreeProofInputs.userRoot
- *   SessionCredential.merklePath    → TwoTreeProofInputs.userPath
- *   SessionCredential.leafIndex     → TwoTreeProofInputs.userIndex
- *   SessionCredential.cellMapRoot   → TwoTreeProofInputs.cellMapRoot   (direct)
- *   SessionCredential.cellMapPath   → TwoTreeProofInputs.cellMapPath   (direct)
- *   SessionCredential.cellMapPathBits → TwoTreeProofInputs.cellMapPathBits (direct)
- *   SessionCredential.districts     → TwoTreeProofInputs.districts     (direct)
- *   SessionCredential.userSecret    → TwoTreeProofInputs.userSecret    (direct)
- *   SessionCredential.cellId        → TwoTreeProofInputs.cellId        (direct)
- *   SessionCredential.registrationSalt → TwoTreeProofInputs.registrationSalt (direct)
+ *   SessionCredential.merkleRoot       → ThreeTreeProofInputs.userRoot
+ *   SessionCredential.merklePath       → ThreeTreeProofInputs.userPath
+ *   SessionCredential.leafIndex        → ThreeTreeProofInputs.userIndex
+ *   SessionCredential.cellMapRoot      → ThreeTreeProofInputs.cellMapRoot      (direct)
+ *   SessionCredential.cellMapPath      → ThreeTreeProofInputs.cellMapPath      (direct)
+ *   SessionCredential.cellMapPathBits  → ThreeTreeProofInputs.cellMapPathBits  (direct)
+ *   SessionCredential.districts        → ThreeTreeProofInputs.districts        (direct)
+ *   SessionCredential.userSecret       → ThreeTreeProofInputs.userSecret       (direct)
+ *   SessionCredential.cellId           → ThreeTreeProofInputs.cellId           (direct)
+ *   SessionCredential.registrationSalt → ThreeTreeProofInputs.registrationSalt (direct)
+ *   SessionCredential.engagementRoot   → ThreeTreeProofInputs.engagementRoot   (direct)
+ *   SessionCredential.engagementPath   → ThreeTreeProofInputs.engagementPath   (direct)
+ *   SessionCredential.engagementIndex  → ThreeTreeProofInputs.engagementIndex  (direct)
+ *   SessionCredential.engagementTier   → ThreeTreeProofInputs.engagementTier   (direct)
+ *   SessionCredential.actionCount      → ThreeTreeProofInputs.actionCount      (direct)
+ *   SessionCredential.diversityScore   → ThreeTreeProofInputs.diversityScore   (direct)
  *
  * COMPUTED AT PROOF TIME:
  *   nullifier     = poseidon2Hash2(identityCommitment, actionDomain)  [NUL-001 fix]
@@ -24,7 +30,7 @@
  *                    ?? conservative fallback (3 if verified, 1 if not)
  *
  * See also: authority-level.ts for canonical server-side derivation,
- *           PUBLIC-INPUT-FIELD-REFERENCE.md for 29-input circuit ordering.
+ *           PUBLIC-INPUT-FIELD-REFERENCE.md for 31-input circuit ordering.
  *
  * PRIVACY INVARIANT:
  *   This mapper operates entirely in the browser. No private inputs
@@ -32,7 +38,7 @@
  */
 
 import type { SessionCredential } from './session-credentials';
-import type { TwoTreeProofInputs } from '$lib/core/zkp/prover-client';
+import type { ThreeTreeProofInputs, EngagementTier } from '$lib/core/zkp/prover-client';
 
 /**
  * Context required at proof time (not stored in credential)
@@ -51,61 +57,44 @@ export interface ProofContext {
 	 *   1. credential.authorityLevel (set during registration by server via deriveAuthorityLevel)
 	 *   2. context.authorityLevel (caller override)
 	 *   3. Conservative fallback: identity_commitment present → 3, otherwise → 1
-	 *
-	 * IMPORTANT: The canonical derivation lives in authority-level.ts and considers
-	 * document_type + trust_score. The client-side fallback is intentionally conservative
-	 * (level 3 not 4) because SessionCredential lacks document_type.
 	 */
 	authorityLevel?: 1 | 2 | 3 | 4 | 5;
 }
 
 /**
  * Conservative fallback authority level when credential.authorityLevel is not stored.
- *
- * This is intentionally conservative: we default verified users to level 3 (not 4)
- * because we don't know document_type client-side. The canonical derivation in
- * authority-level.ts requires document_type === 'passport' for level 4.
- *
- * Callers who need level 4 MUST provide context.authorityLevel explicitly,
- * or ensure credential.authorityLevel is set during registration.
  */
 function fallbackAuthorityLevel(credential: SessionCredential): 1 | 2 | 3 | 4 | 5 {
-	// If identity was verified (identity commitment present and non-zero), conservative level 3
 	const ic = credential.identityCommitment;
 	if (ic && ic.length > 4 && BigInt(ic) !== 0n) {
 		return 3;
 	}
-	// Unverified / OAuth-only
 	return 1;
 }
 
 /**
- * Map a stored SessionCredential + proof-time context to TwoTreeProofInputs.
+ * Map a stored SessionCredential + proof-time context to ThreeTreeProofInputs.
  *
- * @param credential - Stored two-tree credential from IndexedDB
+ * @param credential - Stored three-tree credential from IndexedDB
  * @param context - Proof-time context (actionDomain, nullifier, optional authorityLevel)
- * @returns TwoTreeProofInputs ready for generateTwoTreeProof()
- * @throws Error if credential is not a two-tree credential or missing required fields
+ * @returns ThreeTreeProofInputs ready for generateThreeTreeProof()
+ * @throws Error if credential is not a three-tree credential or missing required fields
  */
 export function mapCredentialToProofInputs(
 	credential: SessionCredential,
 	context: ProofContext
-): TwoTreeProofInputs {
-	// Validate credential type
-	if (credential.credentialType !== 'two-tree') {
+): ThreeTreeProofInputs {
+	if (credential.credentialType !== 'three-tree') {
 		throw new Error(
-			`Expected two-tree credential, got "${credential.credentialType || 'single-tree'}". ` +
-				'Re-register with the two-tree flow to generate a compatible credential.'
+			`Expected three-tree credential, got "${credential.credentialType || 'unknown'}". ` +
+				'Re-register with the three-tree flow to generate a compatible credential.'
 		);
 	}
 
-	// Validate base fields (required for all credential types)
 	const missing: string[] = [];
 	if (!credential.merkleRoot) missing.push('merkleRoot');
 	if (!credential.merklePath) missing.push('merklePath');
 	if (credential.leafIndex === undefined) missing.push('leafIndex');
-
-	// Validate two-tree-specific fields
 	if (!credential.cellMapRoot) missing.push('cellMapRoot');
 	if (!credential.cellMapPath) missing.push('cellMapPath');
 	if (!credential.cellMapPathBits) missing.push('cellMapPathBits');
@@ -114,6 +103,9 @@ export function mapCredentialToProofInputs(
 	if (!credential.cellId) missing.push('cellId');
 	if (!credential.registrationSalt) missing.push('registrationSalt');
 	if (!credential.identityCommitment) missing.push('identityCommitment');
+	if (!credential.engagementRoot) missing.push('engagementRoot');
+	if (!credential.engagementPath) missing.push('engagementPath');
+	if (credential.engagementIndex === undefined) missing.push('engagementIndex');
 
 	if (missing.length > 0) {
 		throw new Error(
@@ -122,7 +114,6 @@ export function mapCredentialToProofInputs(
 		);
 	}
 
-	// Authority level resolution: credential (server-derived) > context > conservative fallback
 	const authorityLevel =
 		credential.authorityLevel ??
 		context.authorityLevel ??
@@ -136,6 +127,8 @@ export function mapCredentialToProofInputs(
 		nullifier: context.nullifier,
 		actionDomain: context.actionDomain,
 		authorityLevel,
+		engagementRoot: credential.engagementRoot!,
+		engagementTier: (credential.engagementTier ?? 0) as EngagementTier,
 
 		// Private inputs
 		userSecret: credential.userSecret!,
@@ -143,12 +136,18 @@ export function mapCredentialToProofInputs(
 		registrationSalt: credential.registrationSalt!,
 		identityCommitment: credential.identityCommitment,
 
-		// Tree 1 proof (renamed fields)
+		// Tree 1 proof
 		userPath: credential.merklePath,
 		userIndex: credential.leafIndex,
 
-		// Tree 2 proof (direct mapping)
+		// Tree 2 proof
 		cellMapPath: credential.cellMapPath!,
-		cellMapPathBits: credential.cellMapPathBits!
+		cellMapPathBits: credential.cellMapPathBits!,
+
+		// Tree 3 proof (engagement)
+		engagementPath: credential.engagementPath!,
+		engagementIndex: credential.engagementIndex!,
+		actionCount: credential.actionCount ?? '0',
+		diversityScore: credential.diversityScore ?? '0'
 	};
 }

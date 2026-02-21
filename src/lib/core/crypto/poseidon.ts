@@ -165,7 +165,7 @@ export async function poseidon2Hash2(left: string, right: string): Promise<strin
 }
 
 /**
- * Domain separation tag for 3-input hash (two-tree architecture).
+ * Domain separation tag for 3-input hash (three-tree architecture).
  * DOMAIN_HASH3 = 0x48334d = "H3M" in ASCII.
  * Prevents collision between hash3(a, b, c) and hash4(a, b, c, 0).
  *

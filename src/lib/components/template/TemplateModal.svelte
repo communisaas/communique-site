@@ -77,7 +77,7 @@
 	// Address collection state (for congressional templates)
 	let needsAddress = $state(false);
 	let collectingAddress = $state(false);
-	/** Census Block GEOID from address verification (for two-tree ZK architecture) */
+	/** Census Block GEOID from address verification (for three-tree ZK architecture) */
 	let verifiedCellId = $state<string | undefined>(undefined);
 	/** Structured address from AddressCollectionForm for ProofGenerator deliveryAddress */
 	let verifiedAddress = $state<{ street: string; city: string; state: string; zip: string } | null>(null);

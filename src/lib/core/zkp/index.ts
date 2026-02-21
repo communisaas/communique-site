@@ -4,19 +4,20 @@
  * Public API for in-browser ZK proof generation using Noir circuits.
  * Wraps @voter-protocol/noir-prover with Svelte-friendly interfaces.
  *
- * Architecture: Two-tree (district + cell Merkle trees)
+ * Architecture: Three-tree (user identity + cell-district map + engagement)
  */
 
-// Two-tree prover client API
+// Three-tree prover client API
 export {
-	initializeTwoTreeProver,
-	generateTwoTreeProof,
-	resetTwoTreeProver,
+	initializeThreeTreeProver,
+	generateThreeTreeProof,
+	resetThreeTreeProver,
 	resetAllProvers,
 	type ProverProgress,
 	type ProgressCallback,
-	type TwoTreeProofInputs,
-	type TwoTreeProofResult
+	type EngagementTier,
+	type ThreeTreeProofInputs,
+	type ThreeTreeProofResult
 } from './prover-client';
 
 // Action domain builder

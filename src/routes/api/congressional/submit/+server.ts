@@ -38,9 +38,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Missing required fields' }, { status: 400 });
 		}
 
-		if (!Array.isArray(body.publicInputs) || body.publicInputs.length !== 29) {
+		if (!Array.isArray(body.publicInputs) || body.publicInputs.length !== 31) {
 			return json(
-				{ error: 'publicInputs must be array of 29 elements (two-tree circuit public outputs)' },
+				{ error: 'publicInputs must be array of 31 elements (three-tree circuit public outputs)' },
 				{ status: 400 }
 			);
 		}

@@ -6,7 +6,7 @@
 	import { buildActionDomain } from '$lib/core/zkp/action-domain-builder';
 	import { computeNullifier } from '$lib/core/crypto/poseidon';
 	import { mapCredentialToProofInputs } from '$lib/core/identity/proof-input-mapper';
-	import { generateTwoTreeProof, type ProverProgress } from '$lib/core/zkp/prover-client';
+	import { generateThreeTreeProof, type ProverProgress } from '$lib/core/zkp/prover-client';
 
 	interface Props {
 		district: string;
@@ -86,9 +86,9 @@
 					'No identity credential found. Please verify your identity first.'
 				);
 			}
-			if (credential.credentialType !== 'two-tree') {
+			if (credential.credentialType !== 'three-tree') {
 				throw new Error(
-					'Legacy credential detected. Please re-verify your identity for enhanced privacy.'
+					'Incompatible credential type. Please re-verify your identity with the current registration flow.'
 				);
 			}
 			progress = 15;
@@ -129,7 +129,7 @@
 				statusMessage = p.message;
 			};
 
-			const result = await generateTwoTreeProof(proofInputs, onProgress);
+			const result = await generateThreeTreeProof(proofInputs, onProgress);
 
 			progress = 100;
 			const endTime = performance.now();

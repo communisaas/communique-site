@@ -74,7 +74,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Extract congressional district
 		const district = extractCongressionalDistrictFromCensus(match.geographies, state);
 
-		// Extract cell_id (15-digit Census Block GEOID) for two-tree ZK architecture
+		// Extract cell_id (15-digit Census Block GEOID) for three-tree ZK architecture
 		// PRIVACY: Neighborhood-level precision (600-3000 people), encrypted at rest
 		const cell_id = extractCellIdFromCensus(match.geographies);
 
@@ -142,7 +142,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			correctedAddress,
 			representatives,
 			district,
-			cell_id, // 15-digit Census Block GEOID for two-tree ZK architecture
+			cell_id, // 15-digit Census Block GEOID for three-tree ZK architecture
 			special_status: specialStatus,
 			message: 'Address  verified successfully'
 		});
@@ -191,7 +191,7 @@ function extractCongressionalDistrictFromCensus(
  * Extract cell_id (Census Block GEOID) from Census Bureau geocoding response
  *
  * PRIVACY: The 15-digit GEOID provides neighborhood-level precision (600-3000 people).
- * This is used as a private witness in the two-tree ZK architecture.
+ * This is used as a private witness in the three-tree ZK architecture.
  * Never log the full cell_id value.
  *
  * @returns 15-digit Census Block GEOID or null if not found
@@ -209,7 +209,7 @@ function extractCellIdFromCensus(
 				// Validate 15-digit GEOID format
 				if (/^\d{15}$/.test(geoid)) {
 					// Log only state+county prefix (5 digits) for debugging - never full GEOID
-					console.log(`[Address Verify] Cell_id extracted: ${geoid.slice(0, 5)}... (two-tree enabled)`);
+					console.log(`[Address Verify] Cell_id extracted: ${geoid.slice(0, 5)}... (three-tree enabled)`);
 					return geoid;
 				}
 			}

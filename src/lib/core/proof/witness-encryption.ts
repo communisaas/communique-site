@@ -17,10 +17,10 @@
 import sodium from 'libsodium-wrappers';
 
 /**
- * Witness data structure (v0.3.0 — two-tree architecture)
+ * Witness data structure (v0.4.0 — three-tree architecture)
  * Contains all inputs needed for proof generation in TEE.
- * Matches TwoTreeProofInputs: Tree 1 (user identity) + Tree 2 (cell-district SMT).
- * Nullifier computed IN-CIRCUIT from userSecret + actionDomain + identityCommitment.
+ * Matches ThreeTreeProofInputs: Tree 1 (user identity) + Tree 2 (cell-district SMT) + Tree 3 (engagement).
+ * Nullifier computed IN-CIRCUIT from identityCommitment + actionDomain.
  */
 export interface WitnessData {
 	// Public inputs
@@ -36,6 +36,10 @@ export interface WitnessData {
 	actionDomain: string;
 	/** User's voting tier (1-5) */
 	authorityLevel: 1 | 2 | 3 | 4 | 5;
+	/** Root of Tree 3 (engagement data tree) */
+	engagementRoot: string;
+	/** User's engagement tier (0-4) */
+	engagementTier: 0 | 1 | 2 | 3 | 4;
 
 	// Private inputs
 	/** User's secret key material */
@@ -44,7 +48,7 @@ export interface WitnessData {
 	cellId: string;
 	/** Random salt from registration */
 	registrationSalt: string;
-	/** Identity commitment for nullifier derivation */
+	/** Identity commitment for nullifier derivation and engagement binding */
 	identityCommitment: string;
 
 	// Tree 1 proof data
@@ -58,6 +62,16 @@ export interface WitnessData {
 	cellMapPath: string[];
 	/** Tree 2 SMT direction bits */
 	cellMapPathBits: number[];
+
+	// Tree 3 proof data (Engagement Tree)
+	/** Tree 3 Merkle siblings */
+	engagementPath: string[];
+	/** Leaf position in Tree 3 */
+	engagementIndex: number;
+	/** Cumulative action count */
+	actionCount: string;
+	/** Shannon diversity score */
+	diversityScore: string;
 
 	/** Delivery data for congressional message (encrypted, not used in proof) */
 	deliveryAddress?: {

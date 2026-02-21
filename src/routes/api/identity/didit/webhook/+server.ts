@@ -297,7 +297,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Shadow Atlas registration is handled separately after address collection:
 		// 1. This webhook stores shadowAtlasCommitment in verification audit metadata
 		// 2. User provides address in a separate step (AddressCollectionForm)
-		// 3. Client calls registerTwoTree() -> POST /api/shadow-atlas/register
+		// 3. Client calls registerThreeTree() -> POST /api/shadow-atlas/register
 		// The split is intentional: identity verification doesn't require address disclosure.
 		console.log(`[Didit Webhook] Identity verified, Shadow Atlas commitment stored: ${shadowAtlasCommitment.substring(0, 16)}...`);
 

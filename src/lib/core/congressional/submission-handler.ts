@@ -2,7 +2,7 @@ import { prisma } from '$lib/core/db';
 import {
 	verifyOnChain,
 	PUBLIC_INPUT_INDEX,
-	TWO_TREE_PUBLIC_INPUT_COUNT
+	THREE_TREE_PUBLIC_INPUT_COUNT
 } from '$lib/core/blockchain/district-gate-client';
 import { queueForRetry } from '$lib/core/blockchain/submission-retry-queue';
 import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
@@ -10,10 +10,11 @@ import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
 /**
  * Congressional Submission Request
  *
- * Proof structure from browser-generated ZK proof (two-tree circuit):
+ * Proof structure from browser-generated ZK proof (three-tree circuit):
  * - proof: Hex-encoded proof bytes from Noir/UltraHonk circuit
- * - publicInputs: Array of 29 field elements (two-tree circuit public outputs)
- *   Key indices: [0]=userRoot, [1]=cellMapRoot, [26]=nullifier, [27]=actionDomain, [28]=authorityLevel
+ * - publicInputs: Array of 31 field elements (three-tree circuit public outputs)
+ *   Key indices: [0]=userRoot, [1]=cellMapRoot, [26]=nullifier, [27]=actionDomain,
+ *   [28]=authorityLevel, [29]=engagementRoot, [30]=engagementTier
  * - verifierDepth: Circuit depth (18 | 20 | 22 | 24)
  * - encryptedMessage: Optional encrypted message content (XChaCha20-Poly1305)
  * - templateId: Template ID for linking to message template
@@ -48,7 +49,7 @@ export interface SubmissionResult {
  * Core business logic for accepting and storing ZK proof submissions.
  *
  * Control Flow:
- * 1. Extract nullifier from public inputs (index 26 in two-tree array)
+ * 1. Extract nullifier from public inputs (index 26 in three-tree array)
  * 2. Check nullifier uniqueness (atomic with database constraints)
  * 3. Store submission in Postgres with all proof data
  * 4. Queue blockchain submission (async, fire-and-forget)
@@ -73,7 +74,7 @@ export async function handleSubmission(
 	userId: string,
 	request: SubmissionRequest
 ): Promise<SubmissionResult> {
-	// Extract nullifier from public inputs (index 26 in 29-element two-tree array)
+	// Extract nullifier from public inputs (index 26 in 31-element three-tree array)
 	const nullifier = request.publicInputs[PUBLIC_INPUT_INDEX.NULLIFIER];
 
 	// Check if nullifier already exists (prevents double-actions)
@@ -155,7 +156,7 @@ async function queueBlockchainSubmission(
 			data: { verification_status: 'queued' }
 		});
 
-		// Submit to blockchain for verification (29-element public inputs)
+		// Submit to blockchain for verification (31-element public inputs)
 		const result = await verifyOnChain({
 			proof: request.proof,
 			publicInputs: request.publicInputs,

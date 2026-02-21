@@ -1,5 +1,5 @@
 /**
- * Shadow Atlas Registration Endpoint (Two-Tree Architecture)
+ * Shadow Atlas Registration Endpoint (Three-Tree Architecture)
  *
  * Registers a user's precomputed leaf hash with Shadow Atlas Tree 1.
  * The leaf is Poseidon2_H4(user_secret, cell_id, registration_salt, authority_level),
@@ -185,12 +185,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		await prisma.shadowAtlasRegistration.create({
 			data: {
 				user_id: session.userId,
-				congressional_district: 'two-tree', // District comes from Tree 2, not registration
+				congressional_district: 'three-tree', // District comes from Tree 2, not registration
 				identity_commitment: identityCommitment, // NUL-001: canonical commitment from verification
 				leaf_index: registrationResult.leafIndex,
 				merkle_root: registrationResult.userRoot,
 				merkle_path: registrationResult.userPath,
-				credential_type: 'two-tree',
+				credential_type: 'three-tree',
 				cell_id: null, // PRIVACY: cell_id never sent to this endpoint
 				verification_method: user.verification_method || 'unknown', // BR6-005: use actual method, not hardcoded
 				verification_id: session.userId, // Link to auth session

@@ -16,9 +16,8 @@
 		/** Default verification method (if user already made a choice) */
 		defaultMethod?: 'nfc' | 'government-id' | 'mdl' | null;
 		/**
-		 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
+		 * Census Block GEOID (15-digit cell identifier) for three-tree ZK architecture
 		 * PRIVACY: Neighborhood-level precision (600-3000 people)
-		 * When provided, enables two-tree mode for Shadow Atlas registration
 		 */
 		cellId?: string;
 		oncomplete?: (data: {
@@ -82,7 +81,7 @@
 		state?: string;
 		address?: { street: string; city: string; state: string; zip: string };
 		/**
-		 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
+		 * Census Block GEOID (15-digit cell identifier) for three-tree ZK architecture
 		 * PRIVACY: Neighborhood-level precision (600-3000 people), encrypted at rest
 		 */
 		cell_id?: string;
@@ -154,14 +153,14 @@
 						// Generate identity commitment from provider data
 						const identityCommitment = await generateIdentityCommitment(data.providerData);
 
-						// Register in Shadow Atlas (with cell_id for two-tree architecture)
+						// Register in Shadow Atlas (with cell_id for three-tree architecture)
 						// Use cell_id from data if available, otherwise use cellId prop
 						const resolvedCellId = data.cell_id || cellId;
 						const atlasResult = await registerInShadowAtlas({
 							userId,
 							identityCommitment,
 							congressionalDistrict: (data.district as string) || '',
-							cellId: (resolvedCellId as string | undefined), // 15-digit Census Block GEOID (enables two-tree mode)
+							cellId: (resolvedCellId as string | undefined),
 							verificationMethod:
 								data.providerData.provider === 'self.xyz' ? 'self.xyz' : 'didit',
 							verificationId: data.providerData.credentialHash
@@ -172,7 +171,7 @@
 								district: data.district,
 								leafIndex: atlasResult.sessionCredential?.leafIndex,
 								expiresAt: atlasResult.sessionCredential?.expiresAt,
-								credentialType: resolvedCellId ? 'two-tree' : 'single-tree'
+								credentialType: 'three-tree'
 							});
 						} else {
 							console.error(

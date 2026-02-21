@@ -37,7 +37,7 @@ export interface SessionCredential {
 	/** Position in Tree 1 (User Identity Merkle tree, depth 20) */
 	leafIndex: number;
 
-	/** Tree 1 Merkle siblings for proof generation (20 for two-tree, 12 for legacy) */
+	/** Tree 1 Merkle siblings for proof generation (depth 20 default) */
 	merklePath: string[];
 
 	/** Tree 1 Merkle root (verification anchor) */
@@ -47,70 +47,60 @@ export interface SessionCredential {
 	congressionalDistrict: string;
 
 	// ═══════════════════════════════════════════════════════════════════════
-	// Two-Tree Architecture Support (Issue #21)
+	// Tree Architecture Support
 	// ═══════════════════════════════════════════════════════════════════════
 
 	/**
 	 * Credential type discriminator
-	 * - 'single-tree': Traditional district-based merkle tree (backward compatible)
-	 * - 'two-tree': Cell-based dual merkle tree (user tree + cell map)
+	 * - 'three-tree': User identity + cell-district map + engagement tree (production)
 	 */
-	credentialType?: 'single-tree' | 'two-tree';
+	credentialType?: 'three-tree';
 
-	/**
-	 * Census Block GEOID (15-digit cell identifier)
-	 *
-	 * PRIVACY: Neighborhood-level precision (600-3000 people).
-	 * This is encrypted at rest along with other credential data.
-	 * Only present when credentialType === 'two-tree'.
-	 */
+	/** Census Block GEOID (15-digit cell identifier) */
 	cellId?: string;
 
-	/**
-	 * Tree 2 (Cell-District Map) root hash.
-	 * Only present when credentialType === 'two-tree'.
-	 */
+	/** Tree 2 (Cell-District Map) root hash */
 	cellMapRoot?: string;
 
-	/**
-	 * Tree 2 SMT siblings (depth elements, hex-encoded).
-	 * Only present when credentialType === 'two-tree'.
-	 */
+	/** Tree 2 SMT siblings (depth elements, hex-encoded) */
 	cellMapPath?: string[];
 
-	/**
-	 * Tree 2 SMT direction bits (0=left, 1=right).
-	 * Only present when credentialType === 'two-tree'.
-	 */
+	/** Tree 2 SMT direction bits (0=left, 1=right) */
 	cellMapPathBits?: number[];
 
-	/**
-	 * All 24 district IDs for this cell (hex-encoded).
-	 * Per DISTRICT-TAXONOMY.md slot allocation.
-	 * Only present when credentialType === 'two-tree'.
-	 */
+	/** All 24 district IDs for this cell (hex-encoded) */
 	districts?: string[];
 
-	/**
-	 * Authority level set during registration by server via deriveAuthorityLevel (1-5).
-	 * Cryptographically bound into user leaf via H4 (BR5-001).
-	 * Only present when credentialType === 'two-tree'.
-	 */
+	/** Authority level (1-5), cryptographically bound into user leaf via H4 (BR5-001) */
 	authorityLevel?: 1 | 2 | 3 | 4 | 5;
 
-	/**
-	 * Registration salt used for leaf computation.
-	 * Stored client-side only — never sent to server.
-	 * Only present when credentialType === 'two-tree'.
-	 */
+	/** Registration salt used for leaf computation (client-side only) */
 	registrationSalt?: string;
 
-	/**
-	 * User secret used for leaf computation.
-	 * Stored client-side only — never sent to server.
-	 * Only present when credentialType === 'two-tree'.
-	 */
+	/** User secret used for leaf computation (client-side only) */
 	userSecret?: string;
+
+	// ═══════════════════════════════════════════════════════════════════════
+	// Tree 3 (Engagement) Fields
+	// ═══════════════════════════════════════════════════════════════════════
+
+	/** Tree 3 (Engagement) root hash */
+	engagementRoot?: string;
+
+	/** Tree 3 Merkle siblings (depth elements, hex-encoded) */
+	engagementPath?: string[];
+
+	/** Leaf position in Tree 3 */
+	engagementIndex?: number;
+
+	/** Engagement tier [0-4] (New/Active/Established/Veteran/Pillar) */
+	engagementTier?: 0 | 1 | 2 | 3 | 4;
+
+	/** Cumulative action count for engagement score (hex-encoded field element) */
+	actionCount?: string;
+
+	/** Shannon diversity score for engagement breadth (hex-encoded field element) */
+	diversityScore?: string;
 
 	// ═══════════════════════════════════════════════════════════════════════
 
@@ -159,8 +149,8 @@ interface StoredCredential {
 	verificationMethod?: 'self.xyz' | 'didit' | 'digital-credentials-api';
 	createdAt?: Date;
 
-	// Two-tree support (stored in encrypted data, listed here for type completeness)
-	credentialType?: 'single-tree' | 'two-tree';
+	// Three-tree support (stored in encrypted data, listed here for type completeness)
+	credentialType?: 'three-tree';
 	cellId?: string;
 }
 

@@ -1,7 +1,7 @@
 /**
  * DistrictGate Client - On-chain ZK proof verification via Scroll
  *
- * Submits two-tree ZK proofs to the DistrictGate contract on Scroll for
+ * Submits three-tree ZK proofs to the DistrictGate contract on Scroll for
  * verification. Acts as a server-side relayer: signs EIP-712 messages
  * with the relayer wallet and submits transactions on behalf of users.
  *
@@ -13,12 +13,13 @@
  *
  * DEPLOYED CONTRACT:
  * - Address: 0x0085DFAd6DB867e7486A460579d768BD7C37181e (Scroll Sepolia v4, bb.js keccak)
- * - Function: verifyTwoTreeProof(signer, proof, publicInputs[29], depth, deadline, sig)
- * - 29 public inputs: [0]=userRoot, [1]=cellMapRoot, [26]=nullifier, [27]=actionDomain, [28]=authorityLevel
+ * - Function: verifyThreeTreeProof(signer, proof, publicInputs[31], depth, deadline, sig)
+ * - 31 public inputs: [0]=userRoot, [1]=cellMapRoot, [2-25]=districts, [26]=nullifier,
+ *   [27]=actionDomain, [28]=authorityLevel, [29]=engagementRoot, [30]=engagementTier
  * - Features: actionDomain timelock whitelist (SA-001), root lifecycle checks (SA-004)
  *
  * @see COORDINATION-INTEGRITY-SPEC.md
- * @see DistrictGate.sol § verifyTwoTreeProof
+ * @see DistrictGate.sol § verifyThreeTreeProof
  */
 
 import { env } from '$env/dynamic/private';
@@ -216,36 +217,38 @@ export async function getRelayerHealth(): Promise<RelayerHealth> {
 /** Minimal ABI — only the functions we call */
 const DISTRICT_GATE_ABI = [
 	// State-changing
-	'function verifyTwoTreeProof(address signer, bytes proof, uint256[29] publicInputs, uint8 verifierDepth, uint256 deadline, bytes signature)',
+	'function verifyThreeTreeProof(address signer, bytes proof, uint256[31] publicInputs, uint8 verifierDepth, uint256 deadline, bytes signature)',
 	// View functions
 	'function isNullifierUsed(bytes32 actionId, bytes32 nullifier) view returns (bool)',
 	'function allowedActionDomains(bytes32) view returns (bool)',
 	'function nonces(address) view returns (uint256)',
 	// Events
-	'event TwoTreeProofVerified(address indexed signer, bytes32 indexed nullifier, bytes32 indexed actionDomain, uint8 verifierDepth)'
+	'event ThreeTreeProofVerified(address indexed signer, bytes32 indexed nullifier, bytes32 indexed actionDomain, uint8 verifierDepth)'
 ];
 
-/** Number of public inputs expected by the two-tree circuit */
-export const TWO_TREE_PUBLIC_INPUT_COUNT = 29;
+/** Number of public inputs expected by the three-tree circuit */
+export const THREE_TREE_PUBLIC_INPUT_COUNT = 31;
 
 /** BN254 scalar field modulus — all public inputs must be < this value */
 const BN254_MODULUS = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
-/** Valid circuit depths for two-tree verifier */
+/** Valid circuit depths for three-tree verifier */
 const VALID_VERIFIER_DEPTHS = [18, 20, 22, 24] as const;
 
-/** Indices into the 29-element public inputs array */
+/** Indices into the 31-element public inputs array */
 export const PUBLIC_INPUT_INDEX = {
 	USER_ROOT: 0,
 	CELL_MAP_ROOT: 1,
 	NULLIFIER: 26,
 	ACTION_DOMAIN: 27,
-	AUTHORITY_LEVEL: 28
+	AUTHORITY_LEVEL: 28,
+	ENGAGEMENT_ROOT: 29,
+	ENGAGEMENT_TIER: 30
 } as const;
 
-/** EIP-712 type definition for SubmitTwoTreeProof */
+/** EIP-712 type definition for SubmitThreeTreeProof */
 const EIP712_TYPES = {
-	SubmitTwoTreeProof: [
+	SubmitThreeTreeProof: [
 		{ name: 'proofHash', type: 'bytes32' },
 		{ name: 'publicInputsHash', type: 'bytes32' },
 		{ name: 'verifierDepth', type: 'uint8' },
@@ -268,14 +271,14 @@ export interface BlockchainConfig {
 }
 
 /**
- * Parameters for two-tree proof verification.
- * Matches DistrictGate.verifyTwoTreeProof contract interface.
+ * Parameters for three-tree proof verification.
+ * Matches DistrictGate.verifyThreeTreeProof contract interface.
  */
 export interface VerifyParams {
 	/** Hex-encoded proof bytes from Noir/UltraHonk circuit */
 	proof: string;
 
-	/** 29 field elements as hex strings (circuit public outputs) */
+	/** 31 field elements as hex strings (circuit public outputs) */
 	publicInputs: string[];
 
 	/** Circuit depth used for proof generation (18 | 20 | 22 | 24) */
@@ -337,7 +340,7 @@ function getContractInstance(): { contract: Contract; wallet: Wallet } | null {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Verify a two-tree ZK proof on-chain via DistrictGate.
+ * Verify a three-tree ZK proof on-chain via DistrictGate.
  *
  * Signs an EIP-712 message with the server relayer wallet and submits
  * the transaction to Scroll. The ZK proof itself contains the user's
@@ -362,10 +365,10 @@ export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult>
 	// PHASE 1: Validate inputs
 	// ───────────────────────────────────────────────────────────────────────
 
-	if (params.publicInputs.length !== TWO_TREE_PUBLIC_INPUT_COUNT) {
+	if (params.publicInputs.length !== THREE_TREE_PUBLIC_INPUT_COUNT) {
 		return {
 			success: false,
-			error: `Expected ${TWO_TREE_PUBLIC_INPUT_COUNT} public inputs, got ${params.publicInputs.length}`
+			error: `Expected ${THREE_TREE_PUBLIC_INPUT_COUNT} public inputs, got ${params.publicInputs.length}`
 		};
 	}
 
@@ -457,7 +460,7 @@ export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult>
 	// Pack public inputs as uint256 array for hashing
 	const publicInputsAsBigInt = params.publicInputs.map((v) => BigInt(v));
 	const publicInputsPacked = solidityPacked(
-		Array(TWO_TREE_PUBLIC_INPUT_COUNT).fill('uint256'),
+		Array(THREE_TREE_PUBLIC_INPUT_COUNT).fill('uint256'),
 		publicInputsAsBigInt
 	);
 	const publicInputsHash = keccak256(publicInputsPacked);
@@ -496,7 +499,7 @@ export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult>
 	const nullifier = params.publicInputs[PUBLIC_INPUT_INDEX.NULLIFIER];
 	const actionDomain = params.publicInputs[PUBLIC_INPUT_INDEX.ACTION_DOMAIN];
 
-	console.debug('[DistrictGateClient] Submitting verifyTwoTreeProof:', {
+	console.debug('[DistrictGateClient] Submitting verifyThreeTreeProof:', {
 		signer: wallet.address,
 		verifierDepth: params.verifierDepth,
 		deadline,
@@ -507,7 +510,7 @@ export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult>
 	});
 
 	try {
-		const tx = await contract.verifyTwoTreeProof(
+		const tx = await contract.verifyThreeTreeProof(
 			wallet.address,
 			proofBytes,
 			publicInputsAsBigInt,

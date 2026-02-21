@@ -21,7 +21,7 @@ const BACKOFF_BASE_MS = 30_000; // 30s, 60s, 120s, 240s
  *
  * @param submissionId - Database submission ID
  * @param proof - Hex-encoded proof
- * @param publicInputs - 29 field element strings
+ * @param publicInputs - 31 field element strings (three-tree circuit)
  * @param verifierDepth - Circuit depth
  */
 export async function queueForRetry(

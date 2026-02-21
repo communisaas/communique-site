@@ -1,7 +1,7 @@
 /**
- * Shadow Atlas Registration Handler (Two-Tree Architecture)
+ * Shadow Atlas Registration Handler (Three-Tree Architecture)
  *
- * Orchestrates the two-tree registration flow after identity verification:
+ * Orchestrates the three-tree registration flow after identity verification:
  *
  * 1. User completes identity verification (self.xyz or Didit.me)
  * 2. Browser generates user_secret and registration_salt
@@ -9,7 +9,8 @@
  * 4. Browser sends ONLY the leaf hash to communique server
  * 5. Server proxies to Shadow Atlas POST /v1/register → Tree 1 proof
  * 6. Browser requests Tree 2 cell proof (separate call)
- * 7. All credentials stored encrypted in IndexedDB
+ * 7. Tree 3 (engagement) starts with defaults (tier 0), updated by civic actions
+ * 8. All credentials stored encrypted in IndexedDB
  *
  * PRIVACY: The communique server never receives user_secret, cell_id,
  * or registration_salt. It sees only the leaf hash.
@@ -28,7 +29,7 @@ import {
 // Types
 // ============================================================================
 
-export interface TwoTreeRegistrationRequest {
+export interface ThreeTreeRegistrationRequest {
 	/** User ID */
 	userId: string;
 	/** Precomputed leaf hash (hex with 0x prefix) */
@@ -43,13 +44,13 @@ export interface TwoTreeRegistrationRequest {
 	verificationMethod: 'self.xyz' | 'didit' | 'digital-credentials-api';
 }
 
-export interface TwoTreeRegistrationResult {
+export interface ThreeTreeRegistrationResult {
 	success: boolean;
 	sessionCredential?: SessionCredential;
 	error?: string;
 }
 
-export interface TwoTreeRecoveryRequest {
+export interface ThreeTreeRecoveryRequest {
 	/** User ID */
 	userId: string;
 	/** Fresh leaf hash (new random inputs) */
@@ -69,7 +70,7 @@ export interface TwoTreeRecoveryRequest {
 // ============================================================================
 
 /**
- * Register user in the two-tree architecture.
+ * Register user in the three-tree architecture.
  *
  * Sends only the leaf hash to the server (Tree 1 registration),
  * then fetches the cell proof (Tree 2) for the user's cell_id.
@@ -78,9 +79,9 @@ export interface TwoTreeRecoveryRequest {
  * @param request - Registration data (includes private inputs stored locally)
  * @returns Session credential for ZK proof generation
  */
-export async function registerTwoTree(
-	request: TwoTreeRegistrationRequest
-): Promise<TwoTreeRegistrationResult> {
+export async function registerThreeTree(
+	request: ThreeTreeRegistrationRequest
+): Promise<ThreeTreeRegistrationResult> {
 	try {
 		// Step 1: Register leaf hash in Tree 1 (server sees only the hash)
 		const tree1Response = await fetch('/api/shadow-atlas/register', {
@@ -138,10 +139,10 @@ export async function registerTwoTree(
 			leafIndex: tree1Data.leafIndex,
 			merklePath: tree1Data.userPath, // Tree 1 siblings
 			merkleRoot: tree1Data.userRoot, // Tree 1 root
-			congressionalDistrict: 'two-tree', // Districts come from Tree 2
+			congressionalDistrict: 'three-tree', // Districts come from Tree 2
 
-			// Two-tree specific fields
-			credentialType: 'two-tree',
+			// Three-tree specific fields
+			credentialType: 'three-tree',
 			cellId: request.cellId,
 			cellMapRoot: tree2Data.cellMapRoot,
 			cellMapPath: tree2Data.cellMapPath,
@@ -164,7 +165,7 @@ export async function registerTwoTree(
 		// Step 4: Store encrypted in IndexedDB
 		await storeSessionCredential(sessionCredential);
 
-		console.debug('[Shadow Atlas] Two-tree registration successful:', {
+		console.debug('[Shadow Atlas] Three-tree registration successful:', {
 			userId: request.userId,
 			leafIndex: tree1Data.leafIndex,
 			districts: tree2Data.districts.length,
@@ -176,7 +177,7 @@ export async function registerTwoTree(
 			sessionCredential,
 		};
 	} catch (error) {
-		console.error('[Shadow Atlas] Two-tree registration failed:', error);
+		console.error('[Shadow Atlas] Three-tree registration failed:', error);
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : 'Unknown error',
@@ -185,7 +186,7 @@ export async function registerTwoTree(
 }
 
 /**
- * Recover a user's two-tree credential after browser clear / device loss.
+ * Recover a user's credential after browser clear / device loss.
  *
  * Sends replace: true to the registration endpoint which:
  * 1. Looks up the user's existing registration in Postgres
@@ -198,9 +199,9 @@ export async function registerTwoTree(
  * @param request - Recovery data (includes private inputs stored locally)
  * @returns Session credential for ZK proof generation
  */
-export async function recoverTwoTree(
-	request: TwoTreeRecoveryRequest
-): Promise<TwoTreeRegistrationResult> {
+export async function recoverThreeTree(
+	request: ThreeTreeRecoveryRequest
+): Promise<ThreeTreeRegistrationResult> {
 	try {
 		// Step 1: Replace leaf in Tree 1 (sends replace: true)
 		const tree1Response = await fetch('/api/shadow-atlas/register', {
@@ -258,9 +259,9 @@ export async function recoverTwoTree(
 			leafIndex: tree1Data.leafIndex,
 			merklePath: tree1Data.userPath,
 			merkleRoot: tree1Data.userRoot,
-			congressionalDistrict: 'two-tree',
+			congressionalDistrict: 'three-tree',
 
-			credentialType: 'two-tree',
+			credentialType: 'three-tree',
 			cellId: request.cellId,
 			cellMapRoot: tree2Data.cellMapRoot,
 			cellMapPath: tree2Data.cellMapPath,
@@ -271,7 +272,7 @@ export async function recoverTwoTree(
 			registrationSalt: request.registrationSalt,
 
 			verificationMethod: request.verificationMethod,
-			// W40-010: Thread receipt from recovery path (parity with registerTwoTree)
+			// W40-010: Thread receipt from recovery path
 			receipt: tree1Data.receipt,
 			createdAt: now,
 			expiresAt: calculateExpirationDate(),
@@ -280,7 +281,7 @@ export async function recoverTwoTree(
 		// Step 4: Store encrypted in IndexedDB
 		await storeSessionCredential(sessionCredential);
 
-		console.debug('[Shadow Atlas] Two-tree recovery successful:', {
+		console.debug('[Shadow Atlas] Three-tree recovery successful:', {
 			userId: request.userId,
 			leafIndex: tree1Data.leafIndex,
 			districts: tree2Data.districts.length,
@@ -292,7 +293,7 @@ export async function recoverTwoTree(
 			sessionCredential,
 		};
 	} catch (error) {
-		console.error('[Shadow Atlas] Two-tree recovery failed:', error);
+		console.error('[Shadow Atlas] Three-tree recovery failed:', error);
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : 'Unknown error',
@@ -327,5 +328,4 @@ export async function generateIdentityCommitment(providerData: {
 	return await poseidonHash(input);
 }
 
-// Re-export for backward compatibility (callers use the registerInShadowAtlas name)
-export { registerTwoTree as registerInShadowAtlas };
+export { registerThreeTree as registerInShadowAtlas };

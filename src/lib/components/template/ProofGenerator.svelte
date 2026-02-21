@@ -116,147 +116,131 @@
 			let nullifierHex: string;
 			let actionDomainHex: string = '';
 
-			if (credential.credentialType === 'two-tree') {
-				// ═══════════════════════════════════════════════════════════
-				// TWO-TREE FLOW (current architecture)
-				// ═══════════════════════════════════════════════════════════
-				console.log('[ProofGenerator] Using two-tree proof flow');
-
-				// 2a. Build action domain (deterministic from template + session context)
-				const { buildActionDomain } = await import('$lib/core/zkp/action-domain-builder');
-				const actionDomain = buildActionDomain({
-					country: 'US',
-					jurisdictionType: 'federal',
-					recipientSubdivision,
-					templateId,
-					sessionId
-				});
-				actionDomainHex = actionDomain;
-				console.log('[ProofGenerator] Action domain:', actionDomain.slice(0, 16) + '...');
-
-				// 2b. Compute nullifier = H2(identityCommitment, actionDomain) (NUL-001)
-				const { computeNullifier } = await import('$lib/core/crypto/poseidon');
-				nullifierHex = await computeNullifier(credential.identityCommitment, actionDomain);
-				console.log('[ProofGenerator] Nullifier:', nullifierHex.slice(0, 16) + '...');
-
-				// 2c. Map credential to circuit inputs
-				const { mapCredentialToProofInputs } = await import(
-					'$lib/core/identity/proof-input-mapper'
-				);
-				const proofInputs = mapCredentialToProofInputs(credential, {
-					actionDomain,
-					nullifier: nullifierHex
-				});
-
-				// 2d. Initialize two-tree prover
-				proofState = { status: 'initializing-prover', progress: 0 };
-				const { generateTwoTreeProof } = await import('$lib/core/zkp/prover-client');
-				proofState = { status: 'initializing-prover', progress: 50 };
-
-				// 2e. Generate two-tree proof
-				proofState = { status: 'generating-proof', progress: 0 };
-				const twoTreeResult = await generateTwoTreeProof(proofInputs, (progress) => {
-					if (progress.stage === 'loading' || progress.stage === 'initializing') {
-						proofState = { status: 'initializing-prover', progress: progress.percent };
-					} else if (progress.stage === 'generating') {
-						proofState = { status: 'generating-proof', progress: progress.percent };
-					} else if (progress.stage === 'complete') {
-						proofState = { status: 'generating-proof', progress: 100 };
-					}
-				});
-
-				proofHex = twoTreeResult.proof;
-				// BR5-010: Save expected nullifier BEFORE overwriting with prover output.
-				// The cross-validation below must compare against our independently computed value,
-				// not the prover's output (which could be substituted by a compromised prover).
-				const expectedNullifier = nullifierHex;
-				nullifierHex = twoTreeResult.publicInputs.nullifier;
-				publicInputsPayload = {
-					userRoot: twoTreeResult.publicInputs.userRoot,
-					cellMapRoot: twoTreeResult.publicInputs.cellMapRoot,
-					districts: twoTreeResult.publicInputs.districts,
-					nullifier: twoTreeResult.publicInputs.nullifier,
-					actionDomain: twoTreeResult.publicInputs.actionDomain,
-					authorityLevel: twoTreeResult.publicInputs.authorityLevel,
-					publicInputsArray: twoTreeResult.publicInputsArray
-				};
-
-				// BR5-010: Cross-validate public inputs against expected values.
-				// A compromised prover (XSS, browser extension) could return valid
-				// proofs with substituted public inputs. Check critical fields.
-				if (twoTreeResult.publicInputs.actionDomain !== actionDomain) {
-					throw new Error(
-						'BR5-010: Proof actionDomain mismatch. Possible proof substitution.'
-					);
-				}
-				if (twoTreeResult.publicInputs.nullifier !== expectedNullifier) {
-					throw new Error(
-						'BR5-010: Proof nullifier mismatch. Possible proof substitution.'
-					);
-				}
-				if (twoTreeResult.publicInputs.userRoot !== credential.merkleRoot) {
-					throw new Error(
-						'BR5-010: Proof userRoot does not match credential. Stale or substituted.'
-					);
-				}
-				// 29M-002: Also check cellMapRoot (attacker could substitute with different cell's root)
-				if (twoTreeResult.publicInputs.cellMapRoot !== credential.cellMapRoot) {
-					throw new Error(
-						'BR5-010: Proof cellMapRoot does not match credential. Possible district spoofing.'
-					);
-				}
-
-				console.log('[ProofGenerator] Two-tree proof generated:', {
-					proofSize: proofHex.length,
-					publicInputCount: twoTreeResult.publicInputsArray.length
-				});
-			} else {
-				// Stale pre-migration credential: cannot produce compatible proofs
-				// The old single-tree circuit uses different actionId formula and public input count
+			if (credential.credentialType !== 'three-tree') {
 				proofState = {
 					status: 'error',
 					message: 'Your verification credential needs to be updated. Please re-verify your identity to continue.',
 					recoverable: true,
 					retryAction: () => {
 						oncancel?.();
-						// Parent component should redirect to identity verification
 					}
 				};
 				return;
 			}
 
-			// Step 3: Encrypt witness for TEE processing
-			// Two-tree: full WitnessData for TEE proof verification + CWC delivery
-			// Legacy: simplified witness (backward compatibility)
-			let witnessForEncryption: WitnessData | Record<string, unknown>;
+			console.log('[ProofGenerator] Using three-tree proof flow');
 
-			if (credential.credentialType === 'two-tree') {
-				witnessForEncryption = {
-					userRoot: credential.merkleRoot,
-					cellMapRoot: credential.cellMapRoot!,
-					districts: credential.districts!,
-					nullifier: nullifierHex,
-					actionDomain: actionDomainHex,
-					authorityLevel: credential.authorityLevel ?? 3,
-					userSecret: credential.userSecret!,
-					cellId: credential.cellId!,
-					registrationSalt: credential.registrationSalt!,
-					identityCommitment: credential.identityCommitment,
-					userPath: credential.merklePath,
-					userIndex: credential.leafIndex,
-					cellMapPath: credential.cellMapPath!,
-					cellMapPathBits: credential.cellMapPathBits!,
-					deliveryAddress
-				} satisfies WitnessData;
-			} else {
-				// Legacy single-tree: simplified witness for backward compatibility
-				witnessForEncryption = {
-					deliveryAddress,
-					nullifier: nullifierHex,
-					templateId,
-					timestamp: Date.now()
-				};
+			// 2a. Build action domain (deterministic from template + session context)
+			const { buildActionDomain } = await import('$lib/core/zkp/action-domain-builder');
+			const actionDomain = buildActionDomain({
+				country: 'US',
+				jurisdictionType: 'federal',
+				recipientSubdivision,
+				templateId,
+				sessionId
+			});
+			actionDomainHex = actionDomain;
+			console.log('[ProofGenerator] Action domain:', actionDomain.slice(0, 16) + '...');
+
+			// 2b. Compute nullifier = H2(identityCommitment, actionDomain) (NUL-001)
+			const { computeNullifier } = await import('$lib/core/crypto/poseidon');
+			nullifierHex = await computeNullifier(credential.identityCommitment, actionDomain);
+			console.log('[ProofGenerator] Nullifier:', nullifierHex.slice(0, 16) + '...');
+
+			// 2c. Map credential to circuit inputs
+			const { mapCredentialToProofInputs } = await import(
+				'$lib/core/identity/proof-input-mapper'
+			);
+			const proofInputs = mapCredentialToProofInputs(credential, {
+				actionDomain,
+				nullifier: nullifierHex
+			});
+
+			// 2d. Initialize three-tree prover
+			proofState = { status: 'initializing-prover', progress: 0 };
+			const { generateThreeTreeProof } = await import('$lib/core/zkp/prover-client');
+			proofState = { status: 'initializing-prover', progress: 50 };
+
+			// 2e. Generate three-tree proof
+			proofState = { status: 'generating-proof', progress: 0 };
+			const threeTreeResult = await generateThreeTreeProof(proofInputs, (progress) => {
+				if (progress.stage === 'loading' || progress.stage === 'initializing') {
+					proofState = { status: 'initializing-prover', progress: progress.percent };
+				} else if (progress.stage === 'generating') {
+					proofState = { status: 'generating-proof', progress: progress.percent };
+				} else if (progress.stage === 'complete') {
+					proofState = { status: 'generating-proof', progress: 100 };
+				}
+			});
+
+			proofHex = threeTreeResult.proof;
+			// BR5-010: Save expected nullifier BEFORE overwriting with prover output
+			const expectedNullifier = nullifierHex;
+			nullifierHex = threeTreeResult.publicInputs.nullifier;
+			publicInputsPayload = {
+				userRoot: threeTreeResult.publicInputs.userRoot,
+				cellMapRoot: threeTreeResult.publicInputs.cellMapRoot,
+				districts: threeTreeResult.publicInputs.districts,
+				nullifier: threeTreeResult.publicInputs.nullifier,
+				actionDomain: threeTreeResult.publicInputs.actionDomain,
+				authorityLevel: threeTreeResult.publicInputs.authorityLevel,
+				engagementRoot: threeTreeResult.publicInputs.engagementRoot,
+				engagementTier: threeTreeResult.publicInputs.engagementTier,
+				publicInputsArray: threeTreeResult.publicInputsArray
+			};
+
+			// BR5-010: Cross-validate public inputs against expected values
+			if (threeTreeResult.publicInputs.actionDomain !== actionDomain) {
+				throw new Error(
+					'BR5-010: Proof actionDomain mismatch. Possible proof substitution.'
+				);
 			}
+			if (threeTreeResult.publicInputs.nullifier !== expectedNullifier) {
+				throw new Error(
+					'BR5-010: Proof nullifier mismatch. Possible proof substitution.'
+				);
+			}
+			if (threeTreeResult.publicInputs.userRoot !== credential.merkleRoot) {
+				throw new Error(
+					'BR5-010: Proof userRoot does not match credential. Stale or substituted.'
+				);
+			}
+			if (threeTreeResult.publicInputs.cellMapRoot !== credential.cellMapRoot) {
+				throw new Error(
+					'BR5-010: Proof cellMapRoot does not match credential. Possible district spoofing.'
+				);
+			}
+
+			console.log('[ProofGenerator] Three-tree proof generated:', {
+				proofSize: proofHex.length,
+				publicInputCount: threeTreeResult.publicInputsArray.length
+			});
+
+			// Step 3: Encrypt witness for TEE processing
+			// Three-tree: full WitnessData for TEE proof verification + CWC delivery
+			const witnessForEncryption: WitnessData = {
+				userRoot: credential.merkleRoot,
+				cellMapRoot: credential.cellMapRoot!,
+				districts: credential.districts!,
+				nullifier: nullifierHex,
+				actionDomain: actionDomainHex,
+				authorityLevel: credential.authorityLevel ?? 3,
+				engagementRoot: credential.engagementRoot!,
+				engagementTier: credential.engagementTier ?? 0,
+				userSecret: credential.userSecret!,
+				cellId: credential.cellId!,
+				registrationSalt: credential.registrationSalt!,
+				identityCommitment: credential.identityCommitment,
+				userPath: credential.merklePath,
+				userIndex: credential.leafIndex,
+				cellMapPath: credential.cellMapPath!,
+				cellMapPathBits: credential.cellMapPathBits!,
+				engagementPath: credential.engagementPath!,
+				engagementIndex: credential.engagementIndex ?? 0,
+				actionCount: credential.actionCount ?? '0',
+				diversityScore: credential.diversityScore ?? '0',
+				deliveryAddress
+			};
 
 			proofState = { status: 'encrypting-witness' };
 			const { encryptWitness } = await import('$lib/core/proof/witness-encryption');

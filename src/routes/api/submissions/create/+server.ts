@@ -143,7 +143,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			const pseudonymousId = computePseudonymousId(userId);
 
 			// Create submission atomically
-			// Extract action_id from ZK public inputs when available (two-tree proofs)
+			// Extract action_id from ZK public inputs when available (three-tree proofs)
 			const publicInputsTyped = publicInputs as Record<string, unknown> | undefined;
 			// Witness data expires after 30 days (data minimization)
 			const WITNESS_TTL_MS = 30 * 24 * 60 * 60 * 1000;

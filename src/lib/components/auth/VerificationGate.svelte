@@ -34,9 +34,8 @@
 		/** If true, shows the verification modal */
 		showModal: boolean;
 		/**
-		 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
+		 * Census Block GEOID (15-digit cell identifier) for three-tree ZK architecture
 		 * PRIVACY: Neighborhood-level precision (600-3000 people)
-		 * Passed to Shadow Atlas registration for two-tree mode
 		 */
 		cellId?: string;
 		/** Minimum trust tier required (default: 2 for address-attested) */
