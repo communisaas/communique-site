@@ -729,7 +729,7 @@ Then:
 - **Congressional office sees: "Verified Constituent (TX-07)"**
 
 **On-Chain Reputation:**
-- Smart contract verifies ZK proof (300-500k gas)
+- Smart contract verifies ZK proof (~2.2M gas on Scroll L2)
 - Checks nullifier not reused
 - Updates ERC-8004 reputation (+1 Healthcare Policy)
 - **Platform pays all gas fees**

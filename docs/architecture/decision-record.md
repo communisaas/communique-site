@@ -44,7 +44,7 @@ VOTER Protocol requires zero-knowledge proofs of congressional district membersh
 - Shadow Atlas: IPFS-hosted (535 district trees + 1 global tree)
 - District tree size: ~8 MB per district, cached in IndexedDB
 - Progressive loading: Only user's district tree downloaded
-- Blockchain verification: Scroll L2 (~60-100k gas, $0.002 per verification)
+- Blockchain verification: Scroll L2 (~2.2M gas, ~$0.01-0.03 per verification)
 
 ---
 

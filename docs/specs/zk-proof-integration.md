@@ -4,7 +4,7 @@
 
 **Status**: ✅ **COMPLETE** - Browser prover fully integrated with Svelte 5 reactive store
 **Architecture**: Browser-native Noir/UltraHonk proving (no server-side proving, cypherpunk-compliant)
-**Performance**: 600ms-10s browser proving | ~50-100ms verification | 300-500k gas on-chain
+**Performance**: 600ms-10s browser proving | ~50-100ms verification | ~2.2M gas on-chain (Scroll L2)
 
 ## Wave 2.3 Implementation Summary
 
@@ -123,7 +123,7 @@
 │ ┌─────────────────────────────────────────────────────────────────┐│
 │ │ POST /api/congressional/submit                                   ││
 │ │ {                                                                ││
-│ │   proof: Uint8Array(~4600 bytes),  // ZK proof                  ││
+│ │   proof: Uint8Array(~7300 bytes),  // ZK proof (keccak mode)     ││
 │ │   publicOutputs: {                                               ││
 │ │     district_root: "0x1a52...",                                  ││
 │ │     nullifier: "0x8f3d...",                                      ││
@@ -145,7 +145,7 @@
 │ ┌─────────────────────────────────────────────────────────────────┐│
 │ │ model Submission {                                              ││
 │ │   id                   String   @id @default(cuid())            ││
-│ │   proof_bytes          Bytes    // ZK proof (~4.6KB)            ││
+│ │   proof_bytes          Bytes    // ZK proof (~7.3KB keccak)     ││
 │ │   district_root        String   // Public output 1              ││
 │ │   nullifier            String   // Public output 2 (indexed)    ││
 │ │   action_id            String   // Public output 3              ││
@@ -244,7 +244,7 @@
 │ │   // 1. Check nullifier not already used                        ││
 │ │   require(!usedNullifiers[nullifier], "Action already taken");  ││
 │ │                                                                  ││
-│ │   // 2. Verify UltraHonk proof (300-500k gas)                   ││
+│ │   // 2. Verify UltraHonk proof (~2.2M gas)                      ││
 │ │   require(verifyProof(proof, [district_root, nullifier, ...]),  ││
 │ │          "Invalid ZK proof");                                    ││
 │ │                                                                  ││
@@ -798,7 +798,7 @@ model Submission {
   id                   String   @id @default(cuid())
 
   // ZK proof data
-  proof_bytes          Bytes    // UltraHonk proof (~4.6KB)
+  proof_bytes          Bytes    // UltraHonk proof (~7.3KB keccak)
   district_root        String   // Public output 1
   nullifier            String   // Public output 2 (prevents double-action)
   action_id            String   // Public output 3 (identifies action type)
@@ -838,16 +838,16 @@ model Submission {
 | **Mobile (Mid-range)** | 15-20s | 8-15s | 150-200ms |
 
 **Memory Usage**: ~800MB peak (WASM module + KZG params)
-**Proof Size**: ~4.6KB (UltraHonk format)
+**Proof Size**: ~7.3KB (UltraHonk keccak mode)
 **Circuit Depths**: 18/20/22/24 (260K/1M/4M/16M leaves respectively)
 
 ### On-Chain Verification (Scroll L2)
 
 | Operation | Gas Cost | Cost @ 0.1 gwei | Time |
 |-----------|----------|-----------------|------|
-| **Proof Verification** | 300-500k gas | $0.01-0.02 | ~2-3s |
+| **Proof Verification** | ~2.2M gas | $0.01-0.03 | ~2-3s |
 | **Reputation Update** | 50-80k gas | $0.003-0.005 | <1s |
-| **Total** | 350-580k gas | $0.013-0.025 | ~3-4s |
+| **Total** | ~2.3M gas | $0.013-0.035 | ~3-4s |
 
 **Platform Coverage**: Communique pays all gas fees (user-side gas-free)
 

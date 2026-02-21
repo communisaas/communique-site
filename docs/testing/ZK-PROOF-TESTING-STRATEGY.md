@@ -27,7 +27,7 @@
 **What we DON'T test:**
 - ❌ Actual WASM initialization (requires browser)
 - ❌ Real proof generation (requires browser)
-- ❌ Cryptographic soundness (audited by Trail of Bits)
+- ❌ Cryptographic soundness (Noir/Barretenberg UltraHonk via @aztec/bb.js; Trail of Bits audit planned)
 - ❌ Performance benchmarks (requires real hardware)
 
 **Example:**
@@ -281,7 +281,7 @@ We have confidence because:
 1. **API tests** ensure correct integration patterns
 2. **E2E tests** prove it works in real browsers
 3. **Manual tests** catch real UX issues
-4. **Axiom's halo2_base** is Trail of Bits audited (cryptography works)
+4. **Noir/Barretenberg (UltraHonk via @aztec/bb.js)** provides the proving system (Trail of Bits audit planned)
 
 We DON'T need:
 - ❌ 100% coverage (diminishing returns)
@@ -301,7 +301,7 @@ A: We fallback to Phase 1 (encrypted address). User can still send message.
 A: Manual benchmarking + real user monitoring (once deployed).
 
 **Q: Can we test cryptographic soundness?**
-A: No. That's what audits are for. We trust Axiom's halo2_base (Trail of Bits audited).
+A: No. That's what audits are for. We use Noir/Barretenberg (UltraHonk via @aztec/bb.js); Trail of Bits audit planned.
 
 **Q: What about Playwright in CI with more resources?**
 A: Possible with self-hosted runners (8GB RAM+), but not worth it vs manual testing.

@@ -150,7 +150,7 @@ Communiqué is the **frontend application** for VOTER Protocol's cryptographic i
 8. **Build reputation** - On-chain ERC-8004 reputation tracking
 9. **Earn rewards** - Token rewards launch in Phase 2 (12-18 months)
 
-**Zero-knowledge guarantee:** Your address is used to generate a Noir/UltraHonk proof entirely in browser (WASM). Address never leaves your device, never sent to any server. Decision-makers verify proof on-chain (~60-100k gas, ~$0.002 per verification).
+**Zero-knowledge guarantee:** Your address is used to generate a Noir/UltraHonk proof entirely in browser (WASM). Address never leaves your device, never sent to any server. Decision-makers verify proof on-chain (~2.2M gas, ~$0.01-0.03 per verification on Scroll L2).
 
 **Encrypted delivery:** Message plaintext exists only in: your browser → delivery API → decision-maker CRM. Platform operators cannot read messages.
 

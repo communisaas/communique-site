@@ -66,12 +66,12 @@ Backend cryptographic infrastructure. Noir/UltraHonk zero-knowledge proofs, AWS 
 **What voter-protocol handles:**
 - ✅ **Noir ZK Circuits** - Merkle tree proofs (depth 18/20/22/24 for 260K-16M leaves)
 - ✅ **Browser WASM Prover** - Noir/UltraHonk compiled to WASM (600ms-10s proving)
-- ✅ **Solidity Verifier** - On-chain UltraHonk proof verification (300-500k gas)
+- ✅ **Solidity Verifier** - On-chain UltraHonk proof verification (~2.2M gas on Scroll L2)
 - ✅ **AWS Nitro Enclaves** - TEE deployment, encrypted witness decryption
 - ✅ **CWC API Integration** - Congressional message delivery (inside TEE)
 - ✅ **ReputationAgent** - Gemini 2.5 Flash credential verification
 - ✅ **ERC-8004 Reputation** - On-chain reputation tracking with time decay
-- ✅ **Smart Contracts** - IdentityRegistry, ReputationRegistry, DistrictGate
+- ✅ **Smart Contracts** - DistrictGate, VerifierRegistry, UserRootRegistry, CellMapRegistry, NullifierRegistry, DistrictRegistry, CampaignRegistry
 - ✅ **Shadow Atlas** - Merkle tree generation, IPFS pinning
 - ✅ **Multi-Agent Treasury** - Phase 2 token rewards, challenge markets
 
@@ -412,9 +412,9 @@ TOTAL COST:
 ┌─────────────────────────────────────────────────────────────────┐
 │ SCROLL zkEVM (Ethereum L2 Settlement)                            │
 ├─────────────────────────────────────────────────────────────────┤
-│ • IdentityRegistry (on-chain identity commitments)               │
-│ • ReputationRegistry (ERC-8004 reputation with time decay)       │
-│ • DistrictGate (UltraHonk proof verifier, 300-500k gas)          │
+│ • UserRootRegistry (on-chain identity commitments)               │
+│ • NullifierRegistry (double-action prevention)                   │
+│ • DistrictGate (UltraHonk proof verifier, ~2.2M gas)             │
 │ • Phase 2: Token rewards, challenge markets, outcome markets     │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -558,8 +558,8 @@ DIDIT_API_KEY=<didit-api-key>
    - Implement CWC API integration inside enclave
 
 3. **Smart Contracts** (Scroll zkEVM)
-   - Deploy IdentityRegistry.sol
-   - Deploy ReputationRegistry.sol (ERC-8004)
+   - Deploy UserRootRegistry.sol
+   - Deploy NullifierRegistry.sol
    - Deploy DistrictGate.sol (UltraHonk verifier)
    - Share contract addresses with Communique
 
@@ -581,7 +581,7 @@ DIDIT_API_KEY=<didit-api-key>
 ### Performance Targets (To Be Measured)
 - ⏳ 95% of verification requests <500ms
 - ⏳ Browser ZK proving 600ms-10s (depending on device)
-- ⏳ On-chain proof verification 300-500k gas
+- ⏳ On-chain proof verification ~2.2M gas on Scroll L2
 
 ### Launch Readiness (MVP Checklist)
 - ✅ Database privacy migration complete

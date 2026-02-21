@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-02-20):** Browser-native ZK proof generation is implemented and operational in Phase 1 via @voter-protocol/noir-prover (UltraHonk/keccak mode). This document describes the pre-implementation design. For current architecture, see voter-protocol/specs/TWO-TREE-ARCHITECTURE-SPEC.md.
+
 # Proof Generation UX: Browser-Native Zero-Knowledge Proving
 
 ## Who We're Building For
