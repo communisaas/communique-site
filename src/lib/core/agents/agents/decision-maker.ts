@@ -93,7 +93,7 @@ export interface AgenticToolContext {
  * Classify a URL by its path pattern. Returns a descriptive label
  * the agent can use however it sees fit — not a priority signal.
  */
-function classifyUrl(url: string): string {
+export function classifyUrl(url: string): string {
 	try {
 		const path = new URL(url).pathname.toLowerCase();
 		if (/\/(contact|staff|directory|people|team|leadership)/.test(path)) return 'contact_page';
@@ -110,7 +110,7 @@ function classifyUrl(url: string): string {
  * Suggest common contact-related URLs based on a domain.
  * Offered as possibilities the agent can use or ignore.
  */
-function suggestContactUrls(url: string): string[] {
+export function suggestContactUrls(url: string): string[] {
 	try {
 		const origin = new URL(url).origin;
 		return [
@@ -128,7 +128,7 @@ function suggestContactUrls(url: string): string[] {
  * Extract contact-related hints from page text via regex.
  * Returns pre-parsed signals so the agent doesn't have to scan full markdown.
  */
-function extractContactHints(text: string): {
+export function extractContactHints(text: string): {
 	emails: string[];
 	phones: string[];
 	socialUrls: string[];

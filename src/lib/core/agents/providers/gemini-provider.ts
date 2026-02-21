@@ -30,13 +30,21 @@ import {
 	generateDomainHintForOrg,
 	type ResolvedIdentity,
 	type CachedContactInfo,
+	PAGE_SELECTION_PROMPT,
+	buildPageSelectionPrompt,
+	CONTACT_SYNTHESIS_PROMPT,
+	buildContactSynthesisPrompt,
+	detectOrgTypes,
+	generateDomainContext,
 } from '../prompts/decision-maker';
 import { getCachedContacts, upsertResolvedContacts } from '../utils/contact-cache';
 import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
-import { searchWeb, type ExaPageContent } from '../exa-search';
+import { searchWeb, readPage, type ExaPageContent } from '../exa-search';
 import {
 	getAgentToolDeclarations,
-	processGeminiFunctionCall
+	processGeminiFunctionCall,
+	classifyUrl,
+	extractContactHints,
 } from '../agents/decision-maker';
 import type { AgenticToolContext } from '../agents/decision-maker';
 import { ThoughtEmitter } from '$lib/core/thoughts/emitter';
@@ -99,6 +107,16 @@ interface FunctionCallingResult {
 interface PersonLookupResponse {
 	decision_makers: Candidate[];
 	research_summary: string;
+}
+
+/** Stage 2: Page selection response from Gemini */
+interface PageSelectionResponse {
+	page_selections: Array<{
+		identity_index: number;
+		person_name: string;
+		organization: string;
+		selected_pages: Array<{ url: string; reason: string; url_hint: string }>;
+	}>;
 }
 
 // ============================================================================
@@ -560,7 +578,422 @@ async function huntSingleContact(
 	};
 }
 
+// ============================================================================
+// Helpers — Shared by huntContactsFanOutSynthesize and legacy
+// ============================================================================
+
+/** Inline org key normalization (mirrors contact-cache.ts normalizeOrgKey) */
+function normalizeOrgKeyInline(org: string): string {
+	return org.toLowerCase()
+		.replace(/^the\s+/, '')
+		.replace(/['']/g, '')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-|-$/g, '');
+}
+
+/** Match Phase 1 reasoning to an identity by position+org, then org, then index */
+function matchRoleReasoning(identity: ResolvedIdentity, roles: DiscoveredRole[], index: number): string {
+	return roles.find(r =>
+		r.position.toLowerCase() === identity.position.toLowerCase() &&
+		r.organization.toLowerCase() === identity.organization.toLowerCase()
+	)?.reasoning ||
+	roles.find(r =>
+		r.organization.toLowerCase() === identity.organization.toLowerCase()
+	)?.reasoning ||
+	roles[index]?.reasoning ||
+	'';
+}
+
+// ============================================================================
+// Phase 2b (v2): Fan-Out + Synthesize — 4 deterministic stages, 2 Gemini calls
+// ============================================================================
+
 /**
+ * Deterministic contact resolution pipeline.
+ *
+ * Replaces N parallel ReAct agent loops with 4 stages:
+ * 1. Parallel contact searches (Exa, no Gemini)
+ * 2. Batch page selection (1 Gemini call)
+ * 3. Parallel page reads (Firecrawl, no Gemini)
+ * 4. Batch contact synthesis (1 Gemini call)
+ *
+ * Same signature and return type as huntContactsParallel_legacy for drop-in replacement.
+ */
+async function huntContactsFanOutSynthesize(
+	identities: ResolvedIdentity[],
+	cachedContacts: CachedContactInfo[],
+	roles: DiscoveredRole[],
+	streaming?: StreamingCallbacks,
+	signal?: AbortSignal,
+	/** Called per-identity as each candidate is resolved (for progressive UI streaming) */
+	onCandidateProcessed?: (candidate: Candidate, fetchedPages: ExaPageContent[]) => void
+): Promise<{
+	candidates: Candidate[];
+	fetchedPages: Map<string, ExaPageContent>;
+	tokenUsage?: TokenUsage;
+}> {
+	const currentYear = new Date().getFullYear().toString();
+	const currentDate = new Date().toLocaleDateString('en-US', {
+		year: 'numeric', month: 'long', day: 'numeric'
+	});
+	const tokenUsages: (TokenUsage | undefined)[] = [];
+	const fetchedPages = new Map<string, ExaPageContent>();
+
+	// Streaming thought helper
+	const onThought = streaming?.onThought
+		? (thought: string) => streaming.onThought!(thought, 'contact')
+		: undefined;
+
+	// ================================================================
+	// Cache separation (same as old function)
+	// ================================================================
+
+	const cacheMap = new Map<string, CachedContactInfo>();
+	for (const c of cachedContacts) {
+		if (c.title && c.email) {
+			cacheMap.set(`${c.orgKey}::${c.title.toLowerCase()}`, c);
+		}
+	}
+
+	const uncached: Array<{ identity: ResolvedIdentity; reasoning: string }> = [];
+	const cachedCandidates: Candidate[] = [];
+
+	for (let i = 0; i < identities.length; i++) {
+		const identity = identities[i];
+		const orgKey = normalizeOrgKeyInline(identity.organization);
+		const cached = cacheMap.get(`${orgKey}::${identity.title.toLowerCase()}`);
+		const roleReasoning = matchRoleReasoning(identity, roles, i);
+
+		if (cached?.email) {
+			cachedCandidates.push({
+				name: cached.name || identity.name,
+				title: cached.title || identity.title,
+				organization: identity.organization,
+				reasoning: roleReasoning,
+				email: cached.email,
+				email_source: cached.emailSource || undefined,
+				recency_check: `Cached contact (verified in prior run)`,
+				contact_notes: ''
+			});
+		} else {
+			uncached.push({ identity, reasoning: roleReasoning });
+		}
+	}
+
+	console.debug(`[gemini-provider] Fan-out: ${cachedCandidates.length} cached, ${uncached.length} uncached`);
+
+	// Emit cached contacts immediately
+	if (onCandidateProcessed) {
+		for (const cached of cachedCandidates) {
+			onCandidateProcessed(cached, []);
+		}
+	}
+
+	// All cached — return early
+	if (uncached.length === 0) {
+		console.debug('[gemini-provider] Fan-out: all identities cached, returning early');
+		return {
+			candidates: cachedCandidates,
+			fetchedPages,
+			tokenUsage: undefined
+		};
+	}
+
+	// ================================================================
+	// Stage 1: Parallel Contact Searches (~3s)
+	// ================================================================
+
+	if (signal?.aborted) {
+		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
+	}
+
+	console.debug(`[gemini-provider] Stage 1: ${uncached.length} parallel contact searches`);
+
+	const searchQueries = uncached.map(({ identity }) => {
+		const isUnknown = identity.name === 'UNKNOWN';
+		if (isUnknown) {
+			return `"${identity.title}" "${identity.organization}" contact email ${currentYear}`;
+		}
+		return `"${identity.name}" "${identity.organization}" contact email`;
+	});
+
+	const searchResults = await Promise.allSettled(
+		searchQueries.map(q => searchWeb(q, { maxResults: 15 }))
+	);
+
+	// Pair search results with identity info, classify URLs
+	const identitySearchResults: Array<{
+		identity: ResolvedIdentity;
+		reasoning: string;
+		hits: Array<{ url: string; title: string; publishedDate?: string; score?: number; url_hint: string }>;
+	}> = uncached.map((entry, i) => {
+		const result = searchResults[i];
+		const rawHits = result.status === 'fulfilled' ? result.value : [];
+		if (result.status === 'rejected') {
+			console.warn(`[gemini-provider] Stage 1 search failed for "${entry.identity.name}":`, result.reason);
+		}
+		const hits = rawHits.map(h => ({
+			url: h.url,
+			title: h.title,
+			publishedDate: h.publishedDate,
+			score: h.score,
+			url_hint: classifyUrl(h.url)
+		}));
+		return {
+			identity: entry.identity,
+			reasoning: entry.reasoning,
+			hits
+		};
+	});
+
+	const totalHits = identitySearchResults.reduce((sum, isr) => sum + isr.hits.length, 0);
+	console.debug(`[gemini-provider] Stage 1 complete: ${totalHits} total hits across ${uncached.length} searches`);
+
+	// ================================================================
+	// Stage 2: Page Selection (1 Gemini call, ~3-5s)
+	// ================================================================
+
+	if (signal?.aborted) {
+		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
+	}
+
+	const MAX_PAGES_TOTAL = Math.min(uncached.length * 2, 20);
+
+	const pageSelectionSystem = PAGE_SELECTION_PROMPT
+		.replace(/{CURRENT_DATE}/g, currentDate)
+		.replace(/{MAX_PAGES_TOTAL}/g, String(MAX_PAGES_TOTAL));
+	const pageSelectionUser = buildPageSelectionPrompt(identitySearchResults);
+
+	console.debug(`[gemini-provider] Stage 2: Page selection call (budget: ${MAX_PAGES_TOTAL} pages)`);
+
+	const selectionResult = await generateWithThoughts<PageSelectionResponse>(
+		pageSelectionUser,
+		{
+			systemInstruction: pageSelectionSystem,
+			temperature: 0.1,
+			thinkingLevel: 'low',
+			maxOutputTokens: 8192
+		},
+		onThought
+	);
+	tokenUsages.push(selectionResult.tokenUsage);
+
+	const selectionExtraction = extractJsonFromGroundingResponse<PageSelectionResponse>(
+		selectionResult.rawText || '{}'
+	);
+
+	// Build URL → identity indices map (same page attributed to multiple identities, fetched once)
+	const urlToIdentities = new Map<string, Set<number>>();
+
+	if (isSuccessfulExtraction(selectionExtraction) && selectionExtraction.data?.page_selections?.length > 0) {
+		// Parse successful — use Gemini's selections
+		for (const sel of selectionExtraction.data.page_selections) {
+			for (const page of sel.selected_pages) {
+				if (!urlToIdentities.has(page.url)) {
+					urlToIdentities.set(page.url, new Set());
+				}
+				urlToIdentities.get(page.url)!.add(sel.identity_index);
+			}
+		}
+		console.debug(`[gemini-provider] Stage 2: Gemini selected ${urlToIdentities.size} unique URLs`);
+	} else {
+		// Fallback: select top 2 contact/about/press pages per identity
+		console.warn('[gemini-provider] Stage 2: Page selection parse failed, using fallback');
+		for (let i = 0; i < identitySearchResults.length; i++) {
+			const priorityHints = new Set(['contact_page', 'about_page', 'press_page']);
+			const priorityHits = identitySearchResults[i].hits
+				.filter(h => priorityHints.has(h.url_hint))
+				.slice(0, 2);
+
+			// If not enough priority hits, fill with any hits
+			const fallbackHits = priorityHits.length < 2
+				? identitySearchResults[i].hits
+					.filter(h => !priorityHints.has(h.url_hint))
+					.slice(0, 2 - priorityHits.length)
+				: [];
+
+			for (const h of [...priorityHits, ...fallbackHits]) {
+				if (!urlToIdentities.has(h.url)) {
+					urlToIdentities.set(h.url, new Set());
+				}
+				urlToIdentities.get(h.url)!.add(i);
+			}
+		}
+		console.debug(`[gemini-provider] Stage 2 fallback: ${urlToIdentities.size} unique URLs`);
+	}
+
+	// Slice to MAX_PAGES_TOTAL unique URLs
+	const selectedUrls = Array.from(urlToIdentities.keys()).slice(0, MAX_PAGES_TOTAL);
+	const selectedUrlToIdentities = new Map<string, Set<number>>();
+	for (const url of selectedUrls) {
+		selectedUrlToIdentities.set(url, urlToIdentities.get(url)!);
+	}
+
+	console.debug(`[gemini-provider] Stage 2 final: ${selectedUrls.length} URLs to fetch (budget: ${MAX_PAGES_TOTAL})`);
+
+	// ================================================================
+	// Stage 3: Parallel Page Reads (~5-8s)
+	// ================================================================
+
+	if (signal?.aborted) {
+		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
+	}
+
+	console.debug(`[gemini-provider] Stage 3: ${selectedUrls.length} parallel page reads`);
+
+	const pageReadResults = await Promise.allSettled(
+		selectedUrls.map(url => readPage(url, { maxCharacters: 12000 }))
+	);
+
+	const pagesForSynthesis: Array<{
+		url: string;
+		title: string;
+		text: string;
+		contactHints: { emails: string[]; phones: string[]; socialUrls: string[] };
+		attributedTo: number[];
+	}> = [];
+
+	for (let i = 0; i < selectedUrls.length; i++) {
+		const url = selectedUrls[i];
+		const result = pageReadResults[i];
+
+		if (result.status === 'rejected') {
+			console.warn(`[gemini-provider] Stage 3: Page read failed for ${url}:`, result.reason);
+			continue;
+		}
+
+		const page = result.value;
+		if (!page || !page.text) {
+			console.debug(`[gemini-provider] Stage 3: No content for ${url}`);
+			continue;
+		}
+
+		// Store in fetchedPages map
+		fetchedPages.set(url, page);
+
+		// Extract contact hints
+		const contactHints = extractContactHints(page.text);
+
+		// Track identity attribution from Stage 2
+		const attributedTo = Array.from(selectedUrlToIdentities.get(url) || []);
+
+		pagesForSynthesis.push({
+			url: page.url,
+			title: page.title,
+			text: page.text,
+			contactHints,
+			attributedTo
+		});
+	}
+
+	console.debug(`[gemini-provider] Stage 3 complete: ${pagesForSynthesis.length} pages readable, ${fetchedPages.size} stored`);
+
+	// If zero pages readable: return all uncached identities as no-email candidates
+	if (pagesForSynthesis.length === 0) {
+		console.warn('[gemini-provider] Stage 3: Zero pages readable — returning no-email candidates');
+		const noEmailCandidates: Candidate[] = uncached.map(({ identity, reasoning }) => ({
+			name: identity.name,
+			title: identity.title,
+			organization: identity.organization,
+			reasoning,
+			email: '',
+			recency_check: '',
+			contact_notes: 'No pages could be read — try again later.'
+		}));
+
+		if (onCandidateProcessed) {
+			for (const candidate of noEmailCandidates) {
+				onCandidateProcessed(candidate, []);
+			}
+		}
+
+		return {
+			candidates: [...cachedCandidates, ...noEmailCandidates],
+			fetchedPages,
+			tokenUsage: sumTokenUsage(...tokenUsages)
+		};
+	}
+
+	// ================================================================
+	// Stage 4: Synthesis (1 Gemini call, ~5-8s)
+	// ================================================================
+
+	if (signal?.aborted) {
+		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
+	}
+
+	const domainContext = generateDomainContext(detectOrgTypes(uncached.map(u => u.identity.organization)));
+
+	const synthesisSystem = CONTACT_SYNTHESIS_PROMPT
+		.replace(/{CURRENT_DATE}/g, currentDate)
+		.replace(/{DOMAIN_CONTEXT}/g, domainContext || '');
+	const synthesisUser = buildContactSynthesisPrompt(
+		uncached.map(u => ({ identity: u.identity, reasoning: u.reasoning })),
+		pagesForSynthesis
+	);
+
+	console.debug('[gemini-provider] Stage 4: Contact synthesis call');
+
+	const synthesisResult = await generateWithThoughts<PersonLookupResponse>(
+		synthesisUser,
+		{
+			systemInstruction: synthesisSystem,
+			temperature: 0.2,
+			thinkingLevel: 'medium',
+			maxOutputTokens: 32768
+		},
+		onThought
+	);
+	tokenUsages.push(synthesisResult.tokenUsage);
+
+	const synthesisExtraction = extractJsonFromGroundingResponse<PersonLookupResponse>(
+		synthesisResult.rawText || '{}'
+	);
+
+	let synthesizedCandidates: Candidate[];
+
+	if (isSuccessfulExtraction(synthesisExtraction) && synthesisExtraction.data?.decision_makers?.length > 0) {
+		synthesizedCandidates = synthesisExtraction.data.decision_makers;
+		console.debug(`[gemini-provider] Stage 4: Synthesized ${synthesizedCandidates.length} candidates`);
+	} else {
+		// Fallback on parse failure
+		console.warn('[gemini-provider] Stage 4: Synthesis parse failed, returning no-email candidates');
+		synthesizedCandidates = uncached.map(({ identity, reasoning }) => ({
+			name: identity.name,
+			title: identity.title,
+			organization: identity.organization,
+			reasoning,
+			email: '',
+			recency_check: '',
+			contact_notes: 'Contact synthesis failed — try again.'
+		}));
+	}
+
+	// Emit ALL synthesized candidates via onCandidateProcessed
+	if (onCandidateProcessed) {
+		const allPages = Array.from(fetchedPages.values());
+		for (const candidate of synthesizedCandidates) {
+			onCandidateProcessed(candidate, allPages);
+		}
+	}
+
+	// ================================================================
+	// Return: merge cached + synthesized
+	// ================================================================
+
+	const allCandidates = [...cachedCandidates, ...synthesizedCandidates];
+	console.debug(`[gemini-provider] Fan-out complete: ${allCandidates.length} total candidates (${cachedCandidates.length} cached + ${synthesizedCandidates.length} synthesized), ${fetchedPages.size} pages`);
+
+	return {
+		candidates: allCandidates,
+		fetchedPages,
+		tokenUsage: sumTokenUsage(...tokenUsages)
+	};
+}
+
+/**
+ * @deprecated Use huntContactsFanOutSynthesize instead. Kept for rollback.
+ *
  * Fan out per-identity parallel contact hunting mini-agents.
  *
  * Cached identities skip agent calls entirely and become pre-verified candidates.
@@ -569,7 +1002,7 @@ async function huntSingleContact(
  *
  * Results are merged: all candidates + all fetchedPages for email grounding.
  */
-async function huntContactsParallel(
+async function huntContactsParallel_legacy(
 	identities: ResolvedIdentity[],
 	cachedContacts: CachedContactInfo[],
 	roles: DiscoveredRole[],
@@ -877,7 +1310,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 			streaming?.onPhase?.('contact', `Searching for contact information...`);
 
-			const contactResult = await huntContactsParallel(
+			const contactResult = await huntContactsFanOutSynthesize(
 				identities, cachedContacts, roles, streaming, context.signal,
 				// Per-identity streaming callback — emit as each mini-agent completes
 				(candidate, pages) => {

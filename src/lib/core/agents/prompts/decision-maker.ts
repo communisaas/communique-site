@@ -79,7 +79,7 @@ Return 8-10 positions (NOT people) with direct authority, gatekeeping power, coa
 
 type OrgType = 'government' | 'union' | 'think_tank' | 'corporate' | 'nonprofit' | 'media' | 'other';
 
-function detectOrgTypes(organizations: string[]): Set<OrgType> {
+export function detectOrgTypes(organizations: string[]): Set<OrgType> {
 	const types = new Set<OrgType>();
 	for (const org of organizations) {
 		const lower = org.toLowerCase();
@@ -106,7 +106,7 @@ function detectOrgTypes(organizations: string[]): Set<OrgType> {
 	return types;
 }
 
-function generateDomainContext(orgTypes: Set<OrgType>): string {
+export function generateDomainContext(orgTypes: Set<OrgType>): string {
 	const observations: string[] = [];
 
 	if (orgTypes.has('government')) {
@@ -311,4 +311,210 @@ If you cannot determine who holds this position, set name to the most specific t
 **${identity.name}** — ${identity.title} at ${identity.organization}
 Identity confirmed via: ${identity.search_evidence}
 Why they matter: ${reasoning}`;
+}
+
+// ============================================================================
+// Phase 2b-batch: Page Selection — Single call to rank and select URLs
+// ============================================================================
+
+/**
+ * System prompt for batch page selection.
+ * Receives all identities with their search results and selects which pages
+ * to fetch, respecting a total page budget across all identities.
+ *
+ * Template variables: {CURRENT_DATE}, {MAX_PAGES_TOTAL}
+ */
+export const PAGE_SELECTION_PROMPT = `You are a page selection system. Given search results for multiple people, select which web pages to read in order to find their contact information.
+
+## Mission
+
+Select up to {MAX_PAGES_TOTAL} pages total across ALL identities. Allocate budget wisely — prioritize pages most likely to contain email addresses or direct contact information.
+
+## Rules
+
+1. Do NOT invent URLs — only select from the search results provided.
+2. If a single page likely contains contacts for multiple people (e.g., a staff directory or leadership page), attribute it to ALL relevant identities. It will only be fetched once.
+3. Use url_hint labels (contact_page, press_page, about_page, homepage, other) as signals but not absolute rules — a homepage may contain contact info, and a "contact page" may just have a form.
+4. Prefer pages from the organization's own domain over third-party sources.
+5. Prefer recent results over older ones when available.
+6. If no promising pages exist for an identity, include it in the output with an empty selected_pages array.
+7. Stay within the {MAX_PAGES_TOTAL} page budget. Count each unique URL only once toward the budget, even if attributed to multiple identities.
+
+Today's date: {CURRENT_DATE}
+
+## Output
+
+Return a JSON object:
+
+{
+  "page_selections": [
+    {
+      "identity_index": 0,
+      "person_name": "Full Name",
+      "organization": "Org Name",
+      "selected_pages": [
+        { "url": "https://...", "reason": "Brief reason for selecting this page", "url_hint": "contact_page" }
+      ]
+    }
+  ]
+}
+
+Include ALL identities from the input, even those with no selected pages.
+
+Return JSON directly — no markdown code blocks.`;
+
+/**
+ * Build user prompt for batch page selection.
+ * Formats each identity with its search hits for the page selection model.
+ */
+export function buildPageSelectionPrompt(
+	identitySearchResults: Array<{
+		identity: ResolvedIdentity;
+		reasoning: string;
+		hits: Array<{ url: string; title: string; publishedDate?: string; score?: number; url_hint: string }>;
+	}>
+): string {
+	const sections = identitySearchResults
+		.map((isr, i) => {
+			const hitLines =
+				isr.hits.length > 0
+					? isr.hits
+							.slice(0, 15)
+							.map(
+								(h, j) =>
+									`  ${j + 1}. "${h.title}" (${h.publishedDate || 'no date'}) [${h.url_hint}] — ${h.url}`
+							)
+							.join('\n')
+					: '  (no search results found)';
+
+			return `## Identity ${i}: ${isr.identity.name} — ${isr.identity.title} at ${isr.identity.organization}
+Why they matter: ${isr.reasoning}
+Search evidence: ${isr.identity.search_evidence}
+Search results:\n${hitLines}`;
+		})
+		.join('\n\n');
+
+	return `Select which pages to read to find contact information for each person.\n\n${sections}`;
+}
+
+// ============================================================================
+// Phase 2b-batch: Contact Synthesis — Single call to extract contacts from pages
+// ============================================================================
+
+/**
+ * System prompt for batch contact synthesis.
+ * Receives all identities and all fetched page content, then extracts
+ * contact information for each person from the page text.
+ *
+ * Template variables: {CURRENT_DATE}, {DOMAIN_CONTEXT}
+ */
+export const CONTACT_SYNTHESIS_PROMPT = `You are a contact extraction system. Given page content fetched from the web, extract email addresses and contact information for specific people.
+
+## Mission
+
+For each person listed, find their email address from the provided page content. Cross-reference across all pages — an email for person A may appear on a page originally selected for person B.
+
+## Rules
+
+1. Emails you report MUST appear VERBATIM in the provided page content. Do NOT construct, guess, or infer email addresses.
+2. General office emails ARE acceptable (mayor@city.gov, press@org.com) — these are valid published contact paths.
+3. For each person, cite the specific page URL where the email was found in email_source.
+4. If no email is found for a person, set email to "NO_EMAIL_FOUND" and capture alternatives (phone numbers, contact form URLs, social profiles) in contact_notes.
+5. The reasoning field must be PERSON-SPECIFIC: explain why THIS individual (not just their role) matters to THIS issue. Reference specific details learned from the page content. 2-3 sentences.
+6. Cross-reference across pages: if person A's email appears on a page attributed to person B, still capture it for person A.
+7. Verify identity recency: note evidence from the page content that the person currently holds the stated position in recency_check.
+8. Pre-extracted contact_hints are provided for convenience — but you MUST still verify any email appears in the actual page text before reporting it.
+{DOMAIN_CONTEXT}
+Today's date: {CURRENT_DATE}
+
+## Output
+
+Return a JSON object matching this schema:
+
+{
+  "decision_makers": [
+    {
+      "name": "Full Name",
+      "title": "Concise role",
+      "organization": "Organization Name",
+      "email": "found@email.com or NO_EMAIL_FOUND",
+      "email_source": "URL where email appeared verbatim",
+      "reasoning": "Person-specific justification (2-3 sentences)",
+      "recency_check": "Evidence this person currently holds position",
+      "contact_notes": "Alternative contacts if no email, or empty string"
+    }
+  ],
+  "research_summary": "Brief summary of what was found across all pages"
+}
+
+Include ALL people from the input, even those for whom no email was found.
+
+Return JSON directly — no markdown code blocks.`;
+
+/**
+ * Build user prompt for batch contact synthesis.
+ * Combines identity list with fetched page content and pre-extracted hints.
+ */
+export function buildContactSynthesisPrompt(
+	identities: Array<{
+		identity: ResolvedIdentity;
+		reasoning: string;
+	}>,
+	pages: Array<{
+		url: string;
+		title: string;
+		text: string;
+		contactHints: { emails: string[]; phones: string[]; socialUrls: string[] };
+		attributedTo: number[];
+	}>
+): string {
+	// Section 1: People to find contacts for
+	const peopleSection = identities
+		.map((entry, i) => {
+			return `${i}. **${entry.identity.name}** — ${entry.identity.title} at ${entry.identity.organization}
+   Why they matter: ${entry.reasoning}
+   Search evidence: ${entry.identity.search_evidence}`;
+		})
+		.join('\n\n');
+
+	// Section 2: Page content
+	const pagesSection = pages
+		.map((page, i) => {
+			const attribution = page.attributedTo.map((idx) => {
+				const entry = identities[idx];
+				return entry ? entry.identity.name : `Identity ${idx}`;
+			}).join(', ');
+
+			const hintsLines: string[] = [];
+			if (page.contactHints.emails.length > 0) {
+				hintsLines.push(`  Emails found: ${page.contactHints.emails.join(', ')}`);
+			}
+			if (page.contactHints.phones.length > 0) {
+				hintsLines.push(`  Phones found: ${page.contactHints.phones.join(', ')}`);
+			}
+			if (page.contactHints.socialUrls.length > 0) {
+				hintsLines.push(`  Social URLs: ${page.contactHints.socialUrls.join(', ')}`);
+			}
+			const hintsBlock = hintsLines.length > 0
+				? `Pre-extracted hints:\n${hintsLines.join('\n')}\n`
+				: 'Pre-extracted hints: (none)\n';
+
+			return `### Page ${i + 1}: ${page.title}
+URL: ${page.url}
+Selected for: ${attribution}
+${hintsBlock}
+Content:
+${page.text}`;
+		})
+		.join('\n\n---\n\n');
+
+	return `Find contact information for each person using the page content below.
+
+## People to find contacts for
+
+${peopleSection}
+
+## Page Content
+
+${pagesSection}`;
 }
