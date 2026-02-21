@@ -20,6 +20,7 @@
 
 import { prisma } from '$lib/core/db';
 import { createHash } from 'crypto';
+import { BN254_MODULUS } from '@voter-protocol/noir-prover';
 
 // =============================================================================
 // TYPES
@@ -45,10 +46,6 @@ export interface MergeAccountsResult {
 // =============================================================================
 // IDENTITY COMMITMENT GENERATION
 // =============================================================================
-
-/** BN254 scalar field modulus — identity commitments must be valid field elements */
-const BN254_MODULUS =
-	21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 /**
  * Compute identity commitment from verification proof data.

@@ -33,6 +33,7 @@ import {
 	solidityPacked,
 	type TransactionReceipt
 } from 'ethers';
+import { BN254_MODULUS } from '@voter-protocol/noir-prover';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CIRCUIT BREAKER (Wave 15a)
@@ -228,9 +229,6 @@ const DISTRICT_GATE_ABI = [
 
 /** Number of public inputs expected by the three-tree circuit */
 export const THREE_TREE_PUBLIC_INPUT_COUNT = 31;
-
-/** BN254 scalar field modulus — all public inputs must be < this value */
-const BN254_MODULUS = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 /** Valid circuit depths for three-tree verifier */
 const VALID_VERIFIER_DEPTHS = [18, 20, 22, 24] as const;

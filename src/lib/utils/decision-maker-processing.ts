@@ -107,9 +107,9 @@ export function extractRecipientEmails(
 		});
 	}
 
-	// Congressional marker
+	// Congressional routing — use real relay address (not a sentinel token)
 	if (includesCongress) {
-		emails.push('__CONGRESSIONAL__');
+		emails.push('congress@communi.email');
 	}
 
 	return emails;

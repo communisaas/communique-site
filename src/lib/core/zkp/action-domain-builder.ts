@@ -31,13 +31,11 @@
  */
 
 import { solidityPackedKeccak256 } from 'ethers';
+import { BN254_MODULUS } from '@voter-protocol/noir-prover';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
-
-const BN254_MODULUS =
-	21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 const PROTOCOL_VERSION = 'communique.v1';
 

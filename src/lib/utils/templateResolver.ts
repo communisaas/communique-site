@@ -292,7 +292,8 @@ export function resolveTemplate(
 
 	let recipients: string[] = [];
 	try {
-		recipients = extractRecipientEmails(recipientConfig);
+		recipients = extractRecipientEmails(recipientConfig)
+			.filter(e => e !== '__CONGRESSIONAL__'); // Strip legacy sentinel from stored templates
 	} catch (error) {
 		console.warn('[TemplateResolver] Failed to extract recipient emails:', error);
 		recipients = [];

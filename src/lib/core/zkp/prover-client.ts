@@ -17,6 +17,7 @@
 
 import type { CircuitDepth } from '@voter-protocol/noir-prover';
 import {
+	BN254_MODULUS,
 	getThreeTreeProverForDepth,
 	type ThreeTreeNoirProver,
 	type ThreeTreeProofInput,
@@ -404,9 +405,6 @@ export async function generateThreeTreeProof(
 // ═══════════════════════════════════════════════════════════════════════════
 // INPUT VALIDATION
 // ═══════════════════════════════════════════════════════════════════════════
-
-const BN254_MODULUS =
-	21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 function validateFieldElement(value: string, name: string): void {
 	try {
