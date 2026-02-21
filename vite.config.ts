@@ -128,6 +128,12 @@ export default defineConfig({
 		environment: 'jsdom',
 		setupFiles: ['./src/test-setup.ts'],
 		globals: true,
+		alias: {
+			// Stub @voter-protocol/noir-prover in CI where the local package isn't linked
+			'@voter-protocol/noir-prover': fileURLToPath(
+				new URL('./src/lib/core/crypto/voter-protocol-stub.ts', import.meta.url)
+			)
+		},
 		coverage: {
 			provider: 'istanbul',
 			reporter: ['text', 'html', 'json', 'lcov'],
