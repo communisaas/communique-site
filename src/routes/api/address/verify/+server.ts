@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { addressLookupService } from '$lib/core/congress/address-lookup';
+import { prisma } from '$lib/core/db';
 
 // Real address verification using Census Bureau Geocoding API (primary)
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -135,6 +136,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			representatives = createRepresentativesFromDistrict(district, state);
 		}
 
+		const zk_eligible = cell_id !== null;
+
+		// Real state change: Mark address as verified for trust tier derivation
+		// deriveTrustTier() in hooks.server.ts reads district_verified + address_verified_at
+		// to compute Tier 2 (address-attested). Also persist trust_tier for direct DB queries.
+		if (locals.user?.id) {
+			await prisma.user.update({
+				where: { id: locals.user.id },
+				data: {
+					district_verified: true,
+					address_verified_at: new Date(),
+					district_hash: district,
+					trust_tier: 2
+				}
+			});
+			console.log('[Address Verify] Trust tier promoted to 2:', locals.user.id);
+		}
+
 		return json({
 			verified: true,
 			corrected: correctedAddress !== fullAddress,
@@ -142,9 +161,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			correctedAddress,
 			representatives,
 			district,
-			cell_id, // 15-digit Census Block GEOID for three-tree ZK architecture
+			cell_id,
+			zk_eligible,
 			special_status: specialStatus,
-			message: 'Address  verified successfully'
+			message: 'Address  verified successfully',
+			...(zk_eligible
+				? {}
+				: {
+						zk_warning:
+							'ZK proofs are not available for this area. Your address is verified, but anonymous proof generation is not supported. District-attested delivery is available as an alternative.'
+					})
 		});
 	} catch (error_verifyError) {
 		console.error('Address  verification error:', error_verifyError);
@@ -200,25 +226,51 @@ function extractCellIdFromCensus(
 	geographies: Record<string, unknown>
 ): string | null {
 	try {
-		// Look for 2020 Census Blocks
+		// Primary: Look for 2020 Census Blocks (standard US states)
 		const censusBlocks = geographies['2020 Census Blocks'];
 		if (Array.isArray(censusBlocks) && censusBlocks.length > 0) {
-			const firstBlock = censusBlocks[0];
-			if (firstBlock && typeof firstBlock === 'object' && 'GEOID' in firstBlock) {
-				const geoid = (firstBlock as { GEOID: string }).GEOID;
-				// Validate 15-digit GEOID format
-				if (/^\d{15}$/.test(geoid)) {
-					// Log only state+county prefix (5 digits) for debugging - never full GEOID
-					console.log(`[Address Verify] Cell_id extracted: ${geoid.slice(0, 5)}... (three-tree enabled)`);
-					return geoid;
+			const geoid = extractGeoidFromBlock(censusBlocks[0]);
+			if (geoid) {
+				console.log(`[Address Verify] Cell_id extracted: ${geoid.slice(0, 5)}... (three-tree enabled)`);
+				return geoid;
+			}
+		}
+
+		// Fallback: Iterate over all geography keys for territories/rural areas
+		// (e.g. "2020 Census Blocks - PR", "Census Blocks", "Decennial Census Blocks")
+		for (const key of Object.keys(geographies)) {
+			if (key === '2020 Census Blocks') continue;
+			if (/census\s*block/i.test(key)) {
+				const blocks = geographies[key];
+				if (Array.isArray(blocks) && blocks.length > 0) {
+					const geoid = extractGeoidFromBlock(blocks[0]);
+					if (geoid) {
+						console.warn(`[Address Verify] Cell_id extracted via fallback key "${key}": ${geoid.slice(0, 5)}...`);
+						return geoid;
+					}
 				}
 			}
 		}
+
+		console.warn(
+			'[Address Verify] No Census Block GEOID found. Available geography keys:',
+			Object.keys(geographies)
+		);
 		return null;
 	} catch (_error) {
 		console.warn('[Address Verify] Failed to extract cell_id from Census data');
 		return null;
 	}
+}
+
+function extractGeoidFromBlock(block: unknown): string | null {
+	if (block && typeof block === 'object' && 'GEOID' in block) {
+		const geoid = (block as { GEOID: string }).GEOID;
+		if (/^\d{15}$/.test(geoid)) {
+			return geoid;
+		}
+	}
+	return null;
 }
 
 /**

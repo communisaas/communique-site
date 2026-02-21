@@ -265,6 +265,8 @@ export interface AddressVerificationResult {
 	verified: boolean;
 	correctedAddress?: string;
 	representatives?: Representative[];
+	zk_eligible?: boolean;
+	zk_warning?: string;
 	[key: string]: unknown;
 }
 

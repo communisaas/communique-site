@@ -91,6 +91,15 @@ export function mapCredentialToProofInputs(
 		);
 	}
 
+	if (!credential.cellId) {
+		throw new Error(
+			'Your address does not support ZK proof generation. ' +
+				'This typically affects US territories and some rural areas where Census Block data is unavailable. ' +
+				'Please use district-attested delivery instead.'
+		);
+	}
+
+	// Validate required Tree 1 and Tree 2 fields (these MUST be present)
 	const missing: string[] = [];
 	if (!credential.merkleRoot) missing.push('merkleRoot');
 	if (!credential.merklePath) missing.push('merklePath');
@@ -100,12 +109,8 @@ export function mapCredentialToProofInputs(
 	if (!credential.cellMapPathBits) missing.push('cellMapPathBits');
 	if (!credential.districts) missing.push('districts');
 	if (!credential.userSecret) missing.push('userSecret');
-	if (!credential.cellId) missing.push('cellId');
 	if (!credential.registrationSalt) missing.push('registrationSalt');
 	if (!credential.identityCommitment) missing.push('identityCommitment');
-	if (!credential.engagementRoot) missing.push('engagementRoot');
-	if (!credential.engagementPath) missing.push('engagementPath');
-	if (credential.engagementIndex === undefined) missing.push('engagementIndex');
 
 	if (missing.length > 0) {
 		throw new Error(
@@ -119,6 +124,17 @@ export function mapCredentialToProofInputs(
 		context.authorityLevel ??
 		fallbackAuthorityLevel(credential);
 
+	// Tree 3 (engagement) graceful fallback: default to tier-0 values.
+	// This ensures proof generation works even for credentials created before
+	// the engagement pipeline was wired, or when engagement data fetch fails.
+	const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
+	const engagementDepth = credential.merklePath.length; // Match Tree 1 depth
+	const engagementRoot = credential.engagementRoot || ZERO_HASH;
+	const engagementPath = credential.engagementPath && credential.engagementPath.length > 0
+		? credential.engagementPath
+		: Array(engagementDepth).fill(ZERO_HASH);
+	const engagementIndex = credential.engagementIndex ?? 0;
+
 	return {
 		// Public inputs
 		userRoot: credential.merkleRoot,
@@ -127,12 +143,12 @@ export function mapCredentialToProofInputs(
 		nullifier: context.nullifier,
 		actionDomain: context.actionDomain,
 		authorityLevel,
-		engagementRoot: credential.engagementRoot!,
+		engagementRoot,
 		engagementTier: (credential.engagementTier ?? 0) as EngagementTier,
 
 		// Private inputs
 		userSecret: credential.userSecret!,
-		cellId: credential.cellId!,
+		cellId: credential.cellId,
 		registrationSalt: credential.registrationSalt!,
 		identityCommitment: credential.identityCommitment,
 
@@ -144,9 +160,9 @@ export function mapCredentialToProofInputs(
 		cellMapPath: credential.cellMapPath!,
 		cellMapPathBits: credential.cellMapPathBits!,
 
-		// Tree 3 proof (engagement)
-		engagementPath: credential.engagementPath!,
-		engagementIndex: credential.engagementIndex!,
+		// Tree 3 proof (engagement) — defaults to tier-0 if missing
+		engagementPath,
+		engagementIndex,
 		actionCount: credential.actionCount ?? '0',
 		diversityScore: credential.diversityScore ?? '0'
 	};

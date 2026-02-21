@@ -415,6 +415,20 @@
 						</div>
 					{/if}
 
+					{#if verificationResult?.zk_eligible === false}
+						<div class="mb-6 flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/50 p-4">
+							<AlertCircle class="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+							<div>
+								<p class="text-sm font-medium text-amber-800">
+									{verificationResult.zk_warning || 'Anonymous ZK proofs are not available for this area.'}
+								</p>
+								<p class="mt-1 text-xs leading-relaxed text-amber-700">
+									Your address is verified. District-attested delivery is available as an alternative.
+								</p>
+							</div>
+						</div>
+					{/if}
+
 					<div class="flex gap-3">
 						<button
 							onclick={editAddress}

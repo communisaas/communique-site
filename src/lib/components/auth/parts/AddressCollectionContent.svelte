@@ -18,6 +18,8 @@
 		 * PRIVACY: Neighborhood-level precision (600-3000 people), encrypted at rest
 		 */
 		cell_id?: string;
+		zk_eligible?: boolean;
+		zk_warning?: string;
 		representatives?: Representative[];
 		[key: string]: unknown;
 	};
@@ -348,6 +350,20 @@
 										<span class="text-slate-700">{rep.name} ({rep.office})</span>
 									</div>
 								{/each}
+							</div>
+						</div>
+					{/if}
+
+					{#if verificationResult?.zk_eligible === false}
+						<div class="mb-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+							<AlertCircle class="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+							<div>
+								<p class="text-sm font-medium text-amber-800">
+									{verificationResult.zk_warning || 'Anonymous ZK proofs are not available for this area.'}
+								</p>
+								<p class="mt-1 text-xs text-amber-700">
+									Your address is verified. District-attested delivery is available as an alternative.
+								</p>
 							</div>
 						</div>
 					{/if}
