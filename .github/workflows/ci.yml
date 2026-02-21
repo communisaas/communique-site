@@ -67,6 +67,9 @@ jobs:
       - name: Generate Prisma client
         run: npm run db:generate
 
+      - name: Enable pgvector extension
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -d test -c 'CREATE EXTENSION IF NOT EXISTS vector;'
+
       - name: Push database schema
         run: npx prisma db push --accept-data-loss
         env:
@@ -174,6 +177,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run db:generate
+
+      - name: Enable pgvector extension
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -d test -c 'CREATE EXTENSION IF NOT EXISTS vector;'
 
       - name: Push database schema
         run: npx prisma db push --accept-data-loss
