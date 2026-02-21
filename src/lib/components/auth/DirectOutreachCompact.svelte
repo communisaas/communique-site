@@ -125,7 +125,7 @@
 </script>
 
 <div
-	class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+	class="fixed inset-0 z-[1010] bg-black/40 backdrop-blur-sm"
 	role="dialog"
 	aria-modal="true"
 	aria-label="Complete your profile"

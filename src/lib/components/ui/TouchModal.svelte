@@ -480,7 +480,7 @@
 {#if isOpen}
 	<div
 		bind:this={dialogElement}
-		class="fixed inset-0 z-[60] m-0 flex h-full w-full items-center justify-center backdrop-blur-sm"
+		class="fixed inset-0 z-[1010] m-0 flex h-full w-full items-center justify-center backdrop-blur-sm"
 		onclick={handleModalInteraction}
 		onkeydown={(e) => {
 			if (e.key === 'Escape') handleModalInteraction(e);

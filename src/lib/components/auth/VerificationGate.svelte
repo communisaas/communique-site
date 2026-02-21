@@ -119,7 +119,7 @@
 {#if showModal}
 	<!-- Modal Backdrop -->
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+		class="fixed inset-0 z-[1010] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 		transition:fade={{ duration: 200 }}
 		role="dialog"
 		aria-modal="true"
