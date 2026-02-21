@@ -42,7 +42,7 @@ export function generateEmailVerificationToken(
 
 	return sign(payload, secret, {
 		expiresIn: '24h',
-		issuer: 'communique.app',
+		issuer: 'communi.email',
 		audience: 'email-verification'
 	});
 }
@@ -56,7 +56,7 @@ export async function verifySignedToken<T = unknown>(
 ): Promise<T> {
 	try {
 		const decoded = verify(token, options.secret, {
-			issuer: 'communique.app',
+			issuer: 'communi.email',
 			audience: 'email-verification',
 			maxAge: options.maxAge ? `${options.maxAge}s` : undefined
 		}) as T;

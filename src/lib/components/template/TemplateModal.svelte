@@ -49,11 +49,13 @@
 	let {
 		template,
 		user = null,
+		initialState = undefined,
 		onclose,
 		onused
 	}: {
 		template: ComponentTemplate;
 		user?: { id: string; name: string; trust_tier?: number } | null;
+		initialState?: string;
 		onclose?: () => void;
 		onused?: (data: { templateId: string; action: 'mailto_opened' }) => void;
 	} = $props();
@@ -137,6 +139,13 @@
 	onMount(() => {
 		// Don't manipulate scroll here - UnifiedModal handles it
 		// Don't call modalActions.open - parent component handles it
+
+		// If initialState is provided, skip auto-routing and go directly to that state
+		if (initialState) {
+			console.log(`[TemplateModal] initialState="${initialState}" — skipping auto-routing`);
+			modalActions.setState(initialState);
+			return;
+		}
 
 		// Congressional templates: guests get mailto relay, authenticated get ZKP/CWC
 		if (template.deliveryMethod === 'cwc') {

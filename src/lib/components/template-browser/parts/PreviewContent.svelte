@@ -114,23 +114,8 @@
 <div class="relative mb-4 shrink-0 space-y-4 overflow-visible">
 	<TemplateTips isCertified={template.type === 'certified'} />
 
-	<!-- Prominent Share Button - Context aware positioning -->
-	{#if context === 'page'}
-		<!-- On template page, show larger, more prominent share button -->
-		<div class="flex items-center gap-3">
-			<ShareButton
-				url={`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`}
-				_title={template.title || template.title}
-				variant="magical"
-				size="lg"
-			/>
-			<div class="text-sm text-gray-600">
-				<div class="font-medium">{template.metrics?.sent || 0} people shared this</div>
-				<div class="text-xs text-gray-500">Help spread the message</div>
-			</div>
-		</div>
-	{:else}
-		<!-- In list/modal context, show smaller share button -->
+	<!-- Share Button - shown in list/modal context only (page context has share in header) -->
+	{#if context !== 'page'}
 		<ShareButton
 			url={`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`}
 			_title={template.title || template.title}

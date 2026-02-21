@@ -57,7 +57,9 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 		// Build dual-protocol request configurations
 
 		// org-iso-mdoc: CBOR-encoded DeviceRequest per ISO 18013-5 §8.3.2.1.2
-		const { encode, Tagged } = await import('cbor-web');
+		const cborModule = await import('cbor-web');
+		const cbor = cborModule.default ?? cborModule;
+		const { encode, Tagged } = cbor;
 
 		// ItemsRequest: what we're asking the wallet to disclose
 		const itemsRequest = new Map<string, unknown>([

@@ -104,6 +104,7 @@
 			<TemplateModal
 				template={getTemplate(data)!}
 				user={getUser(data)}
+				initialState={data?.initialState}
 				onclose={() => modalActions.closeModal('template-modal')}
 				onused={() => {
 					// Template used - keep modal open for post-send flow

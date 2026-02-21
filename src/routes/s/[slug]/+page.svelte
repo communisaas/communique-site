@@ -21,7 +21,6 @@
 	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { Template as TemplateType } from '$lib/types/template';
-	import SocialProofBanner from '$lib/components/template/SocialProofBanner.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -36,10 +35,6 @@
 
 	const template: TemplateType = $derived(data.template as unknown as TemplateType);
 	const channel = $derived(data.channel);
-	const totalDistricts = $derived((data.totalDistricts as number) || 0);
-	const totalStates = $derived((data.totalStates as number) || 0);
-	const userDistrictCount = $derived((data.userDistrictCount as number) || 0);
-	const userDistrictCode = $derived((data.userDistrictCode as string | null) ?? null);
 	// Simplified - no query parameters needed, default to direct-link
 	const source = 'direct-link';
 	const shareUrl = $derived(
@@ -69,7 +64,7 @@
 		guestState.state?.address
 	);
 	const isCongressional = $derived(template.deliveryMethod === 'cwc');
-	const addressRequired = $derived(isCongressional && !hasCompleteAddress);
+	const addressRequired = $derived(isCongressional && !hasCompleteAddress && (data.user?.trust_tier ?? 0) < 2);
 
 	_onMount(() => {
 		// Clean up OAuth redirect hash fragment from Facebook
@@ -323,8 +318,12 @@
 							await invalidateAll();
 						}}
 						onGenerateProof={() => {
-							// Tier 4: ZK proof generation — opens template modal which handles proof flow
-							modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
+							// Tier 4: ZK proof generation — opens template modal directly in proof state
+							modalActions.openModal('template-modal', 'template_modal', {
+								template,
+								user: data.user,
+								initialState: 'cwc-submission'
+							});
 						}}
 					/>
 				</div>
@@ -355,17 +354,6 @@
 				/>
 			</div>
 		</div>
-	</div>
-
-	<!-- Social Proof Banner (always visible — SocialProofBanner handles visual tiers internally) -->
-	<div class="mb-6">
-		<SocialProofBanner
-			totalActions={template.metrics?.sent || 0}
-			{totalDistricts}
-			{totalStates}
-			{userDistrictCount}
-			{userDistrictCode}
-		/>
 	</div>
 
 	<!-- Template Preview -->

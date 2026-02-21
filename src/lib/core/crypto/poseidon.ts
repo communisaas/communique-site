@@ -238,6 +238,63 @@ export async function poseidon2Hash4(a: string, b: string, c: string, d: string)
 }
 
 /**
+ * Domain separation tag for 24-district sponge.
+ * DOMAIN_SPONGE_24 = 0x534f4e47455f24 = "SONGE_$" in ASCII.
+ * Must match voter-protocol Noir circuit's DOMAIN_SPONGE_24.
+ */
+const DOMAIN_SPONGE_24 = '0x' + (0x534f4e47455f24).toString(16).padStart(64, '0');
+
+/**
+ * Poseidon2 sponge for hashing 24 district IDs into a single commitment.
+ * Matches Noir circuit poseidon2_sponge_24 exactly.
+ *
+ * Algorithm:
+ * 1. state = [DOMAIN_SPONGE_24, 0, 0, 0]
+ * 2. For each chunk of 3 inputs (8 rounds):
+ *    - ADD inputs to state[1], state[2], state[3]
+ *    - permute(state)
+ * 3. Return state[0]
+ *
+ * @param inputs - Exactly 24 hex strings (district IDs)
+ * @returns District commitment as hex string
+ */
+export async function poseidon2Sponge24(inputs: string[]): Promise<string> {
+	if (inputs.length !== 24) {
+		throw new Error(`poseidon2Sponge24 requires exactly 24 inputs, got ${inputs.length}`);
+	}
+	await loadBbJs();
+	const bb = await getBarretenbergSync();
+
+	// Initialize state: [DOMAIN_SPONGE_24, 0, 0, 0]
+	let state = [hexToFr(DOMAIN_SPONGE_24), getFrZero(), getFrZero(), getFrZero()];
+
+	// Absorb: 24 inputs / 3 rate = 8 rounds
+	for (let i = 0; i < 8; i++) {
+		// ADD inputs to rate elements (state[1], state[2], state[3])
+		const s1 = BigInt(frToHex(state[1]));
+		const s2 = BigInt(frToHex(state[2]));
+		const s3 = BigInt(frToHex(state[3]));
+		const in0 = BigInt(inputs[i * 3].startsWith('0x') ? inputs[i * 3] : '0x' + inputs[i * 3]);
+		const in1 = BigInt(inputs[i * 3 + 1].startsWith('0x') ? inputs[i * 3 + 1] : '0x' + inputs[i * 3 + 1]);
+		const in2 = BigInt(inputs[i * 3 + 2].startsWith('0x') ? inputs[i * 3 + 2] : '0x' + inputs[i * 3 + 2]);
+
+		const new1 = (s1 + in0) % BN254_MODULUS;
+		const new2 = (s2 + in1) % BN254_MODULUS;
+		const new3 = (s3 + in2) % BN254_MODULUS;
+
+		state[1] = hexToFr('0x' + new1.toString(16).padStart(64, '0'));
+		state[2] = hexToFr('0x' + new2.toString(16).padStart(64, '0'));
+		state[3] = hexToFr('0x' + new3.toString(16).padStart(64, '0'));
+
+		// Permute
+		state = [...bb.poseidon2Permutation([state[0], state[1], state[2], state[3]])];
+	}
+
+	// Squeeze: return state[0]
+	return frToHex(state[0]);
+}
+
+/**
  * Hash a string to a field element using Poseidon2
  *
  * @param input - String to hash (e.g., template ID)

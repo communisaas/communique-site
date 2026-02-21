@@ -1,4 +1,8 @@
 <script lang="ts">
+	// CRITICAL: Import buffer shim BEFORE any bb.js code can run.
+	// bb.js uses Buffer as a global; without this, Fr constructor throws "Buffer is not defined".
+	import '$lib/core/proof/buffer-shim';
+
 	import { onMount } from 'svelte';
 	import { ShieldCheck, AlertCircle, Check, Loader2 } from '@lucide/svelte';
 	import type { WitnessData } from '$lib/core/proof/witness-encryption';
@@ -529,8 +533,8 @@
 						<li>• Check your internet connection</li>
 						<li>• Try refreshing the page</li>
 						<li>
-							• Contact support at <a href="mailto:support@communique.app" class="underline"
-								>support@communique.app</a
+							• Contact support at <a href="mailto:support@communi.email" class="underline"
+								>support@communi.email</a
 							>
 						</li>
 					</ul>

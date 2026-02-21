@@ -1,74 +1,14 @@
 <script lang="ts">
-	import { Shield, MessageSquare, TrendingUp, Users, Lock, Award } from '@lucide/svelte';
+	import { Shield, MessageSquare, Lock, Award } from '@lucide/svelte';
 
 	interface Props {
 		/** Variant style */
 		variant?: 'full' | 'compact' | 'inline';
-		/** Show statistics */
-		showStats?: boolean;
 		/** Show privacy section */
 		showPrivacy?: boolean;
 	}
 
-	let { variant = 'full', showStats = true, showPrivacy = true }: Props = $props();
-
-	const stats = [
-		{
-			icon: TrendingUp,
-			value: '3x',
-			label: 'Higher Response Rate',
-			description: 'Verified messages receive priority attention',
-			color: 'green'
-		},
-		{
-			icon: Users,
-			value: '87%',
-			label: 'Offices Prioritize',
-			description: 'Congressional staff read verified mail first',
-			color: 'blue'
-		},
-		{
-			icon: MessageSquare,
-			value: '2-3x',
-			label: 'Longer Responses',
-			description: 'Verified constituents get detailed replies',
-			color: 'indigo'
-		},
-		{
-			icon: Award,
-			value: '94%',
-			label: 'Trust Score',
-			description: 'Verified messages rated as credible',
-			color: 'purple'
-		}
-	];
-
-	const colorClasses = {
-		green: {
-			bg: 'bg-green-50',
-			border: 'border-green-200',
-			text: 'text-green-700',
-			textDark: 'text-green-900'
-		},
-		blue: {
-			bg: 'bg-blue-50',
-			border: 'border-blue-200',
-			text: 'text-blue-700',
-			textDark: 'text-blue-900'
-		},
-		indigo: {
-			bg: 'bg-indigo-50',
-			border: 'border-indigo-200',
-			text: 'text-indigo-700',
-			textDark: 'text-indigo-900'
-		},
-		purple: {
-			bg: 'bg-purple-50',
-			border: 'border-purple-200',
-			text: 'text-purple-700',
-			textDark: 'text-purple-900'
-		}
-	};
+	let { variant = 'full', showPrivacy = true }: Props = $props();
 </script>
 
 {#if variant === 'full'}
@@ -86,34 +26,6 @@
 				constituent—not a bot, not spam, not someone from another district.
 			</p>
 		</div>
-
-		<!-- Impact Statistics -->
-		{#if showStats}
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				{#each stats as stat}
-					{@const colors = colorClasses[stat.color as keyof typeof colorClasses]}
-					{@const Icon = stat.icon}
-					<div
-						class="rounded-xl border {colors.border} {colors.bg} p-5 text-center shadow-sm transition-shadow hover:shadow-md"
-					>
-						<div class="mb-3 flex justify-center">
-							<div class="rounded-full bg-white p-2 shadow-sm">
-								<Icon class="h-6 w-6 {colors.text}" />
-							</div>
-						</div>
-						<div class="mb-1 text-3xl font-bold {colors.textDark}">
-							{stat.value}
-						</div>
-						<p class="mb-2 text-sm font-semibold {colors.textDark}">
-							{stat.label}
-						</p>
-						<p class="text-xs {colors.text}">
-							{stat.description}
-						</p>
-					</div>
-				{/each}
-			</div>
-		{/if}
 
 		<!-- What Congress Sees -->
 		<div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -206,31 +118,18 @@
 {:else if variant === 'compact'}
 	<div class="space-y-4">
 		<div class="text-center">
-			<h3 class="mb-2 text-lg font-semibold text-slate-900">Verified Messages Get Results</h3>
+			<h3 class="mb-2 text-lg font-semibold text-slate-900">Prove You're a Real Constituent</h3>
 			<p class="text-sm text-slate-600">
-				Congressional offices prioritize verified constituent communications
+				Verification proves you live in the district — not a bot, not spam
 			</p>
 		</div>
-
-		{#if showStats}
-			<div class="grid grid-cols-2 gap-3">
-				<div class="rounded-lg border border-green-200 bg-green-50 p-3 text-center">
-					<div class="mb-1 text-2xl font-bold text-green-700">3x</div>
-					<p class="text-xs font-medium text-green-900">Higher Response Rate</p>
-				</div>
-				<div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
-					<div class="mb-1 text-2xl font-bold text-blue-700">87%</div>
-					<p class="text-xs font-medium text-blue-900">Offices Prioritize</p>
-				</div>
-			</div>
-		{/if}
 
 		{#if showPrivacy}
 			<div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
 				<div class="flex items-start gap-2">
 					<Lock class="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
 					<p class="text-xs text-slate-700">
-						<span class="font-semibold">100% private:</span> Your address never stored. Congress sees
+						<span class="font-semibold">Private by design:</span> Your address never stored. Congress sees
 						only verification status.
 					</p>
 				</div>
@@ -242,9 +141,9 @@
 		<Shield class="h-5 w-5 flex-shrink-0 text-blue-600" />
 		<div class="flex-1 text-sm">
 			<span class="font-semibold text-blue-900"
-				>Verified messages get 3x higher response rates.</span
+				>Verified messages prove you're a real constituent.</span
 			>
-			<span class="text-blue-700">Your privacy is protected—we never store your address.</span>
+			<span class="text-blue-700">Your privacy is protected — we never store your address.</span>
 		</div>
 	</div>
 {/if}

@@ -385,7 +385,7 @@ export class CensusAPIClient {
 
 			const response = await this.fetchWithRetry(url, {
 				headers: {
-					'User-Agent': 'Communique/1.0 (https://communique.app)' // Required by Nominatim
+					'User-Agent': 'Communique/1.0 (https://communi.email)' // Required by Nominatim
 				}
 			});
 

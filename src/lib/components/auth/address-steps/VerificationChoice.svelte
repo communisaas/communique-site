@@ -36,36 +36,8 @@
 		<div class="text-center">
 			<h2 class="mb-2 text-2xl font-bold text-slate-900">Make Your Voice Heard</h2>
 			<p class="text-slate-600">
-				Verified constituents get <span class="font-semibold text-blue-600">3x higher</span> response
-				rates from congressional offices
+				Prove you're a real constituent — not a bot, not spam, not someone from another district
 			</p>
-		</div>
-
-		<!-- Impact Statistics -->
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-			<div class="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
-				<div class="mb-1 flex items-center justify-center gap-1 text-2xl font-bold text-green-700">
-					<TrendingUp class="h-6 w-6" />
-					<span>3x</span>
-				</div>
-				<p class="text-sm font-medium text-green-900">Response Rate</p>
-				<p class="mt-1 text-xs text-green-700">vs. unverified messages</p>
-			</div>
-
-			<div class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-center">
-				<div class="mb-1 text-2xl font-bold text-blue-700">87%</div>
-				<p class="text-sm font-medium text-blue-900">Offices Prioritize</p>
-				<p class="mt-1 text-xs text-blue-700">verified constituent mail</p>
-			</div>
-
-			<div class="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-center">
-				<div class="mb-1 flex items-center justify-center gap-1 text-2xl font-bold text-indigo-700">
-					<Lock class="h-6 w-6" />
-					<span>100%</span>
-				</div>
-				<p class="text-sm font-medium text-indigo-900">Privacy Protected</p>
-				<p class="mt-1 text-xs text-indigo-700">zero personal data stored</p>
-			</div>
 		</div>
 	{/if}
 
