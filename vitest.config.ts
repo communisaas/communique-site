@@ -53,7 +53,11 @@ export default defineConfig({
 	resolve: {
 		// Standard conditions for Node.js test environment
 		// This allows msw/node to resolve correctly
-		conditions: ['node', 'import', 'module', 'default']
+		conditions: ['node', 'import', 'module', 'default'],
+		alias: {
+			// Stub @voter-protocol/noir-prover in CI where the local package isn't linked
+			'@voter-protocol/noir-prover': path.join(__dirname, 'src/lib/core/crypto/voter-protocol-stub.ts')
+		}
 	},
 	test: {
 		// File patterns
