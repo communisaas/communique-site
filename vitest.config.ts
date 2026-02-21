@@ -63,6 +63,8 @@ export default defineConfig({
 		// File patterns
 		include: ['tests/**/*.{test,spec}.{js,ts}'],
 		exclude: [
+			// Exclude smoke tests — they hit real external APIs (Census, Congress.gov, CWC)
+			'tests/smoke/**',
 			// Exclude Playwright E2E tests (UI-based) but include voter-protocol E2E tests (MSW-based)
 			'tests/e2e/basic-functionality.spec.ts',
 			'tests/e2e/identity-verification-flow.spec.ts',
