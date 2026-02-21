@@ -85,8 +85,22 @@ export async function requestCredential(
 	const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60s for wallet interaction
 
 	try {
+		// For org-iso-mdoc, the server sends CBOR as base64 over JSON.
+		// The DC API expects binary (ArrayBuffer), so decode before passing to the wallet.
+		const processedRequests = config.requests.map((req) => {
+			if (req.protocol === 'org-iso-mdoc' && typeof req.data === 'string') {
+				const binaryStr = atob(req.data);
+				const bytes = new Uint8Array(binaryStr.length);
+				for (let i = 0; i < binaryStr.length; i++) {
+					bytes[i] = binaryStr.charCodeAt(i);
+				}
+				return { ...req, data: bytes.buffer };
+			}
+			return req;
+		});
+
 		const credential = await navigator.credentials.get({
-			digital: { requests: config.requests },
+			digital: { requests: processedRequests },
 			signal: controller.signal
 		} as CredentialRequestOptions);
 

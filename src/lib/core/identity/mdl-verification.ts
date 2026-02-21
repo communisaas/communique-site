@@ -11,7 +11,7 @@
  * 1. Selective disclosure: only postal_code, city, state requested
  * 2. Raw fields never returned, logged, or stored
  * 3. Ephemeral key pairs (5-min TTL) prevent persistent decryption
- * 4. intent_to_retain: false on all fields
+ * 4. intentToRetain: false on all fields
  *
  * ISO 18013-5 verification steps:
  * 1. HPKE decrypt session transcript

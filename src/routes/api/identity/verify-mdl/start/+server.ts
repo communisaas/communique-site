@@ -33,10 +33,8 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 			.map((b) => b.toString(16).padStart(2, '0'))
 			.join('');
 
-		// Export keys for storage and transmission
+		// Export private key for KV storage (used by verify endpoint for HPKE decryption)
 		const privateKeyJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
-		const publicKeyRaw = await crypto.subtle.exportKey('raw', keyPair.publicKey);
-		const publicKeyB64 = btoa(String.fromCharCode(...new Uint8Array(publicKeyRaw)));
 
 		// Store private key in Workers KV with 5-min TTL
 		const kvKey = `mdl-session:${nonce}`;
@@ -57,25 +55,50 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 		}
 
 		// Build dual-protocol request configurations
-		// org-iso-mdoc: ISO 18013-5 DeviceRequest
+
+		// org-iso-mdoc: CBOR-encoded DeviceRequest per ISO 18013-5 §8.3.2.1.2
+		const { encode, Tagged } = await import('cbor-web');
+
+		// ItemsRequest: what we're asking the wallet to disclose
+		const itemsRequest = new Map<string, unknown>([
+			['docType', 'org.iso.18013.5.1.mDL'],
+			[
+				'nameSpaces',
+				new Map([
+					[
+						'org.iso.18013.5.1',
+						new Map<string, boolean>([
+							['resident_postal_code', false], // false = intentToRetain: false
+							['resident_city', false],
+							['resident_state', false]
+						])
+					]
+				])
+			]
+		]);
+
+		// Wrap ItemsRequest in CBOR tag 24 (bstr-wrapped CBOR) per ISO 18013-5
+		const itemsRequestBytes = encode(itemsRequest);
+		const taggedItemsRequest = new Tagged(24, new Uint8Array(itemsRequestBytes));
+
+		// DocRequest (readerAuth omitted -- optional per spec, requires registered reader cert)
+		const docRequest = new Map<string, unknown>([['itemsRequest', taggedItemsRequest]]);
+
+		// DeviceRequest envelope
+		const deviceRequest = new Map<string, unknown>([
+			['version', '1.0'],
+			['docRequests', [docRequest]]
+		]);
+
+		// CBOR-encode, then base64 for JSON transport (client decodes before passing to wallet)
+		const deviceRequestBytes = encode(deviceRequest);
+		const deviceRequestB64 = btoa(
+			String.fromCharCode(...new Uint8Array(deviceRequestBytes))
+		);
+
 		const mdocRequest = {
 			protocol: 'org-iso-mdoc',
-			data: {
-				// Minimal DeviceRequest structure
-				// In production: full CBOR-encoded DeviceRequest per ISO 18013-5
-				doctype: 'org.iso.18013.5.1.mDL',
-				nameSpaces: {
-					'org.iso.18013.5.1': {
-						resident_postal_code: { intent_to_retain: false },
-						resident_city: { intent_to_retain: false },
-						resident_state: { intent_to_retain: false }
-					}
-				},
-				readerAuth: {
-					publicKey: publicKeyB64,
-					nonce
-				}
-			}
+			data: deviceRequestB64
 		};
 
 		// openid4vp: DCQL query (Chrome alternative)
