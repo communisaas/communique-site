@@ -22,11 +22,13 @@
  * - 30-second verification time
  */
 
-import { SelfAppBuilder } from '@selfxyz/qrcode';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ locals, request, url }) => {
+	// Dynamic import: @selfxyz/qrcode has CJS transitive deps (react-spinners)
+	// that break Node ESM resolution during SvelteKit's post-build analysis
+	const { SelfAppBuilder } = await import('@selfxyz/qrcode');
 	// Authentication check
 	if (!locals.user) {
 		return json({ error: 'Authentication required' }, { status: 401 });
