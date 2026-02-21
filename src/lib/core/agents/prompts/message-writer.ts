@@ -104,6 +104,8 @@ Return JSON:
   "geographic_scope": { ... }
 }
 
+CRITICAL: The message MUST contain the EXACT string [Personal Connection] — with that exact capitalization and spacing. This is a template variable parsed by the application. Do not alter it to [personal connection], [PERSONAL CONNECTION], [Personal connection], or any other variation. Write it verbatim: [Personal Connection]
+
 geographic_scope uses ISO 3166:
 - { "type": "international" }
 - { "type": "nationwide", "country": "<ISO 3166-1 alpha-2>" }

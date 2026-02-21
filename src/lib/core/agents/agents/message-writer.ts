@@ -296,8 +296,12 @@ The stranger who shares this link should think "I need to send that too." Every 
 		type: s.type
 	}));
 
+	// Normalize [Personal Connection] — fix case variations the model may produce
+	const normalizedMessage = validationResult.data.message.trim()
+		.replace(/\[personal\s+connection\]/gi, '[Personal Connection]');
+
 	// Append deterministic signature
-	const messageWithSignature = `${validationResult.data.message.trim()}
+	const messageWithSignature = `${normalizedMessage}
 
 [Name]
 [Address]`;
