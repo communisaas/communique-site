@@ -39,7 +39,7 @@
 		data: LayoutData;
 	} = $props();
 
-	// Initialize app: fetch templates + sync OAuth location + pre-warm ZK prover
+	// Initialize app: fetch templates + sync OAuth location
 	_onMount(async () => {
 		templateStore.fetchTemplates();
 
@@ -47,18 +47,6 @@
 		syncOAuthLocation().catch((error) => {
 			console.warn('[App] Failed to sync OAuth location:', error);
 		});
-
-		// Pre-warm the ZK Prover (starts 12-14s keygen in background worker)
-		// This ensures "The Hum" is fast when the user actually needs it.
-		try {
-			const { proverOrchestrator } = await import('$lib/core/proof/prover-orchestrator');
-			console.log('[App] Pre-warming ZK Prover...');
-			proverOrchestrator.init().catch((err) => {
-				console.warn('[App] ZK Prover pre-warming failed (non-fatal):', err);
-			});
-		} catch (err) {
-			console.warn('[App] Failed to load ZK Prover for pre-warming:', err);
-		}
 	});
 
 	// Handle template use from header/bottom bar
