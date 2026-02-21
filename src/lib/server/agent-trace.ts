@@ -50,23 +50,30 @@ export function traceEvent(
 ): void {
 	if (!isEnabled()) return;
 
-	db.agentTrace
-		.create({
-			data: {
-				traceId,
-				userId: opts?.userId ?? null,
-				endpoint,
-				eventType,
-				payload: payload as Prisma.InputJsonValue,
-				success: opts?.success ?? null,
-				durationMs: opts?.durationMs ?? null,
-				costUsd: opts?.costUsd ?? null,
-				expiresAt: expiresAt()
-			}
-		})
-		.catch((err: Error) => {
+	const data = {
+		traceId,
+		userId: opts?.userId ?? null,
+		endpoint,
+		eventType,
+		payload: payload as Prisma.InputJsonValue,
+		success: opts?.success ?? null,
+		durationMs: opts?.durationMs ?? null,
+		costUsd: opts?.costUsd ?? null,
+		expiresAt: expiresAt()
+	};
+
+	db.agentTrace.create({ data }).catch((err: Error) => {
+		// Prisma 6.x PG adapter surfaces SocketTimeout when the pool
+		// connection idles out — a variant the WASM engine doesn't
+		// recognize. Retry once; the pool establishes a fresh connection.
+		if (err?.message?.includes('SocketTimeout') || err?.message?.includes('InvalidArg')) {
+			db.agentTrace.create({ data }).catch((retryErr: Error) => {
+				console.warn('[agent-trace] Write failed after retry:', retryErr?.message);
+			});
+		} else {
 			console.warn('[agent-trace] Write failed:', err?.message);
-		});
+		}
+	});
 }
 
 /**
