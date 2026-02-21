@@ -1,7 +1,7 @@
 /**
  * Proof Input Mapper Tests (CR-009)
  *
- * Validates SessionCredential → TwoTreeProofInputs mapping.
+ * Validates SessionCredential → ThreeTreeProofInputs mapping.
  * This is the bridge between stored credentials (IndexedDB) and
  * proof generation (Noir circuit via WASM).
  *
@@ -20,15 +20,15 @@ import type { SessionCredential } from '$lib/core/identity/session-credentials';
 // Test Fixtures
 // ============================================================================
 
-function makeTwoTreeCredential(overrides: Partial<SessionCredential> = {}): SessionCredential {
+function makeThreeTreeCredential(overrides: Partial<SessionCredential> = {}): SessionCredential {
 	return {
 		userId: 'test-user-1',
 		identityCommitment: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
 		leafIndex: 5,
 		merklePath: Array(20).fill('0x' + '01'.padStart(64, '0')),
 		merkleRoot: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-		congressionalDistrict: 'two-tree',
-		credentialType: 'two-tree',
+		congressionalDistrict: 'three-tree',
+		credentialType: 'three-tree',
 		cellId: '0x0000000000000000000000000000000000000000000000000000006075061200',
 		cellMapRoot: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
 		cellMapPath: Array(20).fill('0x' + '02'.padStart(64, '0')),
@@ -36,6 +36,12 @@ function makeTwoTreeCredential(overrides: Partial<SessionCredential> = {}): Sess
 		districts: Array(24).fill('0x' + '03'.padStart(64, '0')),
 		userSecret: '0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
 		registrationSalt: '0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+		engagementRoot: '0x0000000000000000000000000000000000000000000000000000000000000001',
+		engagementPath: Array(12).fill('0x0000000000000000000000000000000000000000000000000000000000000000'),
+		engagementIndex: 0,
+		engagementTier: 0 as const,
+		actionCount: '0x0000000000000000000000000000000000000000000000000000000000000000',
+		diversityScore: '0x0000000000000000000000000000000000000000000000000000000000000000',
 		verificationMethod: 'self.xyz',
 		createdAt: new Date('2026-02-01'),
 		expiresAt: new Date('2026-08-01'),
@@ -58,7 +64,7 @@ function makeProofContext(overrides: Partial<ProofContext> = {}): ProofContext {
 describe('mapCredentialToProofInputs', () => {
 	describe('field mapping', () => {
 		it('maps merkleRoot → userRoot', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -66,7 +72,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('maps merklePath → userPath', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -74,7 +80,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('maps leafIndex → userIndex', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -82,7 +88,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('passes cellMapRoot directly', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -90,7 +96,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('passes cellMapPath directly', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -98,7 +104,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('passes cellMapPathBits directly', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -106,7 +112,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('passes districts directly', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -114,7 +120,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('passes userSecret directly', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -122,7 +128,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('passes cellId directly', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -130,7 +136,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('passes registrationSalt directly', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -138,7 +144,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('passes identityCommitment directly (NUL-001)', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -146,7 +152,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('uses context.nullifier', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext({ nullifier: '0x42' });
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -154,7 +160,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('uses context.actionDomain', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext({ actionDomain: '0x99' });
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -168,7 +174,7 @@ describe('mapCredentialToProofInputs', () => {
 
 	describe('authority level resolution', () => {
 		it('uses credential.authorityLevel when present (server-derived)', () => {
-			const credential = makeTwoTreeCredential({ authorityLevel: 4 });
+			const credential = makeThreeTreeCredential({ authorityLevel: 4 });
 			const context = makeProofContext({ authorityLevel: 2 });
 
 			const inputs = mapCredentialToProofInputs(credential, context);
@@ -177,7 +183,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('falls back to context.authorityLevel when credential lacks it', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext({ authorityLevel: 5 });
 
 			const inputs = mapCredentialToProofInputs(credential, context);
@@ -186,7 +192,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('uses conservative fallback (3) for verified users without authorityLevel', () => {
-			const credential = makeTwoTreeCredential({
+			const credential = makeThreeTreeCredential({
 				identityCommitment: '0x1234' // present → verified
 			});
 			const context = makeProofContext(); // no authorityLevel
@@ -198,7 +204,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('throws when identityCommitment is empty (NUL-001 requires verified identity)', () => {
-			const credential = makeTwoTreeCredential({
+			const credential = makeThreeTreeCredential({
 				identityCommitment: '' // empty → unverified → cannot generate proof
 			});
 			const context = makeProofContext();
@@ -215,25 +221,25 @@ describe('mapCredentialToProofInputs', () => {
 
 	describe('validation', () => {
 		it('throws for single-tree credential', () => {
-			const credential = makeTwoTreeCredential({ credentialType: 'single-tree' });
+			const credential = makeThreeTreeCredential({ credentialType: 'single-tree' as any });
 			const context = makeProofContext();
 
 			expect(() => mapCredentialToProofInputs(credential, context)).toThrow(
-				'Expected two-tree credential'
+				'Expected three-tree credential'
 			);
 		});
 
 		it('throws for undefined credentialType (legacy)', () => {
-			const credential = makeTwoTreeCredential({ credentialType: undefined });
+			const credential = makeThreeTreeCredential({ credentialType: undefined });
 			const context = makeProofContext();
 
 			expect(() => mapCredentialToProofInputs(credential, context)).toThrow(
-				'Expected two-tree credential'
+				'Expected three-tree credential'
 			);
 		});
 
 		it('throws when merkleRoot is missing', () => {
-			const credential = makeTwoTreeCredential({ merkleRoot: '' });
+			const credential = makeThreeTreeCredential({ merkleRoot: '' });
 			const context = makeProofContext();
 
 			expect(() => mapCredentialToProofInputs(credential, context)).toThrow(
@@ -243,28 +249,28 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('throws when cellMapRoot is missing', () => {
-			const credential = makeTwoTreeCredential({ cellMapRoot: '' });
+			const credential = makeThreeTreeCredential({ cellMapRoot: '' });
 			const context = makeProofContext();
 
 			expect(() => mapCredentialToProofInputs(credential, context)).toThrow('cellMapRoot');
 		});
 
 		it('throws when userSecret is missing', () => {
-			const credential = makeTwoTreeCredential({ userSecret: '' });
+			const credential = makeThreeTreeCredential({ userSecret: '' });
 			const context = makeProofContext();
 
 			expect(() => mapCredentialToProofInputs(credential, context)).toThrow('userSecret');
 		});
 
 		it('throws when districts is missing', () => {
-			const credential = makeTwoTreeCredential({ districts: undefined });
+			const credential = makeThreeTreeCredential({ districts: undefined });
 			const context = makeProofContext();
 
 			expect(() => mapCredentialToProofInputs(credential, context)).toThrow('districts');
 		});
 
 		it('reports all missing fields at once', () => {
-			const credential = makeTwoTreeCredential({
+			const credential = makeThreeTreeCredential({
 				merkleRoot: '',
 				cellMapRoot: '',
 				userSecret: ''
@@ -277,7 +283,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('succeeds with a complete credential', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 
 			const inputs = mapCredentialToProofInputs(credential, context);
@@ -293,12 +299,12 @@ describe('mapCredentialToProofInputs', () => {
 	});
 
 	// ============================================================================
-	// Output Shape (matches TwoTreeProofInputs interface)
+	// Output Shape (matches ThreeTreeProofInputs interface)
 	// ============================================================================
 
 	describe('output shape', () => {
 		it('has all required public input fields', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -311,7 +317,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('has all required private input fields', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -322,7 +328,7 @@ describe('mapCredentialToProofInputs', () => {
 		});
 
 		it('has all required tree proof fields', () => {
-			const credential = makeTwoTreeCredential();
+			const credential = makeThreeTreeCredential();
 			const context = makeProofContext();
 			const inputs = mapCredentialToProofInputs(credential, context);
 
@@ -333,6 +339,21 @@ describe('mapCredentialToProofInputs', () => {
 			// Tree 2
 			expect(inputs).toHaveProperty('cellMapPath');
 			expect(inputs).toHaveProperty('cellMapPathBits');
+
+			// Tree 3 (engagement)
+			expect(inputs).toHaveProperty('engagementRoot');
+			expect(inputs).toHaveProperty('engagementPath');
+			expect(inputs).toHaveProperty('engagementIndex');
+		});
+
+		it('has all required engagement fields', () => {
+			const credential = makeThreeTreeCredential();
+			const context = makeProofContext();
+			const inputs = mapCredentialToProofInputs(credential, context);
+
+			expect(inputs).toHaveProperty('engagementTier');
+			expect(inputs).toHaveProperty('actionCount');
+			expect(inputs).toHaveProperty('diversityScore');
 		});
 	});
 });

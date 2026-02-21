@@ -1,7 +1,7 @@
 /**
  * Cell ID (Census Block GEOID) Integration Tests
  *
- * Tests the complete cell_id flow for two-tree ZK architecture:
+ * Tests the complete cell_id flow for three-tree ZK architecture:
  * 1. Extraction from Census API response (/api/address/verify)
  * 2. Validation (15-digit GEOID format)
  * 3. Shadow Atlas registration with cell_id
@@ -29,7 +29,7 @@ function uniqueId(prefix: string): string {
 	return `${prefix}-${testCounter}-${Date.now()}`;
 }
 
-describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
+describe('Cell ID Integration (Three-Tree ZK Architecture)', () => {
 	beforeEach(async () => {
 		await clearTestDatabase();
 		vi.clearAllMocks();
@@ -264,7 +264,7 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 		it('should not log full cell_id in console output', async () => {
 			// This is a behavioral test - we verify through code review
 			// that console.log only logs the first 5 digits (state + county prefix)
-			// The actual implementation should log: "Cell prefix: 36061... (two-tree mode)"
+			// The actual implementation should log: "Cell prefix: 36061... (three-tree mode)"
 
 			const userId = uniqueId('user');
 			await createTestUser({ id: userId, email: `${userId}@example.com` });

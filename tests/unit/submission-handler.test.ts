@@ -39,7 +39,7 @@ vi.mock('$lib/core/blockchain/district-gate-client', () => ({
 		ACTION_DOMAIN: 27,
 		AUTHORITY_LEVEL: 28
 	},
-	TWO_TREE_PUBLIC_INPUT_COUNT: 29
+	THREE_TREE_PUBLIC_INPUT_COUNT: 31
 }));
 
 vi.mock('$lib/core/blockchain/submission-retry-queue', () => ({
@@ -54,11 +54,11 @@ import { handleSubmission, type SubmissionRequest } from '$lib/core/congressiona
 import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
 
 /**
- * Build a valid 29-element public inputs array.
+ * Build a valid 31-element public inputs array.
  * Index 26 = nullifier, 27 = actionDomain, 28 = authorityLevel.
  */
 function buildPublicInputs(nullifier: string, actionDomain = '0xdomain'): string[] {
-	const inputs = new Array(29).fill('0x0');
+	const inputs = new Array(31).fill('0x0');
 	inputs[26] = nullifier;
 	inputs[27] = actionDomain;
 	inputs[28] = '3'; // authority level

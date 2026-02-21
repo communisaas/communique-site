@@ -3,7 +3,7 @@
  *
  * Validates Barretenberg-backed Poseidon2 primitives used for:
  * - Nullifier computation (CVE-002 fix)
- * - Leaf hash computation (two-tree registration)
+ * - Leaf hash computation (three-tree registration)
  * - Merkle root computation (proof verification)
  *
  * CRITICAL: These functions must produce identical outputs to the Noir circuit.

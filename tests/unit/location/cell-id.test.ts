@@ -2,7 +2,7 @@
  * Unit tests for Cell ID (Census Block GEOID) type system
  *
  * Tests the CellId branded type, validation, and parsing logic
- * that underpins the two-tree ZK architecture.
+ * that underpins the three-tree ZK architecture.
  */
 
 import { describe, it, expect } from 'vitest';

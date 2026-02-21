@@ -21,13 +21,9 @@ vi.mock('$lib/core/identity/session-credentials', () => ({
 	getSessionCredential: vi.fn()
 }));
 
-vi.mock('$lib/core/proof/prover', () => ({
-	default: {
-		initializeProver: vi.fn(),
-		generateProof: vi.fn()
-	},
-	initializeProver: vi.fn(),
-	generateProof: vi.fn()
+vi.mock('$lib/core/zkp/prover-client', () => ({
+	generateThreeTreeProof: vi.fn(),
+	initializeThreeTreeProver: vi.fn()
 }));
 
 vi.mock('$lib/core/proof/witness-encryption', () => ({
@@ -90,26 +86,14 @@ describe('ProofGenerator Component', () => {
 		const { getSessionCredential } = await import('$lib/core/identity/session-credentials');
 		(getSessionCredential as Mock).mockResolvedValue(mockCredential);
 
-		const proverModule = await import('$lib/core/proof/prover');
-		const { initializeProver, generateProof } = proverModule;
-		(initializeProver as Mock).mockImplementation(async (progressCallback?: (p: number) => void) => {
-			// Simulate prover initialization with progress
-			if (progressCallback) {
-				for (let i = 0; i <= 100; i += 25) {
-					await new Promise((resolve) => setTimeout(resolve, 10));
-					progressCallback(i);
-				}
-			}
-			return { initialized: true };
-		});
-
-		(generateProof as Mock).mockImplementation(async (_witness, progressCallback?: (p: number) => void) => {
+		const { generateThreeTreeProof } = await import('$lib/core/zkp/prover-client');
+		(generateThreeTreeProof as Mock).mockImplementation(async (_inputs, onProgress?: (p: { stage: string; percent: number; message: string }) => void) => {
 			// Simulate proof generation with progress
-			if (progressCallback) {
-				for (let i = 0; i <= 100; i += 25) {
-					await new Promise((resolve) => setTimeout(resolve, 10));
-					progressCallback(i);
-				}
+			if (onProgress) {
+				onProgress({ stage: 'loading', percent: 25, message: 'Loading circuit...' });
+				onProgress({ stage: 'initializing', percent: 50, message: 'Initializing prover...' });
+				onProgress({ stage: 'generating', percent: 75, message: 'Generating proof...' });
+				onProgress({ stage: 'complete', percent: 100, message: 'Done' });
 			}
 			return mockProofResult;
 		});
@@ -224,10 +208,9 @@ describe('ProofGenerator Component', () => {
 
 	describe('Error Recovery', () => {
 		it('should allow retry after recoverable error', async () => {
-			const proverModule = await import('$lib/core/proof/prover');
-			const { generateProof } = proverModule;
+			const { generateThreeTreeProof } = await import('$lib/core/zkp/prover-client');
 			let callCount = 0;
-			(generateProof as Mock).mockImplementation(async () => {
+			(generateThreeTreeProof as Mock).mockImplementation(async () => {
 				callCount++;
 				if (callCount === 1) {
 					return { success: false }; // First call fails
