@@ -49,6 +49,7 @@ describe('Identity API Routes', () => {
 		// Set env vars required by identity-binding.ts and security.ts
 		process.env.IDENTITY_COMMITMENT_SALT = 'test-commitment-salt-do-not-use-in-production';
 		process.env.ENTROPY_ENCRYPTION_KEY = 'a'.repeat(64); // 32-byte hex key for AES-256
+		process.env.IP_HASH_SALT = 'test-ip-hash-salt-do-not-use-in-production';
 
 		// Create test users with unique IDs to avoid conflicts with parallel tests
 		const uniqueSuffix = `identity-${Date.now()}-${Math.random().toString(36).substring(7)}`;

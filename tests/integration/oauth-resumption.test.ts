@@ -96,7 +96,7 @@ describe('OAuth Resumption Flow', () => {
 				method: 'POST',
 				locals: {
 					session: { userId: user.id, id: 'session-123', expiresAt: new Date(Date.now() + 86400000) },
-					user: { id: user.id, email: user.email, is_verified: true }
+					user: { id: user.id, email: user.email, is_verified: true, trust_tier: 2 }
 				}
 			}) as unknown as RequestEvent;
 
