@@ -82,11 +82,15 @@ interface Candidate {
 	email: string;
 	/** URL of the page where the agent read the email */
 	email_source?: string;
+	/** URL of the page where this person was mentioned (fallback when no email_source) */
+	source_url?: string;
 	recency_check: string;
 	/** Alternative contact info when no email found */
 	contact_notes?: string;
 	/** true if discovered from page content, not from the input identity list */
 	discovered?: boolean;
+	/** true if served from ResolvedContact cache — email already verified in prior run */
+	cacheHit?: boolean;
 }
 
 /** Phase 2a identity resolution response */
@@ -676,7 +680,8 @@ async function huntContactsFanOutSynthesize(
 				email: cached.email,
 				email_source: cached.emailSource || undefined,
 				recency_check: `Cached contact (verified in prior run)`,
-				contact_notes: ''
+				contact_notes: '',
+				cacheHit: true
 			});
 		} else {
 			uncached.push({ identity, reasoning: roleReasoning });
@@ -1589,7 +1594,14 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 		let emailSource: string | undefined;
 		let emailSourceTitle: string | undefined;
 
-		if (hasEmail) {
+		// Cache hits were verified in a prior run — trust the stored email
+		// without re-grounding against this run's (different) page set.
+		if (hasEmail && candidate.cacheHit) {
+			emailGrounded = true;
+			emailSource = candidate.email_source;
+		}
+
+		if (hasEmail && !emailGrounded) {
 			const emailLower = candidate.email.toLowerCase();
 
 			if (candidate.email_source) {
@@ -1624,6 +1636,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			verifiedPersonSource = emailSource;
 		} else if (candidate.email_source) {
 			verifiedPersonSource = candidate.email_source;
+		} else if (candidate.source_url) {
+			verifiedPersonSource = candidate.source_url;
 		}
 
 		const personSourceNote = verifiedPersonSource
