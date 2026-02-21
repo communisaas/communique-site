@@ -18,6 +18,17 @@ const SHADOW_ATLAS_URL = env.SHADOW_ATLAS_API_URL || 'http://localhost:3000';
 const SHADOW_ATLAS_REGISTRATION_TOKEN = env.SHADOW_ATLAS_REGISTRATION_TOKEN || '';
 
 /**
+ * Circuit depth (must match VITE_CIRCUIT_DEPTH used by prover-client.ts).
+ * Valid values: 18, 20, 22, 24. Default: 20.
+ */
+const CIRCUIT_DEPTH: number = (() => {
+	const d = env.VITE_CIRCUIT_DEPTH;
+	if (!d) return 20;
+	const p = parseInt(d, 10);
+	return (p === 18 || p === 20 || p === 22 || p === 24) ? p : 20;
+})();
+
+/**
  * BN254 scalar field modulus (must match voter-protocol/packages/crypto)
  *
  * BR5-009: All hex field elements from Shadow Atlas must be validated
@@ -166,15 +177,15 @@ export async function lookupDistrict(lat: number, lng: number): Promise<District
 			throw new Error('Shadow Atlas returned invalid Merkle proof');
 		}
 
-		if (merkleProof.depth !== 20) {
+		if (merkleProof.depth !== CIRCUIT_DEPTH) {
 			throw new Error(
-				`Shadow Atlas returned invalid tree depth: ${merkleProof.depth}. Expected 20.`
+				`Shadow Atlas returned invalid tree depth: ${merkleProof.depth}. Expected ${CIRCUIT_DEPTH}.`
 			);
 		}
 
-		if (merkleProof.siblings.length !== 20 || merkleProof.pathIndices.length !== 20) {
+		if (merkleProof.siblings.length !== CIRCUIT_DEPTH || merkleProof.pathIndices.length !== CIRCUIT_DEPTH) {
 			throw new Error(
-				`Shadow Atlas returned invalid proof length: siblings=${merkleProof.siblings.length}, indices=${merkleProof.pathIndices.length}. Expected 20.`
+				`Shadow Atlas returned invalid proof length: siblings=${merkleProof.siblings.length}, indices=${merkleProof.pathIndices.length}. Expected ${CIRCUIT_DEPTH}.`
 			);
 		}
 
@@ -265,9 +276,9 @@ export async function registerLeaf(leaf: string, options?: { attestationHash?: s
 		throw new Error('Shadow Atlas registration response missing required fields');
 	}
 
-	if (userPath.length !== 20 || pathIndices.length !== 20) {
+	if (userPath.length !== CIRCUIT_DEPTH || pathIndices.length !== CIRCUIT_DEPTH) {
 		throw new Error(
-			`Invalid proof length: userPath=${userPath.length}, pathIndices=${pathIndices.length}. Expected 20.`
+			`Invalid proof length: userPath=${userPath.length}, pathIndices=${pathIndices.length}. Expected ${CIRCUIT_DEPTH}.`
 		);
 	}
 
@@ -335,9 +346,9 @@ export async function replaceLeaf(
 		throw new Error('Shadow Atlas replacement response missing required fields');
 	}
 
-	if (userPath.length !== 20 || pathIndices.length !== 20) {
+	if (userPath.length !== CIRCUIT_DEPTH || pathIndices.length !== CIRCUIT_DEPTH) {
 		throw new Error(
-			`Invalid proof length: userPath=${userPath.length}, pathIndices=${pathIndices.length}. Expected 20.`
+			`Invalid proof length: userPath=${userPath.length}, pathIndices=${pathIndices.length}. Expected ${CIRCUIT_DEPTH}.`
 		);
 	}
 
@@ -410,10 +421,10 @@ export async function getCellProof(cellId: string): Promise<CellProofResult> {
 	}
 
 	// 29M-004: Validate SMT proof lengths (consistent with registerLeaf validation)
-	if (cellMapPath.length !== 20 || cellMapPathBits.length !== 20) {
+	if (cellMapPath.length !== CIRCUIT_DEPTH || cellMapPathBits.length !== CIRCUIT_DEPTH) {
 		throw new Error(
 			`Invalid SMT proof length: cellMapPath=${cellMapPath.length}, ` +
-			`cellMapPathBits=${cellMapPathBits.length}. Expected 20.`
+			`cellMapPathBits=${cellMapPathBits.length}. Expected ${CIRCUIT_DEPTH}.`
 		);
 	}
 

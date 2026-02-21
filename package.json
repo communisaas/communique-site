@@ -92,7 +92,7 @@
 		"vitest": "^2.1.4"
 	},
 	"dependencies": {
-		"@aztec/bb.js": "^2.1.9",
+		"@aztec/bb.js": "2.1.8",
 		"@codemirror/basic-setup": "^0.20.0",
 		"@codemirror/lang-html": "^6.4.10",
 		"@codemirror/state": "^6.5.2",

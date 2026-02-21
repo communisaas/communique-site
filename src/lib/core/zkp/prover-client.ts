@@ -8,7 +8,7 @@
  * SECURITY INVARIANTS:
  * 1. Prover initialized ONCE per depth and cached (SA-006: clear on failure)
  * 2. All field elements validated against BN254 modulus before proving
- * 3. Merkle path must have exactly 20 siblings (depth-20 circuits)
+ * 3. Merkle path length must match CIRCUIT_DEPTH (default: 20)
  * 4. Never block main thread - all proving is async via WASM
  *
  * CONTROL FLOW:
@@ -23,6 +23,20 @@ import {
 	type TwoTreeProofResult as NoirTwoTreeProofResult,
 	TWO_TREE_PUBLIC_INPUT_COUNT
 } from '@voter-protocol/noir-prover';
+
+/**
+ * Circuit depth for Merkle tree proofs. Controls path length validation and tree capacity (2^depth leaves).
+ * Override via VITE_CIRCUIT_DEPTH env var for international expansion (depth 22/24 for larger trees).
+ * Valid values: 18, 20, 22, 24. Default: 20 (covers all US states).
+ */
+const CIRCUIT_DEPTH: CircuitDepth = (() => {
+	const envDepth = typeof import.meta !== 'undefined' ? (import.meta as Record<string, Record<string, string>>).env?.VITE_CIRCUIT_DEPTH : undefined;
+	if (!envDepth) return 20;
+	const parsed = parseInt(envDepth, 10);
+	if (parsed === 18 || parsed === 20 || parsed === 22 || parsed === 24) return parsed;
+	console.warn(`Invalid VITE_CIRCUIT_DEPTH=${envDepth}, using default 20`);
+	return 20;
+})();
 
 /** Convert Uint8Array to hex string (CF Workers compatible, no Node.js Buffer) */
 function uint8ArrayToHex(bytes: Uint8Array): string {
@@ -292,8 +306,8 @@ export async function generateTwoTreeProof(
 	// Validate inputs upfront (fail fast)
 	validateTwoTreeProofInputs(inputs);
 
-	// Initialize two-tree prover (depth=20 for production)
-	const prover = await initializeTwoTreeProver(20, onProgress);
+	// Initialize two-tree prover at configured depth
+	const prover = await initializeTwoTreeProver(CIRCUIT_DEPTH, onProgress);
 
 	onProgress?.({ stage: 'generating', percent: 0, message: 'Generating two-tree proof...' });
 
@@ -448,9 +462,9 @@ function validateTwoTreeProofInputs(inputs: TwoTreeProofInputs): void {
 	if (!Array.isArray(inputs.userPath)) {
 		throw new Error('userPath must be an array');
 	}
-	if (inputs.userPath.length !== 20) {
+	if (inputs.userPath.length !== CIRCUIT_DEPTH) {
 		throw new Error(
-			`userPath must have 20 siblings for depth-20 circuit, got ${inputs.userPath.length}`
+			`userPath must have ${CIRCUIT_DEPTH} siblings for depth-${CIRCUIT_DEPTH} circuit, got ${inputs.userPath.length}`
 		);
 	}
 	inputs.userPath.forEach((sibling, i) => {
@@ -461,17 +475,17 @@ function validateTwoTreeProofInputs(inputs: TwoTreeProofInputs): void {
 	if (!Number.isInteger(inputs.userIndex)) {
 		throw new Error(`userIndex must be an integer, got ${inputs.userIndex}`);
 	}
-	if (inputs.userIndex < 0 || inputs.userIndex >= 2 ** 20) {
-		throw new Error(`userIndex out of range for depth-20 tree: ${inputs.userIndex}`);
+	if (inputs.userIndex < 0 || inputs.userIndex >= 2 ** CIRCUIT_DEPTH) {
+		throw new Error(`userIndex out of range for depth-${CIRCUIT_DEPTH} tree: ${inputs.userIndex}`);
 	}
 
 	// Validate Tree 2 SMT path
 	if (!Array.isArray(inputs.cellMapPath)) {
 		throw new Error('cellMapPath must be an array');
 	}
-	if (inputs.cellMapPath.length !== 20) {
+	if (inputs.cellMapPath.length !== CIRCUIT_DEPTH) {
 		throw new Error(
-			`cellMapPath must have 20 siblings for depth-20 circuit, got ${inputs.cellMapPath.length}`
+			`cellMapPath must have ${CIRCUIT_DEPTH} siblings for depth-${CIRCUIT_DEPTH} circuit, got ${inputs.cellMapPath.length}`
 		);
 	}
 	inputs.cellMapPath.forEach((sibling, i) => {
@@ -482,9 +496,9 @@ function validateTwoTreeProofInputs(inputs: TwoTreeProofInputs): void {
 	if (!Array.isArray(inputs.cellMapPathBits)) {
 		throw new Error('cellMapPathBits must be an array');
 	}
-	if (inputs.cellMapPathBits.length !== 20) {
+	if (inputs.cellMapPathBits.length !== CIRCUIT_DEPTH) {
 		throw new Error(
-			`cellMapPathBits must have 20 bits for depth-20 circuit, got ${inputs.cellMapPathBits.length}`
+			`cellMapPathBits must have ${CIRCUIT_DEPTH} bits for depth-${CIRCUIT_DEPTH} circuit, got ${inputs.cellMapPathBits.length}`
 		);
 	}
 	inputs.cellMapPathBits.forEach((bit, i) => {

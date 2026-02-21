@@ -22,11 +22,9 @@ import { validateReturnTo } from '$lib/core/auth/oauth';
 /**
  * BLOCKCHAIN ACCOUNT CREATION DEFERRED TO CLIENT
  *
- * Previously, OAuth callback handler attempted to create NEAR/Scroll accounts
- * server-side, which caused SSR build failures due to browser-only dependencies:
- * - @near-js/keystores-browser (IndexedDB)
- * - @near-js/biometric-ed25519 (WebAuthn)
- * - idb (IndexedDB wrapper)
+ * Previously, OAuth callback handler attempted to create blockchain accounts
+ * server-side, which caused SSR build failures due to browser-only dependencies.
+ * NEAR was removed in favor of direct Scroll L2 wallet interaction.
  *
  * NEW ARCHITECTURE:
  * 1. OAuth callback completes authentication (server-side)
@@ -85,11 +83,7 @@ export interface DatabaseUser {
 	profile_visibility?: string;
 	verification_method?: string | null;
 	verified_at?: Date | null;
-	// Blockchain accounts
-	near_account_id?: string | null;
-	near_account_entropy?: string | null; // PRIVACY: Random entropy for account ID generation
-	near_auth_method?: string | null;
-	near_account_created_at?: Date | null;
+	// Blockchain accounts (Scroll L2 — NEAR removed, see ARCHITECTURE.md)
 	scroll_address?: string | null;
 	scroll_derivation_path?: string | null;
 	connected_wallet_address?: string | null;
@@ -449,7 +443,7 @@ export class OAuthCallbackHandler {
 			JSON.stringify({
 				userId: user.id,
 				provider,
-				needsInit: !user.near_account_id || !user.scroll_address,
+				needsInit: !user.scroll_address,
 				timestamp: Date.now()
 			}),
 			{

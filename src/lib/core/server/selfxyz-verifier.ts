@@ -17,10 +17,10 @@ export function getSelfVerifier(): SelfBackendVerifier {
 	if (!_selfVerifier) {
 		_selfVerifier = new SelfBackendVerifier(
 			// Scope - must match frontend QR generation
-			process.env.NEXT_PUBLIC_SELF_SCOPE || 'communique-congressional',
+			process.env.SELF_SCOPE || 'communique-congressional',
 
 			// Endpoint - must match frontend QR generation
-			process.env.NEXT_PUBLIC_SELF_ENDPOINT || 'https://communi.email/api/identity/verify',
+			process.env.SELF_ENDPOINT || 'https://communi.email/api/identity/verify',
 
 			// Mock passport mode (true = testnet, false = mainnet)
 			process.env.SELF_MOCK_PASSPORT === 'true',

@@ -156,9 +156,9 @@ declare global {
 			// Self.xyz (Zero-knowledge passport verification)
 			SELF_APP_NAME?: string;
 			SELF_SCOPE?: string;
+			SELF_SCOPE?: string;
+			SELF_ENDPOINT?: string;
 			SELF_MOCK_PASSPORT?: string; // 'true' for testing
-			NEXT_PUBLIC_SELF_SCOPE?: string;
-			NEXT_PUBLIC_SELF_ENDPOINT?: string;
 
 			// Email Enrichment APIs (Optional)
 			HUNTER_IO_API_KEY?: string; // Email verification
