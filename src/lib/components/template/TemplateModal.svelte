@@ -143,9 +143,12 @@
 			if (!user) {
 				console.log('[TemplateModal] Guest on congressional template — mailto relay');
 				handleUnifiedEmailFlow();
-			} else {
-				console.log('[TemplateModal] Authenticated user on congressional — CWC flow');
+			} else if ((user.trust_tier ?? 0) >= 3) {
+				console.log('[TemplateModal] Tier 3+ user on congressional — CWC/ZKP flow');
 				handleSendConfirmation(true);
+			} else {
+				console.log('[TemplateModal] Tier 1-2 user on congressional — email_attested flow');
+				handleUnifiedEmailFlow();
 			}
 			return;
 		}
@@ -193,7 +196,23 @@
 
 		// Use unified email service
 		const currentUser = $page.data?.user || user;
-		const flow = analyzeEmailFlow(template, currentUser, { trustTier: currentUser?.trust_tier ?? 0 });
+
+		// Populate credentialHash from IndexedDB for Tier 2+ users
+		// so the email footer can include the verify URL
+		let enrichedUser = currentUser;
+		if (currentUser?.id && (currentUser.trust_tier ?? 0) >= 2) {
+			try {
+				const { getCredential } = await import('$lib/core/identity/credential-store');
+				const credential = await getCredential(currentUser.id, 'district_residency');
+				if (credential?.credentialHash) {
+					enrichedUser = { ...currentUser, credentialHash: credential.credentialHash };
+				}
+			} catch (err) {
+				console.warn('[TemplateModal] Failed to load credential hash:', err);
+			}
+		}
+
+		const flow = analyzeEmailFlow(template, enrichedUser, { trustTier: enrichedUser?.trust_tier ?? 0 });
 
 		// Store mailto URL for later use
 		if (flow.mailtoUrl) {
@@ -363,8 +382,12 @@
 			}
 		}
 
-		// Proceed to submission
-		await submitCongressionalMessage();
+		// Proceed to submission — route by tier
+		if ((user?.trust_tier ?? 0) >= 3) {
+			await submitCongressionalMessage();
+		} else {
+			await handleUnifiedEmailFlow();
+		}
 	}
 
 	/**
@@ -390,8 +413,12 @@
 		);
 		showVerificationGate = false;
 
-		// Now that user is verified, submit the Congressional message
-		submitCongressionalMessage();
+		// Now that user is verified, route by tier
+		if ((user?.trust_tier ?? 0) >= 3) {
+			submitCongressionalMessage();
+		} else {
+			handleUnifiedEmailFlow();
+		}
 
 		// Celebration animation
 		celebrationScale.set(1.05).then(() => celebrationScale.set(1));
@@ -438,6 +465,11 @@
 		console.error('[Template Modal] Proof generation failed:', data.message);
 		submissionError = data.message;
 		modalActions.setState('error');
+	}
+
+	function handleProofReverify() {
+		console.log('[Template Modal] Credential expired, re-opening verification gate');
+		showVerificationGate = true;
 	}
 
 	async function handleSendConfirmation(sent: boolean) {
@@ -524,8 +556,14 @@
 					}
 				}
 
-				// STEP 3: User has address + is verified - proceed with submission
-				await submitCongressionalMessage();
+				// STEP 3: User has address + is verified - route by tier
+				if ((user?.trust_tier ?? 0) >= 3) {
+					// Tier 3+: ZKP → TEE → CWC pipeline
+					await submitCongressionalMessage();
+				} else {
+					// Tier 1-2: email_attested → mailto with district attestation footer
+					await handleUnifiedEmailFlow();
+				}
 			} else {
 				// Phase 1: Non-Congressional messages use mailto, no verification yet
 				// Phase 2: Will add OAuth verification for all message types
@@ -1111,6 +1149,7 @@
 						autoStart={true}
 						oncomplete={(data) => handleProofComplete(data)}
 						oncancel={() => handleProofCancel()}
+						onreverify={() => handleProofReverify()}
 						onerror={(data) => handleProofError(data)}
 					/>
 				{:else}

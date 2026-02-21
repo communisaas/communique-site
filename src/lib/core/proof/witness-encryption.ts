@@ -124,28 +124,48 @@ async function getTEEPublicKey(): Promise<TEEPublicKey> {
 		return cachedTEEKey;
 	}
 
-	// Fetch fresh key from backend
-	const response = await fetch('/api/tee/public-key');
+	// Fetch fresh key with retries
+	const maxAttempts = 3;
+	let lastError: Error | undefined;
 
-	if (!response.ok) {
-		throw new Error('Failed to fetch TEE public key');
+	for (let attempt = 0; attempt < maxAttempts; attempt++) {
+		try {
+			const response = await fetch('/api/tee/public-key', {
+				signal: AbortSignal.timeout(5000),
+			});
+
+			if (response.status === 503 && attempt < maxAttempts - 1) {
+				await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+				continue;
+			}
+
+			if (!response.ok) {
+				throw new Error(`TEE key fetch failed (${response.status})`);
+			}
+
+			const data = await response.json();
+
+			if (!data.success || !data.keyId || !data.publicKey) {
+				throw new Error('Invalid TEE public key response');
+			}
+
+			cachedTEEKey = {
+				keyId: data.keyId,
+				publicKey: data.publicKey
+			};
+
+			cacheExpiry = now + 60 * 60 * 1000;
+
+			return cachedTEEKey;
+		} catch (error) {
+			lastError = error instanceof Error ? error : new Error(String(error));
+			if (attempt < maxAttempts - 1) {
+				await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+			}
+		}
 	}
 
-	const data = await response.json();
-
-	if (!data.success || !data.keyId || !data.publicKey) {
-		throw new Error('Invalid TEE public key response');
-	}
-
-	cachedTEEKey = {
-		keyId: data.keyId,
-		publicKey: data.publicKey
-	};
-
-	// Cache for 1 hour
-	cacheExpiry = now + 60 * 60 * 1000;
-
-	return cachedTEEKey;
+	throw new Error(`Witness encryption service unavailable: ${lastError?.message}`);
 }
 
 /**

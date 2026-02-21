@@ -30,6 +30,7 @@
 		autoStart?: boolean;
 		oncomplete?: (data: { submissionId: string }) => void;
 		oncancel?: () => void;
+		onreverify?: () => void;
 		onerror?: (data: { message: string }) => void;
 	}
 
@@ -43,6 +44,7 @@
 		autoStart = false,
 		oncomplete,
 		oncancel,
+		onreverify,
 		onerror
 	}: Props = $props();
 
@@ -54,7 +56,7 @@
 		| { status: 'encrypting-witness' }
 		| { status: 'submitting' }
 		| { status: 'complete'; submissionId: string }
-		| { status: 'error'; message: string; recoverable: boolean; retryAction?: () => void };
+		| { status: 'error'; message: string; recoverable: boolean; retryAction?: () => void; retryLabel?: string };
 
 	let proofState: ProofGenerationState = $state({ status: 'idle' });
 	let educationIndex = $state(0);
@@ -100,11 +102,11 @@
 			if (!credential) {
 				proofState = {
 					status: 'error',
-					message: 'Session credential not found. Please verify your identity first.',
+					message: 'Your verification session has expired. Please re-verify your identity.',
 					recoverable: true,
+					retryLabel: 'Re-verify Identity',
 					retryAction: () => {
-						oncancel?.();
-						// Parent component should redirect to identity verification
+						onreverify?.();
 					}
 				};
 				return;
@@ -121,8 +123,9 @@
 					status: 'error',
 					message: 'Your verification credential needs to be updated. Please re-verify your identity to continue.',
 					recoverable: true,
+					retryLabel: 'Re-verify Identity',
 					retryAction: () => {
-						oncancel?.();
+						onreverify?.();
 					}
 				};
 				return;
@@ -285,12 +288,23 @@
 			const errorMessage = error instanceof Error
 				? error.message
 				: 'An unexpected error occurred. Please try again.';
-			proofState = {
-				status: 'error',
-				message: errorMessage,
-				recoverable: true,
-				retryAction: () => generateAndSubmit()
-			};
+
+			const isInfrastructureError = /TEE|encryption|503|service unavailable/i.test(errorMessage);
+
+			if (isInfrastructureError) {
+				proofState = {
+					status: 'error',
+					message: 'Secure delivery service is temporarily unavailable. Please try again in a few minutes.',
+					recoverable: false
+				};
+			} else {
+				proofState = {
+					status: 'error',
+					message: errorMessage,
+					recoverable: true,
+					retryAction: () => generateAndSubmit()
+				};
+			}
 			onerror?.({ message: errorMessage });
 		}
 	}
@@ -503,7 +517,7 @@
 						onclick={handleRetry}
 						class="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
 					>
-						Try Again
+						{proofState.retryLabel ?? 'Try Again'}
 					</button>
 				{/if}
 			</div>

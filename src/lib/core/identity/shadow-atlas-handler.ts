@@ -66,6 +66,109 @@ export interface ThreeTreeRecoveryRequest {
 }
 
 // ============================================================================
+// Retry Utility
+// ============================================================================
+
+async function fetchWithRetry(
+	input: RequestInfo,
+	init?: RequestInit,
+	maxAttempts = 3
+): Promise<Response> {
+	const delays = [1000, 2000, 4000];
+	let lastError: Error | undefined;
+
+	for (let attempt = 0; attempt < maxAttempts; attempt++) {
+		try {
+			const response = await fetch(input, {
+				...init,
+				signal: AbortSignal.timeout(10_000),
+			});
+
+			if (response.status >= 500 && attempt < maxAttempts - 1) {
+				await new Promise((r) => setTimeout(r, delays[attempt]));
+				continue;
+			}
+
+			return response;
+		} catch (error) {
+			lastError = error instanceof Error ? error : new Error(String(error));
+			if (attempt < maxAttempts - 1) {
+				await new Promise((r) => setTimeout(r, delays[attempt]));
+			}
+		}
+	}
+
+	throw lastError ?? new Error('fetchWithRetry: all attempts failed');
+}
+
+// ============================================================================
+// Engagement Data (Tree 3)
+// ============================================================================
+
+const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+/** Default engagement depth (must match circuit tree depth) */
+const DEFAULT_ENGAGEMENT_DEPTH = 20;
+
+interface EngagementData {
+	engagementRoot: string;
+	engagementPath: string[];
+	engagementIndex: number;
+	engagementTier: number;
+	actionCount: string;
+	diversityScore: string;
+}
+
+/**
+ * Fetch engagement data from the proxy endpoint.
+ * Non-blocking: returns tier-0 defaults on any failure so that
+ * Tree 1 + Tree 2 registration is never disrupted.
+ */
+async function fetchEngagementData(identityCommitment: string): Promise<EngagementData> {
+	const defaults: EngagementData = {
+		engagementRoot: ZERO_HASH,
+		engagementPath: Array(DEFAULT_ENGAGEMENT_DEPTH).fill(ZERO_HASH),
+		engagementIndex: 0,
+		engagementTier: 0,
+		actionCount: '0',
+		diversityScore: '0',
+	};
+
+	try {
+		const response = await fetchWithRetry('/api/shadow-atlas/engagement', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ identityCommitment }),
+		});
+
+		if (!response.ok) {
+			console.warn(`[Shadow Atlas] Engagement fetch returned ${response.status}, using tier-0 defaults`);
+			return defaults;
+		}
+
+		const data = await response.json();
+
+		// Validate required fields are present
+		if (!data.engagementRoot || !data.engagementPath || !Array.isArray(data.engagementPath)) {
+			console.warn('[Shadow Atlas] Engagement response missing required fields, using tier-0 defaults');
+			return defaults;
+		}
+
+		return {
+			engagementRoot: data.engagementRoot,
+			engagementPath: data.engagementPath,
+			engagementIndex: data.engagementIndex ?? 0,
+			engagementTier: data.engagementTier ?? 0,
+			actionCount: data.actionCount ?? '0',
+			diversityScore: data.diversityScore ?? '0',
+		};
+	} catch (error) {
+		console.warn('[Shadow Atlas] Engagement fetch failed, using tier-0 defaults:', error);
+		return defaults;
+	}
+}
+
+// ============================================================================
 // Main Handler
 // ============================================================================
 
@@ -84,7 +187,7 @@ export async function registerThreeTree(
 ): Promise<ThreeTreeRegistrationResult> {
 	try {
 		// Step 1: Register leaf hash in Tree 1 (server sees only the hash)
-		const tree1Response = await fetch('/api/shadow-atlas/register', {
+		const tree1Response = await fetchWithRetry('/api/shadow-atlas/register', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ leaf: request.leaf }),
@@ -108,7 +211,7 @@ export async function registerThreeTree(
 		}
 
 		// Step 2: Fetch Tree 2 cell proof (server proxies to Shadow Atlas)
-		const tree2Response = await fetch(
+		const tree2Response = await fetchWithRetry(
 			`/api/shadow-atlas/cell-proof?cell_id=${encodeURIComponent(request.cellId)}`
 		);
 
@@ -129,7 +232,10 @@ export async function registerThreeTree(
 			};
 		}
 
-		// Step 3: Construct session credential with BOTH tree proofs
+		// Step 2b: Fetch Tree 3 engagement data (non-blocking — defaults to tier 0 on failure)
+		const engagementData = await fetchEngagementData(tree1Data.identityCommitment);
+
+		// Step 3: Construct session credential with ALL three tree proofs
 		const now = new Date();
 		const sessionCredential: SessionCredential = {
 			userId: request.userId,
@@ -148,6 +254,14 @@ export async function registerThreeTree(
 			cellMapPath: tree2Data.cellMapPath,
 			cellMapPathBits: tree2Data.cellMapPathBits,
 			districts: tree2Data.districts,
+
+			// Tree 3 engagement fields
+			engagementRoot: engagementData.engagementRoot,
+			engagementPath: engagementData.engagementPath,
+			engagementIndex: engagementData.engagementIndex,
+			engagementTier: engagementData.engagementTier as 0 | 1 | 2 | 3 | 4,
+			actionCount: engagementData.actionCount,
+			diversityScore: engagementData.diversityScore,
 
 			// Private inputs (stored client-side only, NEVER sent to server)
 			userSecret: request.userSecret,
@@ -169,6 +283,7 @@ export async function registerThreeTree(
 			userId: request.userId,
 			leafIndex: tree1Data.leafIndex,
 			districts: tree2Data.districts.length,
+			engagementTier: engagementData.engagementTier,
 			expiresAt: sessionCredential.expiresAt,
 		});
 
@@ -204,7 +319,7 @@ export async function recoverThreeTree(
 ): Promise<ThreeTreeRegistrationResult> {
 	try {
 		// Step 1: Replace leaf in Tree 1 (sends replace: true)
-		const tree1Response = await fetch('/api/shadow-atlas/register', {
+		const tree1Response = await fetchWithRetry('/api/shadow-atlas/register', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ leaf: request.leaf, replace: true }),
@@ -228,7 +343,7 @@ export async function recoverThreeTree(
 		}
 
 		// Step 2: Fetch Tree 2 cell proof (same as registration)
-		const tree2Response = await fetch(
+		const tree2Response = await fetchWithRetry(
 			`/api/shadow-atlas/cell-proof?cell_id=${encodeURIComponent(request.cellId)}`
 		);
 
@@ -249,7 +364,10 @@ export async function recoverThreeTree(
 			};
 		}
 
-		// Step 3: Construct session credential with BOTH tree proofs
+		// Step 2b: Fetch Tree 3 engagement data (non-blocking — defaults to tier 0 on failure)
+		const engagementData = await fetchEngagementData(tree1Data.identityCommitment);
+
+		// Step 3: Construct session credential with ALL three tree proofs
 		const now = new Date();
 		const sessionCredential: SessionCredential = {
 			userId: request.userId,
@@ -268,6 +386,14 @@ export async function recoverThreeTree(
 			cellMapPathBits: tree2Data.cellMapPathBits,
 			districts: tree2Data.districts,
 
+			// Tree 3 engagement fields
+			engagementRoot: engagementData.engagementRoot,
+			engagementPath: engagementData.engagementPath,
+			engagementIndex: engagementData.engagementIndex,
+			engagementTier: engagementData.engagementTier as 0 | 1 | 2 | 3 | 4,
+			actionCount: engagementData.actionCount,
+			diversityScore: engagementData.diversityScore,
+
 			userSecret: request.userSecret,
 			registrationSalt: request.registrationSalt,
 
@@ -285,6 +411,7 @@ export async function recoverThreeTree(
 			userId: request.userId,
 			leafIndex: tree1Data.leafIndex,
 			districts: tree2Data.districts.length,
+			engagementTier: engagementData.engagementTier,
 			expiresAt: sessionCredential.expiresAt,
 		});
 
