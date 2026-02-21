@@ -27,10 +27,7 @@ import { json } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db';
 import type { RequestHandler } from './$types';
 import { registerLeaf, replaceLeaf } from '$lib/core/shadow-atlas/client';
-
-/** BN254 scalar field modulus */
-const BN254_MODULUS =
-	21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+import { BN254_MODULUS } from '@voter-protocol/noir-prover';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {

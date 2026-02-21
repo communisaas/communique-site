@@ -1,9 +1,7 @@
 <script lang="ts">
 	import type { Template } from '$lib/types/template';
 	import Button from '$lib/components/ui/Button.svelte';
-	import TrustSignal from '$lib/components/trust/TrustSignal.svelte';
 	import { browser } from '$app/environment';
-	// import { coordinated } from '$lib/utils/timerCoordinator';
 	import { type Spring } from 'svelte/motion';
 
 	let {
@@ -14,8 +12,7 @@
 		localShowEmailModal = $bindable(),
 		actionProgress = $bindable(),
 		onEmailModalClose: _onEmailModalClose,
-		componentId: _componentId,
-		onVerifyAddress
+		componentId: _componentId
 	}: {
 		template: Template;
 		user: { id: string; name: string | null; trust_tier?: number } | null;
@@ -25,7 +22,6 @@
 		actionProgress: Spring<number>;
 		onEmailModalClose: () => void;
 		componentId: string;
-		onVerifyAddress?: () => void;
 	} = $props();
 
 	let flightState = $state<
@@ -145,18 +141,6 @@
 		</div>
 	{/if}
 	<div class="mt-4 flex flex-col items-center gap-2">
-		<!-- Trust Signal: show when user is authenticated -->
-		{#if user}
-			<div class="flex w-full flex-col items-center gap-1">
-				<TrustSignal
-					trustTier={userTrustTier}
-					showUpgrade={userTrustTier < 2}
-					onUpgradeClick={onVerifyAddress}
-					compact={true}
-				/>
-			</div>
-		{/if}
-
 		{#if isCwcTemplate}
 			<Button
 				variant={buttonVariant}

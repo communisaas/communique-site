@@ -71,7 +71,9 @@ export default defineConfig({
 	assetsInclude: ['**/*.wasm'],
 
 	ssr: {
-		noExternal: ['@selfxyz/qrcode']
+		// @selfxyz/qrcode has transitive CJS deps (react-spinners) that break Vite's ESM transform.
+		// We only use SelfAppBuilder server-side — let Node handle it natively.
+		external: ['@selfxyz/qrcode']
 	},
 
 	worker: {

@@ -202,8 +202,12 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		// The signer→identityCommitment mapping already exists server-side (both fields
 		// are on the User row). This just sends it to Shadow Atlas for Tree 3 insertion.
 		// Idempotent: registerEngagement returns { alreadyRegistered: true } for duplicates.
-		const signerAddress = locals.user.wallet_address;
-		const identityCommitment = locals.user.identity_commitment;
+		const engagementUser = await prisma.user.findUnique({
+			where: { id: userId },
+			select: { wallet_address: true, identity_commitment: true },
+		});
+		const signerAddress = engagementUser?.wallet_address;
+		const identityCommitment = engagementUser?.identity_commitment;
 		const engagementPromise = (signerAddress && identityCommitment)
 			? registerEngagement(signerAddress, identityCommitment)
 				.then((result) => {

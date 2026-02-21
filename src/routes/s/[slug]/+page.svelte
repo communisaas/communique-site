@@ -14,9 +14,11 @@
 	import { trackTemplateView } from '$lib/core/analytics/client';
 	import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import ActionBar from '$lib/components/template-browser/parts/ActionBar.svelte';
+	import TrustJourney from '$lib/components/trust/TrustJourney.svelte';
 
 	import { spring } from 'svelte/motion';
 	import { browser } from '$app/environment';
+	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { Template as TemplateType } from '$lib/types/template';
 	import SocialProofBanner from '$lib/components/template/SocialProofBanner.svelte';
@@ -279,18 +281,52 @@
 			</div>
 		</div>
 
-		<!-- User greeting and Action Button -->
+		<!-- User greeting, Trust Journey, and Action Button -->
 		<div class="flex flex-col items-start gap-3 sm:items-end">
 			{#if data.user}
-				<div class="flex items-center gap-2">
-					<span class="text-sm text-slate-600">
-						Hi {data.user.name?.split(' ')[0]} - join the {(
-							template.metrics?.sent || 0
-						).toLocaleString()} who sent this
-					</span>
-					{#if (data.user.trust_tier ?? 0) >= 2}
-						<VerificationBadge />
-					{/if}
+				<!-- Trust Journey — signal strength your voice carries -->
+				<div class="w-full sm:w-72">
+					<TrustJourney
+						trustTier={data.user.trust_tier ?? 1}
+						onVerifyAddress={() => {
+							modalActions.openModal('address-modal', 'address', {
+								template,
+								source,
+								mode: 'collection',
+								onComplete: async (detail: AddressModalDetail) => {
+									// Cache address locally
+									guestState.setAddress(detail.address);
+									// Close address modal — don't auto-open template modal.
+									// Let the user see their tier upgrade first, then send.
+									modalActions.closeModal('address-modal');
+									// Refresh page data so TrustJourney animates to new tier
+									await invalidateAll();
+								}
+							});
+						}}
+						onVerifyIdentity={async () => {
+							// Tier 3: Identity verification
+							// Demo mode: simulate via /demo/verify-identity + bootstrap ZK credential
+							// Production: self.xyz or Didit NFC passport flow → Shadow Atlas registration
+							const res = await fetch('/demo/verify-identity', { method: 'POST' });
+							const result = await res.json();
+
+							// Bootstrap session credential for real ZK proof generation
+							if (result.identity_commitment && data.user?.id) {
+								try {
+									const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
+									await bootstrapDemoCredential(data.user.id, result.identity_commitment);
+								} catch (e) {
+									console.error('[Demo] Credential bootstrap failed:', e);
+								}
+							}
+							await invalidateAll();
+						}}
+						onGenerateProof={() => {
+							// Tier 4: ZK proof generation — opens template modal which handles proof flow
+							modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
+						}}
+					/>
 				</div>
 			{/if}
 
@@ -314,12 +350,6 @@
 					bind:actionProgress
 					onEmailModalClose={() => {
 						/* Intentionally empty - modal close handled elsewhere */
-					}}
-					onVerifyAddress={() => {
-						modalActions.openModal('address-modal', 'address', {
-							template,
-							source
-						});
 					}}
 					componentId="template-page-action"
 				/>
