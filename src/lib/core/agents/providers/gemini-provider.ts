@@ -1448,21 +1448,18 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				return dm;
 			});
 
-			// Deduplicate shared emails: if the same address appears on multiple
-			// candidates, it's an office-wide address (mediarelations@, press@, info@).
-			// Keep it on the first candidate only — duplicates become "no email found."
-			const seenEmails = new Set<string>();
+			// Log shared emails for visibility but DO NOT strip them.
+			// Org-level emails (planning@, press@, info@) are often the ONLY contact
+			// path for board/committee members. Stripping them loses the contact entirely.
+			const emailCounts = new Map<string, number>();
 			for (const dm of filtered) {
 				if (!dm.email) continue;
 				const lower = dm.email.toLowerCase();
-				if (seenEmails.has(lower)) {
-					console.debug(`[gemini-provider] Dedup: stripping shared email ${dm.email} from ${dm.name} (already assigned)`);
-					dm.email = undefined;
-					dm.emailGrounded = undefined;
-					dm.emailSource = undefined;
-					dm.emailSourceTitle = undefined;
-				} else {
-					seenEmails.add(lower);
+				emailCounts.set(lower, (emailCounts.get(lower) || 0) + 1);
+			}
+			for (const [email, count] of emailCounts) {
+				if (count > 1) {
+					console.debug(`[gemini-provider] Shared email ${email} assigned to ${count} candidates (org-level contact path)`);
 				}
 			}
 
