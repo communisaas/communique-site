@@ -28,15 +28,14 @@ const CIRCUIT_DEPTH: number = (() => {
 	return (p === 18 || p === 20 || p === 22 || p === 24) ? p : 20;
 })();
 
+import { BN254_MODULUS } from '@voter-protocol/noir-prover';
+
 /**
- * BN254 scalar field modulus (must match voter-protocol/packages/crypto)
- *
  * BR5-009: All hex field elements from Shadow Atlas must be validated
  * against this modulus before being stored in SessionCredential or
  * passed to the prover. A compromised Shadow Atlas could return values
  * >= modulus, causing circuit failures or field aliasing attacks.
  */
-const BN254_MODULUS = BigInt('0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001');
 
 /**
  * Validate a hex string is a canonical 0x-prefixed BN254 field element.
@@ -500,6 +499,125 @@ export async function registerEngagement(
 		leafIndex: result.data.leafIndex,
 		engagementRoot: result.data.engagementRoot,
 	};
+}
+
+// ============================================================================
+// Engagement Proof & Metrics (Tree 3)
+// ============================================================================
+
+/**
+ * Engagement Merkle proof response from Shadow Atlas GET /v1/engagement-path/:leafIndex
+ */
+export interface EngagementPathResult {
+	engagementRoot: string;
+	engagementPath: string[];
+	pathIndices: number[];
+	tier: number;
+	actionCount: number;
+	diversityScore: number;
+}
+
+/**
+ * Engagement metrics response from Shadow Atlas GET /v1/engagement-metrics/:identityCommitment
+ */
+export interface EngagementMetricsResult {
+	identityCommitment: string;
+	tier: number;
+	actionCount: number;
+	diversityScore: number;
+	tenureMonths: number;
+	leafIndex: number;
+}
+
+/**
+ * Get the Tree 3 Merkle proof for a leaf by index.
+ *
+ * @param leafIndex - Position in the engagement tree
+ * @returns Engagement proof with root, path, and metrics
+ * @throws Error if leaf not found or request fails
+ */
+export async function getEngagementPath(leafIndex: number): Promise<EngagementPathResult> {
+	const url = `${SHADOW_ATLAS_URL}/v1/engagement-path/${leafIndex}`;
+
+	const response = await fetch(url, {
+		headers: {
+			Accept: 'application/json',
+			'X-Client-Version': 'communique-v1',
+		},
+	});
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({
+			error: { code: 'NETWORK_ERROR', message: response.statusText },
+		}));
+
+		const code = errorData.error?.code || 'UNKNOWN';
+		const msg = errorData.error?.message || response.statusText;
+		throw new Error(`Shadow Atlas engagement path failed [${code}]: ${msg}`);
+	}
+
+	const result = await response.json();
+
+	if (!result.success || !result.data) {
+		throw new Error('Shadow Atlas returned invalid engagement path response');
+	}
+
+	const { engagementRoot, engagementPath, pathIndices, tier, actionCount, diversityScore } = result.data;
+
+	if (!engagementRoot || !engagementPath || !pathIndices) {
+		throw new Error('Shadow Atlas engagement path response missing required fields');
+	}
+
+	if (engagementPath.length !== CIRCUIT_DEPTH || pathIndices.length !== CIRCUIT_DEPTH) {
+		throw new Error(
+			`Invalid engagement proof length: engagementPath=${engagementPath.length}, ` +
+			`pathIndices=${pathIndices.length}. Expected ${CIRCUIT_DEPTH}.`
+		);
+	}
+
+	// BR5-009: Validate all field elements are within BN254 scalar field
+	validateBN254Hex(engagementRoot, 'engagementRoot');
+	validateBN254HexArray(engagementPath, 'engagementPath');
+
+	return { engagementRoot, engagementPath, pathIndices, tier, actionCount, diversityScore };
+}
+
+/**
+ * Get engagement metrics for an identity.
+ *
+ * @param identityCommitment - Hex-encoded identity commitment (with 0x prefix)
+ * @returns Engagement metrics including tier, action count, diversity score, and leaf index
+ * @throws Error if identity not found or request fails
+ */
+export async function getEngagementMetrics(identityCommitment: string): Promise<EngagementMetricsResult> {
+	// Ensure 0x prefix for URL path
+	const icForUrl = identityCommitment.startsWith('0x') ? identityCommitment : '0x' + identityCommitment;
+	const url = `${SHADOW_ATLAS_URL}/v1/engagement-metrics/${icForUrl}`;
+
+	const response = await fetch(url, {
+		headers: {
+			Accept: 'application/json',
+			'X-Client-Version': 'communique-v1',
+		},
+	});
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({
+			error: { code: 'NETWORK_ERROR', message: response.statusText },
+		}));
+
+		const code = errorData.error?.code || 'UNKNOWN';
+		const msg = errorData.error?.message || response.statusText;
+		throw new Error(`Shadow Atlas engagement metrics failed [${code}]: ${msg}`);
+	}
+
+	const result = await response.json();
+
+	if (!result.success || !result.data) {
+		throw new Error('Shadow Atlas returned invalid engagement metrics response');
+	}
+
+	return result.data;
 }
 
 // ============================================================================
