@@ -408,24 +408,24 @@ Search results:\n${hitLines}`;
  *
  * Template variables: {CURRENT_DATE}, {DOMAIN_CONTEXT}
  */
-export const CONTACT_SYNTHESIS_PROMPT = `You are a contact extraction system. Given page content fetched from the web, extract email addresses and contact information for specific people AND discover additional relevant decision-makers found in the pages.
+export const CONTACT_SYNTHESIS_PROMPT = `You are a contact extraction system. Given page content fetched from the web, find the best available contact path for specific people AND discover additional relevant decision-makers found in the pages.
 
 ## Mission
 
-1. For each person listed in the "search hints" section, find their email address from the provided page content. Cross-reference across all pages — an email for person A may appear on a page originally selected for person B.
-2. ALSO extract other relevant decision-makers you discover in the page content who have direct authority, gatekeeping power, coalition leverage, or amplification reach over the issue described in the Issue Context section. For example: if a page lists a council directory with members, extract ALL members whose roles are relevant to the issue — not just the ones in the search hints.
+1. For each person in the "search hints" section, find the BEST AVAILABLE contact path from the provided page content. This means: personal email first, then department/board/office email, then general org email. Cross-reference across all pages — an email for person A may appear on a page originally selected for person B.
+2. ALSO extract other relevant decision-makers you discover in the page content who have direct authority, gatekeeping power, coalition leverage, or amplification reach over the issue described in the Issue Context section. When a page lists a board, committee, council, or staff directory, extract ALL members whose roles give them power over the issue — these are high-value discoveries.
 
 ## Rules
 
 1. Emails you report MUST appear VERBATIM in the provided page content. Do NOT construct, guess, or infer email addresses.
-2. General office emails ARE acceptable (mayor@city.gov, press@org.com) — these are valid published contact paths.
+2. Department, board, and office emails SHOULD be assigned when no personal email exists. If a page contains planning@city.gov for the Planning Board, assign it to each board member as their contact path — that IS how you reach them. The same applies to press@, info@, and other published org-level addresses. Never leave someone as NO_EMAIL_FOUND when an org-level email for their department/board/office appears in the page content.
 3. For each person, cite the specific page URL where the email was found in email_source.
-4. If no email is found for a person, set email to "NO_EMAIL_FOUND" and capture alternatives (phone numbers, contact form URLs, social profiles) in contact_notes.
+4. Set email to "NO_EMAIL_FOUND" ONLY when no email at all — personal OR organizational — appears in the page content for their department/board/office. Capture alternatives (phone numbers, contact form URLs, social profiles) in contact_notes.
 5. The reasoning field must be PERSON-SPECIFIC: explain why THIS individual (not just their role) matters to THIS issue. Reference specific details learned from the page content. 2-3 sentences.
 6. Cross-reference across pages: if person A's email appears on a page attributed to person B, still capture it for person A.
 7. Verify identity recency: note evidence from the page content that the person currently holds the stated position in recency_check.
 8. Pre-extracted contact_hints are provided for convenience — but you MUST still verify any email appears in the actual page text before reporting it.
-9. For discovered contacts (not in the search hints): set discovered to true and provide issue-specific reasoning explaining why this person is relevant. Only include discovered contacts who have a clear connection to the issue — not every person on a staff page.
+9. For discovered contacts (not in the search hints): set discovered to true and provide issue-specific reasoning explaining why this person is relevant. When you find a board/committee/council page, extract all members with jurisdictional power over the issue — a voting member of a planning board that approves development projects IS relevant to a development issue.
 {DOMAIN_CONTEXT}
 Today's date: {CURRENT_DATE}
 
@@ -440,7 +440,8 @@ Return a JSON object matching this schema:
       "title": "Concise role",
       "organization": "Organization Name",
       "email": "found@email.com or NO_EMAIL_FOUND",
-      "email_source": "URL where email appeared verbatim",
+      "email_source": "URL where email appeared verbatim, or empty string if NO_EMAIL_FOUND",
+      "source_url": "URL of the page where this person was mentioned or found",
       "reasoning": "Person-specific justification (2-3 sentences)",
       "recency_check": "Evidence this person currently holds position",
       "contact_notes": "Alternative contacts if no email, or empty string",
