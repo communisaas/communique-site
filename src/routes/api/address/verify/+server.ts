@@ -42,7 +42,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		// Format address for Google Civic API
+		// Format address for Census Bureau geocoding
 		const fullAddress = `${street}, ${city}, ${state} ${zipCode}`;
 
 		// Use Census Bureau Geocoding API for address validation and district lookup
@@ -61,7 +61,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json(
 				{
 					verified: false,
-					error: 'Address  not found. Please check and try again.'
+					error: 'Address not found. Please check and try again.'
 				},
 				{ status: 400 }
 			);
@@ -80,15 +80,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const cell_id = extractCellIdFromCensus(match.geographies);
 
 		// Get real representatives using Congress.gov API
+		// District already extracted from Census response above — parse "XX-NN" format
+		// to avoid a redundant Census geocoding call inside lookupRepsByAddress()
 		let representatives = [];
 		let specialStatus = null;
 		try {
-			const userReps = await addressLookupService.lookupRepsByAddress({
-				street: street,
-				city: city,
-				state: state,
-				zip: zipCode
-			});
+			const districtParts = district.split('-');
+			const districtState = districtParts[0];
+			const districtNumber = districtParts[1] || 'AL';
+			const userReps = await addressLookupService.lookupRepsByDistrict(
+				districtState,
+				districtNumber === 'AL' ? '00' : districtNumber
+			);
 
 			// Check for DC or territory special status
 			if (userReps.special_status) {
@@ -164,7 +167,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			cell_id,
 			zk_eligible,
 			special_status: specialStatus,
-			message: 'Address  verified successfully',
+			message: 'Address verified successfully',
 			...(zk_eligible
 				? {}
 				: {
@@ -173,11 +176,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					})
 		});
 	} catch (error_verifyError) {
-		console.error('Address  verification error:', error_verifyError);
+		console.error('Address verification error:', error_verifyError);
 		return json(
 			{
 				verified: false,
-				error: 'Address  verification service temporarily unavailable'
+				error: 'Address verification service temporarily unavailable'
 			},
 			{ status: 500 }
 		);
@@ -231,7 +234,7 @@ function extractCellIdFromCensus(
 		if (Array.isArray(censusBlocks) && censusBlocks.length > 0) {
 			const geoid = extractGeoidFromBlock(censusBlocks[0]);
 			if (geoid) {
-				console.log(`[Address Verify] Cell_id extracted: ${geoid.slice(0, 5)}... (three-tree enabled)`);
+				console.debug('[Address Verify] Cell_id extracted (three-tree enabled)');
 				return geoid;
 			}
 		}
@@ -245,7 +248,7 @@ function extractCellIdFromCensus(
 				if (Array.isArray(blocks) && blocks.length > 0) {
 					const geoid = extractGeoidFromBlock(blocks[0]);
 					if (geoid) {
-						console.warn(`[Address Verify] Cell_id extracted via fallback key "${key}": ${geoid.slice(0, 5)}...`);
+						console.warn(`[Address Verify] Cell_id extracted via fallback key "${key}"`);
 						return geoid;
 					}
 				}

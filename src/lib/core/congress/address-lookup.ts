@@ -60,6 +60,11 @@ interface CongressMember {
 		| CongressMemberTerm[];
 }
 
+/** In-memory cache for Congress member roster — avoids refetching 535 members on every lookup */
+const MEMBER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let memberCache: { data: CongressMember[]; fetchedAt: number } | null = null;
+let memberFetchPromise: Promise<CongressMember[]> | null = null;
+
 // Type guard for CongressMember
 function isCongressMember(obj: unknown): obj is CongressMember {
 	return (
@@ -329,6 +334,50 @@ export class Address {
 			house: houseRep,
 			senate: senators,
 			district
+		};
+	}
+
+	/**
+	 * Lookup representatives by already-resolved district.
+	 * Use this when the caller has already geocoded the address and extracted
+	 * the congressional district, avoiding a redundant Census Bureau call.
+	 *
+	 * @param state - Two-letter state abbreviation (e.g., "CA", "DC", "PR")
+	 * @param district - District number as string (e.g., "12", "01", "00" for at-large)
+	 */
+	async lookupRepsByDistrict(state: string, district: string): Promise<UserReps> {
+		const stateUpper = state.toUpperCase();
+		const congressionalDistrict: CongressionalDistrict = {
+			state: stateUpper,
+			district: district.padStart(2, '0')
+		};
+
+		if (this.isDCOrTerritory(stateUpper)) {
+			const delegate = await this.getDelegate(stateUpper);
+			const statusType = stateUpper === 'DC' ? 'dc' : 'territory';
+
+			return {
+				house: delegate,
+				senate: [],
+				district: congressionalDistrict,
+				special_status: {
+					type: statusType,
+					message: SPECIAL_STATUS_MESSAGES[stateUpper as keyof typeof SPECIAL_STATUS_MESSAGES] || '',
+					has_senators: false,
+					has_voting_representative: false
+				}
+			};
+		}
+
+		const [houseRep, senators] = await Promise.all([
+			this.getHouseRep(stateUpper, congressionalDistrict.district),
+			this.getSenators(stateUpper)
+		]);
+
+		return {
+			house: houseRep,
+			senate: senators,
+			district: congressionalDistrict
 		};
 	}
 
@@ -611,9 +660,36 @@ export class Address {
 	 * Format _representative data from Congress.gov API
 	 */
 	/**
-	 * Fetch all members from Congress API with pagination
+	 * Fetch all members with in-memory caching and concurrent request deduplication
 	 */
 	private async fetchAllMembers(): Promise<CongressMember[]> {
+		// Return cached if fresh
+		if (memberCache && (Date.now() - memberCache.fetchedAt) < MEMBER_CACHE_TTL) {
+			console.debug(`[address-lookup] Cache hit — returning ${memberCache.data.length} members`);
+			return memberCache.data;
+		}
+
+		// Dedup: if another fetch is in-flight, await it
+		if (memberFetchPromise) {
+			console.debug('[address-lookup] Dedup — awaiting in-flight fetch');
+			return memberFetchPromise;
+		}
+
+		// Fresh fetch
+		memberFetchPromise = this.fetchAllMembersFromAPI();
+		try {
+			const members = await memberFetchPromise;
+			memberCache = { data: members, fetchedAt: Date.now() };
+			return members;
+		} finally {
+			memberFetchPromise = null;
+		}
+	}
+
+	/**
+	 * Fetch all members from Congress API with pagination
+	 */
+	private async fetchAllMembersFromAPI(): Promise<CongressMember[]> {
 		const allMembers: CongressMember[] = [];
 		let offset = 0;
 		const limit = 250; // Max allowed by API
