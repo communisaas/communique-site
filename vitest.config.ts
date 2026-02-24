@@ -36,6 +36,12 @@ function dbMockPlugin(): Plugin {
 			if (source === '@prisma/adapter-pg') {
 				return adapterMockPath;
 			}
+			// redis is an optional dependency (dynamically imported in rate-limiter.ts
+			// only when REDIS_URL is set). Stub it so Vite's import analysis doesn't
+			// fail when redis isn't installed in the test environment.
+			if (source === 'redis') {
+				return { id: 'redis-stub:virtual', external: true };
+			}
 		}
 	};
 }
@@ -50,6 +56,11 @@ export default defineConfig({
 			noExternal: false // Don't modify ssr.noExternal
 		})
 	],
+	ssr: {
+		// redis is an optional dependency (dynamically imported in rate-limiter.ts only when REDIS_URL is set).
+		// Externalize it so Vite's import analysis doesn't fail when redis isn't installed.
+		external: ['redis']
+	},
 	resolve: {
 		// Standard conditions for Node.js test environment
 		// This allows msw/node to resolve correctly
@@ -88,7 +99,7 @@ export default defineConfig({
 		server: {
 			deps: {
 				inline: ['msw'], // MSW must be inlined for Node.js ESM compatibility
-				external: [] // Don't externalize anything else unnecessarily
+				external: ['redis'] // redis is optional (rate-limiter.ts dynamic import), not available in test env
 			}
 		},
 
