@@ -18,7 +18,8 @@ import {
 	applyLaplace,
 	correctKaryRR,
 	checkContributionLimit,
-	clearRateLimitsForTesting
+	clearRateLimitsForTesting,
+	resetBudgetForTesting
 } from '$lib/core/analytics';
 import { coarsenWithPrivacy, mergeCoarsenedResults } from '$lib/core/analytics/coarsen';
 import {
@@ -139,6 +140,10 @@ describe('End-to-End DP Pipeline', () => {
 });
 
 describe('Coarsening with Privacy', () => {
+	beforeEach(() => {
+		resetBudgetForTesting();
+	});
+
 	/**
 	 * Verify coarsening applies noise before thresholding
 	 *
@@ -158,6 +163,10 @@ describe('Coarsening with Privacy', () => {
 		const results: { coarsened: boolean }[] = [];
 
 		for (let i = 0; i < 50; i++) {
+			// Reset budget each iteration — this test checks noise variance,
+			// not budget accounting. Each coarsen call spends ≥1ε.
+			resetBudgetForTesting();
+
 			const input: AggregateResult[] = [
 				{
 					dimensions: { jurisdiction: 'CA-11' },

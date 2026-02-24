@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	extractRecipientEmails,
 	isValidRecipientConfig,
-	isValidDeliveryConfig,
-	migrateToTypedTemplate
+	isValidDeliveryConfig
 } from '$lib/types/templateConfig';
 
 describe('Recipient Email Extraction Integration', () => {
@@ -80,88 +79,6 @@ describe('Recipient Email Extraction Integration', () => {
 		});
 	});
 
-	describe('migrateToTypedTemplate', () => {
-		it('migrates legacy template to typed format', () => {
-			const legacy = {
-				id: 'template-123',
-				title: 'Test Template',
-				subject: 'Test Subject',
-				message_body: 'Test message',
-				recipient_config: { emails: ['old@format.com'] }
-			};
-
-			const migrated = migrateToTypedTemplate(legacy);
-
-			expect(migrated).toMatchObject({
-				id: 'template-123',
-				title: 'Test Template',
-				subject: 'Test Subject',
-				message_body: 'Test message',
-				delivery_config: {
-					timing: 'immediate',
-					followUp: false
-				},
-				recipient_config: {
-					emails: ['old@format.com']
-				}
-			});
-		});
-
-		it('handles templates without legacy emails', () => {
-			const modern = {
-				id: 'template-456',
-				title: 'Modern Template',
-				delivery_config: {
-					timing: 'immediate',
-					followUp: false
-				},
-				recipient_config: {
-					emails: ['modern@format.com']
-				}
-			};
-
-			const result = migrateToTypedTemplate(modern);
-			expect(result).toEqual(
-				expect.objectContaining({
-					id: 'template-456',
-					title: 'Modern Template',
-					delivery_config: {
-						timing: 'immediate',
-						followUp: false
-					},
-					recipient_config: {
-						emails: ['modern@format.com']
-					}
-				})
-			);
-		});
-
-		it('preserves existing delivery config', () => {
-			const template = {
-				id: 'template-789',
-				title: 'Template',
-				delivery_config: {
-					timing: 'scheduled',
-					followUp: true
-				},
-				recipient_config: {
-					emails: ['existing@email.com']
-				}
-			};
-
-			const migrated = migrateToTypedTemplate(template);
-
-			// Should preserve existing delivery config
-			expect(migrated.delivery_config).toEqual({
-				timing: 'scheduled',
-				followUp: true
-			});
-			expect(migrated.recipient_config).toEqual({
-				emails: ['existing@email.com']
-			});
-		});
-	});
-
 	describe('Consolidated Template Schema Compatibility', () => {
 		it('should work with full consolidated template model', () => {
 			const consolidatedTemplate = {
@@ -234,10 +151,6 @@ describe('Recipient Email Extraction Integration', () => {
 			// Should still work with partial data
 			const emails = extractRecipientEmails(partialTemplate.recipient_config);
 			expect(emails).toEqual(['partial@example.com']);
-
-			const migrated = migrateToTypedTemplate(partialTemplate);
-			expect(migrated.delivery_config.timing).toBe('scheduled');
-			expect(migrated.delivery_config.followUp).toBe(true);
 		});
 	});
 

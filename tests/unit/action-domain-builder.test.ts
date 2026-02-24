@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	buildActionDomain,
+	buildDebateActionDomain,
 	isValidActionDomain,
 	type ActionDomainParams
 } from '$lib/core/zkp/action-domain-builder';
@@ -229,5 +230,64 @@ describe('isValidActionDomain', () => {
 		});
 
 		expect(isValidActionDomain(domain.slice(2))).toBe(true);
+	});
+});
+
+describe('buildDebateActionDomain', () => {
+	const baseDomain = buildActionDomain({
+		country: 'US',
+		jurisdictionType: 'federal',
+		recipientSubdivision: 'US-CA',
+		templateId: 'climate-action-2026',
+		sessionId: '119th-congress'
+	});
+	const propositionHash = '0x' + 'ab'.repeat(32);
+
+	it('produces a valid BN254 field element', () => {
+		const debateDomain = buildDebateActionDomain(baseDomain, propositionHash);
+		expect(debateDomain).toMatch(/^0x[0-9a-f]{64}$/);
+		expect(isValidActionDomain(debateDomain)).toBe(true);
+	});
+
+	it('is deterministic', () => {
+		const d1 = buildDebateActionDomain(baseDomain, propositionHash);
+		const d2 = buildDebateActionDomain(baseDomain, propositionHash);
+		expect(d1).toBe(d2);
+	});
+
+	it('differs from the base domain', () => {
+		const debateDomain = buildDebateActionDomain(baseDomain, propositionHash);
+		expect(debateDomain).not.toBe(baseDomain);
+	});
+
+	it('different propositions produce different debate domains', () => {
+		const hash1 = '0x' + 'ab'.repeat(32);
+		const hash2 = '0x' + 'cd'.repeat(32);
+		const d1 = buildDebateActionDomain(baseDomain, hash1);
+		const d2 = buildDebateActionDomain(baseDomain, hash2);
+		expect(d1).not.toBe(d2);
+	});
+
+	it('different base domains produce different debate domains', () => {
+		const base2 = buildActionDomain({
+			country: 'GB',
+			jurisdictionType: 'federal',
+			recipientSubdivision: 'national',
+			templateId: 'nhs-reform',
+			sessionId: '2024-parliament'
+		});
+		const d1 = buildDebateActionDomain(baseDomain, propositionHash);
+		const d2 = buildDebateActionDomain(base2, propositionHash);
+		expect(d1).not.toBe(d2);
+	});
+
+	it('rejects invalid baseDomain', () => {
+		expect(() => buildDebateActionDomain('not-a-domain', propositionHash))
+			.toThrow('Invalid baseDomain');
+	});
+
+	it('rejects invalid propositionHash', () => {
+		expect(() => buildDebateActionDomain(baseDomain, 'short'))
+			.toThrow('Invalid propositionHash');
 	});
 });

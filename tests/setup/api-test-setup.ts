@@ -52,12 +52,7 @@ export async function clearTestDatabase() {
   // Prefer using unique IDs per test run for isolation instead.
   try {
     // Leaf nodes (no other tables depend on them)
-    await db.cWCJob.deleteMany();
     await db.template_campaign.deleteMany();
-
-    // Shadow Atlas (depends on users via FK)
-    await db.shadowAtlasRegistration.deleteMany();
-    // Note: ShadowAtlasTree was removed in WS1.2 three-tree refactoring
 
     // Representative relationships
     await db.user_representatives.deleteMany();

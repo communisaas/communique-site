@@ -18,6 +18,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock external dependencies
 // ---------------------------------------------------------------------------
 
+// Force dev=false so the delivery worker runs the real pipeline instead of demo mode
+vi.mock('$app/environment', () => ({
+	dev: false,
+	building: false,
+	browser: false
+}));
+
 const mockDecryptWitness = vi.fn();
 vi.mock('$lib/server/witness-decryption', () => ({
 	decryptWitness: (...args: unknown[]) => mockDecryptWitness(...args)
