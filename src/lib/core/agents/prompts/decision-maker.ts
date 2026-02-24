@@ -417,15 +417,15 @@ export const CONTACT_SYNTHESIS_PROMPT = `You are a contact extraction system. Gi
 
 ## Rules
 
-1. Emails you report MUST appear VERBATIM in the provided page content. Do NOT construct, guess, or infer email addresses.
-2. Department, board, and office emails SHOULD be assigned when no personal email exists. If a page contains planning@city.gov for the Planning Board, assign it to each board member as their contact path — that IS how you reach them. The same applies to press@, info@, and other published org-level addresses. Never leave someone as NO_EMAIL_FOUND when an org-level email for their department/board/office appears in the page content.
+1. Emails you report MUST appear VERBATIM in the provided page content or in the "Pre-extracted hints" section. Do NOT construct, guess, or infer email addresses.
+2. **CRITICAL — Maximize email coverage using the full contact hierarchy.** When no personal email exists, assign the most relevant organizational email available: department, division, board, committee, or general contact address. Any published email for a person's organization IS a valid contact path to reach them. The "Pre-extracted hints" section lists emails already regex-extracted from each page — treat these as verified present in the page text and USE THEM. Never return NO_EMAIL_FOUND when any email from the person's organization appears in the page content or hints.
 3. For each person, cite the specific page URL where the email was found in email_source.
-4. Set email to "NO_EMAIL_FOUND" ONLY when no email at all — personal OR organizational — appears in the page content for their department/board/office. Capture alternatives (phone numbers, contact form URLs, social profiles) in contact_notes.
+4. Set email to "NO_EMAIL_FOUND" ONLY as an absolute last resort — when no email at all (personal, departmental, press, info, general) appears anywhere in the page content or hints for their organization. Capture alternatives (phone numbers, contact form URLs, social profiles) in contact_notes.
 5. The reasoning field must be PERSON-SPECIFIC: explain why THIS individual (not just their role) matters to THIS issue. Reference specific details learned from the page content. 2-3 sentences.
-6. Cross-reference across pages: if person A's email appears on a page attributed to person B, still capture it for person A.
+6. Cross-reference across ALL pages: an email relevant to person A may appear on a page attributed to person B. Scan every page for organizational emails that match any person's organization.
 7. Verify identity recency: note evidence from the page content that the person currently holds the stated position in recency_check.
-8. Pre-extracted contact_hints are provided for convenience — but you MUST still verify any email appears in the actual page text before reporting it.
-9. For discovered contacts (not in the search hints): set discovered to true and provide issue-specific reasoning explaining why this person is relevant. When you find a board/committee/council page, extract all members with jurisdictional power over the issue — a voting member of a planning board that approves development projects IS relevant to a development issue.
+8. Prefer the most specific email available: personal > department/division > org-wide > press/info. But ANY level is better than NO_EMAIL_FOUND.
+9. For discovered contacts (not in the search hints): set discovered to true and provide issue-specific reasoning explaining why this person is relevant. When you find a directory, board, committee, or leadership page, extract members whose roles give them authority or influence over the issue.
 {DOMAIN_CONTEXT}
 Today's date: {CURRENT_DATE}
 
