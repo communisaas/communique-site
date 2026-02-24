@@ -6,22 +6,13 @@
  */
 
 import { browser } from '$app/environment';
-import { coordinated } from './timerCoordinator';
 
 // CORE BROWSER DETECTION
 export const isBrowser = browser;
 
 // Type guards for browser objects
-export function isWindow(obj: unknown): obj is Window {
-	return isBrowser && typeof obj === 'object' && obj === window;
-}
-
 export function isDocument(obj: unknown): obj is Document {
 	return isBrowser && typeof obj === 'object' && obj === document;
-}
-
-export function isNavigator(obj: unknown): obj is Navigator {
-	return isBrowser && typeof obj === 'object' && obj === navigator;
 }
 
 // SSR-SAFE WINDOW ACCESS
@@ -33,7 +24,7 @@ export function getDocument(): Document | null {
 	return isBrowser ? document : null;
 }
 
-export function getNavigator(): Navigator | null {
+function getNavigator(): Navigator | null {
 	return isBrowser ? navigator : null;
 }
 
@@ -203,14 +194,6 @@ export function createMediaQueryWatcher(
 }
 
 // SCROLL UTILITIES - SSR-safe
-export function getScrollPosition(): { x: number; y: number } {
-	if (!isBrowser) return { x: 0, y: 0 };
-	return {
-		x: window.pageXOffset || document.documentElement.scrollLeft,
-		y: window.pageYOffset || document.documentElement.scrollTop
-	};
-}
-
 export function scrollTo(x: number, y: number, smooth: boolean = true): void {
 	if (!isBrowser) return;
 
@@ -230,19 +213,6 @@ export function scrollTo(x: number, y: number, smooth: boolean = true): void {
 		top: y,
 		behavior: smooth ? 'smooth' : 'auto'
 	});
-}
-
-export function isScrolledToBottom(threshold: number = 100): boolean {
-	if (!isBrowser) return false;
-
-	// Input validation
-	if (typeof threshold !== 'number' || threshold < 0) {
-		console.warn('isScrolledToBottom: threshold must be a non-negative number');
-		threshold = 100;
-	}
-
-	const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-	return scrollTop + clientHeight >= scrollHeight - threshold;
 }
 
 // DOM UTILITIES - SSR-safe DOM manipulation
@@ -276,11 +246,6 @@ export function toggleBodyScroll(locked: boolean): void {
 }
 
 // FEATURE DETECTION - Progressive enhancement
-export function supportsClipboard(): boolean {
-	const nav = getNavigator();
-	return !!(nav?.clipboard && window.isSecureContext);
-}
-
 export function supportsWebShare(): boolean {
 	const nav = getNavigator();
 	if (!nav?.share || !window.isSecureContext) return false;
@@ -308,79 +273,7 @@ export interface ShareData {
 	files?: File[];
 }
 
-// Type guard for ShareData
-export function isValidShareData(data: unknown): data is ShareData {
-	if (typeof data !== 'object' || data === null) return false;
-	const shareData = data as Record<string, unknown>;
-
-	return (
-		(shareData.title === undefined || typeof shareData.title === 'string') &&
-		(shareData.text === undefined || typeof shareData.text === 'string') &&
-		(shareData.url === undefined || typeof shareData.url === 'string') &&
-		(shareData.files === undefined || Array.isArray(shareData.files))
-	);
-}
-
-export function canShareData(data: ShareData): boolean {
-	if (!supportsWebShare() || !isValidShareData(data)) return false;
-
-	const nav = getNavigator();
-	if (!nav?.canShare) return false;
-
-	try {
-		return nav.canShare(data);
-	} catch (error) {
-		console.error('[BrowserUtils] canShareData failed:', error instanceof Error ? error.message : String(error));
-		return false;
-	}
-}
-
-export async function shareData(data: ShareData): Promise<boolean> {
-	if (!supportsWebShare() || !isValidShareData(data)) return false;
-
-	const nav = getNavigator();
-	if (!nav?.share) return false;
-
-	try {
-		// Validate data before sharing
-		if (nav.canShare && !nav.canShare(data)) {
-			return false;
-		}
-
-		await nav.share(data);
-		return true;
-	} catch {
-		// User cancelled or sharing failed
-		console.debug('Web Share cancelled or failed');
-		return false;
-	}
-}
-
-export function supportsTouch(): boolean {
-	if (!isBrowser) return false;
-	return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-}
-
-export function supportsHover(): boolean {
-	if (!isBrowser) return true; // Assume hover support on server
-	return matchesMediaQuery('(hover: hover)');
-}
-
 // PERFORMANCE UTILITIES - Browser optimization
-export function requestIdleCallback(callback: () => void, timeout: number = 5000): void {
-	if (!isBrowser) {
-		callback();
-		return;
-	}
-
-	if ('requestIdleCallback' in window) {
-		window.requestIdleCallback(callback, { timeout });
-	} else {
-		// Fallback for browsers without requestIdleCallback
-		coordinated.nextTick(callback);
-	}
-}
-
 export function requestAnimationFrame(callback: () => void): void {
 	if (!isBrowser) {
 		callback();

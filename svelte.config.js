@@ -1,4 +1,3 @@
-import { mdsvex } from 'mdsvex';
 import adapterNode from '@sveltejs/adapter-node';
 import adapterCloudflare from '@sveltejs/adapter-cloudflare';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
@@ -11,7 +10,7 @@ const useCloudflare = process.env.ADAPTER === 'cloudflare' || process.env.CF_PAG
 const config = {
 	// Consult https://svelte.dev/docs/kit/integrations
 	// for more information about preprocessors
-	preprocess: [vitePreprocess(), mdsvex()],
+	preprocess: [vitePreprocess()],
 
 	kit: {
 		adapter: useCloudflare
@@ -35,7 +34,7 @@ const config = {
 				'style-src': ['self', 'unsafe-inline', 'https://fonts.googleapis.com'],
 				'img-src': ['self', 'data:', 'blob:'],
 				'font-src': ['self', 'https://fonts.gstatic.com'],
-				'connect-src': ['self', 'https://nominatim.openstreetmap.org'],
+				'connect-src': ['self', 'https://nominatim.openstreetmap.org', 'https://crs.aztec.network', 'data:', 'blob:'],
 				'worker-src': ['self', 'blob:'],
 				'object-src': ['none'],
 				'frame-ancestors': ['none'],
@@ -67,7 +66,7 @@ const config = {
 		}
 	},
 
-	extensions: ['.svelte', '.svx']
+	extensions: ['.svelte']
 };
 
 export default config;

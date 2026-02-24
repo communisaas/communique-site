@@ -16,6 +16,7 @@
  */
 
 import { applyLaplace } from './noise';
+import { spendEpsilon, PrivacyBudgetExhaustedError } from './budget';
 import {
 	PRIVACY,
 	type CoarsenLevel,
@@ -24,6 +25,19 @@ import {
 	COARSEN_LEVELS,
 	parseJurisdiction
 } from '$lib/types/analytics';
+
+/**
+ * Apply Laplace noise with budget enforcement
+ *
+ * Wraps applyLaplace to deduct epsilon from the daily budget.
+ * Throws PrivacyBudgetExhaustedError if budget would be exceeded.
+ */
+function applyLaplaceWithBudget(trueCount: number, epsilon: number): number {
+	if (!spendEpsilon(epsilon)) {
+		throw new PrivacyBudgetExhaustedError(epsilon);
+	}
+	return applyLaplace(trueCount, epsilon);
+}
 
 /**
  * Detect jurisdiction level from string format
@@ -57,7 +71,7 @@ export async function coarsenWithPrivacy(
 
 		if (!jurisdiction || jurisdiction === '') {
 			// No jurisdiction - treat as national
-			const noisyCount = applyLaplace(result.count, epsilon);
+			const noisyCount = applyLaplaceWithBudget(result.count, epsilon);
 			coarsened.push({
 				level: 'national',
 				value: 'US',
@@ -71,7 +85,7 @@ export async function coarsenWithPrivacy(
 		const originalLevel = detectLevel(jurisdiction);
 
 		// CRITICAL: Apply noise FIRST to the original count
-		const noisyCount = applyLaplace(result.count, epsilon);
+		const noisyCount = applyLaplaceWithBudget(result.count, epsilon);
 
 		// Threshold on NOISY count (not raw count)
 		if (noisyCount >= PRIVACY.COARSEN_THRESHOLD) {
@@ -144,7 +158,7 @@ async function findSufficientLevelWithNoise(
 		const coarseCount = await getAggregateAtLevel(metric, level, value);
 
 		// Apply FRESH noise (different from original)
-		const noisyCoarseCount = applyLaplace(coarseCount, epsilon);
+		const noisyCoarseCount = applyLaplaceWithBudget(coarseCount, epsilon);
 
 		if (noisyCoarseCount >= PRIVACY.COARSEN_THRESHOLD) {
 			return {
@@ -160,7 +174,7 @@ async function findSufficientLevelWithNoise(
 
 	// Fallback to national with whatever count we have
 	const nationalCount = await getAggregateAtLevel(metric, 'national', 'US');
-	const noisyNational = applyLaplace(nationalCount, epsilon);
+	const noisyNational = applyLaplaceWithBudget(nationalCount, epsilon);
 
 	return {
 		level: 'national',

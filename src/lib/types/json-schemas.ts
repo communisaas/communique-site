@@ -311,51 +311,7 @@ export interface AgentDecisionMultipliers {
 	template_quality: number;
 }
 
-export interface AgentDecisionData {
-	agent_source: string;
-	decision_type: string;
-	confidence: number;
-	reasoning: string;
-	multipliers: AgentDecisionMultipliers;
-	timestamp: string;
-	model_version: string;
-}
-
-export interface NetworkActivityData {
-	total_actions: number;
-	recent_activity_score: number;
-	network_effects: {
-		viral_coefficient: number;
-		cascade_depth: number;
-		influence_radius: number;
-	};
-	geographic_distribution: Record<string, number>;
-	temporal_patterns: {
-		peak_hours: number[];
-		weekly_pattern: number[];
-	};
-}
-
 // ============= AUDIT & USER TYPES =============
-
-export interface AuditLogData {
-	action_details: Record<string, unknown>;
-	request_metadata: {
-		ip_address: string;
-		user_agent: string;
-		session_id: string;
-	};
-	context: {
-		template_id?: string;
-		challenge_id?: string;
-		transaction_hash?: string;
-	};
-	validation_results?: {
-		passed: boolean;
-		checks: Record<string, boolean>;
-		error_messages: string[];
-	};
-}
 
 export interface CertificationData {
 	certificate_hash: string;
@@ -366,59 +322,14 @@ export interface CertificationData {
 	revocation_status?: 'active' | 'revoked' | 'expired';
 }
 
-export interface ConsensusData {
-	agent_votes: Record<string, number>;
-	consensus_algorithm: string;
-	threshold_met: boolean;
-	dissenting_opinions?: Array<{
-		agent: string;
-		vote: number;
-		reasoning: string;
-	}>;
-}
-
-export interface UserVerificationData {
-	method: 'email' | 'phone' | 'government_id' | 'didit' | 'oauth';
-	verified_at: string;
-	provider?: string;
-	provider_data?: Record<string, unknown>;
-	confidence_score?: number;
-	additional_checks?: Record<string, boolean>;
-}
-
-export interface PoliticalEmbedding {
-	dimensions: number[];
-	embedding_version: string;
-	computed_at: string;
-	confidence: number;
-	source_data: {
-		template_interactions: number;
-		explicit_preferences: Record<string, unknown>;
-		behavioral_signals: Record<string, unknown>;
-	};
-}
-
-export interface CommunitySheaves {
-	sheaf_id: string;
-	topology: {
-		nodes: Array<{
-			id: string;
-			type: string;
-			properties: Record<string, unknown>;
-		}>;
-		edges: Array<{
-			source: string;
-			target: string;
-			weight: number;
-		}>;
-	};
-	calculated_at: string;
-	stability_score: number;
-}
-
 // ============= TEMPLATE TYPES =============
 
-export interface TemplateMetrics {
+/**
+ * Template metrics as stored in Prisma JSON fields.
+ * Distinct from TemplateMetrics in templateConfig.ts which tracks
+ * delivery-oriented counters (sent/opened/clicked/responded).
+ */
+export interface JsonTemplateMetrics {
 	page_views: number;
 	events_count: number;
 	conversion_count: number;
@@ -456,31 +367,6 @@ export interface CorrectionLog {
 		agreement_score: number;
 		dissenting_agents: string[];
 	};
-}
-
-export interface AgentVotes {
-	[agentName: string]: {
-		score: number;
-		confidence: number;
-		reasoning: string;
-		criteria_scores: {
-			grammar: number;
-			clarity: number;
-			factual_accuracy: number;
-			persuasiveness: number;
-		};
-	};
-}
-
-export interface OriginalContent {
-	subject: string;
-	body: string;
-	metadata: {
-		length: number;
-		readability_score: number;
-		sentiment: number;
-	};
-	preserved_at: string;
 }
 
 // ============= TYPE GUARDS =============
@@ -540,21 +426,12 @@ export function isAgentDecisionMultipliers(value: unknown): value is AgentDecisi
 	);
 }
 
-export function isTemplateMetrics(value: unknown): value is TemplateMetrics {
+export function isJsonTemplateMetrics(value: unknown): value is JsonTemplateMetrics {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
 		'page_views' in value &&
-		typeof (value as TemplateMetrics).page_views === 'number'
-	);
-}
-
-export function isUserVerificationData(value: unknown): value is UserVerificationData {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'method' in value &&
-		typeof (value as UserVerificationData).method === 'string'
+		typeof (value as JsonTemplateMetrics).page_views === 'number'
 	);
 }
 
@@ -688,8 +565,8 @@ export function getAgentDecisionMultipliers(jsonValue: Prisma.JsonValue): AgentD
 	};
 }
 
-export function getTemplateMetrics(jsonValue: Prisma.JsonValue): TemplateMetrics {
-	if (isTemplateMetrics(jsonValue)) {
+export function getJsonTemplateMetrics(jsonValue: Prisma.JsonValue): JsonTemplateMetrics {
+	if (isJsonTemplateMetrics(jsonValue)) {
 		return jsonValue;
 	}
 
@@ -710,13 +587,6 @@ export function getTemplateMetrics(jsonValue: Prisma.JsonValue): TemplateMetrics
 			daily_trends: []
 		}
 	};
-}
-
-export function getUserVerificationData(jsonValue: Prisma.JsonValue): UserVerificationData | null {
-	if (isUserVerificationData(jsonValue)) {
-		return jsonValue;
-	}
-	return null;
 }
 
 // ============= UTILITY FUNCTIONS =============

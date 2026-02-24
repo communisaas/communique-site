@@ -32,7 +32,7 @@ export interface User {
 	verification_method: string | null;
 	verification_data: UnknownRecord | null;
 	verified_at: Date | null;
-	// Graduated trust (Wave 1C)
+	// Graduated trust
 	passkey_credential_id: string | null;
 	did_key: string | null;
 	address_verified_at: Date | null;
@@ -45,14 +45,6 @@ export interface User {
 	wallet_address: string | null;
 	trust_score: number;
 	reputation_tier: string;
-	// Reward tracking
-	pending_rewards: string | null;
-	total_earned: string | null;
-	last_certification: Date | null;
-	// Reputation scores
-	challenge_score: number | null;
-	civic_score: number | null;
-	discourse_score: number | null;
 	// Profile fields (general, non-PII)
 	role: string | null;
 	organization: string | null;

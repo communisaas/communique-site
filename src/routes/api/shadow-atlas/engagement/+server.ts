@@ -59,7 +59,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			select: {
 				identity_commitment: true,
 				wallet_address: true,
-				scroll_address: true,
 			},
 		});
 
@@ -72,8 +71,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const identityCommitment = user.identity_commitment;
 
-		// Determine signer address: prefer wallet_address, fall back to scroll_address
-		const signerAddress = user.wallet_address || user.scroll_address;
+		// Determine signer address from wallet_address
+		const signerAddress = user.wallet_address;
 		if (!signerAddress) {
 			// No signer address available -- return tier-0 defaults.
 			// Engagement registration requires an Ethereum address for Sybil mapping.

@@ -135,8 +135,7 @@ export async function bindIdentityCommitment(
 		where: { identity_commitment: identityCommitment },
 		select: {
 			id: true,
-			email: true,
-			identity_commitment_at: true
+			email: true
 		}
 	});
 
@@ -185,8 +184,7 @@ export async function bindIdentityCommitment(
 	await prisma.user.update({
 		where: { id: currentUserId },
 		data: {
-			identity_commitment: identityCommitment,
-			identity_commitment_at: new Date()
+			identity_commitment: identityCommitment
 		}
 	});
 

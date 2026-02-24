@@ -1,9 +1,9 @@
 <script lang="ts">
 	/// <reference types="dom" />
-	import { Mail, Sparkles, User, Edit3 } from '@lucide/svelte';
+	import { Mail, Sparkles, User, Edit3, ExternalLink } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	// import { fade, fly, scale } from 'svelte/transition';
+	import { slide } from 'svelte/transition';
 	import AnimatedPopover from '$lib/components/ui/AnimatedPopover.svelte';
 	import VerificationBadge from '$lib/components/ui/VerificationBadge.svelte';
 	import type { Template } from '$lib/types/template';
@@ -11,6 +11,7 @@
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 	import { resolveTemplate } from '$lib/utils/templateResolver';
 	import { toEmailServiceUser } from '$lib/types/user';
+	import { getSourceTypeBadge } from '$lib/utils/message-processing';
 
 	let {
 		preview,
@@ -189,10 +190,11 @@
 	};
 
 	interface Segment {
-		type: 'text' | 'variable';
+		type: 'text' | 'variable' | 'citation';
 		content: string;
 		name?: string;
 		instanceId?: string;
+		citationNum?: number;
 	}
 
 	interface DismissStateEvent {
@@ -221,19 +223,30 @@
 				});
 			}
 
-			// Track instances of each variable type
-			const variableName = match[1];
-			const currentCount = instanceCounts.get(variableName) || 0;
-			const instanceNumber = currentCount + 1;
-			instanceCounts.set(variableName, instanceNumber);
+			const innerText = match[1];
 
-			// Add variable with unique instance ID
-			segments.push({
-				type: 'variable',
-				name: variableName,
-				content: match[0],
-				instanceId: `${variableName}-${instanceNumber}`
-			});
+			// Purely numeric → citation marker [1], [2], etc.
+			if (/^\d+$/.test(innerText)) {
+				segments.push({
+					type: 'citation',
+					content: match[0],
+					citationNum: parseInt(innerText, 10)
+				});
+			} else {
+				// Track instances of each variable type
+				const variableName = innerText;
+				const currentCount = instanceCounts.get(variableName) || 0;
+				const instanceNumber = currentCount + 1;
+				instanceCounts.set(variableName, instanceNumber);
+
+				// Add variable with unique instance ID
+				segments.push({
+					type: 'variable',
+					name: variableName,
+					content: match[0],
+					instanceId: `${variableName}-${instanceNumber}`
+				});
+			}
 
 			currentIndex = match.index + match[0].length;
 		}
@@ -248,6 +261,11 @@
 
 		return segments;
 	}
+
+	// Build a lookup map from citation number to source
+	const sourceMap = $derived(
+		new Map((template?.sources || []).map((s) => [s.num, s]))
+	);
 
 	// Parse segments from original template to ensure variables are detected
 	// Then render them with resolved content where appropriate
@@ -359,6 +377,7 @@
 			);
 			document.removeEventListener('touchend', handleTouchEnd);
 			useTimerCleanup(componentId)();
+			if (inlineBlurTimeout) clearTimeout(inlineBlurTimeout);
 		};
 	});
 
@@ -462,6 +481,71 @@
 
 		// No heuristics here – personalization is purely user-driven.
 	}
+
+	// ── Inline editing for long-form variables ──
+	// Personal Connection asks for emotional truth — a paragraph, not a form field.
+	// Instead of a disconnected popover, the letter opens up in-place:
+	// the surrounding sentences stay visible as context for what you're writing.
+	let activeInlineEditor: string | null = $state(null);
+	let inlineBlurTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	function isLongFormVariable(name: string): boolean {
+		const lower = name.toLowerCase();
+		return (
+			lower.includes('connection') ||
+			lower.includes('story') ||
+			lower.includes('experience') ||
+			lower.includes('reasoning')
+		);
+	}
+
+	function openInlineEditor(instanceId: string) {
+		activeInlineEditor = instanceId;
+	}
+
+	function handleInlineBlur() {
+		inlineBlurTimeout = setTimeout(() => {
+			activeInlineEditor = null;
+		}, 150);
+	}
+
+	function handleInlineFocus() {
+		if (inlineBlurTimeout) {
+			clearTimeout(inlineBlurTimeout);
+			inlineBlurTimeout = null;
+		}
+	}
+
+	function handleInlineKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			activeInlineEditor = null;
+		}
+	}
+
+	function handleInlineInput(e: Event, name: string) {
+		handleInput(e, name);
+	}
+
+	function autofocusAction(node: HTMLTextAreaElement) {
+		requestAnimationFrame(() => {
+			node.focus();
+			const len = node.value.length;
+			node.setSelectionRange(len, len);
+			node.style.height = 'auto';
+			node.style.height = `${Math.max(node.scrollHeight, 72)}px`;
+			node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+		});
+	}
+
+	// Close inline editor when template changes (segments re-derive from template text)
+	const _segmentsForEditorReset = $derived(originalTemplateText());
+	$effect(() => {
+		_segmentsForEditorReset; // track template text changes
+		return () => {
+			// Runs before re-execution — i.e., when template text changes
+			activeInlineEditor = null;
+		};
+	});
 
 	$effect(() => {
 		if (browser && preview) {
@@ -588,6 +672,117 @@
 				{#each templateSegments as segment}
 					{#if segment.type === 'text'}
 						{segment.content}
+					{:else if segment.type === 'citation'}
+						{@const source = segment.citationNum != null ? sourceMap.get(segment.citationNum) : undefined}
+						{#if source}
+							{@const badge = getSourceTypeBadge(source.type)}
+							{@const domain = (() => { try { return new URL(source.url).hostname.replace('www.', ''); } catch { return source.url; } })()}
+							<a
+								href={source.url}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="citation-ref group/cite relative inline-flex items-center"
+								aria-label="Source {source.num}: {source.title}"
+							>
+								<span
+									class="inline-flex items-center justify-center rounded px-[3px] py-[1px]
+										text-[11px] font-semibold leading-none tracking-tight
+										text-participation-primary-600 bg-participation-primary-50/80
+										border border-participation-primary-200/60
+										transition-all duration-150
+										group-hover/cite:bg-participation-primary-100 group-hover/cite:border-participation-primary-300
+										group-hover/cite:text-participation-primary-700 group-hover/cite:shadow-sm
+										align-super cursor-pointer"
+								>
+									{segment.citationNum}
+								</span>
+								<!-- Hover tooltip -->
+								<span
+									class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2
+										opacity-0 transition-opacity duration-150
+										group-hover/cite:pointer-events-auto group-hover/cite:opacity-100"
+								>
+									<span
+										class="flex w-max max-w-[280px] flex-col gap-1 rounded-lg border border-slate-200
+											bg-white px-3 py-2.5 shadow-lg"
+									>
+										<span class="flex items-center gap-1.5">
+											<span
+												class="inline-flex rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none {badge.bg} {badge.text} {badge.border}"
+											>
+												{source.type}
+											</span>
+										</span>
+										<span class="text-xs font-medium leading-snug text-slate-900">{source.title}</span>
+										<span class="flex items-center gap-1 text-[10px] text-slate-400">
+											<ExternalLink class="h-2.5 w-2.5" />
+											{domain}
+										</span>
+									</span>
+									<!-- Arrow -->
+									<span
+										class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-white drop-shadow-sm"
+									></span>
+								</span>
+							</a>
+						{:else}
+							<span class="text-slate-400">{segment.content}</span>
+						{/if}
+					{:else if segment.name && isLongFormVariable(segment.name)}
+						<!-- Long-form variable: inline expansion within the letter flow -->
+						{#if activeInlineEditor === segment.instanceId}
+							<div class="my-3 whitespace-normal" transition:slide={{ duration: 200 }}>
+								<div class="rounded-xl border border-participation-primary-200/80 bg-white/95 shadow-sm">
+									<div class="flex items-center gap-1.5 px-4 pt-3 pb-1">
+										<Edit3 class="h-3 w-3 text-participation-primary-400" />
+										<span class="text-xs font-medium text-slate-500">
+											{(segment.name && variableHints[segment.name]?.prompt) || segment.name}
+										</span>
+									</div>
+									<div class="px-4 pb-3">
+										<textarea
+											use:autofocusAction
+											value={variableValues[segment.name] || ''}
+											oninput={(e) => handleInlineInput(e, segment.name || '')}
+											onfocusout={handleInlineBlur}
+											onfocusin={handleInlineFocus}
+											onkeydown={handleInlineKeydown}
+											placeholder={(segment.name && variableHints[segment.name]?.placeholder) ||
+												`Share why this issue matters to you — your story, your reasoning, your perspective...`}
+											class="w-full resize-none border-0 bg-transparent p-0 pt-1
+												font-sans text-sm leading-relaxed text-slate-700
+												placeholder:text-slate-300/80
+												focus:ring-0 focus:outline-none"
+											rows="3"
+										></textarea>
+									</div>
+								</div>
+							</div>
+						{:else if variableValues[segment.name]}
+							<!-- Filled: text becomes part of the letter -->
+							<span
+								class="cursor-pointer rounded-sm
+									border-b border-dotted border-participation-primary-200/50
+									transition-colors duration-200
+									hover:border-participation-primary-300 hover:bg-participation-primary-50/30"
+								role="button"
+								tabindex="0"
+								onclick={() => openInlineEditor(segment.instanceId || '')}
+								onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openInlineEditor(segment.instanceId || ''); } }}
+								aria-label={`Edit your ${segment.name}`}
+							>{variableValues[segment.name]}</span>
+						{:else}
+							<!-- Unfilled: invitation token -->
+							<button
+								class={getVariableClasses(segment.name || '')}
+								onclick={() => openInlineEditor(segment.instanceId || '')}
+								aria-label={`Add your ${segment.name}`}
+								type="button"
+							>
+								<Edit3 class="h-3 w-3 text-participation-primary-500" />
+								<span>{segment.name}</span>
+							</button>
+						{/if}
 					{:else if segment.name}
 						<span class="relative inline-block">
 							<AnimatedPopover id={segment.instanceId || ''}>

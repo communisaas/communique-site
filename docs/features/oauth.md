@@ -62,7 +62,7 @@ Redirect to pending intent or home
 ```bash
 # Base OAuth redirect URL (required for all providers)
 OAUTH_REDIRECT_BASE_URL=http://localhost:5173  # Dev
-OAUTH_REDIRECT_BASE_URL=https://communique.app # Prod
+OAUTH_REDIRECT_BASE_URL=https://communi.email # Prod
 
 # Google OAuth
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
@@ -97,7 +97,7 @@ DISCORD_CLIENT_SECRET=your-discord-client-secret
 2. **Authorized Redirect URIs**:
    ```
    http://localhost:5173/auth/google/callback
-   https://communique.app/auth/google/callback
+   https://communi.email/auth/google/callback
    ```
 
 3. **Scopes**: `profile email`
@@ -114,7 +114,7 @@ DISCORD_CLIENT_SECRET=your-discord-client-secret
 2. **Valid OAuth Redirect URIs**:
    ```
    http://localhost:5173/auth/facebook/callback
-   https://communique.app/auth/facebook/callback
+   https://communi.email/auth/facebook/callback
    ```
 
 3. **Permissions**: `email`, `public_profile`
@@ -131,7 +131,7 @@ DISCORD_CLIENT_SECRET=your-discord-client-secret
 2. **Callback URL**:
    ```
    http://localhost:5173/auth/twitter/callback
-   https://communique.app/auth/twitter/callback
+   https://communi.email/auth/twitter/callback
    ```
 
 3. **Scopes**: `tweet.read users.read offline.access`
@@ -148,7 +148,7 @@ DISCORD_CLIENT_SECRET=your-discord-client-secret
 2. **Authorized Redirect URLs**:
    ```
    http://localhost:5173/auth/linkedin/callback
-   https://communique.app/auth/linkedin/callback
+   https://communi.email/auth/linkedin/callback
    ```
 
 3. **Scopes**: `r_liteprofile r_emailaddress`
@@ -165,7 +165,7 @@ DISCORD_CLIENT_SECRET=your-discord-client-secret
 2. **Redirect URIs**:
    ```
    http://localhost:5173/auth/discord/callback
-   https://communique.app/auth/discord/callback
+   https://communi.email/auth/discord/callback
    ```
 
 3. **Scopes**: `identify email`

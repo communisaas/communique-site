@@ -23,6 +23,18 @@ export default defineConfig({
 				{ find: 'pino', replacement: pinoShimPath }
 			]
 		}),
+		// Stub @voter-protocol/noir-prover ONLY during SSR.
+		// SSR only needs BN254_MODULUS (a constant). Client needs the real package
+		// with WASM prover for in-browser ZK proof generation.
+		{
+			name: 'voter-protocol-ssr-stub',
+			resolveId(source, _importer, options) {
+				if (source === '@voter-protocol/noir-prover' && options?.ssr) {
+					return voterProtocolStubPath;
+				}
+				return null;
+			}
+		},
 		wasm(),
 		sveltekit()
 	],
@@ -35,8 +47,8 @@ export default defineConfig({
 				// 'redis' is optionally imported in rate-limiter.ts (only when REDIS_URL is set).
 				// Not available on Cloudflare Workers (no TCP).
 				'redis'
-				// Note: @voter-protocol/noir-prover is resolved via resolve.alias to a stub.
-				// SSR only needs BN254_MODULUS; client workers use worker.rollupOptions config.
+				// Note: @voter-protocol/noir-prover is stubbed via voter-protocol-ssr-stub plugin (SSR only).
+				// Client gets the real package for in-browser ZK proving.
 			]
 		}
 	},
@@ -48,10 +60,7 @@ export default defineConfig({
 			// This ensures consistent resolution in both dev and build modes
 			buffer: bufferShimPath,
 			// Shim pino for @aztec/bb.js - browser.js uses CJS but bb.js expects named export
-			pino: pinoShimPath,
-			// Stub @voter-protocol/noir-prover — SSR only needs BN254_MODULUS (a constant).
-			// Client-side workers use their own bundling config (worker.rollupOptions).
-			'@voter-protocol/noir-prover': voterProtocolStubPath
+			pino: pinoShimPath
 		}
 	},
 
@@ -65,7 +74,9 @@ export default defineConfig({
 			// CRITICAL: Exclude bb.js so its internal worker URL resolution works correctly
 			// When pre-bundled, new URL('./main.worker.js', import.meta.url) breaks
 			// because import.meta.url points to .vite/deps/ instead of node_modules/
-			'@aztec/bb.js'
+			'@aztec/bb.js',
+			// Exclude noir-prover so its WASM/worker deps resolve correctly (same reason as bb.js)
+			'@voter-protocol/noir-prover'
 		]
 		// Note: Buffer alias is applied via resolve.alias which works even without pre-bundling
 	},

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { TemplateCreationContext } from '$lib/types/template';
-	import { Sparkles, ArrowRight } from 'lucide-svelte';
+	import { Sparkles, ArrowRight } from '@lucide/svelte';
 	import { api } from '$lib/core/api/client';
 	import { slide, fade } from 'svelte/transition';
 	import { onMount, tick } from 'svelte';

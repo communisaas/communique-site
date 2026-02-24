@@ -8,7 +8,12 @@ export interface ApiError {
 	field?: string; // For field-specific validation errors
 }
 
-export interface ApiResponse<T = unknown> {
+/**
+ * Structured API response with typed ApiError objects.
+ * Use this for server-side route handlers that return structured errors.
+ * For client-side API responses (with plain string errors), use ApiResponse from './api'.
+ */
+export interface StructuredApiResponse<T = unknown> {
 	success: boolean;
 	data?: T;
 	error?: ApiError;

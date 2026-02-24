@@ -18,11 +18,7 @@ export type ModalType =
 	| 'template_creator'
 	| 'onboarding'
 	| 'template_modal'
-	| 'share_menu'
-	| 'copied_feedback'
-	| 'error_dialog'
-	| 'sign-in'
-	| 'confirmation_dialog';
+	| 'sign-in';
 
 // Modal State Interface
 interface ModalState {
@@ -47,6 +43,7 @@ export type LegacyModalState =
 	| 'auth_required'
 	| 'loading'
 	| 'confirmation'
+	| 'trust-upgrade' // Graduated trust: offer identity verification before sending
 	| 'cwc-submission' // ZKP proof generation + Congressional submission
 	| 'proof-generation' // ZK proof generation (Phase 2)
 	| 'celebration'

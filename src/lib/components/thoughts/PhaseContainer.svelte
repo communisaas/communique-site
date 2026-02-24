@@ -19,7 +19,7 @@
 	import { untrack } from 'svelte';
 	import type { PhaseState, ThoughtSegment, Citation } from '$lib/core/thoughts/types';
 	import type { ParsedDocument } from '$lib/server/reducto/types';
-	import { ChevronDown, ChevronRight } from 'lucide-svelte';
+	import { ChevronDown, ChevronRight } from '@lucide/svelte';
 	import ThoughtSegmentComponent from './ThoughtSegment.svelte';
 
 	interface Props {

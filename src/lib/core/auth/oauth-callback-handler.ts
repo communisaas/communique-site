@@ -28,12 +28,9 @@ import { validateReturnTo } from '$lib/core/auth/oauth';
  *
  * NEW ARCHITECTURE:
  * 1. OAuth callback completes authentication (server-side)
- * 2. Sets oauth_blockchain_pending cookie for client detection
- * 3. Client-side component (BlockchainInit.svelte) handles account creation
- * 4. Uses dynamic imports + browser guards for SSR safety
+ * 2. Uses dynamic imports + browser guards for SSR safety
  *
  * See: /src/lib/core/blockchain/use-blockchain.ts
- * See: /src/lib/components/blockchain/BlockchainInit.svelte
  */
 
 // =============================================================================
@@ -83,12 +80,6 @@ export interface DatabaseUser {
 	profile_visibility?: string;
 	verification_method?: string | null;
 	verified_at?: Date | null;
-	// Blockchain accounts (Scroll L2 — NEAR removed, see ARCHITECTURE.md)
-	scroll_address?: string | null;
-	scroll_derivation_path?: string | null;
-	connected_wallet_address?: string | null;
-	connected_wallet_type?: string | null;
-	connected_wallet_chain?: string | null;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -283,9 +274,6 @@ export class OAuthCallbackHandler {
 				}
 			});
 
-			// Blockchain account creation deferred to client-side
-			// See BlockchainInit.svelte component for actual account creation
-
 			return existingAccount.user;
 		}
 
@@ -312,9 +300,6 @@ export class OAuthCallbackHandler {
 					email_verified: emailVerified
 				}
 			});
-
-			// Blockchain account creation deferred to client-side
-			// See BlockchainInit.svelte component for actual account creation
 
 			return existingUser;
 		}
@@ -364,9 +349,6 @@ export class OAuthCallbackHandler {
 				reputation_tier: baseReputationTier
 			});
 		}
-
-		// Blockchain account creation deferred to client-side
-		// See BlockchainInit.svelte component for actual account creation
 
 		return newUser;
 	}
@@ -429,28 +411,6 @@ export class OAuthCallbackHandler {
 				secure: !dev, // Secure in production
 				httpOnly: false, // Client JS reads this — see BA-013 comment above
 				maxAge: 60 * 5, // 5 minutes
-				sameSite: 'lax'
-			}
-		);
-
-		// Store blockchain initialization signal for server-side detection
-		// BA-013: Fixed httpOnly to true — no client-side JS reads this cookie.
-		// The referenced BlockchainInit.svelte component does not exist; this cookie
-		// is only set server-side and can be read server-side via hooks or load functions.
-		// Contains userId which should not be exposed to document.cookie (XSS risk).
-		cookies.set(
-			'oauth_blockchain_pending',
-			JSON.stringify({
-				userId: user.id,
-				provider,
-				needsInit: !user.scroll_address,
-				timestamp: Date.now()
-			}),
-			{
-				path: '/',
-				secure: !dev, // Secure in production
-				httpOnly: true, // BA-013: No client JS reads this; contains userId
-				maxAge: 60 * 15, // 15 minutes
 				sameSite: 'lax'
 			}
 		);

@@ -192,7 +192,7 @@ proves nationality and identity without revealing PII.
 **Environment Variables:**
 - SELFXYZ_APP_ID: Application identifier
 - SELFXYZ_APP_SECRET: HMAC signing secret
-- SELFXYZ_WEBHOOK_URL: https://communique.app/api/identity/selfxyz/verify
+- SELFXYZ_WEBHOOK_URL: https://communi.email/api/identity/selfxyz/verify
 
 **Integration Pattern:**
 ```typescript

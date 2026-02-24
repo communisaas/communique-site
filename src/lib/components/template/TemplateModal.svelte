@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	// import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { fade, fly, scale, slide } from 'svelte/transition';
 	import { quintOut, backOut, elasticOut } from 'svelte/easing';
 	import { spring } from 'svelte/motion';
@@ -24,7 +24,11 @@
 		QrCode,
 		Download,
 		ShieldCheck,
-		AlertCircle
+		AlertCircle,
+		MapPin,
+		Fingerprint,
+		Loader2,
+		Smartphone
 	} from '@lucide/svelte';
 	import QRCode from 'qrcode';
 	// import TemplateMeta from '$lib/components/template/TemplateMeta.svelte';
@@ -42,6 +46,15 @@
 	import VerificationGate from '$lib/components/auth/VerificationGate.svelte';
 	import ProofGenerator from '$lib/components/template/ProofGenerator.svelte';
 	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
+	import {
+		isDigitalCredentialsSupported,
+		requestCredential
+	} from '$lib/core/identity/digital-credentials-api';
+	import {
+		storeConstituentAddress,
+		getConstituentAddress
+	} from '$lib/core/identity/constituent-address';
+	import { dev } from '$app/environment';
 	import type { ComponentTemplate } from '$lib/types/component-props';
 	import type { Representative } from '$lib/types/any-replacements';
 	import type { Representative as ProviderRepresentative } from '$lib/core/legislative/types';
@@ -97,6 +110,11 @@
 	// Submission error message for error state UI
 	let submissionError = $state<string | null>(null);
 
+	// Trust-upgrade sub-state for wallet attempt flow
+	type TrustUpgradePhase = 'choice' | 'wallet-requesting' | 'wallet-failed' | 'simulating';
+	let trustUpgradePhase = $state<TrustUpgradePhase>('choice');
+	let walletErrorMessage = $state<string | null>(null);
+
 	// TODO(Phase 2): Wire to delivery-worker SSE/polling response.
 	// Currently false: delivery-worker runs via waitUntil(), modal can't await result.
 	// UI block at ~line 993 is correctly gated behind this flag.
@@ -136,14 +154,14 @@
 	let mailAppVisibilityHandler: (() => void) | null = null;
 
 	// Initialize modal and auto-trigger mailto for ALL users (viral QR code flow)
-	onMount(() => {
+	onMount(async () => {
 		// Don't manipulate scroll here - UnifiedModal handles it
 		// Don't call modalActions.open - parent component handles it
 
 		// If initialState is provided, skip auto-routing and go directly to that state
 		if (initialState) {
 			console.log(`[TemplateModal] initialState="${initialState}" — skipping auto-routing`);
-			modalActions.setState(initialState);
+			modalActions.setState(initialState as import('$lib/stores/modalSystem.svelte').LegacyModalState);
 			return;
 		}
 
@@ -152,17 +170,29 @@
 			if (!user) {
 				console.log('[TemplateModal] Guest on congressional template — mailto relay');
 				handleUnifiedEmailFlow();
-			} else if ((user.trust_tier ?? 0) >= 3) {
-				console.log('[TemplateModal] Tier 3+ user on congressional — CWC/ZKP flow');
+			} else if ((user.trust_tier ?? 0) >= 2) {
+				// Tier 2+ (address-verified): hydrate stored address, then ZKP
+				const stored = await getConstituentAddress(user.id);
+				if (stored) {
+					verifiedAddress = {
+						street: stored.street,
+						city: stored.city,
+						state: stored.state,
+						zip: stored.zip
+					};
+					console.log('[TemplateModal] Tier 2+ — hydrated address from encrypted store');
+				}
 				handleSendConfirmation(true);
 			} else {
-				console.log('[TemplateModal] Tier 1-2 user on congressional — email_attested flow');
-				handleUnifiedEmailFlow();
+				// Tier 1 (OAuth-only): needs address verification before ZKP
+				console.log(`[TemplateModal] Tier ${user.trust_tier ?? 1} user on congressional — showing trust upgrade`);
+				trustUpgradePhase = 'choice';
+				modalActions.setState('trust-upgrade');
 			}
 			return;
 		}
 
-		// HACKATHON: Trigger mailto for EVERYONE (authenticated or not)
+		// Trigger mailto for all users (authenticated or not)
 		// This removes friction for viral template sharing via QR code
 		// After they send, we'll prompt account creation if needed
 		handleUnifiedEmailFlow();
@@ -382,7 +412,73 @@
 		collectingAddress = false;
 		needsAddress = false;
 
-		// Continue with submission flow
+		// Extract congressional district from representatives or default to at-large
+		const houseRep = data.representatives?.find(
+			(r) => 'chamber' in r && r.chamber === 'house'
+		) as Representative | undefined;
+		const districtNumber = houseRep?.district ?? 'AL';
+		const district = `${data.state}-${districtNumber.toString().padStart(2, '0')}`;
+
+		// Persist encrypted in IndexedDB — survives modal remounts and sessions
+		if (user?.id) {
+			storeConstituentAddress(user.id, { ...verifiedAddress, district }).catch((e) =>
+				console.warn('[Template Modal] Address persistence failed:', e)
+			);
+		}
+
+		// For authenticated users on CWC templates: issue credential + bootstrap ZKP
+		if (user?.id && template.deliveryMethod === 'cwc') {
+			const alreadyVerified = (user.trust_tier ?? 0) >= 2;
+
+			if (alreadyVerified) {
+				// Already district-verified (re-entering address on new device/cleared store)
+				// Skip credential issuance — just need the address for CWC delivery
+				console.log('[Template Modal] Tier 2+ re-entering address — skipping verification');
+				handleSendConfirmation(true);
+				return;
+			}
+
+			try {
+				trustUpgradePhase = 'simulating';
+				modalActions.setState('trust-upgrade');
+
+				// Call verify-address to set verified_at + identity_commitment
+				const verifyRes = await fetch('/api/identity/verify-address', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						district,
+						verification_method: 'civic_api'
+					})
+				});
+				const verifyResult = await verifyRes.json();
+
+				if (!verifyResult.success) {
+					console.error('[Template Modal] verify-address failed:', verifyResult.error);
+					// Fall back to mailto
+					await handleUnifiedEmailFlow();
+					return;
+				}
+
+				// Bootstrap ZK credential from the new identity_commitment
+				if (verifyResult.identity_commitment) {
+					const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
+					await bootstrapDemoCredential(user.id, verifyResult.identity_commitment);
+				}
+
+				// Refresh server data so locals.user has verified_at set
+				await invalidateAll();
+
+				// Proceed to ZKP flow
+				submitCongressionalMessage();
+			} catch (e) {
+				console.error('[Template Modal] Address verification failed:', e);
+				await handleUnifiedEmailFlow();
+			}
+			return;
+		}
+
+		// Non-CWC or guest: continue with existing flow
 		if (user?.id && verificationGateRef) {
 			const isVerified = await verificationGateRef.checkVerification();
 			if (!isVerified) {
@@ -396,6 +492,124 @@
 			await submitCongressionalMessage();
 		} else {
 			await handleUnifiedEmailFlow();
+		}
+	}
+
+	/**
+	 * Attempt real mDL wallet verification, falling back to demo on failure.
+	 *
+	 * Flow:
+	 * 1. Call /api/identity/verify-mdl/start for DeviceRequest config
+	 * 2. Trigger navigator.credentials.get() — iOS shows wallet prompt
+	 * 3. If wallet succeeds: verify on server, proceed to ZKP
+	 * 4. If wallet fails (not enrolled, unsupported): show brief error,
+	 *    then simulate via /demo/verify-identity + bootstrap credential → ZKP
+	 */
+	async function attemptWalletVerification() {
+		trustUpgradePhase = 'wallet-requesting';
+		walletErrorMessage = null;
+
+		// If DC API isn't supported, skip straight to failure
+		if (!isDigitalCredentialsSupported()) {
+			walletErrorMessage = 'Digital Credentials API not supported in this browser';
+			trustUpgradePhase = 'wallet-failed';
+			return;
+		}
+
+		try {
+			// Step 1: Get DeviceRequest config from server
+			const startResponse = await fetch('/api/identity/verify-mdl/start', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ userId: user?.id })
+			});
+
+			if (!startResponse.ok) {
+				throw new Error('Failed to initialize wallet verification');
+			}
+
+			const { requests, nonce } = await startResponse.json();
+
+			// Step 2: Trigger real wallet prompt — iOS will show the wallet UI
+			const result = await requestCredential({ requests });
+
+			if (!result.success) {
+				if (result.error === 'user_cancelled') {
+					// User dismissed the wallet — go back to choice
+					trustUpgradePhase = 'choice';
+					return;
+				}
+				// Wallet failed (not enrolled, unsupported protocol, etc.)
+				throw new Error(result.message);
+			}
+
+			// Step 3: Wallet succeeded — verify on server
+			trustUpgradePhase = 'simulating'; // Reuse simulating state for "verifying..."
+
+			const verifyResponse = await fetch('/api/identity/verify-mdl/verify', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					protocol: result.protocol,
+					data: result.data,
+					nonce
+				})
+			});
+
+			if (!verifyResponse.ok) {
+				throw new Error('Server verification failed');
+			}
+
+			// Real verification succeeded — proceed to ZKP
+			if (user?.id) {
+				try {
+					const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
+					const verification = await verifyResponse.json();
+					await bootstrapDemoCredential(user.id, verification.credentialHash);
+				} catch (e) {
+					console.error('[mDL] Credential bootstrap failed:', e);
+				}
+			}
+
+			// Refresh server data so locals.user has verified_at set
+			await invalidateAll();
+
+			submitCongressionalMessage();
+		} catch (err) {
+			// Wallet or server failed — show the error, then offer to simulate
+			walletErrorMessage = err instanceof Error ? err.message : 'Wallet verification failed';
+			trustUpgradePhase = 'wallet-failed';
+		}
+	}
+
+	/**
+	 * After wallet fails, simulate identity verification via demo endpoint
+	 * and proceed to ZKP flow.
+	 */
+	async function simulateAfterWalletFailure() {
+		trustUpgradePhase = 'simulating';
+
+		try {
+			const res = await fetch('/demo/verify-identity', { method: 'POST' });
+			const result = await res.json();
+
+			if (result.identity_commitment && user?.id) {
+				const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
+				await bootstrapDemoCredential(user.id, result.identity_commitment);
+			}
+
+			// Brief pause to let the user see "simulating" state
+			await new Promise(resolve => setTimeout(resolve, 800));
+
+			// Refresh server data so locals.user has verified_at set
+			await invalidateAll();
+
+			// Proceed to ZKP flow
+			submitCongressionalMessage();
+		} catch (e) {
+			console.error('[Demo] Simulation failed:', e);
+			walletErrorMessage = 'Demo simulation failed';
+			trustUpgradePhase = 'wallet-failed';
 		}
 	}
 
@@ -532,19 +746,18 @@
 			}
 
 			if (isCongressional) {
-				// STEP 1: Check if user has address (for congressional routing)
-				// Tier 2+ users are already district-verified — skip address collection.
-				// Address is collected via AddressCollectionForm and stored in verifiedAddress state.
-				// User model does NOT have street/city/state/zip fields (privacy-by-design).
-				const isAlreadyDistrictVerified = (user?.trust_tier ?? 0) >= 2;
+				// STEP 1: Check if user has address (for CWC delivery)
+				// CWC requires full address encrypted into the ZKP witness.
+				// Address is hydrated from encrypted IndexedDB on mount (Tier 2+)
+				// or collected inline via AddressCollectionForm.
 				const hasAddress = verifiedAddress &&
 					verifiedAddress.street &&
 					verifiedAddress.city &&
 					verifiedAddress.state &&
 					verifiedAddress.zip;
 
-				if (!hasAddress && !isAlreadyDistrictVerified) {
-					// Need address for congressional routing - collect it inline
+				if (!hasAddress) {
+					// Need address for CWC delivery — collect it inline
 					console.log(
 						'[Template Modal] Congressional template needs address - showing inline collection'
 					);
@@ -993,6 +1206,48 @@
 							Verify your address
 						</button>
 					</div>
+				{:else if user && (user.trust_tier ?? 0) === 2 && template.deliveryMethod === 'cwc'}
+					<div
+						class="rounded-lg border border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50 p-4"
+						in:fly={{ y: 10, duration: 400, delay: 300 }}
+					>
+						<p class="mb-1 text-sm font-semibold text-purple-900">
+							Verify your identity for cryptographic delivery
+						</p>
+						<p class="mb-3 text-xs text-purple-700">
+							Your message was delivered as a constituent. Verify your identity to send with a zero-knowledge proof next time — unfakeable, unbottable.
+						</p>
+						<button
+							onclick={async () => {
+								onclose?.();
+								const res = await fetch('/demo/verify-identity', { method: 'POST' });
+								const result = await res.json();
+								if (result.identity_commitment && user?.id) {
+									try {
+										const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
+										await bootstrapDemoCredential(user.id, result.identity_commitment);
+									} catch (e) {
+										console.error('[Demo] Credential bootstrap failed:', e);
+									}
+								}
+							}}
+							class="w-full rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-purple-700 active:scale-[0.98]"
+						>
+							Verify identity
+						</button>
+					</div>
+				{:else if user && (user.trust_tier ?? 0) === 3 && template.deliveryMethod === 'cwc'}
+					<div
+						class="rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 p-4"
+						in:fly={{ y: 10, duration: 400, delay: 300 }}
+					>
+						<p class="mb-1 text-sm font-semibold text-indigo-900">
+							Generate a ZK proof next time
+						</p>
+						<p class="mb-3 text-xs text-indigo-700">
+							You're identity-verified. Next time, send with a zero-knowledge proof — mathematically verified district residency. Maximum weight.
+						</p>
+					</div>
 				{/if}
 
 				<!-- Next Steps / Share -->
@@ -1103,6 +1358,152 @@
 				}}
 				oncomplete={handleAddressComplete}
 			/>
+		</div>
+	{:else if currentState === 'trust-upgrade'}
+		<!-- Trust Upgrade — graduated trust with real wallet attempt -->
+		<div class="relative p-6 sm:p-8" in:scale={{ duration: 500, easing: backOut }}>
+			<button
+				onclick={() => { trustUpgradePhase = 'choice'; handleClose(); }}
+				class="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+			>
+				<X class="h-5 w-5" />
+			</button>
+
+			{#if trustUpgradePhase === 'choice'}
+				<!-- Phase 1: Choice — strengthen your voice -->
+				<div class="mb-6 text-center">
+					<div class="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
+						<ShieldCheck class="h-7 w-7 text-slate-600" />
+					</div>
+					<h3 class="mb-1 text-xl font-bold text-slate-900">Strengthen your voice</h3>
+					<p class="text-sm text-slate-500">Congressional offices prioritize verified constituents</p>
+				</div>
+
+				<div class="space-y-3">
+					<!-- mDL: Aspirational peak — coming soon -->
+					<!-- Living promise: color and life show through, dashed border = under construction -->
+					<div class="relative overflow-hidden rounded-xl border border-dashed border-purple-200 bg-gradient-to-r from-purple-50/60 to-indigo-50/60 p-4">
+						<div class="flex items-center gap-4">
+							<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100/70">
+								<Smartphone class="h-5 w-5 text-purple-400" />
+							</div>
+							<div class="min-w-0 flex-1">
+								<div class="flex items-center gap-2">
+									<span class="text-sm font-semibold text-purple-900/60">Mobile Driver's License</span>
+									<span class="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-500">Coming soon</span>
+								</div>
+								<span class="block text-xs text-purple-500/50">Cryptographic proof of identity. Undeniable signal.</span>
+							</div>
+						</div>
+					</div>
+
+					<!-- Address: Primary CTA — available now, resolves the tension -->
+					<button
+						onclick={() => { collectingAddress = true; }}
+						class="group flex w-full items-center gap-4 rounded-xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 text-left transition-all hover:border-emerald-300 hover:shadow-md"
+					>
+						<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+							<MapPin class="h-5 w-5 text-emerald-600" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<span class="block text-sm font-semibold text-emerald-900">Verify your address</span>
+							<span class="block text-xs text-emerald-600">Confirms your district. Your message gets read.</span>
+						</div>
+						<ArrowRight class="h-4 w-4 shrink-0 text-emerald-400 transition-transform group-hover:translate-x-0.5" />
+					</button>
+
+					<!-- Divider -->
+					<div class="flex items-center gap-3 py-0.5">
+						<div class="h-px flex-1 bg-slate-200"></div>
+						<span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">or</span>
+						<div class="h-px flex-1 bg-slate-200"></div>
+					</div>
+
+					<!-- Email: Quiet escape hatch — still valid, just lower signal -->
+					<button
+						onclick={() => handleUnifiedEmailFlow()}
+						class="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-slate-300 hover:shadow-sm"
+					>
+						<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100">
+							<Send class="h-5 w-5 text-slate-500" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<span class="block text-sm font-medium text-slate-700">Send now via email</span>
+							<span class="block text-xs text-slate-500">Named sender. Lower priority but still delivered.</span>
+						</div>
+						<ArrowRight class="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5" />
+					</button>
+				</div>
+
+			{:else if trustUpgradePhase === 'wallet-requesting'}
+				<!-- Phase 2: Wallet prompt active — iOS shows wallet UI -->
+				<div class="flex flex-col items-center justify-center py-8" in:fade={{ duration: 200 }}>
+					<div class="relative mb-6">
+						<div class="flex h-20 w-20 items-center justify-center rounded-full bg-purple-100">
+							<Smartphone class="h-10 w-10 text-purple-600" />
+						</div>
+						<div class="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-md">
+							<Loader2 class="h-5 w-5 animate-spin text-purple-600" />
+						</div>
+					</div>
+					<p class="text-lg font-semibold text-slate-900">Requesting wallet...</p>
+					<p class="mt-2 max-w-xs text-center text-sm text-slate-600">
+						Your device will prompt you to share <strong>only</strong> your postal code and state
+					</p>
+				</div>
+
+			{:else if trustUpgradePhase === 'wallet-failed'}
+				<!-- Phase 3: Wallet failed — show error + offer to simulate -->
+				<div class="flex flex-col items-center py-6" in:fade={{ duration: 200 }}>
+					<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+						<AlertCircle class="h-8 w-8 text-amber-600" />
+					</div>
+					<h3 class="mb-1 text-lg font-bold text-slate-900">Wallet unavailable</h3>
+					<p class="mb-4 max-w-xs text-center text-sm text-slate-500">
+						{walletErrorMessage || 'Digital ID verification requires enrollment with your state DMV.'}
+					</p>
+
+					{#if dev}
+						<div class="w-full space-y-3">
+							<button
+								onclick={() => simulateAfterWalletFailure()}
+								class="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-purple-700 active:scale-[0.98]"
+							>
+								<ShieldCheck class="h-4 w-4" />
+								Simulate verified credential
+							</button>
+							<button
+								onclick={() => { trustUpgradePhase = 'choice'; }}
+								class="w-full text-center text-sm text-slate-500 hover:text-slate-700"
+							>
+								Back
+							</button>
+						</div>
+					{:else}
+						<button
+							onclick={() => { trustUpgradePhase = 'choice'; }}
+							class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+						>
+							Try another method
+						</button>
+					{/if}
+				</div>
+
+			{:else if trustUpgradePhase === 'simulating'}
+				<!-- Phase 4: Simulating verification — brief interstitial -->
+				<div class="flex flex-col items-center justify-center py-8" in:fade={{ duration: 200 }}>
+					<div class="relative mb-6">
+						<div class="flex h-20 w-20 items-center justify-center rounded-full bg-purple-100">
+							<Fingerprint class="h-10 w-10 text-purple-600" />
+						</div>
+						<div class="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-md">
+							<Loader2 class="h-5 w-5 animate-spin text-purple-600" />
+						</div>
+					</div>
+					<p class="text-lg font-semibold text-slate-900">Verifying credential...</p>
+					<p class="mt-2 text-sm text-slate-500">Bootstrapping cryptographic identity</p>
+				</div>
+			{/if}
 		</div>
 	{:else if currentState === 'cwc-submission'}
 		<!-- ZKP Proof Generation & Submission State -->

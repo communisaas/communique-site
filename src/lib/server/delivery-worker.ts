@@ -15,7 +15,7 @@
  * Error handling:
  * - Any unrecoverable error sets delivery_status='failed' with error message
  * - Per-representative errors are captured but don't block other deliveries
- * - No retry logic here (that's Wave 5D territory)
+ * - No retry logic here (handled by submission-retry-queue)
  */
 
 import type { PrismaClient } from '@prisma/client';
@@ -24,6 +24,7 @@ import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup'
 import { cwcClient, type CongressionalOffice } from '$lib/core/congress/cwc-client';
 import type { CwcTemplate } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
+import { dev } from '$app/environment';
 
 interface DeliveryResult {
 	success: boolean;
@@ -65,6 +66,23 @@ export async function processSubmissionDelivery(
 
 		if (!submission) {
 			throw new Error(`Submission not found: ${submissionId}`);
+		}
+
+		// Demo mode: simulate successful delivery without decryption or CWC API
+		if (dev) {
+			console.debug('[Delivery] Demo mode — simulating successful delivery for:', submissionId);
+			await client.submission.update({
+				where: { id: submissionId },
+				data: {
+					delivery_status: 'delivered',
+					delivered_at: new Date(),
+					cwc_submission_id: `demo-${submissionId.slice(0, 8)}`
+				}
+			});
+			return {
+				success: true,
+				results: [{ office: 'Demo Office', chamber: 'demo', status: 'delivered', messageId: `demo-${submissionId.slice(0, 8)}` }]
+			};
 		}
 
 		// Step 3: Decrypt witness

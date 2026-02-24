@@ -5,7 +5,7 @@ import { extractRecipientEmails } from '$lib/types/templateConfig';
 import {
 	createApiError,
 	createValidationError,
-	type ApiResponse,
+	type StructuredApiResponse,
 	type ApiError
 } from '$lib/types/errors';
 import type { Prisma as _Prisma, Prisma } from '@prisma/client';
@@ -362,7 +362,7 @@ export const GET: RequestHandler = async () => {
 			};
 		});
 
-		const response: ApiResponse = {
+		const response: StructuredApiResponse = {
 			success: true,
 			data: formattedTemplates
 		};
@@ -376,7 +376,7 @@ export const GET: RequestHandler = async () => {
 			name: error instanceof Error ? error.name : undefined
 		});
 
-		const response: ApiResponse = {
+		const response: StructuredApiResponse = {
 			success: false,
 			error: createApiError('server', 'SERVER_DATABASE', 'Failed to fetch templates')
 		};
@@ -392,7 +392,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		try {
 			requestData = await request.json();
 		} catch (error) {
-			const response: ApiResponse = {
+			const response: StructuredApiResponse = {
 				success: false,
 				error: createApiError(
 					'validation',
@@ -406,7 +406,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Validate template data
 		const validation = validateTemplateData(requestData);
 		if (!validation.isValid) {
-			const response: ApiResponse = {
+			const response: StructuredApiResponse = {
 				success: false,
 				errors: validation.errors
 			};
@@ -415,7 +415,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// validData is guaranteed to exist when isValid is true
 		if (!validation.validData) {
-			const response: ApiResponse = {
+			const response: StructuredApiResponse = {
 				success: false,
 				error: createApiError('validation', 'VALIDATION_MISSING_DATA', 'Validation passed but data is missing')
 			};
@@ -449,7 +449,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					latencyMs: moderationResult.latency_ms
 				});
 
-				const response: ApiResponse = {
+				const response: StructuredApiResponse = {
 					success: false,
 					error: createValidationError('message_body', errorCode, moderationResult.summary)
 				};
@@ -514,7 +514,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// This prevents slug consumption on failed publishes
 			const errorMessage =
 				moderationError instanceof Error ? moderationError.message : 'Content moderation failed';
-			const response: ApiResponse = {
+			const response: StructuredApiResponse = {
 				success: false,
 				error: createApiError(
 					'server',
@@ -533,7 +533,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const isVerified = user.is_verified === true;
 			const hasSufficientReputation = (user.trust_score ?? 0) >= 100;
 			if (!isVerified && !hasSufficientReputation) {
-				const response: ApiResponse = {
+				const response: StructuredApiResponse = {
 					success: false,
 					error: createApiError(
 						'auth',
@@ -560,7 +560,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				});
 
 				if (existingTemplate) {
-					const response: ApiResponse = {
+					const response: StructuredApiResponse = {
 						success: false,
 						error: createValidationError(
 							'slug',
@@ -674,7 +674,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 										reputation_applied: false
 									}
 								});
-								await triggerModerationPipeline(templateId);
 								console.log(`[deferred] CWC verification set for template ${templateId}`);
 							} catch (error) {
 								console.error('[deferred] CWC verification failed:', error);
@@ -709,7 +708,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					})();
 				}
 
-				const response: ApiResponse = {
+				const response: StructuredApiResponse = {
 					success: true,
 					data: { template: (() => {
 					// Transform to match GET response shape — client validates computed fields
@@ -770,7 +769,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					stack: error instanceof Error ? error.stack : undefined
 				});
 
-				const response: ApiResponse = {
+				const response: StructuredApiResponse = {
 					success: false,
 					error: createApiError('server', 'SERVER_DATABASE', 'Failed to save template to database')
 				};
@@ -779,7 +778,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		} else {
 			// Guest users cannot create templates - require authentication
-			const response: ApiResponse = {
+			const response: StructuredApiResponse = {
 				success: false,
 				error: createApiError('auth', 'AUTH_REQUIRED', 'Authentication required to create templates')
 			};
@@ -792,7 +791,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			stack: error instanceof Error ? error.stack : undefined
 		});
 
-		const response: ApiResponse = {
+		const response: StructuredApiResponse = {
 			success: false,
 			error: createApiError('server', 'SERVER_INTERNAL', 'An unexpected error occurred')
 		};
@@ -800,44 +799,3 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json(response, { status: 500 });
 	}
 };
-
-/**
- * Trigger moderation pipeline for a template
- */
-async function triggerModerationPipeline(templateId: string) {
-	try {
-		// Call our own moderation webhook with the template ID
-		const response = await fetch(
-			`${process.env.ORIGIN || 'http://localhost:5173'}/api/webhooks/template-moderation`,
-			{
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'x-webhook-secret': process.env.N8N_WEBHOOK_SECRET || 'demo-secret'
-				},
-				body: JSON.stringify({
-					template_id: templateId,
-					source: 'template-creation',
-					timestamp: new Date().toISOString()
-				})
-			}
-		);
-
-		if (!response.ok) {
-			throw new Error(`Webhook failed with status ${response.status}`);
-		}
-
-		const result = await response.json();
-		console.log(`Moderation pipeline triggered for template ${templateId}:`, result);
-
-		return result;
-	} catch (error) {
-		console.error('Moderation pipeline error:', error);
-		console.error('Moderation error details:', {
-			message: error instanceof Error ? error.message : 'Unknown error',
-			templateId
-		});
-		// Don't throw - we don't want to fail template creation if moderation fails to trigger
-		return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-	}
-}

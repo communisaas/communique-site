@@ -1,13 +1,14 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import {
-		User as UserIcon,
-		Settings,
-		FileText,
-		Edit3,
-		Home,
-		LogOut as LogOutIcon
-	} from '@lucide/svelte';
+	/**
+	 * Profile Layout — Atmospheric shell for the civic passport.
+	 *
+	 * The background breathes with the person's standing.
+	 * Content expands to inhabit the viewport:
+	 *   mobile: tight, stacked
+	 *   tablet: comfortable reading column
+	 *   desktop: wider field, zones spread to use the space
+	 */
+	import { ArrowLeft, LogOut as LogOutIcon } from '@lucide/svelte';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
 
@@ -19,143 +20,48 @@
 		data: LayoutData;
 	} = $props();
 
-	type TabType = 'overview' | 'profile' | 'templates' | 'settings';
-
-	// Get active tab from URL search params or default to overview
-	const activeTab = $derived(($page.url.searchParams.get('tab') as TabType) || 'overview');
-
-	const tabs = [
-		{ id: 'overview', label: 'Overview', icon: UserIcon },
-		{ id: 'profile', label: 'Profile', icon: Edit3 },
-		{ id: 'templates', label: 'Templates', icon: FileText },
-		{ id: 'settings', label: 'Settings', icon: Settings }
-	] as const;
-
 	const user = $derived(data.user);
+	const tier = $derived(Math.max(0, Math.min(4, Math.floor((user as Record<string, unknown>)?.trust_tier as number ?? 0))));
 
-	// Calculate profile completion
-	function getCompletionStatus() {
-		const required = [user.name, user.email];
-		// Note: Address fields removed for privacy per CYPHERPUNK-ARCHITECTURE.md
-		const optional: (string | null | undefined)[] = [];
-
-		const completedRequired = required.filter(Boolean).length;
-		const completedOptional = optional.filter(Boolean).length;
-
-		return {
-			required: completedRequired,
-			total: required.length,
-			optional: completedOptional,
-			optionalTotal: optional.length,
-			percentage: Math.round(
-				((completedRequired + completedOptional) / (required.length + optional.length)) * 100
-			)
-		};
-	}
-
-	const completion = $derived(getCompletionStatus());
+	const tierTints = [
+		'oklch(0.993 0.003 60)',   // 0: neutral warm cream
+		'oklch(0.988 0.008 250)',  // 1: faint blue wash
+		'oklch(0.988 0.012 160)',  // 2: faint emerald warmth
+		'oklch(0.988 0.012 300)',  // 3: faint purple depth
+		'oklch(0.985 0.015 270)', // 4: faint indigo weight
+	];
 </script>
 
-<div class="min-h-screen bg-slate-50">
-	<!-- Integrated Header with Navigation - matching AppHeader styles -->
-	<header class="border-b border-slate-200 bg-white">
-		<div class="mx-auto max-w-7xl px-4 sm:px-6">
-			<div class="flex items-center justify-between py-3">
-				<!-- Left: Home navigation -->
-				<div class="flex items-center gap-4">
-					<a
-						href="/"
-						class="group flex items-center gap-2 text-slate-600 transition-colors hover:text-slate-900"
-					>
-						<Home class="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-						<span class="text-sm font-medium">Home</span>
-					</a>
-				</div>
+<div
+	class="profile-atmosphere min-h-screen"
+	style="background: radial-gradient(ellipse 120% 80% at 50% 0%, {tierTints[tier]}, oklch(0.993 0.003 60) 70%);
+	       transition: background 700ms ease"
+>
+	<!-- Navigation -->
+	<nav class="mx-auto flex max-w-3xl items-center justify-between px-5 py-5 sm:px-8 lg:max-w-4xl">
+		<a
+			href="/"
+			class="group flex items-center gap-2 text-slate-500 transition-colors hover:text-slate-800"
+		>
+			<ArrowLeft class="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+			<span class="text-sm font-medium">Home</span>
+		</a>
 
-				<!-- Right: User actions - matching AppHeader -->
-				<div class="flex items-center gap-3">
-					<div class="flex items-center gap-4 text-sm">
-						<!-- Greeting -->
-						<span class="text-slate-600">Hi {user.name?.split(' ')[0] || 'User'}!</span>
-
-						<!-- Sign out - matching AppHeader button style -->
-						<a
-							href="/auth/logout"
-							class="flex items-center gap-1.5 rounded px-2 py-1 text-sm text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-700"
-							title="Sign out"
-						>
-							<LogOutIcon class="h-4 w-4" />
-							<span class="hidden sm:inline">Sign out</span>
-						</a>
-					</div>
-				</div>
-			</div>
+		<div class="flex items-center gap-4">
+			<span class="text-sm text-slate-500">{user?.name?.split(' ')[0] || ''}</span>
+			<a
+				href="/auth/logout"
+				class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-slate-500 transition-colors hover:bg-slate-100/60 hover:text-slate-700"
+				title="Sign out"
+			>
+				<LogOutIcon class="h-3.5 w-3.5" />
+				<span class="hidden sm:inline">Sign out</span>
+			</a>
 		</div>
-	</header>
+	</nav>
 
-	<!-- Profile Section - separated from navigation -->
-	<div class="border-b border-slate-200 bg-white">
-		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-			<!-- Profile Section -->
-			<div class="py-6">
-				<div class="flex items-center justify-between">
-					<div class="flex items-center space-x-4">
-						{#if user.avatar}
-							<img src={user.avatar} alt={user.name} class="h-16 w-16 rounded-full" />
-						{:else}
-							<div
-								class="flex h-16 w-16 items-center justify-center rounded-full bg-participation-primary-600"
-							>
-								<UserIcon class="h-8 w-8 text-white" />
-							</div>
-						{/if}
-						<div>
-							<h1 class="text-2xl font-bold text-slate-900">{user.name || 'Your Profile'}</h1>
-							<p class="text-slate-600">{user.email}</p>
-						</div>
-					</div>
-					<div class="flex items-center space-x-3">
-						<div class="text-right">
-							<div class="text-sm text-slate-500">Profile completion</div>
-							<div class="flex items-center space-x-2">
-								<div class="h-2 w-20 rounded-full bg-slate-200">
-									<div
-										class="h-2 rounded-full bg-participation-primary-600 transition-all duration-300"
-										style="width: {completion.percentage}%"
-									></div>
-								</div>
-								<span class="text-sm font-medium text-slate-700">{completion.percentage}%</span>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<!-- Tabs Navigation -->
-	<div class="border-b border-slate-200 bg-white">
-		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-			<div class="flex space-x-8">
-				{#each tabs as tab}
-					{@const IconComponent = tab.icon}
-					<a
-						href="/profile?tab={tab.id}"
-						class="flex items-center space-x-2 border-b-2 px-1 py-4 text-sm font-medium transition-colors {activeTab ===
-						tab.id
-							? 'border-participation-primary-500 text-participation-primary-600'
-							: 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}"
-					>
-						<IconComponent class="h-4 w-4" />
-						<span>{tab.label}</span>
-					</a>
-				{/each}
-			</div>
-		</div>
-	</div>
-
-	<!-- Tab Content -->
-	<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+	<!-- Content — responsive width: comfortable on mobile, expansive on desktop -->
+	<div class="mx-auto max-w-3xl px-5 pb-16 pt-2 sm:px-8 lg:max-w-4xl">
 		{@render children()}
 	</div>
 </div>

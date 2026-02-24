@@ -97,13 +97,6 @@ export async function checkAnalyticsPermission(
 		const isActiveUser = hasTemplates || hasCampaigns;
 
 		switch (endpoint) {
-			case 'percolation-analysis':
-				// Only allow users who have created templates (they're contributing to the network)
-				return {
-					allowed: hasTemplates,
-					reason: hasTemplates ? undefined : 'Must create templates to access network analysis'
-				};
-
 			case 'sheaf-fusion':
 				// Only allow active users (either created templates or sent campaigns)
 				return {
@@ -136,7 +129,6 @@ export async function checkAnalyticsPermission(
  * Rate limits by endpoint for authenticated users
  */
 export const OAUTH_RATE_LIMITS: Record<string, number> = {
-	'percolation-analysis': 3, // Heavy computation - 3/minute
 	'sheaf-fusion': 5, // Medium computation - 5/minute
 	'test-clustering': 10, // Light computation - 10/minute
 	'create-test-data': 1 // Admin only - 1/minute

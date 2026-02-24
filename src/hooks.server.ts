@@ -70,7 +70,7 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 					is_verified: user.is_verified,
 					verification_method: user.verification_method ?? null,
 					verified_at: user.verified_at ?? null,
-					// Graduated trust (Wave 1C) - derived from user verification state
+					// Graduated trust - derived from user verification state
 					trust_tier: deriveTrustTier({
 						passkey_credential_id: user.passkey_credential_id,
 						district_verified: user.district_verified,
@@ -81,7 +81,7 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 					}),
 					// Passkey (security upgrade within Tier 1)
 					passkey_credential_id: user.passkey_credential_id ?? null,
-					// did:key from WebAuthn public key (Wave 2B)
+					// did:key from WebAuthn public key
 					did_key: user.did_key ?? null,
 					// Privacy-preserving district (hash only, no PII)
 					district_hash: user.district_hash ?? null,
@@ -141,10 +141,10 @@ const SENSITIVE_IDENTITY_PATHS = [
 	'/api/identity/store-blob',
 	'/api/identity/delete-blob',
 	'/api/identity/didit/init',
-	'/api/address/verify',
 	'/api/identity/verify-mdl',
 	'/api/auth/passkey/register',
-	'/api/auth/passkey/authenticate'
+	'/api/auth/passkey/authenticate',
+	'/api/location/resolve'
 ];
 
 // Webhook paths that receive server-to-server requests (HMAC-authenticated, no Origin)
@@ -230,7 +230,6 @@ import { sequence } from '@sveltejs/kit/hooks';
  *   P1       | /api/identity/            | 10 req/min   | IP           | Brute-force verification, QR spam
  *   P1       | /api/shadow-atlas/register| 5 req/min    | User         | Shadow Atlas registration abuse
  *   P1       | /api/congressional/submit | 3 req/hour   | User         | Congressional submission spam
- *   P2       | /api/address/             | 5 req/min    | IP           | Census Geocoding API abuse
  *   P2       | /api/submissions/         | 5 req/min    | IP           | CWC submission spam
  *
  * ALGORITHM: Sliding Window Log
@@ -278,7 +277,7 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	// Wave 15R: Skip GET unless this route explicitly includes GET rate limiting
+	// Skip GET unless this route explicitly includes GET rate limiting
 	if (method === 'GET' && !config.includeGet) {
 		return resolve(event);
 	}

@@ -213,7 +213,7 @@ export class CensusAPIClient {
 
 					// Log cell_id extraction (debug, without revealing full GEOID for privacy)
 					if (cell_id) {
-						console.debug('[Census API] ✓ Extracted cell_id:', cell_id.slice(0, 5) + '...');
+						console.debug('[Census API] Cell_id extracted (three-tree enabled)');
 					}
 
 					if (!district || !state) {
@@ -253,7 +253,7 @@ export class CensusAPIClient {
 						}
 					};
 
-					console.debug('[Census API] ✓ Extracted location signal:', signal);
+					console.debug('[Census API] Location signal extracted');
 					resolve(signal);
 				};
 

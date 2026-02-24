@@ -334,7 +334,7 @@ export function formatValidationError(validation: CredentialValidation): {
 }
 
 // ============================================================================
-// Tier-Aware Credential TTL (Wave 1C: Graduated Trust)
+// Tier-Aware Credential TTL (Graduated Trust)
 // ============================================================================
 
 /**

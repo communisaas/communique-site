@@ -1,5 +1,5 @@
 /**
- * Passkey Registration (Wave 2A: Graduated Trust Architecture)
+ * Passkey Registration (Graduated Trust Architecture)
  *
  * Server-side WebAuthn registration logic using @simplewebauthn/server.
  *
@@ -228,7 +228,7 @@ export async function verifyPasskeyRegistration(
 	const publicKeyBase64url = uint8ArrayToBase64url(credential.publicKey);
 	const credentialId = credential.id; // Already a base64url string
 
-	// Derive did:key from COSE-encoded public key (Wave 2B)
+	// Derive did:key from COSE-encoded public key
 	// This is deterministic — same key always produces the same did:key
 	let didKey: string | null = null;
 	try {
@@ -249,7 +249,7 @@ export async function verifyPasskeyRegistration(
 				passkey_public_key_jwk: publicKeyBase64url,
 				passkey_created_at: new Date(),
 				trust_tier: 1,
-				// did:key derived from WebAuthn public key (Wave 2B)
+				// did:key derived from WebAuthn public key
 				...(didKey ? { did_key: didKey } : {})
 			}
 		});

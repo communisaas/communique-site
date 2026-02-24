@@ -16,7 +16,7 @@
 	 */
 
 	import type { ActionTrace } from '$lib/core/thoughts/types';
-	import { ChevronDown, ChevronRight, Search, Database, Loader2 } from 'lucide-svelte';
+	import { ChevronDown, ChevronRight, Search, Database, Loader2 } from '@lucide/svelte';
 
 	interface Props {
 		action: ActionTrace;

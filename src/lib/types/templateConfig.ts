@@ -1,8 +1,7 @@
 /**
- * Template Configuration Types - COMPLETE KOLMOGOROV COMPRESSED TYPE SYSTEM
+ * Template Configuration Types
  *
- * This module eliminates ALL 'as any' cancer with mathematically minimal type definitions
- * that capture the complete template ecosystem with zero redundancy.
+ * Type definitions for template configuration, metrics, and delivery.
  */
 
 // CORE CONFIG TYPES - Minimal atomic units
@@ -22,26 +21,6 @@ export interface CwcConfig {
 	priority?: 'normal' | 'high' | 'urgent';
 	tracking_enabled?: boolean;
 	office_codes?: string[]; // Specific congressional offices
-}
-
-// ANALYTICS & AI TYPES - From schema analysis
-export interface ContextTags {
-	[key: string]: string | number | boolean;
-}
-
-export interface PersonalizationMetrics {
-	usage_count: number;
-	personalization_rate: number; // % who customize
-	avg_length?: number;
-	engagement_score?: number;
-	top_themes: string[];
-}
-
-export interface WritingStyleProfile {
-	tone_preference?: 'formal' | 'casual' | 'passionate';
-	length_preference?: 'concise' | 'detailed' | 'moderate';
-	personal_themes: string[];
-	engagement_metrics: PersonalizationMetrics;
 }
 
 // COMPLETE METRICS TYPE SYSTEM - All JSON fields typed
@@ -72,24 +51,6 @@ export interface TemplateMetrics {
 	shares?: number; // Template shares
 }
 
-// TEMPLATE ECOSYSTEM TYPES - Complete schema coverage
-export interface TemplatePersonalization {
-	variable_name: string;
-	custom_value: string;
-	usage_count: number;
-	last_used: Date;
-}
-
-// USER ACTIVATION NETWORK - Mathematical cascade tracking
-export interface UserActivation {
-	user_id: string;
-	template_id: string;
-	sourceuser_id?: string; // Functor arrow source
-	activation_generation: number; // Category theory morphism depth
-	activation_method: 'share' | 'view' | 'referral' | 'discovery';
-	timestamp: Date;
-}
-
 export interface TypedTemplate {
 	id: string;
 	slug?: string;
@@ -113,19 +74,6 @@ export interface TypedTemplate {
 	createdAt: Date;
 	updatedAt: Date;
 	userId?: string;
-
-	personalizations?: TemplatePersonalization[];
-	user_activations?: UserActivation[];
-}
-
-export interface ResolvedTemplate {
-	subject: string;
-	body: string;
-	recipients: string[];
-	isCongressional: boolean;
-	routingEmail?: string;
-	resolution_time: number;
-	personalization_depth: number;
 }
 
 /**
@@ -198,48 +146,3 @@ function isValidTemplateMetrics(obj: unknown): obj is TemplateMetrics {
 	);
 }
 
-/**
- * Migration Helper - Convert Legacy Template to Typed Template
- */
-export function migrateToTypedTemplate(legacyTemplate: unknown): TypedTemplate {
-	if (typeof legacyTemplate !== 'object' || legacyTemplate === null) {
-		throw new Error('Invalid legacy template: must be an object');
-	}
-
-	const legacy = legacyTemplate as Record<string, unknown>;
-
-	// Build the typed template with proper validation
-	const template: TypedTemplate = {
-		id: typeof legacy.id === 'string' ? legacy.id : '',
-		slug: typeof legacy.slug === 'string' ? legacy.slug : undefined,
-		title: typeof legacy.title === 'string' ? legacy.title : '',
-		description: typeof legacy.description === 'string' ? legacy.description : '',
-		category: typeof legacy.category === 'string' ? legacy.category : '',
-		type: typeof legacy.type === 'string' ? legacy.type : '',
-		deliveryMethod: legacy.deliveryMethod === 'certified' ? 'certified' : 'email',
-		subject: typeof legacy.subject === 'string' ? legacy.subject : undefined,
-		message_body: typeof legacy.message_body === 'string' ? legacy.message_body : '',
-		preview: typeof legacy.preview === 'string' ? legacy.preview : '',
-		is_public: typeof legacy.is_public === 'boolean' ? legacy.is_public : false,
-
-		delivery_config: extractDeliveryConfig(legacy.delivery_config),
-		recipient_config: { emails: extractRecipientEmails(legacy.recipient_config) },
-		cwc_config: legacy.cwc_config as CwcConfig | undefined,
-		metrics: extractTemplateMetrics(legacy.metrics),
-
-		campaign_id: typeof legacy.campaign_id === 'string' ? legacy.campaign_id : undefined,
-		status: isValidStatus(legacy.status) ? legacy.status : 'draft',
-		createdAt: legacy.createdAt instanceof Date ? legacy.createdAt : new Date(),
-		updatedAt: legacy.updatedAt instanceof Date ? legacy.updatedAt : new Date(),
-		userId: typeof legacy.userId === 'string' ? legacy.userId : undefined,
-
-		personalizations: Array.isArray(legacy.personalizations) ? legacy.personalizations as TemplatePersonalization[] : undefined,
-		user_activations: Array.isArray(legacy.user_activations) ? legacy.user_activations as UserActivation[] : undefined
-	};
-
-	return template;
-}
-
-function isValidStatus(status: unknown): status is 'draft' | 'active' | 'archived' {
-	return status === 'draft' || status === 'active' || status === 'archived';
-}

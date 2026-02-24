@@ -65,15 +65,14 @@ export default defineConfig({
 		exclude: [
 			// Exclude smoke tests — they hit real external APIs (Census, Congress.gov, CWC)
 			'tests/smoke/**',
-			// Exclude Playwright E2E tests (UI-based) but include voter-protocol E2E tests (MSW-based)
+			// Exclude Playwright E2E tests (UI-based)
 			'tests/e2e/basic-functionality.spec.ts',
 			'tests/e2e/identity-verification-flow.spec.ts',
 			'tests/e2e/moderation/moderation-pipeline.spec.ts',
 			// Temporarily exclude Svelte component tests - require Svelte 5 browser environment
 			// (incompatible with MSW Node.js environment in current config)
 			// See: docs/testing/svelte-component-testing.md for migration path
-			'tests/unit/ProofGenerator.test.ts',
-			'tests/integration/template-creator-ui.test.ts'
+			'tests/unit/ProofGenerator.test.ts'
 		],
 
 		// Environment configuration
@@ -81,7 +80,6 @@ export default defineConfig({
 		setupFiles: [
 			'tests/setup/api-test-setup.ts', // MSW setup FIRST so it can intercept fetch
 			'tests/config/setup.ts',
-			'tests/config/test-monitoring.ts',
 			'@testing-library/svelte/vitest' // Adds setup() and cleanup() for Svelte 5
 		],
 		globals: true,

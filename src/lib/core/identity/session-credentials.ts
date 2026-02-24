@@ -108,7 +108,7 @@ export interface SessionCredential {
 	verificationMethod: 'self.xyz' | 'didit' | 'digital-credentials-api';
 
 	/**
-	 * Ed25519 signed receipt from the Shadow Atlas operator (Wave 39d).
+	 * Ed25519 signed receipt from the Shadow Atlas operator.
 	 * Proves the operator acknowledged this registration — anti-censorship proof.
 	 * If the operator later removes the entry from the log, this receipt
 	 * serves as cryptographic evidence of the original insertion.

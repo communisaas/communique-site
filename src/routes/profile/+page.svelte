@@ -1,12 +1,18 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { User, Settings, FileText, MapPin, ExternalLink, Edit3 } from '@lucide/svelte';
+	/**
+	 * Profile Page — The Document
+	 *
+	 * A civic passport that inhabits the viewport.
+	 * Mobile: stacked, intimate. Desktop: zones spread, space composed.
+	 * The signal bar is the visual spine. Everything else is typography and space.
+	 */
+	import { User as UserIcon, ExternalLink, ChevronRight, Edit3, Download, Trash2 } from '@lucide/svelte';
+	import { spring } from 'svelte/motion';
+	import { fly } from 'svelte/transition';
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
 	import ProfileEditModal from '$lib/components/profile/ProfileEditModal.svelte';
-	import SkeletonCard from '$lib/components/ui/SkeletonCard.svelte';
-	import SkeletonStat from '$lib/components/ui/SkeletonStat.svelte';
-	import PasskeyUpgrade from '$lib/components/auth/PasskeyUpgrade.svelte';
+	import GroundCard from '$lib/components/profile/GroundCard.svelte';
+	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 
@@ -20,34 +26,87 @@
 
 	let { data }: { data: PageData } = $props();
 
-	function handlePasskeyRegistered() {
-		// Reload page data to refresh user trust_tier
-		invalidateAll();
-	}
-
 	type EditSection = 'basic' | 'profile';
+	let avatarEl = $state<HTMLImageElement | null>(null);
+	let avatarError = $state(false);
 	let showEditModal = $state(false);
 	let editingSection = $state<EditSection>('basic');
 
-	// Get active tab from URL
-	// Tab is managed by the layout
-	const activeTab = $derived(
-		($page.url.searchParams.get('tab') as 'overview' | 'profile' | 'templates' | 'settings') ||
-			'overview'
-	);
-
-	// User data is immediately available
 	const user = $derived(data.user);
-
-	// Streamed data - these are promises
 	const userDetailsPromise = $derived(data.streamed?.userDetails);
 	const templatesDataPromise = $derived(data.streamed?.templatesData);
 	const representativesPromise = $derived(data.streamed?.representatives);
 
+	const trustTier = $derived((user as Record<string, unknown>)?.trust_tier as number ?? 0);
+	const tier = $derived(Math.max(0, Math.min(4, Math.floor(trustTier))));
+
+	const levels = [
+		{
+			signal: 'Noise',
+			arrives: 'General inbox. No constituent status. Likely unread.',
+			weight: 8,
+			gradientFrom: '#cbd5e1', gradientTo: '#94a3b8',
+			textClass: 'text-slate-600',
+			accentClass: 'text-slate-700',
+		},
+		{
+			signal: 'Weak',
+			arrives: 'Named sender. No district proof. Low priority.',
+			weight: 18,
+			gradientFrom: '#93c5fd', gradientTo: '#3b82f6',
+			textClass: 'text-blue-600',
+			accentClass: 'text-blue-700',
+		},
+		{
+			signal: 'Constituent',
+			arrives: 'Confirmed constituent. Flagged for your district. Gets read.',
+			weight: 62,
+			gradientFrom: '#34d399', gradientTo: '#10b981',
+			textClass: 'text-emerald-600',
+			accentClass: 'text-emerald-700',
+		},
+		{
+			signal: 'Verified',
+			arrives: 'Government ID verified. Cryptographic proof. Cannot be faked or botted.',
+			weight: 82,
+			gradientFrom: '#c084fc', gradientTo: '#a855f7',
+			textClass: 'text-purple-600',
+			accentClass: 'text-purple-700',
+		},
+		{
+			signal: 'Undeniable',
+			arrives: 'Zero-knowledge proof of residency. Mathematically verified. Maximum weight.',
+			weight: 100,
+			gradientFrom: '#818cf8', gradientTo: '#6366f1',
+			textClass: 'text-indigo-600',
+			accentClass: 'text-indigo-700',
+		}
+	];
+
+	const current = $derived(levels[tier]);
+	const signalWidth = spring(0, { stiffness: 0.06, damping: 0.65 });
+
+	$effect(() => {
+		signalWidth.set(current.weight);
+	});
+
+	// CSP-safe avatar error handling — also catches already-failed images
+	$effect(() => {
+		if (avatarEl) {
+			if (avatarEl.complete && avatarEl.naturalWidth === 0) {
+				avatarError = true;
+				return;
+			}
+			const handler = () => (avatarError = true);
+			avatarEl.addEventListener('error', handler);
+			return () => avatarEl?.removeEventListener('error', handler);
+		}
+	});
+
 	function formatDate(date: string | Date) {
 		return new Date(date).toLocaleDateString('en-US', {
 			year: 'numeric',
-			month: 'long',
+			month: 'short',
 			day: 'numeric'
 		});
 	}
@@ -58,407 +117,333 @@
 	}
 
 	function handleProfileSave(_data: import('$lib/types/any-replacements.js').ProfileUpdateData) {
-		// Optimistic update — modal already persisted via API
 		showEditModal = false;
+		invalidateAll();
+	}
+
+	function partyColor(party: string): string {
+		const p = party?.toLowerCase() || '';
+		if (p.startsWith('d')) return 'text-blue-700';
+		if (p.startsWith('r')) return 'text-red-700';
+		return 'text-slate-600';
+	}
+
+	function chamberLabel(chamber: string): string {
+		return chamber === 'senate' ? 'Sen.' : 'Rep.';
+	}
+
+	function handleVerifyAddress(): void {
+		modalActions.openModal('address-modal', 'address', {
+			source: 'profile',
+			user: data.user
+		});
 	}
 </script>
 
 <svelte:head>
-	<title>Profile - Communiqué</title>
-	<meta name="description" content="Manage your profile and advocacy settings" />
+	<title>Profile - Communiqu&eacute;</title>
+	<meta name="description" content="Your civic identity and advocacy impact" />
 </svelte:head>
 
-<div>
-	{#if activeTab === 'overview'}
-		<!-- Overview Tab -->
-		<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
-			<!-- Profile Summary -->
-			<div class="space-y-6 lg:col-span-2">
-				<!-- Passkey Upgrade Banner (for trust_tier 0 users) -->
-				{#if user}
-					<PasskeyUpgrade user={user} onregistered={handlePasskeyRegistered} />
-				{/if}
-				<!-- Account Status -->
-				{#await userDetailsPromise}
-					<SkeletonCard lines={4} />
-				{:then userDetails}
-					{#if userDetails}
-						<div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-							<h3 class="mb-4 text-lg font-semibold text-slate-900">Account Status</h3>
-							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-								<div>
-									<dt class="text-sm font-medium text-slate-500">Member since</dt>
-									<dd class="text-sm text-slate-900">
-										{formatDate(userDetails.timestamps.created_at)}
-									</dd>
-								</div>
-								<div>
-									<dt class="text-sm font-medium text-slate-500">Last updated</dt>
-									<dd class="text-sm text-slate-900">
-										{formatDate(userDetails.timestamps.updated_at)}
-									</dd>
-								</div>
-								<div>
-									<dt class="text-sm font-medium text-slate-500">Congressional District</dt>
-									<dd class="text-sm text-slate-900">
-										{'Not determined'}
-									</dd>
-								</div>
-								<div>
-									<dt class="text-sm font-medium text-slate-500">Profile Visibility</dt>
-									<dd class="text-sm capitalize text-slate-900">
-										{userDetails.profile?.visibility || 'Private'}
-									</dd>
-								</div>
-							</div>
-						</div>
-					{:else}
-						<!-- Fallback with basic user data -->
-						<div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-							<h3 class="mb-4 text-lg font-semibold text-slate-900">Account Status</h3>
-							<div class="text-sm text-slate-600">Loading account details...</div>
-						</div>
-					{/if}
-				{/await}
 
-				<!-- Template Activity -->
-				{#await templatesDataPromise}
-					<div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-						<h3 class="mb-4 text-lg font-semibold text-slate-900">Template Activity</h3>
-						<div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-							<SkeletonStat />
-							<SkeletonStat />
-							<SkeletonStat />
-							<SkeletonStat />
-						</div>
-					</div>
-				{:then templatesData}
-					{#if templatesData}
-						<div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-							<h3 class="mb-4 text-lg font-semibold text-slate-900">Template Activity</h3>
-							<div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-								<div class="text-center">
-									<div class="text-2xl font-bold text-participation-primary-600">
-										{templatesData.templateStats.total}
-									</div>
-									<div class="text-xs text-slate-600">Templates</div>
-								</div>
-								<div class="text-center">
-									<div class="text-2xl font-bold text-green-600">
-										{templatesData.templateStats.published}
-									</div>
-									<div class="text-xs text-slate-600">Published</div>
-								</div>
-								<div class="text-center">
-									<div class="text-2xl font-bold text-purple-600">
-										{templatesData.templateStats.totalUses}
-									</div>
-									<div class="text-xs text-slate-600">Total Uses</div>
-								</div>
-								<div class="text-center">
-									<div class="text-2xl font-bold text-emerald-600">
-										{templatesData.templateStats.totalSent}
-									</div>
-									<div class="text-xs text-slate-600">Messages Sent</div>
-								</div>
-							</div>
-						</div>
-					{/if}
-				{/await}
-
-				<!-- Recent Templates -->
-				{#await templatesDataPromise}
-					<SkeletonCard lines={3} showActions={true} />
-				{:then templatesData}
-					{#if templatesData && templatesData.templates.length > 0}
-						<div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-							<div class="mb-4 flex items-center justify-between">
-								<h3 class="text-lg font-semibold text-slate-900">Recent Templates</h3>
-								<Button variant="secondary" size="sm" href="/profile?tab=templates">
-									View All
-								</Button>
-							</div>
-							<div class="space-y-3">
-								{#each templatesData.templates.slice(0, 3) as template}
-									<div class="flex items-center justify-between rounded-lg bg-slate-50 p-3">
-										<div class="flex-1">
-											<h4 class="font-medium text-slate-900">{template.title}</h4>
-											<div class="mt-1 flex items-center space-x-2">
-												<Badge
-													variant={template.status === 'published' ? 'success' : 'warning'}
-													size="sm"
-												>
-													{template.status}
-												</Badge>
-												<span class="text-xs text-slate-500">
-													{formatDate(template.createdAt)}
-												</span>
-											</div>
-										</div>
-										<a href="/s/{template.slug}" target="_blank">
-											<Button variant="secondary" size="sm">
-												<ExternalLink class="mr-1 h-4 w-4" />
-												View
-											</Button>
-										</a>
-									</div>
-								{/each}
-							</div>
-						</div>
-					{/if}
-				{/await}
+<!-- ═══ ZONE 1: IDENTITY + SIGNAL ═══ -->
+<section in:fly={{ y: 12, duration: 400 }}>
+	<!-- Avatar + Name — larger on desktop -->
+	<div class="flex items-center gap-4 lg:gap-5">
+		{#if user?.avatar && !avatarError}
+			<img
+				bind:this={avatarEl}
+				src={user.avatar}
+				alt=""
+				class="h-12 w-12 rounded-full lg:h-14 lg:w-14"
+				style="box-shadow: 0 0 0 2.5px oklch(0.94 0.01 60)"
+			/>
+		{:else}
+			<div
+				class="flex h-12 w-12 items-center justify-center rounded-full bg-participation-primary-100 lg:h-14 lg:w-14"
+				style="box-shadow: 0 0 0 2.5px oklch(0.94 0.01 60)"
+			>
+				<UserIcon class="h-5 w-5 text-participation-primary-600 lg:h-6 lg:w-6" />
 			</div>
+		{/if}
+		<div>
+			<h1 class="text-xl font-bold text-slate-900 sm:text-2xl lg:text-3xl" style="font-family: 'Satoshi', system-ui, sans-serif">
+				{user?.name || 'Your Profile'}
+			</h1>
+			<p class="text-sm text-slate-500 lg:text-base">{user?.email}</p>
+		</div>
+	</div>
 
-			<!-- Sidebar -->
-			<div class="space-y-6">
-				<!-- Note: Address section removed per CYPHERPUNK-ARCHITECTURE.md privacy requirements -->
-				<!-- Address data is verified via TEE but never stored in plaintext -->
+	<!-- Signal statement -->
+	<div class="mt-6 sm:mt-8 lg:mt-10">
+		<p class="text-base text-slate-700 lg:text-lg">
+			Your voice arrives as
+			<span class="font-bold {current.accentClass}">{current.signal}</span>.
+		</p>
+	</div>
 
-				<!-- Representatives -->
-				{#await representativesPromise}
-					<SkeletonCard lines={3} />
-				{:then representatives}
-					{#if representatives && representatives.length > 0}
-						<div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-							<h3 class="mb-4 text-lg font-semibold text-slate-900">Your Representatives</h3>
-							<div class="space-y-3">
-								{#each representatives as rep}
-									<div class="rounded-lg bg-slate-50 p-3">
-										<div class="font-medium text-slate-900">{(rep as unknown as ProfileRepresentative).name}</div>
-										<div class="text-sm text-slate-600">{(rep as unknown as ProfileRepresentative).party} - {(rep as unknown as ProfileRepresentative).chamber}</div>
-										<div class="text-xs text-slate-500">{(rep as unknown as ProfileRepresentative).state}-{(rep as unknown as ProfileRepresentative).district}</div>
-									</div>
-								{/each}
-							</div>
-						</div>
-					{/if}
-				{/await}
+	<!-- Signal bar — the visual spine, full container width -->
+	<div class="mt-3">
+		<div class="relative h-2 overflow-hidden rounded-full lg:h-2.5" style="background: oklch(0.90 0.008 60)">
+			<div
+				class="absolute inset-y-0 left-0 rounded-full"
+				style="width: {$signalWidth}%;
+				       background: linear-gradient(90deg, {current.gradientFrom}, {current.gradientTo});
+				       transition: background 700ms ease"
+			></div>
+			<div
+				class="absolute inset-y-0 left-0 rounded-full"
+				style="width: {$signalWidth}%;
+				       background: linear-gradient(180deg, rgba(255,255,255,0.25), transparent)"
+			></div>
+		</div>
+	</div>
 
-				<!-- Quick Actions -->
-				<div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-					<h3 class="mb-4 text-lg font-semibold text-slate-900">Quick Actions</h3>
-					<div class="space-y-2">
-						<a href="/?create=true" class="inline-block w-full">
-							<Button variant="secondary" size="sm" classNames="w-full justify-start">
-								<FileText class="mr-2 h-4 w-4" />
-								Create Template
-							</Button>
-						</a>
-						<Button
-							variant="secondary"
-							size="sm"
-							classNames="w-full justify-start"
-							onclick={() => openEditModal('profile')}
-						>
-							<User class="mr-2 h-4 w-4" />
-							Edit Profile
-						</Button>
-						<Button variant="secondary" size="sm" classNames="w-full justify-start">
-							<Settings class="mr-2 h-4 w-4" />
-							Privacy Settings
-						</Button>
-					</div>
-				</div>
+	<!-- What the recipient sees -->
+	{#key tier}
+		<p
+			class="mt-3 max-w-prose text-sm leading-relaxed text-slate-600 lg:text-base"
+			in:fly={{ y: 4, duration: 300, delay: 50 }}
+		>
+			{current.arrives}
+		</p>
+	{/key}
+
+	<!-- Next step -->
+	{#if tier === 1}
+		<p class="mt-2.5 text-sm lg:text-base">
+			<button class="font-medium text-emerald-600 transition-colors hover:text-emerald-800" onclick={handleVerifyAddress}>
+				Verify your address &rarr;
+			</button>
+		</p>
+	{:else if tier === 2}
+		<p class="mt-2.5 text-sm text-slate-400 lg:text-base">
+			Verify with digital ID &mdash; coming soon
+		</p>
+	{:else if tier === 3}
+		<p class="mt-2.5 text-sm lg:text-base">
+			<button class="font-medium text-indigo-600 transition-colors hover:text-indigo-800">
+				Generate ZK proof &rarr;
+			</button>
+		</p>
+	{/if}
+</section>
+
+
+<hr class="section-rule" />
+
+
+<!-- ═══ ZONE 2: GROUND + REPRESENTATIVES ═══ -->
+<!-- Side by side on large screens: ground anchors left, representatives float right -->
+<section in:fly={{ y: 12, duration: 400, delay: 100 }}>
+	<div class="lg:grid lg:grid-cols-5 lg:gap-12">
+		<!-- Ground — left column, wider -->
+		<div class="lg:col-span-3">
+			<span class="section-label">Your ground</span>
+			<div class="mt-3">
+				{#if user}
+					<GroundCard userId={user.id} embedded={true} onVerifyAddress={handleVerifyAddress} />
+				{/if}
 			</div>
 		</div>
-	{:else if activeTab === 'profile'}
-		<!-- Profile Tab -->
-		{#await userDetailsPromise}
-			<div class="max-w-3xl">
-				<SkeletonCard lines={10} />
-			</div>
-		{:then userDetails}
-			<div class="max-w-3xl">
-				<div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-					<h3 class="mb-6 text-lg font-semibold text-slate-900">Profile Information</h3>
-					<div class="space-y-6">
-						<!-- Basic Information -->
-						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<div>
-								<dt class="block text-sm font-medium text-slate-700">Name</dt>
-								<dd class="mt-1 text-sm text-slate-900">
-									{userDetails?.name || user.name || 'Not provided'}
-								</dd>
-							</div>
-							<div>
-								<dt class="block text-sm font-medium text-slate-700">Email</dt>
-								<dd class="mt-1 text-sm text-slate-900">{userDetails?.email || user.email}</dd>
-							</div>
-						</div>
 
-						<!-- Profile Details -->
-						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<div>
-								<dt class="block text-sm font-medium text-slate-700">Role</dt>
-								<dd class="mt-1 text-sm text-slate-900">
-									{userDetails?.profile?.role || 'Not provided'}
-								</dd>
-							</div>
-							<div>
-								<dt class="block text-sm font-medium text-slate-700">Organization</dt>
-								<dd class="mt-1 text-sm text-slate-900">
-									{userDetails?.profile?.organization || 'Not provided'}
-								</dd>
-							</div>
-						</div>
+		<!-- Representatives — right column -->
+		<div class="mt-8 lg:col-span-2 lg:mt-0">
+			<span class="section-label">Your representatives</span>
 
-						<div>
-							<dt class="block text-sm font-medium text-slate-700">Connection to Issues</dt>
-							<dd class="mt-1 text-sm text-slate-900">
-								{userDetails?.profile?.connection || 'Not provided'}
-							</dd>
-						</div>
-
-						<div class="flex justify-end">
-							<Button variant="primary" onclick={() => openEditModal('profile')}>
-								<Edit3 class="mr-2 h-4 w-4" />
-								Edit Profile
-							</Button>
-						</div>
-					</div>
+			{#await representativesPromise}
+				<div class="mt-3 animate-pulse">
+					<div class="h-5 w-48 rounded bg-slate-200/40"></div>
 				</div>
-			</div>
-		{/await}
-	{:else if activeTab === 'templates'}
-		<!-- Templates Tab -->
-		{#await templatesDataPromise}
-			<div>
-				<div class="mb-6 flex items-center justify-between">
-					<h3 class="text-lg font-semibold text-slate-900">Your Templates</h3>
-				</div>
-				<div class="space-y-4">
-					<SkeletonCard lines={3} />
-					<SkeletonCard lines={3} />
-					<SkeletonCard lines={3} />
-				</div>
-			</div>
-		{:then templatesData}
-			<div>
-				<div class="mb-6 flex items-center justify-between">
-					<h3 class="text-lg font-semibold text-slate-900">Your Templates</h3>
-					{#if templatesData && templatesData.templates.length > 0}
-						<a href="/?create=true">
-							<Button variant="primary">
-								<FileText class="mr-2 h-4 w-4" />
-								Create Template
-							</Button>
-						</a>
-					{/if}
-				</div>
-
-				{#if templatesData && templatesData.templates.length > 0}
-					<div class="rounded-lg border border-slate-200 bg-white shadow-sm">
-						{#each templatesData.templates as template, _i}
-							<div class="p-6 {_i > 0 ? 'border-t border-slate-200' : ''}">
-								<div class="flex items-start justify-between">
-									<div class="flex-1">
-										<div class="mb-2 flex items-center space-x-2">
-											<h4 class="font-semibold text-slate-900">{template.title}</h4>
-											<Badge
-												variant={template.status === 'published' ? 'success' : 'warning'}
-												size="sm"
-											>
-												{template.status}
-											</Badge>
-											{#if template.is_public}
-												<Badge variant="neutral" size="sm">Public</Badge>
-											{/if}
-										</div>
-										<p class="mb-2 text-sm text-slate-600">{template.description}</p>
-										<div class="flex items-center space-x-4 text-xs text-slate-500">
-											<span>Category: {template.category}</span>
-											<span>Created: {formatDate(template.createdAt)}</span>
-											<span>Uses: {template.template_campaign?.length || 0}</span>
-										</div>
-									</div>
-									<div class="ml-4 flex items-center space-x-2">
-										<a href="/" class="inline-flex">
-											<Button variant="secondary" size="sm">
-												<Edit3 class="mr-1 h-4 w-4" />
-												Manage
-											</Button>
-										</a>
-										<a href="/{template.slug}" target="_blank" class="inline-flex">
-											<Button variant="secondary" size="sm">
-												<ExternalLink class="mr-1 h-4 w-4" />
-												View
-											</Button>
-										</a>
-									</div>
-								</div>
+			{:then representatives}
+				{#if representatives && representatives.length > 0}
+					<div class="mt-3 space-y-1.5">
+						{#each representatives as rep}
+							{@const r = rep as unknown as ProfileRepresentative}
+							<div class="text-sm text-slate-700">
+								<span class="font-medium">{chamberLabel(r.chamber)} {r.name}</span>
+								<span class="font-semibold {partyColor(r.party)}">({r.party})</span>
+								{#if r.chamber !== 'senate' && r.district}
+									<span class="text-slate-400">{r.state}-{r.district}</span>
+								{/if}
 							</div>
 						{/each}
 					</div>
 				{:else}
-					<div class="py-12 text-center">
-						<FileText class="mx-auto mb-4 h-12 w-12 text-slate-400" />
-						<h3 class="mb-2 text-lg font-semibold text-slate-900">No templates yet</h3>
-						<p class="mb-4 text-slate-600">
-							Create your first template to start building advocacy campaigns.
-						</p>
-						<a href="/?create=true">
-							<Button variant="primary">
-								<FileText class="mr-2 h-4 w-4" />
-								Create Your First Template
-							</Button>
-						</a>
-					</div>
+					<p class="mt-3 text-sm text-slate-500">
+						Your representatives appear after address verification.
+					</p>
 				{/if}
+			{/await}
+		</div>
+	</div>
+</section>
+
+
+<hr class="section-rule" />
+
+
+<!-- ═══ ZONE 3: RECORD ═══ -->
+<section in:fly={{ y: 12, duration: 400, delay: 200 }}>
+	<span class="section-label">Your record</span>
+
+	{#await templatesDataPromise}
+		<div class="mt-5 flex gap-8 sm:gap-12">
+			{#each Array(4) as _}
+				<div class="animate-pulse">
+					<div class="h-9 w-10 rounded bg-slate-200/40"></div>
+					<div class="mt-2 h-3 w-14 rounded bg-slate-200/30"></div>
+				</div>
+			{/each}
+		</div>
+	{:then templatesData}
+		{#if templatesData}
+			<!-- Impact numbers — spread across the width on large screens -->
+			<div class="mt-5 grid grid-cols-2 gap-y-5 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-12 lg:gap-x-16">
+				<div>
+					<span class="font-mono text-3xl font-bold text-participation-primary-600 lg:text-4xl">
+						{templatesData.templateStats.totalSent}
+					</span>
+					<span class="block text-xs font-medium text-slate-500">sent</span>
+				</div>
+				<div>
+					<span class="font-mono text-3xl font-bold text-emerald-600 lg:text-4xl">
+						{templatesData.templateStats.totalDelivered}
+					</span>
+					<span class="block text-xs font-medium text-slate-500">delivered</span>
+				</div>
+				<div>
+					<span class="font-mono text-3xl font-bold text-slate-800 lg:text-4xl">
+						{templatesData.templateStats.total}
+					</span>
+					<span class="block text-xs font-medium text-slate-500">templates</span>
+				</div>
+				<div>
+					<span class="font-mono text-3xl font-bold text-violet-600 lg:text-4xl">
+						{templatesData.templateStats.totalUses}
+					</span>
+					<span class="block text-xs font-medium text-slate-500">adopted</span>
+				</div>
 			</div>
-		{/await}
-	{:else}
-		<!-- Settings Tab -->
-		{#await userDetailsPromise}
-			<div class="max-w-3xl space-y-6">
-				<SkeletonCard lines={6} />
-				<SkeletonCard lines={4} />
-			</div>
-		{:then userDetails}
-			<div class="max-w-3xl space-y-6">
-				<!-- Privacy Settings -->
-				<div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-					<h3 class="mb-4 text-lg font-semibold text-slate-900">Privacy Settings</h3>
-					<div class="space-y-4">
-						<div>
-							<label for="profile-visibility" class="mb-2 block text-sm font-medium text-slate-700"
-								>Profile Visibility</label
+
+			<!-- Template list — readable width, left-aligned -->
+			{#if templatesData.templates.length > 0}
+				<div class="mt-8 max-w-2xl">
+					{#each templatesData.templates.slice(0, 5) as template, i}
+						<div
+							class="flex items-center justify-between py-3 {i > 0 ? 'border-t border-dotted border-slate-200' : ''}"
+						>
+							<div class="min-w-0 flex-1">
+								<div class="flex items-center gap-2.5">
+									<span class="truncate text-sm font-medium text-slate-800">
+										{template.title}
+									</span>
+									<Badge
+										variant={template.status === 'published' ? 'success' : 'warning'}
+										size="sm"
+									>
+										{template.status}
+									</Badge>
+								</div>
+								<div class="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
+									<span>{formatDate(template.createdAt)}</span>
+									<span>{template.template_campaign?.length || 0} uses</span>
+								</div>
+							</div>
+							<a
+								href="/s/{template.slug}"
+								class="ml-3 flex-shrink-0 text-slate-400 transition-colors hover:text-slate-600"
 							>
-							<select
-								id="profile-visibility"
-								class="block w-full rounded-md border-slate-300 shadow-sm focus:border-participation-primary-500 focus:ring-participation-primary-500 sm:text-sm"
-							>
-								<option value="private" selected={userDetails?.profile?.visibility === 'private'}
-									>Private</option
-								>
-								<option value="limited" selected={userDetails?.profile?.visibility === 'limited'}
-									>Limited</option
-								>
-								<option value="public" selected={userDetails?.profile?.visibility === 'public'}
-									>Public</option
-								>
-							</select>
-							<p class="mt-1 text-xs text-slate-500">
-								Control who can see your profile information
-							</p>
+								<ExternalLink class="h-3.5 w-3.5" />
+							</a>
 						</div>
-					</div>
-				</div>
+					{/each}
 
-				<!-- Account Management -->
-				<div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-					<h3 class="mb-4 text-lg font-semibold text-slate-900">Account Management</h3>
-					<div class="space-y-4">
-						<Button variant="secondary" classNames="w-full justify-start">Export My Data</Button>
-						<Button variant="secondary" classNames="w-full justify-start">Download Profile</Button>
-						<Button variant="danger" classNames="w-full justify-start">Delete Account</Button>
-					</div>
+					{#if templatesData.templates.length > 5}
+						<div class="border-t border-dotted border-slate-200 pt-3">
+							<a
+								href="/browse"
+								class="group inline-flex items-center gap-1 text-sm font-medium text-participation-primary-600 transition-colors hover:text-participation-primary-700"
+							>
+								View all templates
+								<ChevronRight class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+							</a>
+						</div>
+					{/if}
 				</div>
-			</div>
-		{/await}
-	{/if}
-</div>
+			{:else}
+				<p class="mt-6 text-sm text-slate-500 lg:text-base">
+					No messages sent yet.
+					<a
+						href="/?create=true"
+						class="font-medium text-participation-primary-600 transition-colors hover:text-participation-primary-700"
+					>
+						Create a template to start &rarr;
+					</a>
+				</p>
+			{/if}
+		{/if}
+	{/await}
+</section>
 
-<!-- Edit Profile Modal -->
+
+<hr class="section-rule" />
+
+
+<!-- ═══ ZONE 4: COLOPHON ═══ -->
+<section in:fly={{ y: 12, duration: 400, delay: 300 }}>
+	{#await userDetailsPromise}
+		<div class="animate-pulse space-y-2">
+			<div class="h-5 w-52 rounded bg-slate-200/40"></div>
+			<div class="h-3 w-36 rounded bg-slate-200/30"></div>
+		</div>
+	{:then userDetails}
+		{#if userDetails?.profile?.role || userDetails?.profile?.organization || userDetails?.profile?.connection}
+			<p class="text-sm text-slate-700 lg:text-base">
+				{#if userDetails.profile.role}
+					<span class="text-slate-500">Role</span>
+					<span class="ml-1 font-medium text-slate-800">{userDetails.profile.role}</span>
+				{/if}
+				{#if userDetails.profile.organization}
+					{#if userDetails.profile.role}<span class="mx-2 text-slate-300">&middot;</span>{/if}
+					<span class="text-slate-500">Org</span>
+					<span class="ml-1 font-medium text-slate-800">{userDetails.profile.organization}</span>
+				{/if}
+				{#if userDetails.profile.connection}
+					{#if userDetails.profile.role || userDetails.profile.organization}<span class="mx-2 text-slate-300">&middot;</span>{/if}
+					<span class="text-slate-500">Connection</span>
+					<span class="ml-1 font-medium text-slate-800">{userDetails.profile.connection}</span>
+				{/if}
+			</p>
+		{:else}
+			<p class="text-sm text-slate-500 lg:text-base">No profile details yet.</p>
+		{/if}
+
+		{#if userDetails?.timestamps}
+			<p class="mt-2 text-xs text-slate-500">
+				Member since {formatDate(userDetails.timestamps.created_at)}
+			</p>
+		{/if}
+	{/await}
+
+	<!-- Actions -->
+	<div class="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+		<button
+			class="font-medium text-slate-600 transition-colors hover:text-slate-900"
+			onclick={() => openEditModal('profile')}
+		>
+			<Edit3 class="mr-1 inline h-3.5 w-3.5" />Edit profile
+		</button>
+		<button class="font-medium text-slate-600 transition-colors hover:text-slate-900">
+			<Download class="mr-1 inline h-3.5 w-3.5" />Export data
+		</button>
+		<button class="font-medium text-red-500/80 transition-colors hover:text-red-600">
+			<Trash2 class="mr-1 inline h-3.5 w-3.5" />Delete account
+		</button>
+	</div>
+</section>
+
+
 {#if showEditModal}
 	<ProfileEditModal
 		{user}
@@ -467,3 +452,26 @@
 		onsave={handleProfileSave}
 	/>
 {/if}
+
+
+<style>
+	.section-rule {
+		border: none;
+		border-top: 1px dotted oklch(0.82 0.01 60 / 0.6);
+		margin: 2rem 0;
+	}
+
+	@media (min-width: 1024px) {
+		.section-rule {
+			margin: 2.75rem 0;
+		}
+	}
+
+	.section-label {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: oklch(0.55 0.02 250);
+	}
+</style>

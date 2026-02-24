@@ -10,7 +10,7 @@
 
 <script lang="ts">
 	import { startRegistration } from '@simplewebauthn/browser';
-	import { Fingerprint, ShieldCheck, Loader2, CheckCircle2, AlertCircle } from 'lucide-svelte';
+	import { Fingerprint, ShieldCheck, Loader2, CheckCircle2, AlertCircle } from '@lucide/svelte';
 	import { browser } from '$app/environment';
 
 	let { onregistered }: { onregistered?: () => void } = $props();

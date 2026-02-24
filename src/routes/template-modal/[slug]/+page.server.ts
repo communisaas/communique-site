@@ -38,7 +38,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	});
 
-	// HACKATHON: Allow unauthenticated access via QR code / direct link
+	// Allow unauthenticated access via QR code / direct link
 	// Users can send via mailto FIRST, then we prompt account creation
 	// This removes friction for viral template sharing
 

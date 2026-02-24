@@ -1,16 +1,8 @@
 /**
- * Template Resolution Engine - The Bleeding Edge of MVC Transcendence
+ * Template Resolution Engine
  *
- * This is where Svelte 5's reactive paradigm transcends traditional MVC:
- * - Model: Reactive $state with direct database integration via Prisma
- * - View: Real-time template interpolation with user context
- * - Controller: Pure functional transforms with zero ceremony
- *
- * We're operating at the intersection of:
- * 1. Congressional API integration (CWC)
- * 2. Real-time user context resolution
- * 3. Zero-copy template interpolation
- * 4. OS-level mailto bridging
+ * Resolves template placeholders (e.g. [Name], [Representative]) with user
+ * context and congressional representative data, then builds mailto URLs.
  */
 
 import type { Template, EmailFlowTemplate } from '$lib/types/template';
@@ -351,30 +343,3 @@ function escapeRegex(string: string): string {
 	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * INTERACTION DESIGN PARADIGM SHIFT
- *
- * This resolver represents a fundamental shift from traditional web patterns:
- *
- * TRADITIONAL MVC:
- * - Model: Static data stored in database
- * - View: Template rendered once with placeholders
- * - Controller: Routes requests between M and V
- *
- * SVELTE 5 + COMMUNIQUE PARADIGM:
- * - Reactive Model: $state that updates in real-time
- * - Living View: Template resolution happens at interaction moment
- * - Functional Controller: Pure transforms with zero ceremony
- * - OS Integration: Direct mailto bridging with resolved content
- *
- * The user clicks "Contact Congress" and in <100ms:
- * 1. Template resolver runs with current user context
- * 2. Block variables resolve to real names, addresses, representatives
- * 3. Congressional routing email generated with user+template ID
- * 4. OS mailto launches with fully personalized message
- * 5. Loading modal bridges the perceptual gap
- *
- * This is interaction design at the speed of thought - no page loads,
- * no form submissions, no server round trips. Just pure reactive
- * transformation from intent to action.
- */

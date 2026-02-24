@@ -154,7 +154,7 @@ const status = await getBudgetStatus(startDate, endDate);
 **Authentication:** Requires `CRON_SECRET` environment variable
 
 ```bash
-curl -X GET https://communique.app/api/cron/analytics-snapshot \
+curl -X GET https://communi.email/api/cron/analytics-snapshot \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 

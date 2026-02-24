@@ -1,5 +1,5 @@
 /**
- * Passkey Registration Endpoint (Wave 2A: Graduated Trust)
+ * Passkey Registration Endpoint (Graduated Trust)
  *
  * Two-step WebAuthn registration flow:
  *

@@ -115,39 +115,66 @@ Eliminate the double Census hit and Congress.gov runtime dependency. Ship an in-
 
 ### Phase B: Shadow Atlas Officials Endpoint (voter-protocol repo)
 
-New endpoints and Postgres tables in shadow-atlas.
+New SQLite tables and API endpoints in shadow-atlas. (Adapted from original Postgres plan — shadow-atlas uses SQLite via better-sqlite3.)
 
-#### B1. Postgres schema: officials tables
-- [ ] `federal_members` table (bioguide_id PK, name, party, chamber, state, district, phone, office, contact_form_url, cwc_code, updated_at)
-- [ ] `state_legislators` table (openstates_id PK, name, party, chamber, state, district, phone, email, office_address, updated_at)
-- [ ] `cell_officials` join table (cell_id + official_id + official_table + district_hex)
-- [ ] `geocode_cache` table (address_hash PK, lat, lng, cell_id, congressional_district, cached_at, TTL 30d)
+#### B1. SQLite schema: officials tables — DONE
+- [x] `federal_members` table (bioguide_id PK, name, party, chamber, state, district, phone, office_address, contact_form_url, cwc_code, cd_geoid, state_fips, is_voting, delegate_type, updated_at)
+- [x] `state_legislators` table (openstates_id PK) — schema defined, ingestion deferred to Phase B+
+- [x] `ingestion_log` table (source, status, records_upserted, records_deleted, duration_ms, error)
+- [ ] `geocode_cache` table — deferred (Census geocoding stays in Communique verify endpoint for now)
 
-#### B2. Ingestion pipeline
-- [ ] Federal: cron script to pull `congress-legislators` YAML from GitHub → upsert `federal_members`
-- [ ] State: cron script to pull Open States nightly CSVs → upsert `state_legislators`
-- [ ] Build `cell_officials` join from TIGER geometries + official tables
-- [ ] CWC code as computed column: `'H' || state || lpad(district, 2, '0')`
+**Files:**
+- `packages/shadow-atlas/src/db/officials-schema.sql` (new)
+- `packages/shadow-atlas/src/serving/officials-service.ts` (new — 380 lines)
 
-#### B3. New API endpoints
-- [ ] `GET /v1/officials?cell_id=X` — returns federal + state reps for a cell
-- [ ] `GET /v1/officials?district=CA-12` — returns reps by district code
-- [ ] `GET /v1/districts/:hexId` — hex ID → human-readable name
-- [ ] `GET /v1/cell-proof?include_names=true` — existing + district names (additive, backwards-compatible)
+#### B2. Ingestion pipeline — DONE (federal)
+- [x] Federal: `ingest-legislators.ts` pulls `congress-legislators` YAML from GitHub → upserts `federal_members`
+- [x] CWC code generation: `'H' + state + lpad(district, 2, '0')` → e.g., `HCA12`
+- [x] FIPS ↔ state code bidirectional mapping (all 50 states + 6 territories)
+- [x] Delegate/territory handling: DC delegate, PR resident commissioner, AS/GU/MP/VI delegates
+- [x] Idempotent: safe to re-run (upsert + departed member deletion)
+- [x] Dry-run validated: 538 members (432 voting House + 6 delegates + 100 Senate)
+- [ ] State: Open States CSV ingestion — deferred to Phase B+
+
+**File:** `packages/shadow-atlas/src/scripts/ingest-legislators.ts` (new — 280 lines)
+
+#### B3. New API endpoints — DONE
+- [x] `GET /v1/officials?cell_id=X` — resolves via Tree 2 district hex IDs → federal officials
+- [x] `GET /v1/officials?district=CA-12` — direct district code lookup
+- [x] Zod validation schema for query params
+- [x] Rate limiting (same as lookup)
+- [x] Cache-Control headers (1 hour — officials change infrequently)
+- [x] Wired into `createShadowAtlasAPI` factory and `serve` command
+- [x] Graceful degradation: returns 501 if officials DB not populated
+- [ ] `GET /v1/districts/:hexId` enrichment — deferred (current handler returns Merkle proofs only)
+- [ ] `GET /v1/cell-proof?include_names=true` — deferred (additive, backwards-compatible)
+
+**Files modified:**
+- `packages/shadow-atlas/src/serving/api.ts` (import, schema, route, handler, factory)
+- `packages/shadow-atlas/src/serving/types.ts` (OFFICIALS_UNAVAILABLE error code)
+- `packages/shadow-atlas/src/cli/commands/serve/index.ts` (officials service init + shutdown)
+- `packages/shadow-atlas/package.json` (npm scripts)
+- `packages/shadow-atlas/.env.example` (OFFICIALS_DB_PATH)
+
+#### B4. Tests — DONE
+- [x] 26 unit tests covering: schema init, state+district lookup, Tree 2 hex ID resolution, DC/territory special status, CWC codes, cache behavior, static helpers, API response formatting
+
+**File:** `packages/shadow-atlas/src/__tests__/unit/serving/officials-service.test.ts` (new)
 
 ### Phase C: Communique Switchover
 
 Replace Congress.gov integration with shadow-atlas calls.
 
-#### C1. New shadow-atlas client methods
-- [ ] Add `getOfficials(cellId: string)` to `shadow-atlas/client.ts`
-- [ ] Add response types: `Official`, `OfficialsResponse`
-- [ ] BN254 validation on district_hex fields (consistent with BR5-009)
+#### C1. New shadow-atlas client methods — DONE
+- [x] Add `getOfficials(districtCode: string)` to `shadow-atlas/client.ts`
+- [x] Add response types: `Official`, `OfficialsResponse`, `OfficialsSpecialStatus`
+- [x] No BN254 validation needed — officials data is metadata (names, parties), not field elements
 
-#### C2. Rewire verify endpoint
-- [ ] Replace `addressLookupService.lookupRepsByAddress()` with shadow-atlas `getOfficials()`
-- [ ] Map response to existing `Representative` interface shape (backwards-compatible)
-- [ ] Maintain fallback to Congress.gov during transition (feature flag)
+#### C2. Rewire verify endpoint — DONE
+- [x] Replace `addressLookupService.lookupRepsByDistrict()` with shadow-atlas `getOfficials()`
+- [x] Map response to existing representative shape (backwards-compatible)
+- [x] Maintain fallback to Congress.gov during transition (nested try/catch, not feature flag)
+- [x] Build passes (19.98s, no errors)
 
 #### C3. Delete dead code
 - [ ] Remove `CONGRESS_API_KEY` from env (after shadow-atlas is stable)
@@ -172,9 +199,15 @@ src/routes/api/address/verify/+server.ts         ← eliminate double hit
 
 ### Phase B (voter-protocol repo)
 ```
-packages/shadow-atlas/src/db/schema.sql          ← new tables
-packages/shadow-atlas/src/ingestion/             ← cron scripts
-packages/shadow-atlas/src/serving/api.ts         ← new endpoints
+packages/shadow-atlas/src/db/officials-schema.sql            ← NEW: officials tables
+packages/shadow-atlas/src/serving/officials-service.ts       ← NEW: query layer + LRU cache
+packages/shadow-atlas/src/scripts/ingest-legislators.ts      ← NEW: GitHub YAML → SQLite
+packages/shadow-atlas/src/serving/api.ts                     ← route + handler + factory
+packages/shadow-atlas/src/serving/types.ts                   ← OFFICIALS_UNAVAILABLE error code
+packages/shadow-atlas/src/cli/commands/serve/index.ts        ← service init + shutdown
+packages/shadow-atlas/package.json                           ← npm scripts
+packages/shadow-atlas/.env.example                           ← OFFICIALS_DB_PATH
+packages/shadow-atlas/src/__tests__/unit/serving/officials-service.test.ts  ← NEW: 26 tests
 ```
 
 ### Phase C (this repo — after Phase B ships)
@@ -208,11 +241,57 @@ src/lib/core/location/census-api.ts              ← remove JSONP
 - [x] Grep verification: 0 double-space typos, 0 geoid.slice leaks, 0 lookupRepsByAddress in verify endpoint
 
 
+### Cycle 2: Phase B — Shadow Atlas Officials Endpoint
+**Started:** 2026-02-22
+**Status:** Complete (federal officials; state officials deferred)
+
+#### Architecture Decision: SQLite over Postgres
+
+The architecture doc originally specified Postgres tables. Shadow-atlas uses SQLite (better-sqlite3) throughout — municipal boundaries, event sourcing, district lookups. Adding a Postgres dependency would break the single-binary deployment model. **Decision: SQLite for officials, consistent with existing codebase.** The `cell_officials` join table from the original plan is unnecessary — officials are resolved at query time via FIPS code parsing from Tree 2 district hex IDs.
+
+#### Findings
+
+1. **538 current legislators** (not 535 as previously stated): 432 voting House + 6 non-voting delegates + 100 Senate.
+2. **CWC codes deterministic for House only.** Senate CWC codes require `bioguide_id` + contact form URL mapping, not constructible from district data alone. The ingestion script captures `contact_form_url` from congress-legislators YAML for future CWC code derivation.
+3. **Tree 2 district hex IDs → officials mapping** works via FIPS code parsing: `districts[0]` (CD GEOID as bigint, e.g., 612n → "0612" → state="06", cd="12") and `districts[1]` (state FIPS as bigint). No join table needed.
+4. **At-large/delegate districts**: Census uses "98" for at-large districts in CD GEOID (e.g., VT CD GEOID = "5098"). Normalized to "00" in the service for consistent querying.
+5. **Pre-existing build errors**: `bin/shadow-atlas.ts` has ~15 type errors (mismatched CLI option types), plus a pre-existing `CellMapState | null` type mismatch in `serve/index.ts`. None introduced by Phase B.
+
+#### Completion
+
+- [x] B1: Officials SQLite schema — `federal_members`, `state_legislators` (placeholder), `ingestion_log` tables
+- [x] B2: Ingestion pipeline — `ingest-legislators.ts` fetches YAML from GitHub, parses, upserts (538 members, 688ms)
+- [x] B3: API endpoint — `GET /v1/officials?cell_id=X` and `GET /v1/officials?district=CA-12`, wired into factory + serve command
+- [x] B4: Tests — 26 unit tests all passing (officials service + API response formatting)
+- [x] Dry-run validated: correct CWC codes, delegate types, FIPS mappings, special status for DC/territories
+
+### Cycle 3: Phase C — Communique Switchover (C1 + C2)
+**Started:** 2026-02-22
+**Status:** Complete (C1 + C2 done; C3 dead code deletion and C4 JSONP removal deferred)
+
+#### Architecture Decision: Nested Fallback over Feature Flag
+
+The architecture doc originally specified a feature flag for the Congress.gov → shadow-atlas transition. Nested try/catch is cleaner: shadow-atlas is the primary path, Congress.gov is the catch fallback (existing code preserved in-place), and placeholder data is the final fallback. No env var to manage. When shadow-atlas is stable, delete the Congress.gov catch block.
+
+#### Findings
+
+1. **No BN254 validation needed for officials data.** Officials are metadata (names, parties, phone numbers) — not field elements entering the ZK circuit. BN254 validation is only needed for Merkle proofs and district hex IDs.
+2. **Response shape is backwards-compatible.** Shadow Atlas `toOfficialsResponse()` formats `office` titles identically to the verify endpoint's manual formatting (`"House Representative, CA-12"`, `"Non-Voting Delegate, DC"`, `"Resident Commissioner, PR"`, `"Senator, CA"`). Field mapping: `cwc_code` → `office_code`, `is_voting` → `is_voting_member`.
+3. **Build passes clean.** 19.98s, no new errors. Redis external dependency warning is pre-existing.
+
+#### Completion
+
+- [x] C1: `getOfficials(districtCode)` added to `src/lib/core/shadow-atlas/client.ts` with `Official`, `OfficialsResponse`, `OfficialsSpecialStatus` types
+- [x] C2: `src/routes/api/address/verify/+server.ts` rewired — shadow-atlas primary, Congress.gov fallback, placeholder final fallback
+- [x] Build passes (`npm run build` — 19.98s)
+- [ ] C3: Dead code deletion — deferred until shadow-atlas is deployed and stable
+- [ ] C4: Browser-side Census JSONP removal — deferred
+
 ---
 
 ## Open Questions
 
 1. **Cicero bulk license pricing** — needed for local officials (county, city, school board). Not blocking soft launch.
-2. **Open States Postgres dump schema** — need to validate column names match our `state_legislators` table design before first ingest.
-3. **TIGER/Line → cell_officials join** — PostGIS spatial query to build the join table. Need to confirm 15-digit GEOID from Census Blocks maps cleanly to TIGER block-level geometries.
-4. **Shadow-atlas deployment cadence** — how quickly can we ship Phase B endpoints after Phase A lands?
+2. **Open States CSV column schema** — need to validate column names match our `state_legislators` table design before first ingest.
+3. **Senate CWC code derivation** — `contact_form_url` from congress-legislators is captured but CWC code generation for Senate requires additional mapping. Not blocking CWC delivery (House CWC codes work).
+4. **`/v1/districts/:hexId` enrichment** — current handler returns Merkle proofs only. Adding human-readable names is additive and backwards-compatible but deferred.

@@ -9,6 +9,8 @@ import {
 import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
 import { processSubmissionDelivery } from '$lib/server/delivery-worker';
 import { registerEngagement } from '$lib/core/shadow-atlas/client';
+import { verifyOnChain } from '$lib/core/blockchain/district-gate-client';
+import { queueForRetry } from '$lib/core/blockchain/submission-retry-queue';
 
 /**
  * Submission Creation Endpoint
@@ -135,6 +137,12 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			});
 
 			if (existingByNullifier) {
+				// Same user retrying after a failed response → return existing (idempotent)
+				const pseudonymousId = computePseudonymousId(userId);
+				if (existingByNullifier.pseudonymous_id === pseudonymousId) {
+					return existingByNullifier;
+				}
+				// Different user with same nullifier → genuine double-spend attempt
 				throw error(409, 'This action has already been submitted (duplicate nullifier)');
 			}
 
@@ -202,29 +210,28 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		// The signer→identityCommitment mapping already exists server-side (both fields
 		// are on the User row). This just sends it to Shadow Atlas for Tree 3 insertion.
 		// Idempotent: registerEngagement returns { alreadyRegistered: true } for duplicates.
-		const engagementUser = await prisma.user.findUnique({
-			where: { id: userId },
-			select: { wallet_address: true, identity_commitment: true },
-		});
-		const signerAddress = engagementUser?.wallet_address;
-		const identityCommitment = engagementUser?.identity_commitment;
-		const engagementPromise = (signerAddress && identityCommitment)
-			? registerEngagement(signerAddress, identityCommitment)
-				.then((result) => {
-					if ('alreadyRegistered' in result) {
-						// Expected for repeat submissions — no action needed
-					} else {
+		// Non-fatal: entire block is fire-and-forget to avoid blocking the response.
+		const engagementPromise = (async () => {
+			try {
+				const engagementUser = await db.user.findUnique({
+					where: { id: userId },
+					select: { wallet_address: true, identity_commitment: true },
+				});
+				const signerAddress = engagementUser?.wallet_address;
+				const identityCommitment = engagementUser?.identity_commitment;
+				if (signerAddress && identityCommitment) {
+					const result = await registerEngagement(signerAddress, identityCommitment);
+					if (!('alreadyRegistered' in result)) {
 						console.log('[Submission] Engagement auto-registered:', {
 							userId,
 							leafIndex: result.leafIndex,
 						});
 					}
-				})
-				.catch((err: unknown) => {
-					// Non-fatal: engagement registration failure must not block proof submission
-					console.error('[Submission] Engagement auto-registration failed:', err);
-				})
-			: Promise.resolve();
+				}
+			} catch (err) {
+				console.error('[Submission] Engagement auto-registration failed:', err);
+			}
+		})();
 
 		// Trigger background CWC delivery
 		// Decrypts witness, looks up representatives, submits to CWC API
@@ -233,11 +240,58 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			console.error('[Submission] Background delivery failed:', err)
 		);
 
+		// On-chain ZK proof verification via DistrictGate on Scroll Sepolia
+		// Extracts the flat publicInputsArray (31 elements) from the structured object
+		// and submits to the verifier contract. Falls back to retry queue on failure.
+		const publicInputsArray = (publicInputs as Record<string, unknown>)
+			?.publicInputsArray as string[] | undefined;
+		const verifierDepth = 20; // Default circuit depth for US
+
+		const blockchainPromise = publicInputsArray?.length === 31
+			? (async () => {
+				try {
+					await db.submission.update({
+						where: { id: submission.id },
+						data: { verification_status: 'queued' }
+					});
+
+					const result = await verifyOnChain({
+						proof,
+						publicInputs: publicInputsArray,
+						verifierDepth
+					});
+
+					if (result.success && result.txHash) {
+						await db.submission.update({
+							where: { id: submission.id },
+							data: {
+								verification_status: 'verified',
+								verification_tx_hash: result.txHash,
+								verified_at: new Date()
+							}
+						});
+						console.log('[Submission] On-chain verification succeeded:', {
+							submissionId: submission.id,
+							txHash: result.txHash
+						});
+					} else {
+						console.warn('[Submission] On-chain verification failed, queuing retry:', result.error);
+						await queueForRetry(submission.id, proof, publicInputsArray, verifierDepth);
+					}
+				} catch (err) {
+					console.error('[Submission] Blockchain verification error:', err);
+					await queueForRetry(submission.id, proof, publicInputsArray, verifierDepth)
+						.catch((e) => console.error('[Submission] Retry queue failed:', e));
+				}
+			})()
+			: Promise.resolve();
+
 		if (platform?.context?.waitUntil) {
-			// Cloudflare Workers: keep isolate alive until delivery + promotion + engagement complete
+			// Cloudflare Workers: keep isolate alive until delivery + promotion + engagement + blockchain complete
 			platform.context.waitUntil(deliveryPromise);
 			platform.context.waitUntil(promotionPromise);
 			platform.context.waitUntil(engagementPromise);
+			platform.context.waitUntil(blockchainPromise);
 		}
 		// Non-CF environments (dev): promises run fire-and-forget
 
@@ -250,11 +304,13 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	} catch (err) {
 		console.error('[Submission Creation] Error:', err);
 
-		// Re-throw SvelteKit errors
+		// Re-throw SvelteKit errors (already have proper status + message)
 		if (err && typeof err === 'object' && 'status' in err) {
 			throw err;
 		}
 
-		throw error(500, 'Failed to create submission');
+		// Surface actual error message so ProofGenerator can display it
+		const message = err instanceof Error ? err.message : 'Failed to create submission';
+		throw error(500, message);
 	}
 };

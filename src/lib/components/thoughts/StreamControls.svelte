@@ -15,7 +15,7 @@
 	 * - Clear state indicators
 	 */
 
-	import { Pause, Play, Radio } from 'lucide-svelte';
+	import { Pause, Play, Radio } from '@lucide/svelte';
 
 	interface Props {
 		streaming?: boolean;

@@ -63,7 +63,7 @@
 		},
 		{
 			signal: 'Verified',
-			arrives: 'Verified identity. Cryptographic proof. Cannot be faked or botted.',
+			arrives: 'Government ID verified. Cryptographic proof. Cannot be faked or botted.',
 			weight: 82,
 			gradient: 'from-purple-400 to-purple-500',
 			text: 'text-purple-600',
@@ -108,9 +108,10 @@
 			};
 		if (tier === 2)
 			return {
-				label: 'Verify your identity',
-				sub: 'Cryptographic proof of personhood',
-				action: onVerifyIdentity
+				label: 'Verify with digital ID',
+				sub: 'Mobile driver\u2019s license \u2014 coming soon',
+				action: undefined,
+				comingSoon: true
 			};
 		if (tier === 3)
 			return {
@@ -177,18 +178,27 @@
 	<!-- Next step — one action, not a ladder -->
 	{#if nextStep}
 		<div class="border-t {current.border}">
-			<button
-				class="group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/60"
-				onclick={() => nextStep.action?.()}
-			>
-				<div class="flex-1 min-w-0">
-					<span class="text-sm font-medium text-slate-800">{nextStep.label}</span>
-					<span class="block text-[11px] text-slate-500">{nextStep.sub}</span>
+			{#if nextStep.comingSoon}
+				<div class="flex w-full items-center gap-3 px-4 py-2.5">
+					<div class="flex-1 min-w-0">
+						<span class="text-sm font-medium text-slate-400">{nextStep.label}</span>
+						<span class="block text-[11px] text-slate-400">{nextStep.sub}</span>
+					</div>
 				</div>
-				<ArrowRight
-					class="h-4 w-4 flex-shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5"
-				/>
-			</button>
+			{:else}
+				<button
+					class="group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/60"
+					onclick={() => nextStep.action?.()}
+				>
+					<div class="flex-1 min-w-0">
+						<span class="text-sm font-medium text-slate-800">{nextStep.label}</span>
+						<span class="block text-[11px] text-slate-500">{nextStep.sub}</span>
+					</div>
+					<ArrowRight
+						class="h-4 w-4 flex-shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5"
+					/>
+				</button>
+			{/if}
 		</div>
 	{:else}
 		<div class="border-t {current.border} px-4 py-2.5">

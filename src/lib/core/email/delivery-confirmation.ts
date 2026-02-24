@@ -1,11 +1,11 @@
 /**
- * Delivery Confirmation (Wave 15e)
+ * Delivery Confirmation
  *
  * Generates and validates HMAC-based confirmation tokens for mailto delivery.
  * Tokens are opaque (HMAC of payload + secret) rather than raw IDs to
  * prevent information leakage.
  *
- * Wave 15R: Tokens include an embedded timestamp and expire after 7 days.
+ * Tokens include an embedded timestamp and expire after 7 days.
  *
  * Token format: base64url(id:timestamp).base64url(hmac(id:timestamp))
  *
@@ -21,7 +21,7 @@ import { env } from '$env/dynamic/private';
 
 const TOKEN_SEPARATOR = '.';
 const PAYLOAD_SEPARATOR = ':';
-/** Wave 15R fix (H-03): Tokens expire after 7 days */
+/** Tokens expire after 7 days */
 const TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
 function getSecret(): string {
@@ -62,13 +62,13 @@ export function validateConfirmationToken(token: string): string | null {
 	const secret = getSecret();
 	const expectedHmac = createHmac('sha256', secret).update(payload).digest('base64url');
 
-	// Wave 15R fix (C-02): Use Node.js native constant-time comparison
+	// Use Node.js native constant-time comparison
 	const providedBuf = Buffer.from(providedHmac, 'utf-8');
 	const expectedBuf = Buffer.from(expectedHmac, 'utf-8');
 	if (providedBuf.length !== expectedBuf.length) return null;
 	if (!timingSafeEqual(providedBuf, expectedBuf)) return null;
 
-	// Wave 15R fix (H-03): Check expiration
+	// Check expiration
 	const sepIdx = payload.lastIndexOf(PAYLOAD_SEPARATOR);
 	if (sepIdx === -1) return null;
 

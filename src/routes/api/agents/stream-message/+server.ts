@@ -31,7 +31,6 @@ import {
 } from '$lib/server/llm-cost-protection';
 import type { DecisionMaker } from '$lib/core/agents';
 import { moderatePromptOnly } from '$lib/core/server/moderation';
-import { traceRequest } from '$lib/server/agent-trace';
 
 interface RequestBody {
 	subject_line: string;
@@ -85,26 +84,6 @@ export const POST: RequestHandler = async (event) => {
 	}
 
 	const traceId = crypto.randomUUID();
-
-	traceRequest(traceId, 'message-generation', {
-		metadata: {
-			subjectLength: body.subject_line.length,
-			coreMessageLength: body.core_message.length,
-			topicCount: body.topics?.length || 0,
-			topics: body.topics || [],
-			decisionMakerCount: body.decision_makers?.length || 0,
-			hasVoiceSample: !!body.voice_sample,
-			hasRawInput: !!body.raw_input,
-			geographicScopeType: body.geographic_scope?.type || null
-		},
-		content: {
-			subjectLine: body.subject_line,
-			coreMessage: body.core_message,
-			voiceSample: body.voice_sample,
-			rawInput: body.raw_input,
-			decisionMakerNames: body.decision_makers?.map((dm) => dm.name).filter(Boolean)
-		}
-	}, { userId: session.userId });
 
 	// Prompt injection detection
 	// Content includes AI-refined text (core_message, voice_sample) which can contain

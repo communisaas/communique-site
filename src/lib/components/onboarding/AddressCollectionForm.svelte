@@ -5,6 +5,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { AddressVerificationResult, Representative } from '$lib/types/any-replacements.js';
 	import type { Representative as ProviderRepresentative } from '$lib/core/legislative/types';
+	import { geocodeAddress } from '$lib/core/location/address-geocode';
 
 	let {
 		_template,
@@ -70,25 +71,62 @@
 		try {
 			const fullAddress = `${streetAddress}, ${city}, ${stateCode} ${zipCode}`;
 
-			// Call real address verification API (Census Bureau + ZIP lookup)
-			const { api } = await import('$lib/core/api/client');
-			const result = await api.post('/address/verify', {
+			// Step 1: Client-side geocoding — address never leaves the browser
+			const geocodeResult = await geocodeAddress({
 				street: streetAddress,
 				city,
 				state: stateCode,
-				zipCode
+				zip: zipCode,
+				countryCode: 'US'
+			});
+
+			if (!geocodeResult) {
+				addressError = 'Unable to locate this address. Please check and try again.';
+				return;
+			}
+
+			// Step 2: Get cell_id + district_code from Census Bureau (browser-side)
+			let cellId: string | undefined;
+			let districtCode: string | undefined;
+			try {
+				const { censusAPI } = await import('$lib/core/location/census-api');
+				const censusResult = await censusAPI.geocodeCoordinates(geocodeResult.lat, geocodeResult.lng);
+				if (censusResult) {
+					cellId = censusResult.cell_id ?? undefined;
+					districtCode = censusResult.congressional_district ?? undefined;
+				}
+			} catch {
+				// Census API failure is non-fatal — proceed without cell_id/district_code
+			}
+
+			// Step 3: Resolve district + officials via coordinates-only endpoint
+			const { api } = await import('$lib/core/api/client');
+			const result = await api.post('/location/resolve', {
+				lat: geocodeResult.lat,
+				lng: geocodeResult.lng,
+				signal_type: 'verified',
+				confidence: geocodeResult.confidence,
+				...(cellId ? { cell_id: cellId } : {}),
+				...(districtCode ? { district_code: districtCode } : {})
 			});
 
 			if (result.success && result.data) {
-				// Type guard for address verification data
-				const data = result.data as AddressVerificationResult;
-				if (data.verified) {
-					verificationResult = data;
-					selectedAddress = data.correctedAddress || fullAddress;
+				const data = result.data as Record<string, unknown>;
+				if (data.resolved && data.district) {
+					const district = data.district as { code: string; name: string; state: string };
+					const officials = (data.officials ?? []) as Representative[];
+
+					verificationResult = {
+						verified: true,
+						correctedAddress: geocodeResult.formattedAddress,
+						representatives: officials,
+						zk_eligible: data.zk_eligible as boolean | undefined
+					};
+					selectedAddress = geocodeResult.formattedAddress || fullAddress;
 					currentStep = 'verify';
 				} else {
 					addressError =
-						(data.error as string) || 'Unable to verify address. Please check and try again.';
+						(data.error as string) || 'Unable to determine your district. Please check and try again.';
 				}
 			} else {
 				addressError =
@@ -232,8 +270,8 @@
 						<div>
 							<h3 class="text-sm font-semibold text-blue-900">Private & Secure</h3>
 							<p class="mt-1 text-xs leading-relaxed text-blue-700">
-								Your address is <strong>never shared publicly</strong>. It is only used to verify
-								residency and identify your elected officials.
+								Your address is geocoded <strong>on your device</strong>. Only coordinates are
+								sent to determine your district. Your address never leaves your browser.
 							</p>
 						</div>
 					</div>

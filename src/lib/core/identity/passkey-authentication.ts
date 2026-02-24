@@ -1,5 +1,5 @@
 /**
- * Passkey Authentication (Wave 2A: Graduated Trust Architecture)
+ * Passkey Authentication (Graduated Trust Architecture)
  *
  * Server-side WebAuthn authentication logic using @simplewebauthn/server.
  *

@@ -42,7 +42,7 @@ import { BN254_MODULUS } from '@voter-protocol/noir-prover';
  *
  * @throws {Error} If format is invalid or value >= BN254_MODULUS
  */
-function validateBN254Hex(value: string, label: string): void {
+export function validateBN254Hex(value: string, label: string): void {
 	if (typeof value !== 'string' || !/^0x[0-9a-fA-F]+$/.test(value)) {
 		throw new Error(
 			`BR5-009: Invalid ${label} from Shadow Atlas: expected 0x-hex, got "${String(value).slice(0, 20)}"`
@@ -59,7 +59,7 @@ function validateBN254Hex(value: string, label: string): void {
 /**
  * Validate an array of hex strings are all valid BN254 field elements.
  */
-function validateBN254HexArray(values: string[], label: string): void {
+export function validateBN254HexArray(values: string[], label: string): void {
 	if (!Array.isArray(values)) {
 		throw new Error(`BR5-009: ${label} from Shadow Atlas must be an array`);
 	}
@@ -215,7 +215,7 @@ export interface RegistrationResult {
 	userRoot: string;
 	userPath: string[];
 	pathIndices: number[];
-	/** Ed25519 signed receipt from the operator (Wave 39d — anti-censorship proof) */
+	/** Ed25519 signed receipt from the operator (anti-censorship proof) */
 	receipt?: { data: string; sig: string };
 }
 
@@ -448,7 +448,7 @@ export async function getCellProof(cellId: string): Promise<CellProofResult> {
  * Idempotent: returns { alreadyRegistered: true } if the identity or signer
  * is already registered (catches 400 from oracle-resistant duplicate handling).
  *
- * @param signerAddress - Ethereum address (from User.wallet_address or scroll_address)
+ * @param signerAddress - Ethereum address (from User.wallet_address)
  * @param identityCommitment - Hex-encoded identity commitment (from User.identity_commitment)
  * @returns Leaf index and engagement root, or alreadyRegistered flag
  */
@@ -621,6 +621,192 @@ export async function getEngagementMetrics(identityCommitment: string): Promise<
 }
 
 // ============================================================================
+// Officials (Pre-Ingested Congress Data)
+// ============================================================================
+
+/**
+ * Federal official from Shadow Atlas pre-ingested data.
+ * Served from SQLite — no runtime calls to Congress.gov or any government API.
+ */
+export interface Official {
+	bioguide_id: string;
+	name: string;
+	party: string;
+	chamber: 'house' | 'senate';
+	state: string;
+	district: string | null;
+	office: string;
+	phone: string | null;
+	contact_form_url: string | null;
+	website_url: string | null;
+	cwc_code: string | null;
+	is_voting: boolean;
+	delegate_type: string | null;
+}
+
+export interface OfficialsSpecialStatus {
+	type: 'dc' | 'territory';
+	message: string;
+	has_senators: boolean;
+	has_voting_representative: boolean;
+}
+
+export interface OfficialsResponse {
+	officials: Official[];
+	district_code: string;
+	state: string;
+	special_status: OfficialsSpecialStatus | null;
+	source: 'congress-legislators';
+	cached: boolean;
+}
+
+/**
+ * Get federal officials for a congressional district from Shadow Atlas.
+ *
+ * Shadow Atlas serves pre-ingested data from congress-legislators (CC0).
+ * No runtime calls to Congress.gov or any government API.
+ *
+ * @param districtCode - District code like "CA-12", "VT-AL", "DC-00"
+ * @returns Officials response with house rep + senators
+ * @throws Error if request fails or shadow-atlas returns error
+ */
+export async function getOfficials(districtCode: string): Promise<OfficialsResponse> {
+	const url = `${SHADOW_ATLAS_URL}/v1/officials?district=${encodeURIComponent(districtCode)}`;
+
+	const response = await fetch(url, {
+		headers: {
+			Accept: 'application/json',
+			'X-Client-Version': 'communique-v1',
+		},
+	});
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({
+			error: { code: 'NETWORK_ERROR', message: response.statusText },
+		}));
+
+		const code = errorData.error?.code || 'UNKNOWN';
+		const msg = errorData.error?.message || response.statusText;
+		throw new Error(`Shadow Atlas officials lookup failed [${code}]: ${msg}`);
+	}
+
+	const result = await response.json();
+
+	if (!result.success || !result.data) {
+		throw new Error('Shadow Atlas returned invalid officials response');
+	}
+
+	const data = result.data as OfficialsResponse;
+
+	if (!data.district_code || !data.state || !Array.isArray(data.officials)) {
+		throw new Error('Shadow Atlas officials response missing required fields');
+	}
+
+	for (const official of data.officials) {
+		if (!official.bioguide_id || !official.name || !official.chamber) {
+			throw new Error('Shadow Atlas officials response contains malformed official entry');
+		}
+	}
+
+	return data;
+}
+
+// ============================================================================
+// Composite Resolve (Lookup + Officials in One Call)
+// ============================================================================
+
+/**
+ * Composite resolve: lookup + officials in one call.
+ * Saves a round-trip vs. separate lookupDistrict() + getOfficials() calls.
+ *
+ * @param lat - Latitude (-90 to 90)
+ * @param lng - Longitude (-180 to 180)
+ * @param includeOfficials - Whether to include officials in response (default: true)
+ * @returns District lookup result and officials (null if unavailable)
+ * @throws Error if the composite call fails
+ */
+export async function resolveLocation(
+	lat: number,
+	lng: number,
+	includeOfficials = true,
+): Promise<{ district: DistrictLookupResult; officials: OfficialsResponse | null }> {
+	const params = new URLSearchParams({
+		lat: lat.toString(),
+		lng: lng.toString(),
+		include_officials: includeOfficials.toString(),
+	});
+
+	const response = await fetch(`${SHADOW_ATLAS_URL}/v1/resolve?${params}`, {
+		headers: {
+			Accept: 'application/json',
+			'X-Client-Version': 'communique-v1',
+		},
+		signal: AbortSignal.timeout(10000),
+	});
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({
+			error: { code: 'NETWORK_ERROR', message: response.statusText },
+		})) as ShadowAtlasError;
+
+		throw new Error(
+			`Shadow Atlas resolve failed: ${errorData.error.message || response.statusText}`
+		);
+	}
+
+	const result = await response.json();
+
+	if (!result.success || !result.data) {
+		throw new Error('Shadow Atlas returned invalid resolve response');
+	}
+
+	const data = result.data;
+
+	// Validate district
+	if (!data.district?.id || !data.district?.name) {
+		throw new Error('Shadow Atlas resolve returned invalid district data');
+	}
+
+	// Validate Merkle proof
+	if (!data.merkleProof?.root || !data.merkleProof?.siblings || !data.merkleProof?.pathIndices) {
+		throw new Error('Shadow Atlas resolve returned invalid Merkle proof');
+	}
+
+	if (data.merkleProof.depth !== CIRCUIT_DEPTH) {
+		throw new Error(
+			`Shadow Atlas resolve returned invalid tree depth: ${data.merkleProof.depth}. Expected ${CIRCUIT_DEPTH}.`
+		);
+	}
+
+	if (data.merkleProof.siblings.length !== CIRCUIT_DEPTH || data.merkleProof.pathIndices.length !== CIRCUIT_DEPTH) {
+		throw new Error(
+			`Shadow Atlas resolve returned invalid proof length: siblings=${data.merkleProof.siblings.length}, indices=${data.merkleProof.pathIndices.length}. Expected ${CIRCUIT_DEPTH}.`
+		);
+	}
+
+	// BR5-009: Validate BN254 field bounds
+	validateBN254Hex(data.merkleProof.root, 'merkleProof.root');
+	validateBN254Hex(data.merkleProof.leaf, 'merkleProof.leaf');
+	validateBN254HexArray(data.merkleProof.siblings, 'merkleProof.siblings');
+
+	// Validate officials if present
+	const officials: OfficialsResponse | null = data.officials || null;
+	if (officials) {
+		if (!officials.district_code || !officials.state || !Array.isArray(officials.officials)) {
+			throw new Error('Shadow Atlas resolve returned malformed officials data');
+		}
+	}
+
+	return {
+		district: {
+			district: data.district,
+			merkleProof: data.merkleProof,
+		} as DistrictLookupResult,
+		officials,
+	};
+}
+
+// ============================================================================
 // Health
 // ============================================================================
 
@@ -631,7 +817,7 @@ export async function getEngagementMetrics(identityCommitment: string): Promise<
  */
 export async function healthCheck(): Promise<boolean> {
 	try {
-		const response = await fetch(`${SHADOW_ATLAS_URL}/health`, {
+		const response = await fetch(`${SHADOW_ATLAS_URL}/v1/health`, {
 			headers: {
 				Accept: 'application/json'
 			}

@@ -1,5 +1,5 @@
 /**
- * Submission Retry Queue (Wave 15a)
+ * Submission Retry Queue
  *
  * Database-backed retry queue for failed blockchain submissions.
  * Failed verifyOnChain calls are queued here and retried with exponential backoff.
@@ -65,7 +65,7 @@ export async function queueForRetry(
  * @returns Number of retries processed
  */
 export async function processRetryQueue(): Promise<number> {
-	// Wave 15R fix (M-01): Don't process retries when circuit breaker is open
+	// Don't process retries when circuit breaker is open
 	if (isCircuitOpen()) {
 		console.debug('[RetryQueue] Circuit breaker open, skipping retry batch');
 		return 0;

@@ -226,19 +226,19 @@ export const POST: RequestHandler = async ({ request }) => {
 				return true; // Signal duplicate detected
 			}
 
-			// Wave 14R: Fetch current user for trust_score AND existing entropy (idempotency)
+			// Fetch current user for trust_score AND existing entropy (idempotency)
 			const currentUser = await tx.user.findUnique({
 				where: { id: userId },
 				select: { trust_score: true, encrypted_entropy: true }
 			});
 
-			// Wave 14R fix (C-2): Only generate entropy once per user.
+			// Only generate entropy once per user.
 			// BR6-001: Decrypt existing or generate fresh, then encrypt before storing.
 			const userEntropy = currentUser?.encrypted_entropy
 				? decryptEntropy(currentUser.encrypted_entropy)
 				: generateUserEntropy();
 
-			// Wave 14R fix (H-1): Pass document_type for accurate authority differentiation
+			// Pass document_type for accurate authority differentiation
 			// passport → L4, drivers_license/national_id → L3
 			const authorityLevel = deriveAuthorityLevel({
 				identity_commitment: identityCommitment,

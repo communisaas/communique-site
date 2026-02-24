@@ -1,7 +1,7 @@
 /**
  * Tier 2 Credential Issuance Endpoint
  *
- * Receives the district result (from a prior /api/address/verify geocoding call)
+ * Receives the district result (from a prior /api/location/resolve call)
  * and issues a W3C VC 2.0 DistrictResidencyCredential.
  *
  * Flow:
@@ -18,6 +18,7 @@
  */
 
 import { json } from '@sveltejs/kit';
+import { createHash } from 'crypto';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
 import {
@@ -26,6 +27,9 @@ import {
 	hashDistrict
 } from '$lib/core/identity/district-credential';
 import { TIER_CREDENTIAL_TTL } from '$lib/core/identity/credential-policy';
+
+/** BN254 scalar field modulus — identity commitments must be valid circuit inputs */
+const BN254_MODULUS = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 // ============================================================================
 // Input Validation
@@ -122,7 +126,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const now = new Date();
 		const expiresAt = new Date(now.getTime() + TIER_CREDENTIAL_TTL[2]);
 
-		// 7. Database transaction: insert DistrictCredential + update User
+		// 7. Generate deterministic identity_commitment for ZKP pipeline
+		// Derived from userId + district — unique per user, enables nullifier scheme
+		const raw = `address-attestation:${userId}:${input.district}`;
+		const inner = createHash('sha256').update(raw).digest();
+		const outer = createHash('sha256').update(inner).digest('hex');
+		const identityCommitment = (BigInt('0x' + outer) % BN254_MODULUS).toString(16).padStart(64, '0');
+
+		// 8. Database transaction: insert DistrictCredential + update User
 		await db.$transaction(async (tx) => {
 			// Insert credential record
 			await tx.districtCredential.create({
@@ -140,6 +151,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 
 			// Update user: upgrade trust tier (never downgrade), set district flags
+			// Also set verified_at + identity_commitment so submission endpoint accepts
+			// this user and ZKP proof generation can proceed
 			await tx.user.update({
 				where: { id: userId },
 				data: {
@@ -147,16 +160,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					district_verified: true,
 					address_verified_at: now,
 					address_verification_method: input.verification_method,
-					district_hash: districtHash
+					district_hash: districtHash,
+					verified_at: now,
+					verification_method: input.verification_method,
+					is_verified: true,
+					identity_commitment: identityCommitment
 				}
 			});
 		});
 
-		// 8. Return credential to client for IndexedDB storage
+		// 9. Return credential + identity_commitment to client
+		// Client uses identity_commitment to bootstrap session credential for ZKP
 		return json({
 			success: true,
 			credential,
-			credentialHash
+			credentialHash,
+			identity_commitment: identityCommitment
 		});
 	} catch (err) {
 		console.error('[verify-address] Credential issuance failed:', err);

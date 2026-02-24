@@ -2,26 +2,17 @@
 	/**
 	 * AuthButtons — Perceptually-Engineered OAuth Provider Selection
 	 *
-	 * Design principles (perceptual engineering):
-	 * 1. Visual hierarchy matches user familiarity + trust
-	 * 2. Working memory: exactly 3 providers (4±1 chunk limit) ✓
-	 * 3. Recognition over recall: all buttons show provider names
-	 * 4. Gestalt grouping: space and size create clear tiers
-	 * 5. Responsive: vertical stack works on all screen sizes
-	 *
-	 * Provider order (2026-01-31): Google → LinkedIn → Facebook
+	 * Soft launch: Google + LinkedIn only.
 	 * - Google ⭐⭐⭐⭐ (most familiar, phone verification)
-	 * - LinkedIn ⭐⭐⭐⭐ (professional identity)
-	 * - Facebook ⭐⭐⭐ (moderate verification)
+	 * - LinkedIn ⭐⭐⭐⭐ (professional identity, real-name network)
 	 *
-	 * Temporarily hidden (pending API access):
+	 * Removed from UI (routes kept dormant):
+	 * - Facebook ⭐⭐⭐ (moderate sybil resistance, visual clutter)
 	 * - Coinbase ⭐⭐⭐⭐⭐ (KYC-verified) — OAuth client creation disabled
-	 *
-	 * Disabled providers (routes return 403):
 	 * - Discord ⭐⭐ (trivial account creation)
 	 * - Twitter/X ⭐⭐ (high bot prevalence)
 	 */
-	import { Loader2 } from 'lucide-svelte';
+	import { Loader2 } from '@lucide/svelte';
 
 	let { onAuth } = $props<{ onAuth: (provider: string) => Promise<void> | void }>();
 	let loadingProvider = $state<string | null>(null);
@@ -41,11 +32,6 @@
 	// Featured provider: Most familiar option
 	const featuredProvider = { provider: 'google', name: 'Google', color: '#4285F4' };
 
-	// Primary providers: Professional + social identity
-	const primaryProviders = [
-		{ provider: 'linkedin', name: 'LinkedIn', color: '#0077B5' },
-		{ provider: 'facebook', name: 'Facebook', color: '#1877F2' }
-	];
 </script>
 
 <div class="space-y-3">
@@ -90,46 +76,34 @@
 		<div class="h-px flex-1 bg-slate-200"></div>
 	</div>
 
-	<!-- Primary providers: LinkedIn & Facebook — equal visual weight -->
-	<div class="grid grid-cols-2 gap-2">
-		{#each primaryProviders as auth}
-			<button
-				onclick={() => handleAuthClick(auth.provider)}
-				disabled={loadingProvider !== null}
-				class="relative flex items-center justify-center gap-2 overflow-hidden rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 transition-all duration-300 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm active:scale-[0.98] disabled:cursor-wait disabled:opacity-100"
-			>
-				{#if loadingProvider === auth.provider}
-					<div
-						class="absolute inset-0 z-0 origin-left animate-[fill_2s_ease-out_forwards]"
-						style="background-color: {auth.color};"
-					></div>
-				{/if}
+	<!-- Secondary: LinkedIn — professional identity -->
+	<button
+		onclick={() => handleAuthClick('linkedin')}
+		disabled={loadingProvider !== null}
+		class="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 transition-all duration-300 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm active:scale-[0.98] disabled:cursor-wait disabled:opacity-100"
+	>
+		{#if loadingProvider === 'linkedin'}
+			<div
+				class="absolute inset-0 z-0 origin-left animate-[fill_2s_ease-out_forwards]"
+				style="background-color: #0077B5;"
+			></div>
+		{/if}
 
-				<div
-					class="relative z-10 flex items-center gap-2 transition-colors duration-300"
-					class:text-white={loadingProvider === auth.provider}
-				>
-					{#if loadingProvider === auth.provider}
-						<Loader2 class="h-4 w-4 animate-spin" />
-						<span class="text-xs">Connecting...</span>
-					{:else}
-						{#if auth.provider === 'linkedin'}
-							<!-- LinkedIn: Professional network -->
-							<svg class="h-5 w-5" viewBox="0 0 24 24" fill="#0077B5">
-								<path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.771v20.451C0 23.2.774 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-							</svg>
-						{:else}
-							<!-- Facebook badge -->
-							<div class="flex h-5 w-5 items-center justify-center rounded bg-[#1877F2] text-sm font-bold text-white">
-								f
-							</div>
-						{/if}
-						<span>{auth.name}</span>
-					{/if}
-				</div>
-			</button>
-		{/each}
-	</div>
+		<div
+			class="relative z-10 flex items-center gap-2 transition-colors duration-300"
+			class:text-white={loadingProvider === 'linkedin'}
+		>
+			{#if loadingProvider === 'linkedin'}
+				<Loader2 class="h-4 w-4 animate-spin" />
+				<span>Connecting...</span>
+			{:else}
+				<svg class="h-5 w-5" viewBox="0 0 24 24" fill="#0077B5">
+					<path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.771v20.451C0 23.2.774 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+				</svg>
+				<span>Continue with LinkedIn</span>
+			{/if}
+		</div>
+	</button>
 </div>
 
 <style>

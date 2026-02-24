@@ -1,5 +1,5 @@
 /**
- * Email Delivery Confirmation Endpoint (Wave 15e)
+ * Email Delivery Confirmation Endpoint
  *
  * GET /api/email/confirm/:token
  * User clicks this link after sending their email to confirm delivery.
@@ -28,7 +28,7 @@ export const GET: RequestHandler = async ({ params }) => {
 	}
 
 	// Find submission by template_id (token encodes template ID, not submission ID)
-	// Wave 15R fix: Narrow search to submissions created within the last 7 days
+	// Narrow search to submissions created within the last 7 days
 	// to prevent confirming stale submissions from a recycled token
 	const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 	const submission = await prisma.submission.findFirst({

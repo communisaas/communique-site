@@ -20,7 +20,7 @@
 	import type { ParsedDocument } from '$lib/server/reducto/types';
 	import InlineCitation from './InlineCitation.svelte';
 	import ActionSegment from './ActionSegment.svelte';
-	import { Lightbulb, Sparkles } from 'lucide-svelte';
+	import { Lightbulb, Sparkles } from '@lucide/svelte';
 
 	interface Props {
 		segment: ThoughtSegmentType;

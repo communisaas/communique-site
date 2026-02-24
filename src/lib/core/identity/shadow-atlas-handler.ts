@@ -270,7 +270,7 @@ export async function registerThreeTree(
 			verificationMethod: request.verificationMethod,
 			// Server-derived authority level (from User.authority_level via deriveAuthorityLevel)
 			authorityLevel: tree1Data.authorityLevel as 1 | 2 | 3 | 4 | 5 | undefined,
-			// Wave 39d: Signed receipt from operator (anti-censorship proof)
+			// Signed receipt from operator (anti-censorship proof)
 			receipt: tree1Data.receipt,
 			createdAt: now,
 			expiresAt: calculateExpirationDate(),

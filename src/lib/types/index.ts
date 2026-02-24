@@ -35,7 +35,6 @@ export type {
 	ProfileUpdateRequest
 } from './api';
 export type { ApiError, ErrorType, AppError } from './errors';
-export type { PercolationData, FusionData, AnalyticsError } from './analytics';
 export type { Template, TemplateFormData, MinimalUser } from './template';
 export type {
 	EmailServiceUser,

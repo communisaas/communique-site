@@ -1,19 +1,23 @@
 <!--
-  AddressVerificationFlow.svelte — Wave 3A
+  AddressVerificationFlow.svelte
 
-  Standalone Tier 2 address-only verification flow.
-  Collects address, geocodes via Census Bureau, shows matched district,
-  then issues a DistrictCredential via /api/identity/verify-address.
+  Dual-path Tier 2 verification flow: geolocation OR address-based.
+  Path A: Browser geolocation → Census API → district resolution
+  Path B: Manual address → Nominatim geocode → Census API → district resolution
 
-  Flow: address-input -> verifying -> confirm-district -> issuing-credential -> complete
+  Flow: path-select → [geolocating | address-input] → resolving → confirm-district → issuing-credential → complete
 -->
 
 <script lang="ts">
-	import { MapPin, CheckCircle2, Loader2, AlertCircle, Building2, ChevronRight } from '@lucide/svelte';
+	import { MapPin, CheckCircle2, Loader2, AlertCircle, Building2, ChevronRight, Navigation, Lock } from '@lucide/svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { storeCredential } from '$lib/core/identity/credential-store';
+	import { getBrowserGeolocation, censusAPI } from '$lib/core/location/census-api';
+	import { geocodeAddress } from '$lib/core/location/address-geocode';
+	import { storeConstituentAddress } from '$lib/core/identity/constituent-address';
+	import { addVerifiedLocationSignal } from '$lib/core/location/inference-engine';
 
-	type FlowStep = 'address-input' | 'verifying' | 'confirm-district' | 'issuing-credential' | 'complete';
+	type FlowStep = 'path-select' | 'geolocating' | 'address-input' | 'resolving' | 'confirm-district' | 'issuing-credential' | 'complete';
 
 	let { userId, onComplete, onCancel }: {
 		userId: string;
@@ -28,10 +32,11 @@
 	let zipCode: string = $state('');
 
 	// Flow state
-	let flowStep: FlowStep = $state('address-input');
+	let flowStep: FlowStep = $state('path-select');
 	let errorMessage: string = $state('');
+	let geoPermissionDenied: boolean = $state(false);
 
-	// Verification results from /api/address/verify
+	// Verification results
 	let verifiedDistrict: string = $state('');
 	let verifiedStateSenate: string = $state('');
 	let verifiedStateAssembly: string = $state('');
@@ -44,6 +49,9 @@
 		district?: string;
 	}> = $state([]);
 
+	// Which verification path was chosen
+	let verificationMethod: 'browser' | 'address' = $state('browser');
+
 	// Derived: form validation
 	let isFormValid: boolean = $derived(
 		street.trim().length > 0 &&
@@ -53,54 +61,169 @@
 	);
 
 	/**
-	 * Step 1: Submit address to Census geocoder
+	 * Client-side address geocoding via Nominatim (Unit 1).
+	 * Address never reaches our server — geocoded entirely in the browser.
 	 */
-	async function handleVerifyAddress() {
-		if (!isFormValid) return;
+	async function geocodeAddressClient(streetVal: string, cityVal: string, stateVal: string, zip: string): Promise<{lat: number, lng: number} | null> {
+		const result = await geocodeAddress({
+			street: streetVal,
+			city: cityVal,
+			state: stateVal,
+			zip,
+			countryCode: 'US'
+		});
+		if (!result) return null;
+		return { lat: result.lat, lng: result.lng };
+	}
 
-		flowStep = 'verifying';
+	/**
+	 * Process the /api/location/resolve response and transition to confirm-district.
+	 *
+	 * Response shape: { resolved, district: { code, name, state }, officials: [...], ... }
+	 */
+	function processResolveResponse(data: Record<string, unknown>, ok: boolean) {
+		if (!ok || !data.resolved || !data.district) {
+			errorMessage = (data.error as string) || 'Could not determine your district. Please try again.';
+			flowStep = verificationMethod === 'browser' ? 'path-select' : 'address-input';
+			return;
+		}
+
+		const district = data.district as { code: string; name: string; state: string };
+		verifiedDistrict = district.code || '';
+		correctedAddress = '';
+		representatives = ((data.officials as typeof representatives) || []);
+		verifiedStateSenate = '';
+		verifiedStateAssembly = '';
+
+		flowStep = 'confirm-district';
+	}
+
+	/**
+	 * Path A: Browser geolocation flow
+	 */
+	async function handleGeolocationPath() {
+		verificationMethod = 'browser';
+		flowStep = 'geolocating';
 		errorMessage = '';
 
 		try {
-			const response = await fetch('/api/address/verify', {
+			// Step 1: Get browser geolocation (returns LocationSignal with lat/lng + Census data)
+			const signal = await getBrowserGeolocation();
+
+			if (!signal) {
+				// Permission denied or unavailable — auto-redirect to address path
+				geoPermissionDenied = true;
+				flowStep = 'address-input';
+				verificationMethod = 'address';
+				return;
+			}
+
+			const lat = signal.latitude;
+			const lng = signal.longitude;
+
+			if (lat == null || lng == null) {
+				geoPermissionDenied = true;
+				flowStep = 'address-input';
+				verificationMethod = 'address';
+				return;
+			}
+
+			// Census data may already be in the signal from getBrowserGeolocation()
+			const cellId = signal.cell_id ?? null;
+			const districtCode = signal.congressional_district ?? null;
+
+			flowStep = 'resolving';
+
+			// POST to /api/location/resolve
+			const response = await fetch('/api/location/resolve', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					street: street.trim(),
-					city: city.trim(),
-					state: stateCode.trim().toUpperCase(),
-					zipCode: zipCode.trim()
+					lat,
+					lng,
+					signal_type: 'browser',
+					confidence: 0.6,
+					cell_id: cellId,
+					district_code: districtCode
 				})
 			});
 
 			const data = await response.json();
+			processResolveResponse(data, response.ok);
+		} catch (err) {
+			console.error('[AddressVerificationFlow] Geolocation error:', err);
+			errorMessage = 'Location detection failed. Please enter your address instead.';
+			geoPermissionDenied = true;
+			flowStep = 'address-input';
+			verificationMethod = 'address';
+		}
+	}
 
-			if (!response.ok || !data.verified) {
-				errorMessage = data.error || 'Address verification failed. Please check your address and try again.';
+	/**
+	 * Path B: Address-based verification flow
+	 */
+	async function handleAddressPath() {
+		if (!isFormValid) return;
+
+		verificationMethod = 'address';
+		flowStep = 'resolving';
+		errorMessage = '';
+
+		try {
+			// Step 1: Client-side geocoding via Nominatim
+			const coords = await geocodeAddressClient(
+				street.trim(),
+				city.trim(),
+				stateCode.trim().toUpperCase(),
+				zipCode.trim()
+			);
+
+			if (!coords) {
+				errorMessage = 'Could not geocode your address. Please check and try again.';
 				flowStep = 'address-input';
 				return;
 			}
 
-			// Store verification results
-			verifiedDistrict = data.district || '';
-			correctedAddress = data.correctedAddress || '';
-			representatives = data.representatives || [];
+			// Step 2: Census API for cell_id + district_code
+			const censusSignal = await censusAPI.geocodeCoordinates(coords.lat, coords.lng);
+			const cellId = censusSignal?.cell_id ?? null;
+			const districtCode = censusSignal?.congressional_district ?? null;
 
-			// Extract state-level districts from Census data if available
-			// (The Census geocoder response may include state legislative districts)
-			verifiedStateSenate = '';
-			verifiedStateAssembly = '';
+			// Step 3: Store address encrypted in IndexedDB
+			const resolvedDistrict = districtCode || '';
+			await storeConstituentAddress(userId, {
+				street: street.trim(),
+				city: city.trim(),
+				state: stateCode.trim().toUpperCase(),
+				zip: zipCode.trim(),
+				district: resolvedDistrict
+			});
 
-			flowStep = 'confirm-district';
+			// Step 4: POST to /api/location/resolve
+			const response = await fetch('/api/location/resolve', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					lat: coords.lat,
+					lng: coords.lng,
+					signal_type: 'verified',
+					confidence: 0.85,
+					cell_id: cellId,
+					district_code: districtCode
+				})
+			});
+
+			const data = await response.json();
+			processResolveResponse(data, response.ok);
 		} catch (err) {
-			console.error('[AddressVerificationFlow] Geocoding error:', err);
+			console.error('[AddressVerificationFlow] Address verification error:', err);
 			errorMessage = 'Unable to verify address. Please try again.';
 			flowStep = 'address-input';
 		}
 	}
 
 	/**
-	 * Step 2: Confirm district and issue credential
+	 * Confirm district and issue credential
 	 */
 	async function handleConfirmDistrict() {
 		flowStep = 'issuing-credential';
@@ -136,6 +259,14 @@
 				);
 			}
 
+			// Store verified location signal for inference engine
+			if (verifiedDistrict) {
+				const parts = verifiedDistrict.split('-');
+				if (parts.length >= 2) {
+					await addVerifiedLocationSignal(verifiedDistrict, parts[0]);
+				}
+			}
+
 			// Refresh session data so trust_tier reflects the upgrade
 			await invalidateAll();
 
@@ -152,14 +283,26 @@
 		}
 	}
 
+	function handleSelectAddressPath() {
+		verificationMethod = 'address';
+		geoPermissionDenied = false;
+		flowStep = 'address-input';
+	}
+
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter' && isFormValid && flowStep === 'address-input') {
-			handleVerifyAddress();
+			handleAddressPath();
 		}
 	}
 
 	function handleCancel() {
 		onCancel?.();
+	}
+
+	function handleBack() {
+		errorMessage = '';
+		geoPermissionDenied = false;
+		flowStep = 'path-select';
 	}
 
 	function handleEditAddress() {
@@ -171,10 +314,12 @@
 <div class="mx-auto w-full max-w-lg">
 	<!-- Step Indicator -->
 	<div class="mb-6 flex items-center justify-center gap-2">
-		{#each ['address-input', 'confirm-district', 'complete'] as step, i}
-			{@const stepLabels = ['Address', 'Confirm', 'Done']}
-			{@const stepIndex = ['address-input', 'confirm-district', 'complete'].indexOf(flowStep)}
-			{@const isActive = i <= stepIndex || flowStep === 'verifying' && i === 0 || flowStep === 'issuing-credential' && i <= 1}
+		{#each ['path-select', 'confirm-district', 'complete'] as step, i}
+			{@const stepLabels = ['Verify', 'Confirm', 'Done']}
+			{@const stepIndex = ['path-select', 'confirm-district', 'complete'].indexOf(flowStep)}
+			{@const isActive = i <= stepIndex
+				|| (flowStep === 'geolocating' || flowStep === 'address-input' || flowStep === 'resolving') && i === 0
+				|| flowStep === 'issuing-credential' && i <= 1}
 			<div class="flex items-center gap-2">
 				<div
 					class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-300"
@@ -199,17 +344,101 @@
 		{/each}
 	</div>
 
-	<!-- ADDRESS INPUT STEP -->
-	{#if flowStep === 'address-input'}
+	<!-- PATH SELECT STEP -->
+	{#if flowStep === 'path-select'}
 		<div class="space-y-5">
 			<div class="text-center">
 				<div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
 					<MapPin class="h-6 w-6 text-emerald-600" />
 				</div>
-				<h3 class="text-lg font-semibold text-slate-900">Verify Your Address</h3>
+				<h3 class="text-lg font-semibold text-slate-900">Verify Your District</h3>
+				<p class="mt-1 text-sm text-slate-600">
+					Choose how to confirm your congressional district.
+				</p>
+			</div>
+
+			<div class="space-y-3">
+				<!-- Option A: Use my location -->
+				<button
+					type="button"
+					class="flex w-full items-start gap-4 rounded-xl border border-slate-200 p-5 text-left cursor-pointer transition-all hover:border-emerald-300 hover:bg-emerald-50/30"
+					onclick={handleGeolocationPath}
+				>
+					<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+						<Navigation class="h-5 w-5 text-emerald-600" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-sm font-semibold text-slate-900">Use my location</p>
+						<p class="mt-0.5 text-xs text-slate-500">Quick verification using your device's location</p>
+					</div>
+					<ChevronRight class="mt-2.5 h-4 w-4 shrink-0 text-slate-400" />
+				</button>
+
+				<!-- Option B: Enter my address -->
+				<button
+					type="button"
+					class="flex w-full items-start gap-4 rounded-xl border border-slate-200 p-5 text-left cursor-pointer transition-all hover:border-emerald-300 hover:bg-emerald-50/30"
+					onclick={handleSelectAddressPath}
+				>
+					<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+						<Building2 class="h-5 w-5 text-emerald-600" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-sm font-semibold text-slate-900">Enter my address</p>
+						<p class="mt-0.5 text-xs text-slate-500">Verify with your home address for constituency proof</p>
+					</div>
+					<ChevronRight class="mt-2.5 h-4 w-4 shrink-0 text-slate-400" />
+				</button>
+			</div>
+
+			<!-- Privacy note -->
+			<div class="flex items-center justify-center gap-1.5">
+				<Lock class="h-3 w-3 text-emerald-700" />
+				<p class="text-xs font-medium text-emerald-700">
+					Your address never leaves your browser. Only coordinates determine your district.
+				</p>
+			</div>
+
+			{#if onCancel}
+				<button
+					type="button"
+					class="w-full text-center text-sm text-slate-500 transition-colors hover:text-slate-700"
+					onclick={handleCancel}
+				>
+					Cancel
+				</button>
+			{/if}
+		</div>
+
+	<!-- GEOLOCATING STEP (loading) -->
+	{:else if flowStep === 'geolocating'}
+		<div class="flex flex-col items-center justify-center py-12 text-center">
+			<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+				<Loader2 class="h-8 w-8 animate-spin text-emerald-600" />
+			</div>
+			<h3 class="text-lg font-semibold text-slate-900">Detecting Location</h3>
+			<p class="mt-2 text-sm text-slate-600">
+				Please allow location access when prompted...
+			</p>
+		</div>
+
+	<!-- ADDRESS INPUT STEP -->
+	{:else if flowStep === 'address-input'}
+		<div class="space-y-5">
+			<div class="text-center">
+				<div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+					<Building2 class="h-6 w-6 text-emerald-600" />
+				</div>
+				<h3 class="text-lg font-semibold text-slate-900">Enter Your Address</h3>
 				<p class="mt-1 text-sm text-slate-600">
 					Confirm your district to send messages to your representatives.
 				</p>
+				{#if geoPermissionDenied}
+					<div class="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2">
+						<AlertCircle class="h-3.5 w-3.5 text-amber-600" />
+						<p class="text-xs text-amber-700">Location access was denied. Please enter your address instead.</p>
+					</div>
+				{/if}
 				<p class="mt-1 text-xs font-medium text-emerald-700">
 					Address used once for verification, then deleted.
 				</p>
@@ -279,22 +508,20 @@
 			<button
 				type="button"
 				class="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-6 py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-				onclick={handleVerifyAddress}
+				onclick={handleAddressPath}
 				disabled={!isFormValid}
 			>
 				<MapPin class="h-4 w-4" />
 				Verify Address
 			</button>
 
-			{#if onCancel}
-				<button
-					type="button"
-					class="w-full text-center text-sm text-slate-500 transition-colors hover:text-slate-700"
-					onclick={handleCancel}
-				>
-					Cancel
-				</button>
-			{/if}
+			<button
+				type="button"
+				class="w-full text-center text-sm text-slate-500 transition-colors hover:text-slate-700"
+				onclick={handleBack}
+			>
+				Back
+			</button>
 
 			<!-- Privacy note -->
 			<details class="text-center">
@@ -302,20 +529,20 @@
 					How is my address used?
 				</summary>
 				<p class="mt-2 text-xs leading-relaxed text-slate-500">
-					Your address is sent to the U.S. Census Bureau to determine your congressional district.
-					After verification, the address is permanently deleted. Only your district is stored
-					as a verifiable credential.
+					Your address is geocoded in-browser using OpenStreetMap, then matched to a Census block.
+					After verification, the address is encrypted locally. Only your district is sent to
+					issue a verifiable credential.
 				</p>
 			</details>
 		</div>
 
-	<!-- VERIFYING STEP (loading) -->
-	{:else if flowStep === 'verifying'}
+	<!-- RESOLVING STEP (loading) -->
+	{:else if flowStep === 'resolving'}
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
 				<Loader2 class="h-8 w-8 animate-spin text-emerald-600" />
 			</div>
-			<h3 class="text-lg font-semibold text-slate-900">Verifying Address</h3>
+			<h3 class="text-lg font-semibold text-slate-900">Resolving District</h3>
 			<p class="mt-2 text-sm text-slate-600">
 				Looking up your congressional district...
 			</p>

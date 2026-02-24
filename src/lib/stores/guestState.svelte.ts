@@ -63,18 +63,6 @@ function createGuestState() {
 			}
 		},
 
-		// Track repeat views for engagement scoring
-		incrementView(): void {
-			if (!state) return;
-
-			const updated = { ...state, viewCount: state.viewCount + 1 };
-			state = updated;
-
-			if (browser) {
-				localStorage.setItem('communique_guest_template', JSON.stringify(updated));
-			}
-		},
-
 		// Clear after successful conversion
 		clear(): void {
 			state = null;

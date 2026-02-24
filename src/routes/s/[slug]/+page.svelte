@@ -10,7 +10,6 @@
 	import { modalActions, modalSystem } from '$lib/stores/modalSystem.svelte';
 	import { guestState } from '$lib/stores/guestState.svelte';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
-	import { toEmailServiceUser } from '$lib/types/user';
 	import { trackTemplateView } from '$lib/core/analytics/client';
 	import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import ActionBar from '$lib/components/template-browser/parts/ActionBar.svelte';
@@ -34,7 +33,6 @@
 	// Template modal reference
 
 	const template: TemplateType = $derived(data.template as unknown as TemplateType);
-	const channel = $derived(data.channel);
 	// Simplified - no query parameters needed, default to direct-link
 	const source = 'direct-link';
 	const shareUrl = $derived(
@@ -148,10 +146,26 @@
 
 	function handlePostAuthFlow() {
 		const trustTier = data.user?.trust_tier ?? 0;
+
+		// CWC templates: TemplateModal handles tier-based routing in onMount
+		// (trust-upgrade for Tier 1-2, ZKP flow for Tier 3+)
+		// Skip address gate — it shows the old NFC/Gov ID modal which is wrong here
+		if (template.deliveryMethod === 'cwc' && data.user) {
+			modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
+			return;
+		}
+
+		// Tier 2+ already verified — skip address gate entirely
+		// guestState address also counts (Cypherpunk: no PII on User model)
+		if (trustTier >= 2 || guestState.state?.address) {
+			modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
+			return;
+		}
+
 		const flow = analyzeEmailFlow(template, data.user, { trustTier });
 
 		if (flow.nextAction === 'address') {
-			// Need address collection
+			// Need address collection (non-CWC templates only)
 			modalActions.openModal('address-modal', 'address', {
 				template,
 				source,
@@ -160,51 +174,44 @@
 					await _handleAddressSubmit(detail.address);
 				}
 			});
-		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-			// Open TemplateModal using modalActions
+		} else {
+			// Ready to send (or any other state) — open template modal
 			modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
 		}
 	}
 
 	async function _handleAddressSubmit(address: string) {
-		console.log('[TemplateFlow] _handleAddressSubmit called with:', address);
 		try {
 			_isUpdatingAddress = true;
 
-			// Client-side caching only - Cypherpunk ethos
-			// No backend call here
+			// Cache address locally (Cypherpunk: no PII on User model)
 			guestState.setAddress(address);
-			console.log('[TemplateFlow] Address cached locally via guestState');
 
-			// Update local user data to reflect the new address (mock update for UI)
+			// Bump trust_tier to 2 (Constituent) on the server
+			// Production: self.xyz/Didit does this via callback
+			// Demo: explicit endpoint
 			if (data.user) {
-				// We don't have the full parsed address, but we can set what we have
-				// or just rely on guestState check in hasCompleteAddress
-				// data.user.street = ... // We only have the raw string or detail object if we changed the signature
+				await fetch('/demo/verify-address', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ address })
+				});
 			}
 
-			// Close address modal and proceed to email generation
+			// Close address modal and proceed to template modal
 			modalActions.closeModal('address-modal');
-			// Open TemplateModal using modalActions
-			console.log('[TemplateFlow] Opening template modal...');
 			modalActions.openModal('template-modal', 'template_modal', {
 				template,
-				user: { ...data.user, address }
+				user: data.user
 			});
+
+			// Refresh page data so trust tier updates everywhere
+			await invalidateAll();
 		} catch (error) {
 			console.error('[TemplateFlow] Error in _handleAddressSubmit:', error);
-			// Error occurred during address update, but we'll still proceed with email
-			// In production, consider showing a warning about unverified address
+			// Proceed anyway — address is cached locally
 			modalActions.closeModal('address-modal');
-
-			// Clear any stored intent even on error
-			sessionStorage.removeItem(`template_${template.id}_intent`);
-
-			const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: data.user?.trust_tier ?? 0 });
-			if (flow.mailtoUrl) {
-				// Open TemplateModal using modalActions
-				modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
-			}
+			modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
 		} finally {
 			_isUpdatingAddress = false;
 		}
@@ -291,8 +298,15 @@
 								onComplete: async (detail: AddressModalDetail) => {
 									// Cache address locally
 									guestState.setAddress(detail.address);
-									// Close address modal — don't auto-open template modal.
-									// Let the user see their tier upgrade first, then send.
+									// Bump trust_tier to 2 (Constituent) on the server
+									// Production: self.xyz/Didit does this via callback
+									// Demo: explicit endpoint
+									await fetch('/demo/verify-address', {
+										method: 'POST',
+										headers: { 'Content-Type': 'application/json' },
+										body: JSON.stringify({ address: detail.address })
+									});
+									// Close address modal — let user see tier upgrade, then send
 									modalActions.closeModal('address-modal');
 									// Refresh page data so TrustJourney animates to new tier
 									await invalidateAll();
@@ -415,85 +429,15 @@
 				}
 			}}
 			onSendMessage={async () => {
-				if (channel?.access_tier === 1) {
-					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: data.user?.trust_tier ?? 0 });
-					if (flow.nextAction === 'auth') {
-						modalActions.openModal('onboarding-modal', 'onboarding', { template, source });
-					} else if (flow.nextAction === 'address') {
-						modalActions.openModal('address-modal', 'address', {
-							template,
-							source,
-							mode: 'collection',
-							onComplete: async (detail: AddressModalDetail) => {
-								await _handleAddressSubmit(detail.address);
-							}
-						});
-					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-						// Open TemplateModal using modalActions
-						modalActions.openModal('template-modal', 'template_modal', {
-							template,
-							user: data.user
-						});
-					}
+				if (!data.user) {
+					// Guest: straight to template modal (mailto relay)
+					modalActions.openModal('template-modal', 'template_modal', { template, user: null });
 					return;
 				}
 
-				// For now, treat US or certified templates as existing path
-				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'cwc')) {
-					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: data.user?.trust_tier ?? 0 });
-
-					// Check if we have a cached address from guestState (Cypherpunk flow)
-					if (guestState.state?.address && flow.nextAction === 'address') {
-						// We have the address locally! We can proceed to email generation
-						// But we might need to verify it first or just pass it through.
-						// For now, let's open the address modal in 'verify' mode or just skip to template modal
-						// if we trust the cached address.
-
-						// Better UX: Open address modal pre-filled? Or just use it?
-						// "Securely cache the address so users don't constantly reenter it"
-						// Let's pass it to the address modal to pre-fill/verify, OR just consider it done.
-
-						// If we consider it done:
-						modalActions.openModal('template-modal', 'template_modal', {
-							template,
-							user: { ...data.user, address: guestState.state.address } // Mock user with address
-						});
-						return;
-					}
-
-					if (flow.nextAction === 'address') {
-						modalActions.openModal('address-modal', 'address', {
-							template,
-							source,
-							mode: 'collection',
-							onComplete: async (detail: AddressModalDetail) => {
-								// Client-side caching only
-								if (detail?.address) {
-									guestState.setAddress(detail.address);
-								}
-								// No backend save here either
-
-								// Proceed to template modal
-								modalActions.openModal('template-modal', 'template_modal', {
-									template,
-									user: data.user
-								});
-							}
-						});
-					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-						// Open TemplateModal using modalActions
-						modalActions.openModal('template-modal', 'template_modal', {
-							template,
-							user: data.user
-						});
-					} else {
-						modalActions.openModal('onboarding-modal', 'onboarding', { template, source });
-					}
-					return;
-				}
-
-				// Default: prompt share (no modal implementation yet)
-				modalActions.openModal('share-menu', 'share_menu', { template });
+				// Authenticated user: use unified post-auth flow
+				// (checks trust_tier/guestState before address gate)
+				handlePostAuthFlow();
 			}}
 		/>
 	</div>

@@ -272,10 +272,11 @@
 			});
 
 			if (!response.ok) {
-				const errorData = await response.json();
+				const errorData = await response.json().catch(() => ({}));
+				const serverMessage = errorData.message || errorData.error;
 				proofState = {
 					status: 'error',
-					message: errorData.error || 'Submission failed. Please try again.',
+					message: serverMessage || 'Submission failed. Please try again.',
 					recoverable: true,
 					retryAction: () => generateAndSubmit()
 				};

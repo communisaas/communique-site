@@ -105,19 +105,19 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 		);
 		const commitmentFingerprint = getCommitmentFingerprint(identityCommitment);
 
-		// Wave 14R: Fetch current user for trust_score and existing entropy (idempotency)
+		// Fetch current user for trust_score and existing entropy (idempotency)
 		const currentUser = await prisma.user.findUnique({
 			where: { id: userId },
 			select: { trust_score: true, encrypted_entropy: true }
 		});
 
-		// Wave 14R fix (C-2): Only generate entropy once per user
+		// Only generate entropy once per user
 		// BR6-001: Decrypt existing entropy or generate fresh
 		const userEntropy = currentUser?.encrypted_entropy
 			? decryptEntropy(currentUser.encrypted_entropy)
 			: generateUserEntropy();
 
-		// Wave 14R fix (H-1): Derive authority level using document_type
+		// Derive authority level using document_type
 		const authorityLevel = deriveAuthorityLevel({
 			identity_commitment: identityCommitment,
 			trust_score: currentUser?.trust_score ?? 0,

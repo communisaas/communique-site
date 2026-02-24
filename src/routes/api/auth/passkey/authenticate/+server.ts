@@ -1,5 +1,5 @@
 /**
- * Passkey Authentication Endpoint (Wave 2A: Graduated Trust)
+ * Passkey Authentication Endpoint (Graduated Trust)
  *
  * Two-step WebAuthn authentication flow:
  *

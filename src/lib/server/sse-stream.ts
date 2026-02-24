@@ -2,11 +2,7 @@
  * SSE Stream - Server-side helpers
  *
  * createSSEStream and SSE_HEADERS for server endpoints.
- * Separated from $lib/utils/sse-stream.ts (client-side parsers) to avoid
- * leaking $lib/server/agent-trace into the client bundle.
  */
-
-import { traceEvent } from '$lib/server/agent-trace';
 
 /**
  * Create SSE response helper for server endpoints.
@@ -40,16 +36,6 @@ export function createSSEStream(traceConfig?: {
 				// Stream already closed by client disconnect or timeout
 				closed = true;
 				return;
-			}
-
-			if (traceConfig) {
-				traceEvent(
-					traceConfig.traceId,
-					traceConfig.endpoint,
-					type,
-					data as Record<string, unknown>,
-					{ userId: traceConfig.userId }
-				);
 			}
 		},
 

@@ -183,6 +183,22 @@ export {
 export { coarsenResults, mergeCoarsenedResults, getCoarseningMetadata } from './coarsen';
 
 // =============================================================================
+// PRIVACY BUDGET ENFORCEMENT
+// =============================================================================
+
+export {
+	spendEpsilon,
+	remainingBudget,
+	resetIfNewDay,
+	getBudgetSnapshot,
+	PrivacyBudgetExhaustedError,
+	resetBudgetForTesting,
+	setDateForTesting
+} from './budget';
+
+export type { BudgetStatus } from './budget';
+
+// =============================================================================
 // DISTRIBUTED RATE LIMITING (Postgres-Based)
 // =============================================================================
 

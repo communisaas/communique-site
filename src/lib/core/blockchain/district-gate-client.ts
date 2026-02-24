@@ -36,7 +36,7 @@ import {
 import { BN254_MODULUS } from '@voter-protocol/noir-prover';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CIRCUIT BREAKER (Wave 15a)
+// CIRCUIT BREAKER
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CIRCUIT_BREAKER_THRESHOLD = 3;
@@ -83,7 +83,7 @@ export function isCircuitOpen(): boolean {
 		}
 	}
 
-	// Wave 15R fix (C-01): Only allow ONE request through in half-open state
+	// Only allow ONE request through in half-open state
 	if (circuitBreaker.state === 'half_open') {
 		if (circuitBreaker.halfOpenAttemptInProgress) {
 			return true; // Block concurrent requests during half-open test
@@ -98,7 +98,7 @@ export function isCircuitOpen(): boolean {
 function recordRpcFailure(): void {
 	const now = Date.now();
 
-	// Wave 15R fix: If half-open test fails, revert to open
+	// If half-open test fails, revert to open
 	if (circuitBreaker.state === 'half_open') {
 		circuitBreaker.state = 'open';
 		circuitBreaker.openedAt = now;
@@ -129,7 +129,7 @@ function recordRpcSuccess(): void {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BALANCE MONITORING (Wave 15a)
+// BALANCE MONITORING
 // ═══════════════════════════════════════════════════════════════════════════
 
 const BALANCE_WARNING_THRESHOLD = 50000000000000000n; // 0.05 ETH
@@ -184,7 +184,7 @@ export async function getRelayerHealth(): Promise<RelayerHealth> {
 		};
 	}
 
-	// Wave 15R fix (H-04): Sanitize admin response — no exact balance or full address
+	// Sanitize admin response — no exact balance or full address
 	const addr = instance.wallet.address;
 	const truncatedAddr = `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
@@ -311,7 +311,7 @@ export function getConfig(): BlockchainConfig {
 
 /**
  * Get or create the ethers provider, wallet, and contract instances.
- * Wave 15a: Uses NonceManager for automatic nonce tracking (prevents nonce collisions).
+ * Uses NonceManager for automatic nonce tracking (prevents nonce collisions).
  * Returns null if configuration is incomplete.
  */
 function getContractInstance(): { contract: Contract; wallet: Wallet } | null {
@@ -349,7 +349,7 @@ function getContractInstance(): { contract: Contract; wallet: Wallet } | null {
  */
 export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult> {
 	// ───────────────────────────────────────────────────────────────────────
-	// PHASE 0: Circuit breaker check (Wave 15a)
+	// PHASE 0: Circuit breaker check
 	// ───────────────────────────────────────────────────────────────────────
 
 	if (isCircuitOpen()) {
@@ -424,7 +424,7 @@ export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult>
 	}
 
 	// ───────────────────────────────────────────────────────────────────────
-	// PHASE 1.5: Balance check (Wave 15a)
+	// PHASE 1.5: Balance check
 	// ───────────────────────────────────────────────────────────────────────
 
 	try {
@@ -436,7 +436,7 @@ export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult>
 			};
 		}
 	} catch (balanceErr) {
-		// Wave 15R fix (M-05): Fail closed on balance check errors
+		// Fail closed on balance check errors
 		console.error('[DistrictGateClient] Balance check failed:', balanceErr);
 		recordRpcFailure();
 		return {
@@ -519,7 +519,7 @@ export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult>
 
 		const receipt: TransactionReceipt = await tx.wait();
 
-		// Wave 15a: Record success for circuit breaker
+		// Record success for circuit breaker
 		recordRpcSuccess();
 
 		console.debug('[DistrictGateClient] Verification confirmed:', {
@@ -532,7 +532,7 @@ export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult>
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 
-		// Wave 15a/15R: Record failure for circuit breaker
+		// Record failure for circuit breaker
 		// Count RPC/network/infra failures, not contract reverts (which are valid responses)
 		const msgLower = msg.toLowerCase();
 		const rpcErrorPatterns = [

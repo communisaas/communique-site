@@ -159,7 +159,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		// Wave 39c: Use identity_commitment as attestation hash.
+		// Use identity_commitment as attestation hash.
 		// This binds the tree insertion to a real identity verification event.
 		// If the operator fabricates registrations, they won't have valid attestation hashes.
 		const attestationHash = identityCommitment;
@@ -204,7 +204,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			pathIndices: registrationResult.pathIndices,
 			identityCommitment,
 			authorityLevel: user.authority_level ?? 1,
-			receipt: registrationResult.receipt, // Wave 39d: signed registration receipt
+			receipt: registrationResult.receipt, // Signed registration receipt
 		});
 	} catch (error) {
 		console.error('[Shadow Atlas] Registration error:', error);

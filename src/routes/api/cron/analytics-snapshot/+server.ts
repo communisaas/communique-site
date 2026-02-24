@@ -23,9 +23,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { materializeNoisySnapshot, getRemainingBudget } from '$lib/core/analytics/snapshot';
+import { PrivacyBudgetExhaustedError } from '$lib/core/analytics/budget';
 import { getDaysAgoUTC } from '$lib/core/analytics/aggregate';
 import { cleanupOldRateLimits, isDBRateLimitEnabled } from '$lib/core/analytics/rate-limit-db';
-import { purgeExpiredTraces } from '$lib/server/agent-trace';
 
 /**
  * GET /api/cron/analytics-snapshot
@@ -55,14 +55,6 @@ export const GET: RequestHandler = async ({ request }) => {
 			rateLimitsDeleted = await cleanupOldRateLimits(2);
 		}
 
-		// Task 3: Purge expired agent traces
-		let tracesDeleted = 0;
-		try {
-			tracesDeleted = await purgeExpiredTraces();
-		} catch {
-			// Non-fatal: trace cleanup failure shouldn't break cron
-		}
-
 		return json({
 			success: true,
 			date: yesterday.toISOString().split('T')[0],
@@ -70,10 +62,24 @@ export const GET: RequestHandler = async ({ request }) => {
 			epsilon_spent: result.epsilonSpent,
 			budget_remaining: budgetRemaining,
 			rate_limits_deleted: rateLimitsDeleted,
-			rate_limit_db_enabled: isDBRateLimitEnabled(),
-			traces_deleted: tracesDeleted
+			rate_limit_db_enabled: isDBRateLimitEnabled()
 		});
 	} catch (error) {
+		// Return 429 when privacy budget is exhausted (not a server error)
+		if (error instanceof PrivacyBudgetExhaustedError) {
+			return json(
+				{
+					success: false,
+					error: error.message,
+					budget_exhausted: true,
+					requested: error.requested,
+					remaining: error.remaining,
+					limit: error.limit
+				},
+				{ status: 429 }
+			);
+		}
+
 		const message = error instanceof Error ? error.message : 'Daily maintenance failed';
 		return json({ success: false, error: message }, { status: 500 });
 	}

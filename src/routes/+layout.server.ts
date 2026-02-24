@@ -1,7 +1,10 @@
 import type { LayoutServerLoad } from './$types';
 import { db } from '$lib/core/db';
 
-export const load: LayoutServerLoad = async ({ locals }) => {
+export const load: LayoutServerLoad = async ({ locals, depends }) => {
+	// Cache user data across navigations — only re-fetch when explicitly invalidated
+	depends('data:user');
+
 	if (!locals.user) {
 		return { user: null };
 	}
@@ -47,6 +50,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				email: locals.user.email,
 				name: locals.user.name,
 				avatar: locals.user.avatar,
+				// Graduated trust tier (0-5)
+				trust_tier: locals.user.trust_tier ?? 0,
 				// Verification status
 				is_verified: locals.user.is_verified || false,
 				verification_method: locals.user.verification_method,
@@ -69,6 +74,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				email: locals.user.email,
 				name: locals.user.name,
 				avatar: locals.user.avatar,
+				trust_tier: locals.user.trust_tier ?? 0,
 				is_verified: locals.user.is_verified || false,
 				verification_method: locals.user.verification_method,
 				verified_at: locals.user.verified_at,

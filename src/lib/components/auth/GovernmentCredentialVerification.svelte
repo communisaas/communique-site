@@ -25,6 +25,7 @@
 		requestCredential,
 		type CredentialRequestResult
 	} from '$lib/core/identity/digital-credentials-api';
+	import { dev } from '$app/environment';
 
 	interface Props {
 		userId: string;
@@ -93,6 +94,13 @@
 					verificationState = 'idle';
 					return;
 				}
+				// In demo mode, wallet failures (e.g. not enrolled in Apple Verify with Wallet)
+				// fall back to the demo identity verification endpoint
+				if (dev) {
+					console.warn('[mDL] Wallet request failed in demo mode, using demo fallback:', result.message);
+					await demoFallbackVerification();
+					return;
+				}
 				throw new Error(result.message);
 			}
 
@@ -137,8 +145,60 @@
 				}
 			});
 		} catch (err) {
+			// In demo mode, any failure falls back to demo verification
+			if (dev) {
+				console.warn('[mDL] Verification failed in demo mode, using demo fallback:', err);
+				await demoFallbackVerification();
+				return;
+			}
 			verificationState = 'error';
 			errorMessage = err instanceof Error ? err.message : 'Verification failed';
+			onerror?.({ message: errorMessage });
+		}
+	}
+
+	/**
+	 * Demo fallback: simulate identity verification via /demo/verify-identity
+	 * when real mDL flow fails (e.g. not enrolled in Apple Verify with Wallet).
+	 */
+	async function demoFallbackVerification() {
+		verificationState = 'verifying';
+		try {
+			const res = await fetch('/demo/verify-identity', { method: 'POST' });
+			const result = await res.json();
+
+			// Bootstrap ZK credential for proof generation
+			if (result.identity_commitment) {
+				try {
+					const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
+					await bootstrapDemoCredential(userId, result.identity_commitment);
+				} catch (e) {
+					console.error('[Demo] Credential bootstrap failed:', e);
+				}
+			}
+
+			verificationResult = {
+				district: 'demo-district',
+				state: 'CO',
+				credentialHash: result.identity_commitment || 'demo-hash'
+			};
+
+			verificationState = 'complete';
+
+			oncomplete?.({
+				verified: true,
+				method: 'demo',
+				district: 'demo-district',
+				state: 'CO',
+				providerData: {
+					provider: 'digital-credentials-api',
+					credentialHash: result.identity_commitment || 'demo-hash',
+					issuedAt: Date.now()
+				}
+			});
+		} catch (err) {
+			verificationState = 'error';
+			errorMessage = 'Demo verification failed';
 			onerror?.({ message: errorMessage });
 		}
 	}

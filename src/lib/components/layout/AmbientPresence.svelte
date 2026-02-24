@@ -10,6 +10,7 @@
 	 */
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { ChevronDown, User, LogOut } from '@lucide/svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import type { HeaderUser } from '$lib/types/any-replacements';
@@ -98,6 +99,13 @@
 		modalActions.openModal('sign-in-modal', 'sign-in');
 	}
 
+	// Navigate to profile — explicit goto avoids race with dropdown lifecycle
+	function handleProfileClick(event: MouseEvent): void {
+		event.preventDefault();
+		isDropdownOpen = false;
+		goto('/profile');
+	}
+
 	// Handle logout with cache clearing
 	async function handleLogout(event: MouseEvent): Promise<void> {
 		event.preventDefault();
@@ -135,7 +143,7 @@
 
 			{#if isDropdownOpen}
 				<div class="ambient-dropdown" role="menu" aria-label="Account options">
-					<a href="/profile" class="ambient-dropdown-item" role="menuitem">
+					<a href="/profile" class="ambient-dropdown-item" role="menuitem" onclick={handleProfileClick}>
 						<User class="ambient-dropdown-icon" />
 						<span>Profile</span>
 					</a>

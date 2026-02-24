@@ -532,11 +532,11 @@ Total VOTER Tokens Earned: 156.80 VOTER
 
 🌐 Available Templates:
 =====================
-📍 https://communique.app/the-math-doesnt-work-climate-edition
+📍 https://communi.email/the-math-doesnt-work-climate-edition
    "The Math Doesn't Work: Climate Edition" (Environment → federal)
    Created by: Sarah Martinez (established)
 
-📍 https://communique.app/housing-2400-rent-400k-starter-home
+📍 https://communi.email/housing-2400-rent-400k-starter-home
    "Housing: $2,400 Rent, $400k Starter Home" (Housing → federal)
    Created by: Anna Rodriguez (trusted)
 ```

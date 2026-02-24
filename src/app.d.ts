@@ -17,11 +17,11 @@ declare global {
 				is_verified: boolean;
 				verification_method: string | null;
 				verified_at: Date | null;
-				// Graduated trust (Wave 1C)
+				// Graduated trust
 				trust_tier: number;
 				// Passkey (security upgrade within Tier 1)
 				passkey_credential_id: string | null;
-				// did:key identifier derived from WebAuthn public key (Wave 2B)
+				// did:key identifier derived from WebAuthn public key
 				did_key: string | null;
 				// Privacy-preserving district (hash only, no PII)
 				district_hash: string | null;
@@ -135,15 +135,7 @@ declare global {
 			GCP_PROXY_URL?: string;
 			GCP_PROXY_AUTH_TOKEN?: string;
 
-			// VOTER Protocol
-			VOTER_API_URL?: string;
-			VOTER_API_KEY?: string;
-
-			// N8N Integration
-			N8N_WEBHOOK_SECRET?: string;
-
 			// AI Services
-			OPENAI_API_KEY?: string; // Used for embeddings and scope extraction (NOT moderation)
 			GEMINI_API_KEY?: string; // Used for quality assessment and AI agents
 			GROQ_API_KEY?: string; // Used for Llama Guard 4 safety moderation
 
@@ -156,36 +148,13 @@ declare global {
 			// Self.xyz (Zero-knowledge passport verification)
 			SELF_APP_NAME?: string;
 			SELF_SCOPE?: string;
-			SELF_SCOPE?: string;
 			SELF_ENDPOINT?: string;
 			SELF_MOCK_PASSPORT?: string; // 'true' for testing
-
-			// Email Enrichment APIs (Optional)
-			HUNTER_IO_API_KEY?: string; // Email verification
-			CLEARBIT_API_KEY?: string; // Email enrichment
 
 			// Witness Encryption (X25519 keypair for witness encryption/decryption)
 			// Generate with: npx tsx scripts/generate-witness-keypair.ts
 			WITNESS_ENCRYPTION_PUBLIC_KEY?: string;
 			WITNESS_ENCRYPTION_PRIVATE_KEY?: string;
-
-			// Trusted Execution Environment (TEE) Configuration
-			// AWS Nitro Enclaves
-			AWS_REGION?: string;
-			AWS_ACCESS_KEY_ID?: string;
-			AWS_SECRET_ACCESS_KEY?: string;
-			AWS_ACCOUNT_ID?: string;
-			AWS_NITRO_INSTANCE_TYPE?: string;
-			AWS_VPC_ID?: string;
-			AWS_SUBNET_ID?: string;
-			AWS_SECURITY_GROUP_IDS?: string;
-			AWS_IAM_INSTANCE_PROFILE?: string;
-			AWS_ENCLAVE_BUCKET?: string;
-
-			// Azure Confidential Computing (future — no provider implemented yet)
-			AZURE_SUBSCRIPTION_ID?: string;
-			AZURE_RESOURCE_GROUP?: string;
-			AZURE_REGION?: string;
 
 			// Logging and Monitoring
 			LOG_LEVEL?: string;

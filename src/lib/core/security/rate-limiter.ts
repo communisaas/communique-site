@@ -368,8 +368,7 @@ export class SlidingWindowRateLimiter {
  * 1. /api/identity/* - 10 requests/minute per IP
  * 2. /api/shadow-atlas/register - 5 requests/minute per user
  * 3. /api/congressional/submit - 3 requests/hour per user
- * 4. /api/address/* - 5 requests/minute per IP
- * 5. /api/submissions/* - 5 requests/minute per IP
+ * 4. /api/submissions/* - 5 requests/minute per IP
  *
  * Anti-Astroturf (Cycle 3, G-02/G-10):
  * 6. /api/templates - 10 requests/day per user (template farming prevention)
@@ -405,7 +404,7 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		windowMs: 60 * 60 * 1000, // 1 hour
 		keyStrategy: 'user'
 	},
-	// Passkey registration + authentication (Wave 2A: Graduated Trust)
+	// Passkey registration + authentication (Graduated Trust)
 	{
 		pattern: '/api/auth/passkey/register',
 		maxRequests: 5,
@@ -418,11 +417,11 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		windowMs: 60 * 1000, // 10 req/min — passkey auth attempts
 		keyStrategy: 'ip'
 	},
-	// Legacy rules from existing implementation
+	// Coordinate-based district resolution (dual-path architecture)
 	{
-		pattern: '/api/address/',
+		pattern: '/api/location/',
 		maxRequests: 5,
-		windowMs: 60 * 1000, // 1 minute
+		windowMs: 60 * 1000, // 5 req/min per IP
 		keyStrategy: 'ip'
 	},
 	{
@@ -431,7 +430,7 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		windowMs: 60 * 1000, // 1 minute
 		keyStrategy: 'ip'
 	},
-	// Anti-astroturf rate limits (Cycle 3, Wave 13)
+	// Anti-astroturf rate limits
 	{
 		pattern: '/api/templates',
 		maxRequests: 10,
@@ -450,14 +449,7 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		windowMs: 60 * 1000, // 1 minute — email send throttle
 		keyStrategy: 'user'
 	},
-	// Wave 15R: Rate limit public metrics and confirmation endpoints (GET-based)
-	{
-		pattern: '/api/metrics/',
-		maxRequests: 30,
-		windowMs: 60 * 1000, // 30 req/min — prevents scraping/DoS on subgraph queries
-		keyStrategy: 'ip',
-		includeGet: true
-	},
+	// Rate limit confirmation endpoint (GET-based)
 	{
 		pattern: '/api/email/confirm/',
 		maxRequests: 10,

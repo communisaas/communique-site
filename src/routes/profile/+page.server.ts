@@ -2,14 +2,11 @@ import { redirect } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, parent }) => {
+export const load: PageServerLoad = async ({ locals }) => {
 	// Ensure user is authenticated
 	if (!locals.user) {
 		throw redirect(302, '/');
 	}
-
-	// Get minimal user data from parent layout (already loaded)
-	const parentData = await parent();
 
 	// Stream ALL database queries - don't await anything
 	const userDetailsPromise = db.user.findUnique({
@@ -31,11 +28,15 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 			verification_method: true,
 			verified_at: true,
 			district_verified: true,
-			// Reputation
+			// Reputation & trust
+			trust_tier: true,
 			trust_score: true,
 			reputation_tier: true,
+			authority_level: true,
+			active_months: true,
 			templates_contributed: true,
 			peer_endorsements: true,
+			template_adoption_rate: true,
 			// Timestamps
 			createdAt: true,
 			updatedAt: true
@@ -131,12 +132,15 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 				})) || []
 		);
 
-	// Return immediately with parent data and ALL database queries as promises
-	// This allows the page to render instantly while data loads in background
+	// Return immediately — user from locals (no DB hit), everything else streamed
 	return {
-		// Use parent's minimal user data for immediate rendering
-		user: parentData.user,
-		// ALL database queries are streamed - nothing blocks
+		user: {
+			id: locals.user.id,
+			email: locals.user.email,
+			name: locals.user.name,
+			avatar: locals.user.avatar,
+			trust_tier: locals.user.trust_tier ?? 0
+		},
 		streamed: {
 			userDetails: userDetailsPromise
 				.then((user) => {
@@ -161,9 +165,13 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 							district_verified: user.district_verified
 						},
 						reputation: {
+							trust_tier: user.trust_tier,
 							trust_score: user.trust_score,
 							tier: user.reputation_tier,
+							authority_level: user.authority_level,
+							active_months: user.active_months,
 							templates_contributed: user.templates_contributed,
+							template_adoption_rate: user.template_adoption_rate,
 							peer_endorsements: user.peer_endorsements
 						},
 						timestamps: {

@@ -170,6 +170,40 @@ export function buildActionDomain(params: ActionDomainParams): string {
 }
 
 /**
+ * Derive a debate-scoped action domain from a template's base domain.
+ *
+ * Mirrors the on-chain derivation in DebateMarket.deriveDomain():
+ *   keccak256(abi.encodePacked(baseDomain, "debate", propositionHash)) % BN254_MODULUS
+ *
+ * The client must compute this BEFORE generating the ZK proof, because
+ * actionDomain is baked into the circuit as a public input (index [27]).
+ *
+ * @param baseDomain - The template's registered action domain (0x-prefixed, 64 hex chars)
+ * @param propositionHash - The debate's proposition hash (0x-prefixed, 64 hex chars)
+ * @returns Hex string field element (0x-prefixed, 64 chars) — the debate action domain
+ * @throws Error if baseDomain or propositionHash are invalid
+ */
+export function buildDebateActionDomain(baseDomain: string, propositionHash: string): string {
+	// Validate inputs
+	if (!baseDomain || !isValidActionDomain(baseDomain)) {
+		throw new Error(`Invalid baseDomain: must be a valid BN254 field element, got "${baseDomain}"`);
+	}
+	if (!propositionHash || !/^0x[0-9a-fA-F]{64}$/.test(propositionHash)) {
+		throw new Error(`Invalid propositionHash: must be 0x-prefixed 32-byte hex, got "${propositionHash}"`);
+	}
+
+	// Mirror the on-chain derivation: keccak256(abi.encodePacked(baseDomain, "debate", propositionHash))
+	const hash = solidityPackedKeccak256(
+		['bytes32', 'string', 'bytes32'],
+		[baseDomain, 'debate', propositionHash]
+	);
+
+	// Reduce to BN254 field element
+	const fieldElement = BigInt(hash) % BN254_MODULUS;
+	return '0x' + fieldElement.toString(16).padStart(64, '0');
+}
+
+/**
  * Validate that a hex string is a valid BN254 field element.
  * Useful for validating action domains received from external sources.
  *

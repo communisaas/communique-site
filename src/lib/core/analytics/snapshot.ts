@@ -16,6 +16,7 @@
 import { db } from '$lib/core/db';
 import { PRIVACY, METRIC_VALUES, type Metric } from '$lib/types/analytics';
 import { cryptoRandom } from './noise';
+import { spendEpsilon, PrivacyBudgetExhaustedError } from './budget';
 import { getTodayUTC, getDaysAgoUTC } from './aggregate';
 import { createHmac } from 'crypto';
 
@@ -162,6 +163,12 @@ export async function materializeNoisySnapshot(date: Date): Promise<{
 
 	if (rawAggregates.length === 0) {
 		return { created: 0, epsilonSpent: 0 };
+	}
+
+	// Enforce privacy budget BEFORE applying noise
+	// Each materialization consumes SERVER_EPSILON from the daily budget
+	if (!spendEpsilon(PRIVACY.SERVER_EPSILON)) {
+		throw new PrivacyBudgetExhaustedError(PRIVACY.SERVER_EPSILON);
 	}
 
 	// Generate deterministic noise seed for auditability

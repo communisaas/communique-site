@@ -374,24 +374,4 @@ export function logLLMOperation(
 		}),
 		costUsd: costUsd !== undefined ? `$${costUsd.toFixed(6)}` : 'no token data'
 	});
-
-	if (traceId) {
-		import('$lib/server/agent-trace').then(({ traceCompletion }) => {
-			traceCompletion(
-				traceId,
-				operation,
-				{ tier: context.tier },
-				{
-					userId: context.userId,
-					durationMs: details.durationMs,
-					success: details.success,
-					costUsd,
-					inputTokens: details.tokenUsage?.promptTokens,
-					outputTokens: details.tokenUsage?.candidatesTokens,
-					thoughtsTokens: details.tokenUsage?.thoughtsTokens,
-					totalTokens: details.tokenUsage?.totalTokens
-				}
-			);
-		}).catch(() => {});
-	}
 }

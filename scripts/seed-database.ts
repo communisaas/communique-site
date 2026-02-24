@@ -1,5 +1,4 @@
 import { PrismaClient, type User, type Template } from '@prisma/client';
-import { isFeatureEnabled } from '../src/lib/features/config.js';
 
 const db: PrismaClient = new PrismaClient();
 
@@ -12,7 +11,7 @@ const db: PrismaClient = new PrismaClient();
 const seedUserData = [
 	{
 		id: 'user-demo-1',
-		email: 'demo@communique.app',
+		email: 'demo@communi.email',
 		name: 'ETHDenver Demo',
 		is_verified: true,
 		verification_method: 'didit',
@@ -30,16 +29,11 @@ const seedUserData = [
 		templates_contributed: 0,
 		template_adoption_rate: 0.0,
 		peer_endorsements: 0,
-		active_months: 0,
-		challenge_wins: 0,
-		challenge_losses: 0,
-		citation_count: 0,
-		pending_rewards: '0',
-		total_earned: '0'
+		active_months: 0
 	},
 	{
 		id: 'user-demo-2',
-		email: 'test@communique.app',
+		email: 'test@communi.email',
 		name: 'Test User',
 		is_verified: false,
 		trust_score: 0,
@@ -47,12 +41,7 @@ const seedUserData = [
 		templates_contributed: 0,
 		template_adoption_rate: 0.0,
 		peer_endorsements: 0,
-		active_months: 0,
-		challenge_wins: 0,
-		challenge_losses: 0,
-		citation_count: 0,
-		pending_rewards: '0',
-		total_earned: '0'
+		active_months: 0
 	}
 ];
 
@@ -86,8 +75,6 @@ The gap: $170 billion we pay for destruction.
 
 Sources: National Oceanic and Atmospheric Administration, "Billion-Dollar Weather and Climate Disasters" 2024; U.S. Treasury Department, "Energy Tax Expenditures" FY2024
 
-From [Address] where flood insurance is now unaffordable.
-
 [Personal Connection]
 
 Why subsidize the cause of the damage?
@@ -95,8 +82,7 @@ Why subsidize the cause of the damage?
 Please explain this to your constituents.
 
 Sincerely,
-[Name]
-[Address]`,
+[Name]`,
 		metrics: ZERO_METRICS,
 		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
 		cwc_config: {
@@ -131,8 +117,6 @@ Actual conversions in pipeline: 1 building, 120 units.
 
 Sources: San Francisco Controller's Office Economic Report Q2 2025; Axios San Francisco, "Empty Offices Could Become 61,000 Housing Units" June 2025
 
-From [Address] where we see ghost towers while families sleep in cars.
-
 [Personal Connection]
 
 We have the space. Where's the will?
@@ -140,8 +124,7 @@ We have the space. Where's the will?
 Please explain this to your constituents.
 
 Sincerely,
-[Name]
-[Address]`,
+[Name]`,
 		metrics: ZERO_METRICS,
 		delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
 		recipient_config: {
@@ -186,8 +169,6 @@ Monthly mortgage at 7%: $3,200 (Freddie Mac data).
 
 Sources: U.S. Department of Housing and Urban Development, "Fair Market Rent Report" 2025; U.S. Census Bureau, "Housing Price Index" 2024; Freddie Mac, "Primary Mortgage Market Survey" 2024
 
-From [Address] where families spend 50% of income on housing.
-
 [Personal Connection]
 
 When did shelter become a luxury?
@@ -195,8 +176,7 @@ When did shelter become a luxury?
 We need comprehensive housing reform now.
 
 Sincerely,
-[Name]
-[Address]`,
+[Name]`,
 		metrics: ZERO_METRICS,
 		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
 		cwc_config: {
@@ -232,8 +212,6 @@ Federal privacy laws for kids: Unchanged since 1998 (COPPA still from 1998).
 
 Sources: U.S. Surgeon General, "Social Media and Youth Mental Health Advisory" 2024; Federal Trade Commission, "Children's Online Privacy Protection Report" 2024; Centers for Disease Control, "Youth Risk Behavior Surveillance" 2024
 
-From [Address] where parents fight algorithms for their children.
-
 [Personal Connection]
 
 Why do tech companies know our kids better than we do?
@@ -241,8 +219,7 @@ Why do tech companies know our kids better than we do?
 Pass KOSA and real privacy protection now.
 
 Sincerely,
-[Name]
-[Address]`,
+[Name]`,
 		metrics: ZERO_METRICS,
 		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
 		cwc_config: {
@@ -281,15 +258,12 @@ Sources: Human Rights Watch, "The Gig Trap" 2025; Uber Technologies Q4 2024 Earn
 Federal: Classify gig workers as employees, mandate benefits, enforce minimum wage.
 Corporate: Uber, Lyft, DoorDash, Instacart must provide employee protections.
 
-From [Address] where app workers can't afford rent.
-
 [Personal Connection]
 
 "Independent contractor" means no healthcare, no sick leave, no future.
 
 Sincerely,
-[Name]
-[Address]`,
+[Name]`,
 		metrics: ZERO_METRICS,
 		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
 		cwc_config: {
@@ -328,15 +302,12 @@ Sources: Yale School of Medicine, "Diabetes Medicine Production Costs" 2024; KFF
 Federal: Mandate cost-based pricing for government purchases, cap retail prices, break pharmacy middleman monopoly.
 Corporate: Eli Lilly, Novo Nordisk, Sanofi must justify 100x markup or face generic competition.
 
-From [Address] where rationing insulin means rationing life.
-
 [Personal Connection]
 
 $4 to make, $315 to survive. That's not healthcare, it's extortion.
 
 Sincerely,
-[Name]
-[Address]`,
+[Name]`,
 		metrics: ZERO_METRICS,
 		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
 		cwc_config: { topic: 'Drug Pricing', urgency: 'critical', policy_area: 'Healthcare' },
@@ -367,48 +338,33 @@ async function teardownDatabase() {
 		{ name: 'analytics_session', fn: () => db.analytics_session.deleteMany({}) },
 		{ name: 'analytics_experiment', fn: () => db.analytics_experiment.deleteMany({}) },
 
-		// Challenges & stakes
-		{ name: 'challenge_stake', fn: () => db.challengeStake.deleteMany({}) },
-		{ name: 'challenge', fn: () => db.challenge.deleteMany({}) },
-
-		// Audit & actions
-		{ name: 'audit_log', fn: () => db.auditLog.deleteMany({}) },
-		{ name: 'civic_action', fn: () => db.civicAction.deleteMany({}) },
+		// Reward calculations
 		{ name: 'reward_calculation', fn: () => db.rewardCalculation.deleteMany({}) },
 
 		// Template relations
 		{ name: 'template_jurisdiction', fn: () => db.templateJurisdiction.deleteMany({}) },
 		{ name: 'template_scope', fn: () => db.templateScope.deleteMany({}) },
-		{ name: 'template_personalization', fn: () => db.template_personalization.deleteMany({}) },
 		{ name: 'template_analytics', fn: () => db.template_analytics.deleteMany({}) },
 		{ name: 'template_campaign', fn: () => db.template_campaign.deleteMany({}) },
 		{ name: 'template_morphism', fn: () => db.template_morphism.deleteMany({}) },
 		{ name: 'template_adaptation', fn: () => db.template_adaptation.deleteMany({}) },
 		{ name: 'ai_suggestions', fn: () => db.ai_suggestions.deleteMany({}) },
-		{ name: 'user_activation', fn: () => db.user_activation.deleteMany({}) },
 		{ name: 'message', fn: () => db.message.deleteMany({}) },
-		{ name: 'scope_correction', fn: () => db.scopeCorrection.deleteMany({}) },
-
 		// Delivery & jobs
 		{ name: 'delivery_log', fn: () => db.deliveryLog.deleteMany({}) },
-		{ name: 'cwc_job', fn: () => db.cWCJob.deleteMany({}) },
 		{ name: 'submission', fn: () => db.submission.deleteMany({}) },
 
 		// User relations
 		{ name: 'user_representatives', fn: () => db.user_representatives.deleteMany({}) },
 		{ name: 'user_writing_style', fn: () => db.user_writing_style.deleteMany({}) },
 		{ name: 'user_email', fn: () => db.userEmail.deleteMany({}) },
-		{ name: 'user_expertise', fn: () => db.userExpertise.deleteMany({}) },
 		{ name: 'encrypted_delivery_data', fn: () => db.encryptedDeliveryData.deleteMany({}) },
-		{ name: 'shadow_atlas_registration', fn: () => db.shadowAtlasRegistration.deleteMany({}) },
 		{ name: 'session', fn: () => db.session.deleteMany({}) },
 		{ name: 'account', fn: () => db.account.deleteMany({}) },
 
 		// Agent tracking
 		{ name: 'agent_dissent', fn: () => db.agentDissent.deleteMany({}) },
 		{ name: 'agent_performance', fn: () => db.agentPerformance.deleteMany({}) },
-		{ name: 'cost_tracking', fn: () => db.costTracking.deleteMany({}) },
-
 		// Legislative
 		{ name: 'legislative_body', fn: () => db.legislative_body.deleteMany({}) },
 		{ name: 'legislative_channel', fn: () => db.legislative_channel.deleteMany({}) },

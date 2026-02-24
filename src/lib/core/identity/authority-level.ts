@@ -13,7 +13,7 @@
  *
  * On-chain enforcement:
  *   Each action domain can require a minimum authority level via
- *   DistrictGate.actionDomainMinAuthority mapping (Wave 14d).
+ *   DistrictGate.actionDomainMinAuthority mapping.
  *
  * Trust Tiers (Graduated Trust - see docs/architecture/graduated-trust.md):
  *   0 — Guest (no account, conceptual — never returned by deriveTrustTier)
@@ -30,7 +30,7 @@ export type TrustTier = 0 | 1 | 2 | 3 | 4 | 5;
 /**
  * Derive authority level from user verification state.
  *
- * Wave 14R fix: Now uses document_type to differentiate passport (L4) from ID card/license (L3).
+ * Now uses document_type to differentiate passport (L4) from ID card/license (L3).
  * Previously all Didit verifications were L4, which was inaccurate for non-passport documents.
  *
  * @param user - User verification fields
@@ -88,7 +88,6 @@ export const TRUST_TIER_LABELS: Record<TrustTier, string> = {
  * Tiers are cumulative - a user at Tier 3 has achieved all lower tiers.
  * Returns the HIGHEST tier achieved by the user.
  *
- * Wave 1C: Graduated Trust implementation
  *
  * @param user - User verification fields
  * @returns Trust tier (1-5) for authenticated users. Tier 0 (Guest) is conceptual only.

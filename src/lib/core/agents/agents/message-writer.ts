@@ -300,11 +300,10 @@ The stranger who shares this link should think "I need to send that too." Every 
 	const normalizedMessage = validationResult.data.message.trim()
 		.replace(/\[personal\s+connection\]/gi, '[Personal Connection]');
 
-	// Append deterministic signature
+	// Append deterministic signature (name only — address is a privacy concern)
 	const messageWithSignature = `${normalizedMessage}
 
-[Name]
-[Address]`;
+[Name]`;
 
 	const latencyMs = Date.now() - startTime;
 

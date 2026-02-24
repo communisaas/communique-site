@@ -113,3 +113,16 @@ export {
 	countryCodeToName,
 	stateCodeToName
 } from './location-resolver';
+
+// ============================================================================
+// Address Geocoding (client-side, privacy-preserving)
+// ============================================================================
+
+export { geocodeAddress } from './address-geocode';
+export type { StructuredAddress, GeocodeResult } from './address-geocode';
+
+// ============================================================================
+// State Code Maps (shared by geocoding modules)
+// ============================================================================
+
+export { getStateCode, US_STATES, CA_PROVINCES, AU_STATES } from './state-codes';

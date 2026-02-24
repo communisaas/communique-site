@@ -54,7 +54,7 @@ export interface SubmissionResult {
  * 3. Store submission in Postgres with all proof data
  * 4. Queue blockchain submission (async, fire-and-forget)
  *
- * Per-Chamber Nullifier Scoping (Wave 14e, G-08):
+ * Per-Chamber Nullifier Scoping:
  * Each chamber (House/Senate) gets a different action domain via recipientSubdivision
  * in the action domain builder (e.g., "US-CA" for Senate, "US-CA-12" for House).
  * This means different nullifiers per chamber — users can message both independently.
@@ -196,7 +196,7 @@ async function queueBlockchainSubmission(
 	} catch (error) {
 		console.error('[SubmissionHandler] Blockchain submission error:', error);
 
-		// Wave 15a: Queue for retry instead of immediately marking failed
+		// Queue for retry instead of immediately marking failed
 		try {
 			await queueForRetry(
 				submissionId,
