@@ -2,15 +2,27 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
 
+/** Returns true for a valid Ethereum address (0x-prefixed, 42 hex chars). */
+function isValidEthAddress(addr: unknown): addr is string {
+	return typeof addr === 'string' && /^0x[0-9a-fA-F]{40}$/.test(addr);
+}
+
 /**
  * POST /api/debates/[debateId]/cosign
  *
  * Co-sign an existing argument. Requires Tier 3+ and ZK proof.
  *
- * Body: { argumentIndex, stakeAmount, proofHex, publicInputs, nullifierHex }
+ * Body: {
+ *   argumentIndex, stakeAmount, proofHex, publicInputs, nullifierHex, verifierDepth?,
+ *   walletAddress?  — the co-signer's Ethereum wallet address; stored as beneficiary
+ *                     in the on-chain StakeRecord so settlement tokens flow directly
+ *                     to the user rather than the relayer. Optional — defaults to
+ *                     address(0) (relayer fallback) if omitted or invalid.
+ * }
  *
- * NOTE: In production, calls DebateMarket.coSignArgument() on-chain.
- * Currently stores off-chain only for frontend development.
+ * Calls DebateMarket.coSignArgument() on-chain when blockchain is configured,
+ * then updates Prisma. Falls back to off-chain-only mode when blockchain env
+ * vars are not set.
  */
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const { debateId } = params;
@@ -28,7 +40,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 	const debate = await prisma.debate.findUnique({
 		where: { id: debateId },
-		select: { id: true, status: true, deadline: true }
+		select: { id: true, status: true, deadline: true, debate_id_onchain: true }
 	});
 
 	if (!debate) {
@@ -42,7 +54,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const body = await request.json();
-	const { argumentIndex, stakeAmount, proofHex, publicInputs, nullifierHex } = body;
+	const { argumentIndex, stakeAmount, proofHex, publicInputs, nullifierHex, walletAddress } = body;
 
 	if (argumentIndex === undefined || typeof argumentIndex !== 'number') {
 		throw error(400, 'argumentIndex is required');
@@ -50,6 +62,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	if (!stakeAmount || !proofHex || !publicInputs || !nullifierHex) {
 		throw error(400, 'stakeAmount, proof data are required');
 	}
+
+	// Validate beneficiary wallet address when provided.
+	// walletAddress is optional — if absent or invalid we pass undefined and the
+	// client defaults to address(0), which the contract treats as "pay relayer".
+	if (walletAddress !== undefined && walletAddress !== null && !isValidEthAddress(walletAddress)) {
+		throw error(400, 'walletAddress must be a valid Ethereum address (0x-prefixed, 42 chars)');
+	}
+	const beneficiary: string | undefined = isValidEthAddress(walletAddress) ? walletAddress : undefined;
 
 	// Find the argument
 	const argument = await prisma.debateArgument.findUnique({
@@ -65,6 +85,57 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		throw error(404, 'Argument not found');
 	}
 
+	// ── On-chain co-sign via DebateMarket ──────────────────────────────
+	let txHash: string | undefined;
+
+	try {
+		const { coSignArgument } = await import('$lib/core/blockchain/debate-market-client');
+
+		const onchainResult = await coSignArgument({
+			debateId: debate.debate_id_onchain!,
+			argumentIndex,
+			stakeAmount: BigInt(stakeAmount),
+			proof: proofHex,
+			publicInputs,
+			verifierDepth: body.verifierDepth ?? 20,
+			deadline: body.deadline,
+			beneficiary  // user's wallet — receives settlement tokens directly (R-01)
+		});
+
+		if (onchainResult.success) {
+			txHash = onchainResult.txHash;
+		} else if (onchainResult.error?.includes('not configured')) {
+			console.warn('[debates/cosign] Blockchain not configured, updating off-chain only');
+		} else {
+			throw error(502, `On-chain co-sign failed: ${onchainResult.error}`);
+		}
+	} catch (err: unknown) {
+		// Re-throw SvelteKit HttpErrors (our own 502 above) as-is
+		if (err && typeof err === 'object' && 'status' in err) {
+			throw err;
+		}
+		// Unexpected import/runtime errors — treat as blockchain-not-configured
+		console.warn('[debates/cosign] Blockchain module unavailable, updating off-chain only:', err);
+	}
+
+	// ── Prisma off-chain update ────────────────────────────────────────
+	// Extract co-signer's engagement tier from ZK public inputs
+	// publicInputs[30] = engagement_tier (31st element, 0-indexed)
+	const coSignerTier = Number(publicInputs[30]);
+	if (!Number.isInteger(coSignerTier) || coSignerTier < 0 || coSignerTier > 7) {
+		throw error(400, 'Invalid engagement tier in public inputs');
+	}
+
+	// Compute the co-signer's individual weight contribution
+	// Mirrors on-chain: sqrt(stake) * 2^tier
+	const coSignerWeight = BigInt(
+		Math.floor(
+			Math.sqrt(Number(BigInt(stakeAmount)) / 1e6) *
+				Math.pow(2, coSignerTier) *
+				1e6
+		)
+	);
+
 	// Update argument with co-sign data and debate totals atomically
 	await prisma.$transaction([
 		prisma.debateArgument.update({
@@ -72,14 +143,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			data: {
 				co_sign_count: { increment: 1 },
 				total_stake: { increment: BigInt(stakeAmount) },
-				// Recompute weighted score with cumulative stake
-				weighted_score: BigInt(
-					Math.floor(
-						Math.sqrt(Number(argument.total_stake + BigInt(stakeAmount)) / 1e6) *
-							Math.pow(2, argument.engagement_tier) *
-							1e6
-					)
-				)
+				// Increment weighted_score by the co-signer's individual contribution
+				// Each co-signer contributes sqrt(their_stake) * 2^(their_tier)
+				weighted_score: { increment: coSignerWeight }
 			}
 		}),
 		prisma.debate.update({
@@ -91,5 +157,5 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		})
 	]);
 
-	return json({ success: true });
+	return json({ success: true, ...(txHash ? { txHash } : {}) });
 };

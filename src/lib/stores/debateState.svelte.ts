@@ -28,6 +28,11 @@ export interface ArgumentData {
 	currentPrice?: string;
 	priceHistory?: Array<{ epoch: number; price: string; timestamp: string }>;
 	positionCount?: number;
+	// AI evaluation scores (populated after resolution)
+	aiScore?: DimensionScores;
+	weightedAIScore?: number;
+	finalScore?: number;
+	modelAgreement?: number;
 }
 
 export interface DebateData {
@@ -39,7 +44,7 @@ export interface DebateData {
 	actionDomain: string;
 	deadline: string;
 	jurisdictionSize: number;
-	status: 'active' | 'resolved';
+	status: 'active' | 'resolving' | 'resolved' | 'awaiting_governance' | 'under_appeal';
 	argumentCount: number;
 	uniqueParticipants: number;
 	totalStake: string;
@@ -54,6 +59,42 @@ export interface DebateData {
 	currentEpoch?: number;
 	tradeDeadline?: string;
 	resolutionDeadline?: string;
+	// AI Resolution (Phase 3)
+	aiResolution?: AIResolutionData;
+}
+
+/** AI evaluation scores per dimension (0-10000 basis points) */
+export interface DimensionScores {
+	reasoning: number;
+	accuracy: number;
+	evidence: number;
+	constructiveness: number;
+	feasibility: number;
+}
+
+/** Per-argument AI evaluation result */
+export interface ArgumentAIScore {
+	argumentIndex: number;
+	dimensions: DimensionScores;
+	weightedAIScore: number; // dimension-weighted, 0-10000
+	communityScore: number; // normalized 0-10000
+	finalScore: number; // alpha-blended
+	modelAgreement: number; // fraction of models within 20% of median, 0-1
+}
+
+/** Full AI resolution data for a debate */
+export interface AIResolutionData {
+	argumentScores: ArgumentAIScore[];
+	alphaWeight: number; // basis points, e.g. 4000 = 40% AI
+	modelCount: number;
+	signatureCount: number;
+	quorumRequired: number;
+	resolutionMethod: 'ai_community' | 'governance_override' | 'community_only';
+	evaluatedAt?: string;
+	// Appeal state
+	appealDeadline?: string;
+	hasAppeal?: boolean;
+	governanceJustification?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -122,8 +163,20 @@ function createDebateState() {
 		get isActive() {
 			return currentDebate?.status === 'active';
 		},
+		get isResolving() {
+			return currentDebate?.status === 'resolving';
+		},
 		get isResolved() {
 			return currentDebate?.status === 'resolved';
+		},
+		get isAwaitingGovernance() {
+			return currentDebate?.status === 'awaiting_governance';
+		},
+		get isUnderAppeal() {
+			return currentDebate?.status === 'under_appeal';
+		},
+		get hasAIResolution() {
+			return currentDebate?.aiResolution !== undefined;
 		},
 		get hasDebate() {
 			return currentDebate !== null;
@@ -178,6 +231,13 @@ function createDebateState() {
 						Object.entries(data.prices).map(([k, v]) => [Number(k), Number(v)])
 					);
 				}
+				// Finding 6: pricesStale signals that on-chain prices changed after
+				// epoch execution but the service has no RPC access to fetch them
+				// directly. Reload the full debate state from the API, which queries
+				// the contract via the chain scanner and returns fresh currentPrices.
+				if (data.pricesStale && currentDebate) {
+					this.loadDebate(currentDebate.templateId);
+				}
 			});
 
 			source.addEventListener('trade_activity', (e: MessageEvent) => {
@@ -188,6 +248,83 @@ function createDebateState() {
 				// Reload full debate state on resolution
 				if (currentDebate) {
 					this.loadDebate(currentDebate.templateId);
+				}
+			});
+
+			// AI Resolution events (Phase 3)
+			source.addEventListener('evaluating', () => {
+				if (currentDebate) {
+					currentDebate = { ...currentDebate, status: 'resolving' };
+				}
+			});
+
+			// Finding 11: shadow-atlas emits 'ai_evaluation_submitted'; the Prisma-polling
+			// path emits 'ai_scores_submitted'. Both carry the same payload shape and
+			// must update signatureCount identically. Extract to a shared handler.
+			const handleAIScoresSubmitted = (e: MessageEvent) => {
+				const data = JSON.parse(e.data);
+				if (currentDebate && currentDebate.aiResolution) {
+					currentDebate = {
+						...currentDebate,
+						aiResolution: {
+							...currentDebate.aiResolution,
+							signatureCount: data.signatureCount ?? currentDebate.aiResolution.signatureCount
+						}
+					};
+				}
+			};
+			source.addEventListener('ai_scores_submitted', handleAIScoresSubmitted);
+			source.addEventListener('ai_evaluation_submitted', handleAIScoresSubmitted);
+
+			source.addEventListener('resolved_with_ai', (e: MessageEvent) => {
+				const data = JSON.parse(e.data);
+				if (currentDebate) {
+					currentDebate = {
+						...currentDebate,
+						status: 'resolved',
+						winningArgumentIndex: data.winningArgumentIndex,
+						winningStance: data.winningStance
+					};
+					this.fetchAIResolution(currentDebate.id);
+				}
+			});
+
+			source.addEventListener('governance_escalated', () => {
+				if (currentDebate) {
+					currentDebate = {
+						...currentDebate,
+						status: 'awaiting_governance'
+					};
+				}
+			});
+
+			source.addEventListener('appeal_started', (e: MessageEvent) => {
+				const data = JSON.parse(e.data);
+				if (currentDebate) {
+					currentDebate = {
+						...currentDebate,
+						status: 'under_appeal',
+						aiResolution: currentDebate.aiResolution
+							? {
+									...currentDebate.aiResolution,
+									hasAppeal: true,
+									appealDeadline: data.appealDeadline ?? undefined
+								}
+							: undefined
+					};
+				}
+			});
+
+			source.addEventListener('resolution_finalized', (e: MessageEvent) => {
+				const data = JSON.parse(e.data);
+				if (currentDebate) {
+					currentDebate = {
+						...currentDebate,
+						status: 'resolved',
+						winningArgumentIndex: data.winningArgumentIndex,
+						winningStance: data.winningStance
+					};
+					this.fetchAIResolution(currentDebate.id);
 				}
 			});
 
@@ -242,6 +379,84 @@ function createDebateState() {
 				currentDebate = null;
 			} finally {
 				isLoading = false;
+			}
+		},
+
+		/** Fetch AI resolution data and merge into current debate */
+		async fetchAIResolution(debateId: string) {
+			try {
+				const res = await fetch(`/api/debates/${debateId}/ai-resolution`);
+				if (!res.ok) return;
+				const { aiResolution } = await res.json();
+				if (!aiResolution || !currentDebate) return;
+
+				// Transform API response → store type
+				const args = (aiResolution.arguments ?? []) as Array<{
+					argumentIndex: number;
+					aiScores: Record<string, number> | null;
+					aiWeighted: number | null;
+					finalScore: number | null;
+					modelAgreement: number | null;
+				}>;
+
+				const argumentScores: ArgumentAIScore[] = args
+					.filter((a) => a.aiScores != null)
+					.map((a) => {
+						const dims = a.aiScores ?? {};
+						const argData = currentDebate!.arguments.find(
+							(ad) => ad.argumentIndex === a.argumentIndex
+						);
+						return {
+							argumentIndex: a.argumentIndex,
+							dimensions: {
+								reasoning: dims.reasoning ?? 0,
+								accuracy: dims.accuracy ?? 0,
+								evidence: dims.evidence ?? 0,
+								constructiveness: dims.constructiveness ?? 0,
+								feasibility: dims.feasibility ?? 0
+							},
+							weightedAIScore: a.aiWeighted ?? 0,
+							communityScore: Number(argData?.weightedScore ?? 0),
+							finalScore: a.finalScore ?? 0,
+							modelAgreement: a.modelAgreement ?? 0
+						};
+					});
+
+				const resolution: AIResolutionData = {
+					argumentScores,
+					alphaWeight: 4000,
+					modelCount: 5,
+					signatureCount: aiResolution.signatureCount ?? 0,
+					quorumRequired: 4,
+					resolutionMethod: aiResolution.resolutionMethod ?? 'ai_community',
+					evaluatedAt: aiResolution.resolvedAt ?? undefined,
+					appealDeadline: aiResolution.appealDeadline ?? undefined,
+					hasAppeal: false,
+					governanceJustification: aiResolution.governanceJustification ?? undefined
+				};
+
+				// Also merge per-argument AI data into argument objects
+				const updatedArgs = currentDebate.arguments.map((arg) => {
+					const score = argumentScores.find((s) => s.argumentIndex === arg.argumentIndex);
+					if (!score) return arg;
+					return {
+						...arg,
+						aiScore: score.dimensions,
+						weightedAIScore: score.weightedAIScore,
+						finalScore: score.finalScore,
+						modelAgreement: score.modelAgreement
+					};
+				});
+
+				currentDebate = {
+					...currentDebate,
+					aiResolution: resolution,
+					arguments: updatedArgs,
+					winningArgumentIndex: aiResolution.winningArgumentIndex ?? currentDebate.winningArgumentIndex,
+					winningStance: aiResolution.winningStance ?? currentDebate.winningStance
+				};
+			} catch {
+				// Silently fail — resolution data is supplementary
 			}
 		},
 

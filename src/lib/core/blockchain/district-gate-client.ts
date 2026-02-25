@@ -95,7 +95,7 @@ export function isCircuitOpen(): boolean {
 	return false;
 }
 
-function recordRpcFailure(): void {
+export function recordRpcFailure(): void {
 	const now = Date.now();
 
 	// If half-open test fails, revert to open
@@ -121,7 +121,7 @@ function recordRpcFailure(): void {
 	}
 }
 
-function recordRpcSuccess(): void {
+export function recordRpcSuccess(): void {
 	circuitBreaker.state = 'closed';
 	circuitBreaker.failures = [];
 	circuitBreaker.halfOpenAttemptInProgress = false;

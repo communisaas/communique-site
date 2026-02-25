@@ -3,6 +3,11 @@ import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
 import { solidityPackedKeccak256 } from 'ethers';
 
+/** Returns true for a valid Ethereum address (0x-prefixed, 42 hex chars). */
+function isValidEthAddress(addr: unknown): addr is string {
+	return typeof addr === 'string' && /^0x[0-9a-fA-F]{40}$/.test(addr);
+}
+
 /**
  * GET /api/debates/[debateId]/arguments
  *
@@ -58,7 +63,13 @@ export const GET: RequestHandler = async ({ params, url }) => {
  *
  * Submit a new argument to a debate. Requires Tier 3+ and ZK proof.
  *
- * Body: { stance, body, amendmentText?, stakeAmount, proofHex, publicInputs, nullifierHex }
+ * Body: {
+ *   stance, body, amendmentText?, stakeAmount, proofHex, publicInputs, nullifierHex,
+ *   walletAddress?  — the user's Ethereum wallet address; stored as beneficiary in
+ *                     the on-chain StakeRecord so settlement tokens flow directly to
+ *                     the user rather than the relayer. Optional — defaults to address(0)
+ *                     (relayer fallback) if omitted or invalid.
+ * }
  *
  * NOTE: In production, calls DebateMarket.submitArgument() on-chain.
  * Currently stores off-chain only for frontend development.
@@ -79,7 +90,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 	const debate = await prisma.debate.findUnique({
 		where: { id: debateId },
-		select: { id: true, status: true, argument_count: true, deadline: true }
+		select: { id: true, status: true, argument_count: true, deadline: true, debate_id_onchain: true }
 	});
 
 	if (!debate) {
@@ -93,7 +104,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const body = await request.json();
-	const { stance, body: argumentBody, amendmentText, stakeAmount, proofHex, publicInputs, nullifierHex } = body;
+	const { stance, body: argumentBody, amendmentText, stakeAmount, proofHex, publicInputs, nullifierHex, walletAddress } = body;
 
 	// Validate stance
 	if (!['SUPPORT', 'OPPOSE', 'AMEND'].includes(stance)) {
@@ -109,6 +120,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		throw error(400, 'ZK proof data is required');
 	}
 
+	// Validate beneficiary wallet address when provided.
+	// walletAddress is optional — if absent or invalid we pass undefined and the
+	// client defaults to address(0), which the contract treats as "pay relayer".
+	if (walletAddress !== undefined && walletAddress !== null && !isValidEthAddress(walletAddress)) {
+		throw error(400, 'walletAddress must be a valid Ethereum address (0x-prefixed, 42 chars)');
+	}
+	const beneficiary: string | undefined = isValidEthAddress(walletAddress) ? walletAddress : undefined;
+
 	// Compute content hashes
 	const bodyHash = solidityPackedKeccak256(['string'], [argumentBody]);
 	const amendmentHash = amendmentText
@@ -121,6 +140,41 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const weightedScore = Math.floor(Math.sqrt(stakeInDollars) * Math.pow(2, tier) * 1e6);
 
 	const argumentIndex = debate.argument_count;
+
+	// Submit argument on-chain via DebateMarket contract
+	const STANCE_MAP: Record<string, number> = { SUPPORT: 0, OPPOSE: 1, AMEND: 2 };
+	let txHash: string | undefined;
+
+	try {
+		const { submitArgument } = await import('$lib/core/blockchain/debate-market-client');
+
+		const onchainResult = await submitArgument({
+			debateId: debate.debate_id_onchain,
+			stance: STANCE_MAP[stance],
+			bodyHash,
+			amendmentHash: amendmentHash ?? '0x' + '0'.repeat(64),
+			stakeAmount: BigInt(stakeAmount),
+			proof: proofHex,
+			publicInputs,
+			verifierDepth: body.verifierDepth ?? 20,
+			beneficiary  // user's wallet — receives settlement tokens directly (R-01)
+		});
+
+		if (onchainResult.success) {
+			txHash = onchainResult.txHash;
+		} else if (onchainResult.error?.includes('not configured')) {
+			console.warn('[debates/arguments] Blockchain not configured, creating off-chain only');
+		} else {
+			throw error(502, `On-chain argument submission failed: ${onchainResult.error}`);
+		}
+	} catch (err: unknown) {
+		// Re-throw SvelteKit errors (our own 502 above)
+		if (err && typeof err === 'object' && 'status' in err) {
+			throw err;
+		}
+		// Import failure or unexpected error — treat as blockchain not configured
+		console.warn('[debates/arguments] Blockchain not available, creating off-chain only:', err);
+	}
 
 	// Create argument and update debate counts atomically
 	const [argument] = await prisma.$transaction([
@@ -152,6 +206,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	return json({
 		argumentId: argument.id,
 		argumentIndex: argument.argument_index,
-		weightedScore: argument.weighted_score.toString()
+		weightedScore: argument.weighted_score.toString(),
+		...(txHash ? { txHash } : {})
 	});
 };

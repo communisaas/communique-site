@@ -6,37 +6,87 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	const { debateId } = params;
 	const body = await request.json();
 
-	const { epoch, commitIndex, argumentIndex, direction, stakeAmount, engagementTier, nonce } =
-		body;
+	const {
+		epoch,
+		commitIndex,
+		argumentIndex,
+		direction,
+		nonce,
+		debateWeightProof,
+		debateWeightPublicInputs
+	} = body;
 
 	if (
 		epoch === undefined ||
 		commitIndex === undefined ||
 		argumentIndex === undefined ||
-		!direction ||
-		!stakeAmount ||
+		direction === undefined ||
 		!nonce
 	) {
 		throw error(400, 'Missing required fields');
 	}
 
-	// Validate debate exists
+	if (!debateWeightProof || !debateWeightPublicInputs) {
+		throw error(400, 'Missing required fields: debateWeightProof, debateWeightPublicInputs');
+	}
+
+	if (!Array.isArray(debateWeightPublicInputs) || debateWeightPublicInputs.length !== 2) {
+		throw error(400, 'debateWeightPublicInputs must be an array of exactly 2 elements');
+	}
+
+	// Validate direction is 0 (BUY) or 1 (SELL)
+	if (direction !== 0 && direction !== 1) {
+		throw error(400, 'direction must be 0 (BUY) or 1 (SELL)');
+	}
+
+	// Validate debate exists and is active
 	const debate = await prisma.debate.findUnique({
-		where: { id: debateId }
+		where: { id: debateId },
+		select: { id: true, status: true, debate_id_onchain: true }
 	});
 
 	if (!debate) throw error(404, 'Debate not found');
 	if (debate.status !== 'active') throw error(400, 'Debate is not active');
 
-	// TODO: Forward to relayer for on-chain submission
-	// The relayer will submit revealTrade() on-chain
+	// Submit revealTrade on-chain via DebateMarket contract
+	let txHash: string | undefined;
+
+	try {
+		const { revealTrade } = await import('$lib/core/blockchain/debate-market-client');
+
+		const onchainResult = await revealTrade({
+			debateId: debate.debate_id_onchain,
+			epoch,
+			commitIndex,
+			argumentIndex,
+			direction,
+			nonce,
+			debateWeightProof,
+			debateWeightPublicInputs
+		});
+
+		if (onchainResult.success) {
+			txHash = onchainResult.txHash;
+		} else if (onchainResult.error?.includes('not configured')) {
+			console.warn('[debates/reveal] Blockchain not configured, accepting off-chain only');
+		} else {
+			throw error(502, `On-chain reveal submission failed: ${onchainResult.error}`);
+		}
+	} catch (err: unknown) {
+		// Re-throw SvelteKit errors (our own 502 above)
+		if (err && typeof err === 'object' && 'status' in err) {
+			throw err;
+		}
+		// Import failure or unexpected error — treat as blockchain not configured
+		console.warn('[debates/reveal] Blockchain not available, accepting off-chain only:', err);
+	}
 
 	return json({
 		success: true,
-		message: 'Trade reveal accepted. Will be submitted on-chain by relayer.',
 		debateId,
 		epoch,
 		argumentIndex,
-		direction
+		direction,
+		...(txHash ? { txHash } : {})
 	});
 };
