@@ -71,7 +71,7 @@
 		try {
 			const fullAddress = `${streetAddress}, ${city}, ${stateCode} ${zipCode}`;
 
-			// Step 1: Client-side geocoding — address never leaves the browser
+			// Step 1: Geocode address → coordinates (Nominatim, via server proxy)
 			const geocodeResult = await geocodeAddress({
 				street: streetAddress,
 				city,
@@ -85,29 +85,14 @@
 				return;
 			}
 
-			// Step 2: Get cell_id + district_code from Census Bureau (browser-side)
-			let cellId: string | undefined;
-			let districtCode: string | undefined;
-			try {
-				const { censusAPI } = await import('$lib/core/location/census-api');
-				const censusResult = await censusAPI.geocodeCoordinates(geocodeResult.lat, geocodeResult.lng);
-				if (censusResult) {
-					cellId = censusResult.cell_id ?? undefined;
-					districtCode = censusResult.congressional_district ?? undefined;
-				}
-			} catch {
-				// Census API failure is non-fatal — proceed without cell_id/district_code
-			}
-
-			// Step 3: Resolve district + officials via coordinates-only endpoint
+			// Step 2: Resolve coordinates → district + officials + cell_id
+			// Server handles Census Bureau (cell_id) + Shadow Atlas (district + officials)
 			const { api } = await import('$lib/core/api/client');
 			const result = await api.post('/location/resolve', {
 				lat: geocodeResult.lat,
 				lng: geocodeResult.lng,
 				signal_type: 'verified',
-				confidence: geocodeResult.confidence,
-				...(cellId ? { cell_id: cellId } : {}),
-				...(districtCode ? { district_code: districtCode } : {})
+				confidence: geocodeResult.confidence
 			});
 
 			if (result.success && result.data) {
@@ -271,8 +256,9 @@
 						<div>
 							<h3 class="text-sm font-semibold text-blue-900">Private & Secure</h3>
 							<p class="mt-1 text-xs leading-relaxed text-blue-700">
-								Your address is geocoded <strong>on your device</strong>. Only coordinates are
-								sent to determine your district. Your address never leaves your browser.
+								Your address is geocoded via <strong>OpenStreetMap</strong> (open source).
+								Only coordinates are sent to resolve your district. Your address is never
+								stored on our servers.
 							</p>
 						</div>
 					</div>

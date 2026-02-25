@@ -1,8 +1,8 @@
 /**
- * Census Bureau Geocoding API Client (Browser-Side)
+ * Census Bureau Geocoding API Client
  *
- * Privacy-preserving geocoding - runs in browser, NOT on server.
- * Used for converting browser geolocation coordinates to congressional district.
+ * Coordinate geocoding proxied through server to avoid CSP/CORS issues.
+ * Address geocoding uses Census Bureau directly (JSON format, no CSP issue).
  *
  * API Documentation: https://geocoding.geo.census.gov/geocoder/
  */
@@ -106,178 +106,86 @@ export class CensusAPIClient {
 	}
 
 	/**
-	 * Geocode coordinates to congressional district using JSONP
+	 * Geocode coordinates to congressional district via server proxy.
+	 * Server calls Nominatim (reverse) + Census Bureau (coordinates) in parallel.
 	 */
 	async geocodeCoordinates(latitude: number, longitude: number): Promise<LocationSignal | null> {
 		try {
-			// Step 1: Get city name from Nominatim (OpenStreetMap) - free, no API key
-			const nominatimData = await this.getNominatimData(latitude, longitude);
-			const cityName = nominatimData?.city;
-			const stateCode = nominatimData?.state;
-			const countyName = nominatimData?.county;
-
-			// Step 2: Get congressional district from Census API using JSONP
-			// Census API doesn't support CORS, so we use JSONP instead
-			const callbackName = `censusCallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-			return new Promise((resolve) => {
-				// Set timeout to prevent hanging
-				const timeout = setTimeout(() => {
-					cleanup();
-					console.warn('[Census API] JSONP request timed out - falling back to Nominatim data');
-					// Graceful degradation: Return city/state from Nominatim even if Census fails
-					resolve(createFallbackSignal());
-				}, this.DEFAULT_TIMEOUT);
-
-				// Helper to create fallback signal when Census API fails
-				const createFallbackSignal = (): LocationSignal | null => {
-					if (!cityName && !stateCode) {
-						console.warn('[Census API] No data from Nominatim, cannot create fallback signal');
-						return null;
-					}
-
-					console.debug('[Census API] ⚠️ Using fallback signal with Nominatim data only');
-					return {
-						signal_type: 'browser',
-						confidence: 0.4, // Lower confidence without district data
-						country_code: 'US', // Census API only covers US
-						congressional_district: null, // Can't determine without Census API
-						state_code: stateCode || null,
-						city_name: cityName || null,
-						county_fips: null,
-						latitude,
-						longitude,
-						source: 'nominatim.browser',
-						timestamp: new Date().toISOString(),
-						metadata: {
-							county_name: countyName,
-							fallback: true,
-							reason: 'Census API unavailable'
-						}
-					};
-				};
-
-				// Create callback function
-				(window as typeof window & { [key: string]: (data: unknown) => void })[callbackName] = (
-					data: unknown
-				) => {
-					cleanup();
-
-					// The /geographies/coordinates endpoint returns nested under "result"
-					const responseData = data as {
-						result?: {
-							geographies?: {
-								'119th Congressional Districts'?: Array<{ GEOID: string; NAME: string }>;
-								Counties?: Array<{ GEOID: string; NAME: string; STATE: string; COUNTY: string }>;
-								States?: Array<{ GEOID: string; NAME: string; STUSAB: string }>;
-								'2020 Census Blocks'?: Array<{
-									GEOID: string;
-									STATE: string;
-									COUNTY: string;
-									TRACT: string;
-									BLOCK: string;
-									NAME: string;
-								}>;
-							};
-							input?: {
-								location?: { x: number; y: number };
-							};
-						};
-					};
-
-					const geographies = responseData?.result?.geographies;
-					if (!geographies) {
-						console.warn(
-							'[Census API] No geographies in response - falling back to Nominatim data'
-						);
-						resolve(createFallbackSignal());
-						return;
-					}
-
-					// Extract congressional district
-					const districts = geographies['119th Congressional Districts'];
-					const district = districts?.[0];
-
-					// Extract county
-					const counties = geographies['Counties'];
-					const county = counties?.[0];
-
-					// Extract state
-					const states = geographies['States'];
-					const state = states?.[0];
-
-					// Extract Census Block for cell_id (15-digit GEOID)
-					const blocks = geographies['2020 Census Blocks'];
-					const block = blocks?.[0];
-					const cell_id: CellId | null = createCellId(block?.GEOID);
-
-					// Log cell_id extraction (debug, without revealing full GEOID for privacy)
-					if (cell_id) {
-						console.debug('[Census API] Cell_id extracted (three-tree enabled)');
-					}
-
-					if (!district || !state) {
-						console.warn(
-							'[Census API] Missing district or state data - falling back to Nominatim data'
-						);
-						resolve(createFallbackSignal());
-						return;
-					}
-
-					// Parse congressional district (GEOID format: "0611" = CA-11)
-					const censusStateCode = state.STUSAB; // e.g., "CA"
-					const districtNumber = district.GEOID.slice(2); // Remove state prefix
-					const congressionalDistrict = `${censusStateCode}-${districtNumber}`;
-
-					const censusCountyName = county?.NAME || null;
-
-					// Build location signal with actual city name from Nominatim + district from Census
-					const signal: LocationSignal = {
-						signal_type: 'browser',
-						confidence: cell_id ? 0.7 : 0.6, // Higher confidence if cell_id extracted
-						country_code: 'US', // Census API only covers US
-						congressional_district: congressionalDistrict,
-						state_code: censusStateCode,
-						city_name: cityName, // From Nominatim reverse geocoding
-						county_fips: county ? county.GEOID : null,
-						cell_id, // 15-digit Census Block GEOID (privacy-sensitive)
-						latitude,
-						longitude,
-						source: 'census.browser',
-						timestamp: new Date().toISOString(),
-						metadata: {
-							county_name: censusCountyName || countyName, // Prefer Census county, fallback to Nominatim
-							district_name: district.NAME,
-							// Include tract for debugging (less sensitive than full cell_id)
-							tract: block?.TRACT || null
-						}
-					};
-
-					console.debug('[Census API] Location signal extracted');
-					resolve(signal);
-				};
-
-				// Create script element for JSONP request
-				const script = document.createElement('script');
-				script.src = `${this.baseUrl}/geographies/coordinates?x=${longitude}&y=${latitude}&benchmark=4&vintage=4&format=jsonp&callback=${callbackName}`;
-				script.onerror = () => {
-					cleanup();
-					console.error('[Census API] JSONP request failed - falling back to Nominatim data');
-					resolve(createFallbackSignal());
-				};
-
-				// Cleanup function
-				const cleanup = () => {
-					clearTimeout(timeout);
-					delete (window as typeof window & { [key: string]: unknown })[callbackName];
-					if (script.parentNode) {
-						script.parentNode.removeChild(script);
-					}
-				};
-
-				// Add script to document
-				document.head.appendChild(script);
+			const response = await this.fetchWithRetry('/api/location/geocode-coordinates', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ latitude, longitude })
 			});
+
+			if (!response.ok) {
+				console.error('[Census API] Server geocode failed:', response.status);
+				return null;
+			}
+
+			const data = await response.json();
+			const { nominatim, census } = data as {
+				nominatim: { city: string | null; state: string | null; county: string | null } | null;
+				census: {
+					congressionalDistrict: string | null;
+					stateCode: string | null;
+					countyFips: string | null;
+					countyName: string | null;
+					districtName: string | null;
+					cellId: string | null;
+					tract: string | null;
+				} | null;
+			};
+
+			const cityName = nominatim?.city ?? null;
+			const stateCode = census?.stateCode ?? nominatim?.state ?? null;
+			const cell_id: CellId | null = createCellId(census?.cellId ?? undefined);
+
+			if (!census?.congressionalDistrict && !stateCode) {
+				console.warn('[Census API] No district or state data from server');
+				if (!cityName) return null;
+
+				return {
+					signal_type: 'browser',
+					confidence: 0.4,
+					country_code: 'US',
+					congressional_district: null,
+					state_code: stateCode,
+					city_name: cityName,
+					county_fips: null,
+					latitude,
+					longitude,
+					source: 'nominatim.server',
+					timestamp: new Date().toISOString(),
+					metadata: {
+						county_name: nominatim?.county ?? null,
+						fallback: true,
+						reason: 'Census API unavailable'
+					}
+				};
+			}
+
+			const signal: LocationSignal = {
+				signal_type: 'browser',
+				confidence: cell_id ? 0.7 : 0.6,
+				country_code: 'US',
+				congressional_district: census?.congressionalDistrict ?? null,
+				state_code: stateCode,
+				city_name: cityName,
+				county_fips: census?.countyFips ?? null,
+				cell_id,
+				latitude,
+				longitude,
+				source: 'census.server',
+				timestamp: new Date().toISOString(),
+				metadata: {
+					county_name: census?.countyName ?? nominatim?.county ?? null,
+					district_name: census?.districtName ?? null,
+					tract: census?.tract ?? null
+				}
+			};
+
+			console.debug('[Census API] Location signal extracted via server');
+			return signal;
 		} catch (error) {
 			console.error('Census geocoding error:', error);
 			return null;
@@ -367,57 +275,6 @@ export class CensusAPIClient {
 			return signal;
 		} catch (error) {
 			console.error('Failed to extract location from census match:', error);
-			return null;
-		}
-	}
-
-	/**
-	 * Get location data from Nominatim (OpenStreetMap) reverse geocoding - FREE, no API key
-	 */
-	private async getNominatimData(
-		latitude: number,
-		longitude: number
-	): Promise<{ city: string | null; state: string | null; county: string | null } | null> {
-		try {
-			// Nominatim API - free OpenStreetMap reverse geocoding
-			// Usage policy: https://operations.osmfoundation.org/policies/nominatim/
-			const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`;
-
-			const response = await this.fetchWithRetry(url, {
-				headers: {
-					'User-Agent': 'Communique/1.0 (https://communi.email)' // Required by Nominatim
-				}
-			});
-
-			if (!response.ok) {
-				console.warn('[Nominatim] API error:', response.status);
-				return null;
-			}
-
-			const data = await response.json();
-			console.debug('[Nominatim] Reverse geocoding response received');
-
-			// Extract address components
-			const address = data?.address;
-			if (!address) return null;
-
-			// Priority: city > town > village > hamlet
-			const cityName = address.city || address.town || address.village || address.hamlet || null;
-
-			// Extract state code (ISO3166-2-lvl4 format: "US-CA" → "CA")
-			const stateISO = address['ISO3166-2-lvl4']; // e.g., "US-CA"
-			const stateCode = stateISO ? stateISO.split('-')[1] : null;
-
-			// Extract county name (may include "County" suffix)
-			const countyName = address.county || null;
-
-			return {
-				city: cityName,
-				state: stateCode,
-				county: countyName
-			};
-		} catch (error) {
-			console.error('[Nominatim] Reverse geocoding error:', error);
 			return null;
 		}
 	}
@@ -516,12 +373,25 @@ export async function getBrowserGeolocation(): Promise<LocationSignal | null> {
 
 	return new Promise((resolve) => {
 		navigator.geolocation.getCurrentPosition(
-			async (position) => {
+			(position) => {
 				const { latitude, longitude } = position.coords;
 
-				// Geocode coordinates to congressional district
-				const signal = await censusAPI.geocodeCoordinates(latitude, longitude);
-				resolve(signal);
+				// Return minimal signal with coordinates only.
+				// District resolution happens server-side via /api/location/resolve
+				// (Census Bureau for cell_id + Shadow Atlas for districts/officials).
+				resolve({
+					signal_type: 'browser',
+					confidence: 0.6,
+					country_code: 'US',
+					congressional_district: null,
+					state_code: null,
+					city_name: null,
+					county_fips: null,
+					latitude,
+					longitude,
+					source: 'browser.geolocation',
+					timestamp: new Date().toISOString()
+				});
 			},
 			(error) => {
 				console.warn('Geolocation permission denied or unavailable:', error.message);

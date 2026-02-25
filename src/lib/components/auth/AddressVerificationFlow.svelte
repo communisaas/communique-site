@@ -2,8 +2,8 @@
   AddressVerificationFlow.svelte
 
   Dual-path Tier 2 verification flow: geolocation OR address-based.
-  Path A: Browser geolocation → Census API → district resolution
-  Path B: Manual address → Nominatim geocode → Census API → district resolution
+  Path A: Browser geolocation → /api/location/resolve (Census + Shadow Atlas server-side)
+  Path B: Manual address → Nominatim geocode (server proxy) → /api/location/resolve
 
   Flow: path-select → [geolocating | address-input] → resolving → confirm-district → issuing-credential → complete
 -->
@@ -12,7 +12,7 @@
 	import { MapPin, CheckCircle2, Loader2, AlertCircle, Building2, ChevronRight, Navigation, Lock } from '@lucide/svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { storeCredential } from '$lib/core/identity/credential-store';
-	import { getBrowserGeolocation, censusAPI } from '$lib/core/location/census-api';
+	import { getBrowserGeolocation } from '$lib/core/location/census-api';
 	import { geocodeAddress } from '$lib/core/location/address-geocode';
 	import { storeConstituentAddress } from '$lib/core/identity/constituent-address';
 	import { addVerifiedLocationSignal } from '$lib/core/location/inference-engine';
@@ -107,7 +107,7 @@
 		errorMessage = '';
 
 		try {
-			// Step 1: Get browser geolocation (returns LocationSignal with lat/lng + Census data)
+			// Step 1: Get browser geolocation (returns LocationSignal with lat/lng only)
 			const signal = await getBrowserGeolocation();
 
 			if (!signal) {
@@ -128,13 +128,9 @@
 				return;
 			}
 
-			// Census data may already be in the signal from getBrowserGeolocation()
-			const cellId = signal.cell_id ?? null;
-			const districtCode = signal.congressional_district ?? null;
-
 			flowStep = 'resolving';
 
-			// POST to /api/location/resolve
+			// Server resolves cell_id (Census Bureau) + district + officials (Shadow Atlas)
 			const response = await fetch('/api/location/resolve', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -142,9 +138,7 @@
 					lat,
 					lng,
 					signal_type: 'browser',
-					confidence: 0.6,
-					cell_id: cellId,
-					district_code: districtCode
+					confidence: 0.6
 				})
 			});
 
@@ -170,7 +164,7 @@
 		errorMessage = '';
 
 		try {
-			// Step 1: Client-side geocoding via Nominatim
+			// Step 1: Geocode address → coordinates (Nominatim, via server proxy)
 			const coords = await geocodeAddressClient(
 				street.trim(),
 				city.trim(),
@@ -184,22 +178,16 @@
 				return;
 			}
 
-			// Step 2: Census API for cell_id + district_code
-			const censusSignal = await censusAPI.geocodeCoordinates(coords.lat, coords.lng);
-			const cellId = censusSignal?.cell_id ?? null;
-			const districtCode = censusSignal?.congressional_district ?? null;
-
-			// Step 3: Store address encrypted in IndexedDB
-			const resolvedDistrict = districtCode || '';
+			// Step 2: Store address encrypted in IndexedDB (before resolve, so it's saved even on failure)
 			await storeConstituentAddress(userId, {
 				street: street.trim(),
 				city: city.trim(),
 				state: stateCode.trim().toUpperCase(),
 				zip: zipCode.trim(),
-				district: resolvedDistrict
+				district: ''
 			});
 
-			// Step 4: POST to /api/location/resolve
+			// Step 3: Resolve coordinates → district + officials + cell_id (server handles Census + Shadow Atlas)
 			const response = await fetch('/api/location/resolve', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -207,13 +195,23 @@
 					lat: coords.lat,
 					lng: coords.lng,
 					signal_type: 'verified',
-					confidence: 0.85,
-					cell_id: cellId,
-					district_code: districtCode
+					confidence: 0.85
 				})
 			});
 
 			const data = await response.json();
+
+			// Update stored address with resolved district
+			if (data.resolved && data.district?.code) {
+				await storeConstituentAddress(userId, {
+					street: street.trim(),
+					city: city.trim(),
+					state: stateCode.trim().toUpperCase(),
+					zip: zipCode.trim(),
+					district: data.district.code
+				});
+			}
+
 			processResolveResponse(data, response.ok);
 		} catch (err) {
 			console.error('[AddressVerificationFlow] Address verification error:', err);
@@ -395,7 +393,7 @@
 			<div class="flex items-center justify-center gap-1.5">
 				<Lock class="h-3 w-3 text-emerald-700" />
 				<p class="text-xs font-medium text-emerald-700">
-					Your address never leaves your browser. Only coordinates determine your district.
+					Address geocoded via OpenStreetMap (open source). Only coordinates determine your district.
 				</p>
 			</div>
 
@@ -529,9 +527,9 @@
 					How is my address used?
 				</summary>
 				<p class="mt-2 text-xs leading-relaxed text-slate-500">
-					Your address is geocoded in-browser using OpenStreetMap, then matched to a Census block.
-					After verification, the address is encrypted locally. Only your district is sent to
-					issue a verifiable credential.
+					Your address is geocoded via OpenStreetMap (open source, server-proxied), then coordinates
+					are resolved to your district via Census Bureau and Shadow Atlas. After verification,
+					the address is encrypted locally. Only your district is sent to issue a verifiable credential.
 				</p>
 			</details>
 		</div>

@@ -912,7 +912,7 @@ model Debate {
   // Debate parameters
   deadline            DateTime
   jurisdiction_size   Int      @default(0) @map("jurisdiction_size")
-  status              String   @default("active") // 'active' | 'resolved'
+  status              String   @default("active") // 'active' | 'resolving' | 'resolved' | 'awaiting_governance' | 'under_appeal'
 
   // Aggregate metrics (mirrors on-chain, updated via event indexer)
   argument_count       Int     @default(0) @map("argument_count")
@@ -923,6 +923,17 @@ model Debate {
   winning_argument_index  Int?    @map("winning_argument_index")
   winning_stance          String? @map("winning_stance")
   resolved_at             DateTime? @map("resolved_at")
+
+  // AI Resolution (Phase 3: AI-Augmented Resolution)
+  ai_resolution           Json?     @map("ai_resolution") // Full AIResolutionData blob
+  ai_signature_count      Int?      @map("ai_signature_count")
+  ai_panel_consensus      Float?    @map("ai_panel_consensus") // Model agreement 0-1
+  resolution_method       String?   @map("resolution_method") // 'ai_community' | 'governance_override'
+  appeal_deadline         DateTime? @map("appeal_deadline")
+  governance_justification String?  @map("governance_justification")
+
+  // Transaction (populated when created on-chain)
+  tx_hash             String?  @map("tx_hash") // proposeDebate() transaction hash
 
   // Proposer (pseudonymous — wallet address, not identity)
   proposer_address    String   @map("proposer_address")
@@ -973,6 +984,12 @@ model DebateArgument {
   current_price    String?  @map("current_price") // "0.42" (decimal string)
   price_history    Json?    @map("price_history") // [{ epoch: 0, price: "0.333", timestamp: "..." }, ...]
   position_count   Int      @default(0) @map("position_count") // total unique traders on this argument
+
+  // AI evaluation scores (Phase 3: AI-Augmented Resolution)
+  ai_scores        Json?    @map("ai_scores") // { reasoning, accuracy, evidence, constructiveness, feasibility }
+  ai_weighted      Int?     @map("ai_weighted") // Dimension-weighted AI score (0-10000 bp)
+  final_score      Int?     @map("final_score") // α-blended final score (0-10000 bp)
+  model_agreement  Float?   @map("model_agreement") // Fraction of models within 20% of median (0-1)
 
   // Timestamps
   created_at       DateTime @default(now()) @map("created_at")

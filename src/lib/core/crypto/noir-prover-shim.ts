@@ -1,13 +1,18 @@
 /**
- * Three-Tree Noir Prover Shim
+ * Noir Prover Shim
  *
- * The published @voter-protocol/noir-prover@0.2.0 only exports two-tree
- * functionality. Three-tree support exists in the local repo but hasn't
- * been published yet. This shim provides the types and a runtime-safe
- * factory that tries the npm package first, then fails with a clear error.
+ * Provides runtime-safe factory functions for all circuit provers used in
+ * communique. Each factory tries the npm package (@voter-protocol/noir-prover)
+ * first, then fails with a clear error if the export is unavailable.
  *
- * When @voter-protocol/noir-prover is updated with three-tree support,
- * delete this file and import directly from the package.
+ * HISTORY:
+ * - Originally shimmed three-tree because @voter-protocol/noir-prover@0.2.0
+ *   only exported two-tree. The npm package now exports all provers, but
+ *   the shim is retained as a stable internal interface and fallback boundary.
+ * - Debate weight and position note provers added (Cycle 18).
+ *
+ * When this shim becomes unnecessary (all provers stable in npm), delete it
+ * and import directly from '@voter-protocol/noir-prover'.
  */
 
 // Re-export everything the npm package DOES provide
@@ -87,5 +92,110 @@ export async function getThreeTreeProverForDepth(
 		`Three-tree prover not available for depth ${depth}. ` +
 			'Publish @voter-protocol/noir-prover with three-tree support, ' +
 			'or run against the local package.'
+	);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEBATE WEIGHT PROVER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Number of public inputs in debate_weight circuit: [weighted_amount, note_commitment] */
+export const DEBATE_WEIGHT_PUBLIC_INPUT_COUNT = 2;
+
+/** Debate weight prover interface (matches DebateWeightNoirProver from noir-prover) */
+export interface DebateWeightNoirProver {
+	generateProof(
+		input: { stake: bigint; tier: 1 | 2 | 3 | 4; randomness: bigint },
+		options?: { keccak?: boolean }
+	): Promise<{ proof: Uint8Array; publicInputs: string[] }>;
+	destroy(): Promise<void>;
+}
+
+/**
+ * Get the debate weight prover singleton.
+ *
+ * Tries the npm package (@voter-protocol/noir-prover).
+ * Falls back to a clear error if the export is unavailable.
+ *
+ * Circuit: debate_weight — no depth parameter (no Merkle trees).
+ * Expected init time: 5-15s (browser WASM).
+ */
+export async function getDebateWeightProver(): Promise<DebateWeightNoirProver> {
+	try {
+		const mod = await import('@voter-protocol/noir-prover');
+		if ('getDebateWeightProver' in mod && typeof mod.getDebateWeightProver === 'function') {
+			return mod.getDebateWeightProver() as Promise<DebateWeightNoirProver>;
+		}
+	} catch (err) {
+		throw new Error(
+			`Failed to load @voter-protocol/noir-prover for debate weight prover: ${err instanceof Error ? err.message : String(err)}`
+		);
+	}
+
+	throw new Error(
+		'Debate weight prover not available in @voter-protocol/noir-prover. ' +
+			'Ensure @voter-protocol/noir-prover >= 0.3.0 is installed with debate_weight circuit support.'
+	);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// POSITION NOTE PROVER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Number of public inputs in position_note circuit.
+ * Layout: [position_root, nullifier, debate_id, winning_argument_index, claimed_weighted_amount]
+ */
+export const POSITION_NOTE_PUBLIC_INPUT_COUNT = 5;
+
+/**
+ * Position tree depth (fixed at 20 — circuit global TREE_DEPTH).
+ * 2^20 = 1,048,576 position slots.
+ */
+export const POSITION_TREE_DEPTH = 20;
+
+/** Position note prover interface (matches PositionNoteNoirProver from noir-prover) */
+export interface PositionNoteNoirProver {
+	generateProof(
+		input: {
+			argumentIndex: bigint;
+			weightedAmount: bigint;
+			randomness: bigint;
+			nullifierKey: bigint;
+			positionPath: bigint[];
+			positionIndex: number;
+			positionRoot: bigint;
+			debateId: bigint;
+			winningArgumentIndex: bigint;
+		},
+		options?: { keccak?: boolean }
+	): Promise<{ proof: Uint8Array; publicInputs: string[] }>;
+	destroy(): Promise<void>;
+}
+
+/**
+ * Get the position note prover singleton.
+ *
+ * Tries the npm package (@voter-protocol/noir-prover).
+ * Falls back to a clear error if the export is unavailable.
+ *
+ * Circuit: position_note — depth fixed at 20, no depth parameter.
+ * Expected init time: 15-40s (larger circuit, browser WASM).
+ */
+export async function getPositionNoteProver(): Promise<PositionNoteNoirProver> {
+	try {
+		const mod = await import('@voter-protocol/noir-prover');
+		if ('getPositionNoteProver' in mod && typeof mod.getPositionNoteProver === 'function') {
+			return mod.getPositionNoteProver() as Promise<PositionNoteNoirProver>;
+		}
+	} catch (err) {
+		throw new Error(
+			`Failed to load @voter-protocol/noir-prover for position note prover: ${err instanceof Error ? err.message : String(err)}`
+		);
+	}
+
+	throw new Error(
+		'Position note prover not available in @voter-protocol/noir-prover. ' +
+			'Ensure @voter-protocol/noir-prover >= 0.3.0 is installed with position_note circuit support.'
 	);
 }
