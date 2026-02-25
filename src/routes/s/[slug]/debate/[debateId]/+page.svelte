@@ -4,18 +4,40 @@
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { debateState } from '$lib/stores/debateState.svelte';
 	import type { DebateData } from '$lib/stores/debateState.svelte';
+	import { invalidateAll } from '$app/navigation';
 	import { ArrowLeft } from '@lucide/svelte';
+
+	let appealPending = $state(false);
+	let appealError = $state<string | null>(null);
 
 	let { data }: { data: PageData } = $props();
 
 	const debate = $derived(data.debate as DebateData);
 	const template = $derived(data.template);
 
-	// Connect SSE on mount, disconnect on destroy
+	// Seed the store with server-loaded debate (includes aiResolution)
 	$effect(() => {
-		if (debate?.debateIdOnchain && debate.marketStatus === 'active') {
+		if (debate) {
+			debateState.setDebate(debate);
+		}
+	});
+
+	// Connect SSE on mount for any non-terminal debate state
+	// Active debates get market price updates + AI resolution events
+	// Resolving/under_appeal debates get resolution state transitions
+	$effect(() => {
+		const shouldStream =
+			debate?.debateIdOnchain &&
+			(debate.status === 'active' ||
+				debate.status === 'resolving' ||
+				debate.status === 'under_appeal' ||
+				debate.status === 'awaiting_governance');
+
+		if (shouldStream) {
 			debateState.connectSSE(debate.debateIdOnchain);
-			debateState.startEpochCountdown();
+			if (debate.marketStatus === 'active') {
+				debateState.startEpochCountdown();
+			}
 		}
 		return () => {
 			debateState.disconnectSSE();
@@ -51,6 +73,28 @@
 	<DebateSurface
 		{debate}
 		userTrustTier={data.user?.trust_tier ?? 0}
+		onAppeal={async () => {
+			if (!debate.id || appealPending) return;
+			appealPending = true;
+			appealError = null;
+			try {
+				const res = await fetch(`/api/debates/${debate.id}/appeal`, { method: 'POST' });
+				if (!res.ok) {
+					const msg = await res.text();
+					appealError = msg || 'Appeal failed';
+					console.error('Appeal failed:', msg);
+				}
+			} catch (err) {
+				appealError = 'Network error';
+				console.error('Appeal network error:', err);
+			} finally {
+				appealPending = false;
+			}
+		}}
+		onEscalate={() => {
+			// Navigate to governance dashboard (placeholder)
+			window.location.href = '/governance';
+		}}
 		onParticipate={() => {
 			modalActions.openModal('debate-modal', 'debate', {
 				template,
@@ -58,6 +102,27 @@
 				debate,
 				mode: 'participate'
 			});
+		}}
+		onVerifyIdentity={async () => {
+			if (data.user?.trust_tier != null && data.user.trust_tier < 2) {
+				modalActions.openModal('address-modal', 'address', {
+					template,
+					user: data.user,
+					context: 'debate'
+				});
+			} else {
+				const res = await fetch('/demo/verify-identity', { method: 'POST' });
+				const result = await res.json();
+				if (result.identity_commitment && data.user?.id) {
+					try {
+						const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
+						await bootstrapDemoCredential(data.user.id, result.identity_commitment);
+					} catch (e) {
+						console.error('[Demo] Credential bootstrap failed:', e);
+					}
+				}
+				await invalidateAll();
+			}
 		}}
 		onCommit={async (trade) => {
 			const res = await fetch(`/api/debates/${debate.id}/commit`, {

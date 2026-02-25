@@ -463,5 +463,28 @@
 				mode: 'participate'
 			});
 		}}
+		onVerifyIdentity={async () => {
+			if (data.user?.trust_tier != null && data.user.trust_tier < 2) {
+				// Tier 0-1: need address first
+				modalActions.openModal('address-modal', 'address', {
+					template,
+					user: data.user,
+					context: 'debate'
+				});
+			} else {
+				// Tier 2: identity verification
+				const res = await fetch('/demo/verify-identity', { method: 'POST' });
+				const result = await res.json();
+				if (result.identity_commitment && data.user?.id) {
+					try {
+						const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
+						await bootstrapDemoCredential(data.user.id, result.identity_commitment);
+					} catch (e) {
+						console.error('[Demo] Credential bootstrap failed:', e);
+					}
+				}
+				await invalidateAll();
+			}
+		}}
 	/>
 </div>

@@ -106,7 +106,7 @@ function isTemplate(obj: unknown): obj is Template {
 		// Required enum field
 		{
 			field: 'deliveryMethod',
-			valid: template.deliveryMethod === 'cwc' || template.deliveryMethod === 'email',
+			valid: typeof template.deliveryMethod === 'string' && template.deliveryMethod.length > 0,
 			actual: template.deliveryMethod
 		},
 		// Optional array fields (Phase 2+: migrating to TemplateJurisdiction)

@@ -77,3 +77,11 @@ infrastructure/aws/cdk/deploy_log.txt
 infrastructure/aws/tee-enclave/node_modules/
 infrastructure/gcp-proxy/node_modules/
 scripts/remote-test
+
+# Development artifacts
+.wrangler/
+.yarn/
+prisma/dev.db
+svelte-check-baseline.txt
+.planning/
+communique-desktop-a11y.md
