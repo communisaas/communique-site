@@ -34,7 +34,7 @@ describe('Identity Blob Encryption', () => {
 				zip: '94102'
 			},
 			verificationCredential: {
-				provider: 'self.xyz',
+				provider: 'digital-credentials-api',
 				credentialHash: 'abc123',
 				issuedAt: Date.now()
 			}
@@ -90,7 +90,7 @@ describe('Identity Blob Encryption', () => {
 				zip: '90001'
 			},
 			verificationCredential: {
-				provider: 'didit.me',
+				provider: 'digital-credentials-api',
 				credentialHash: 'def456',
 				issuedAt: Date.now()
 			}
@@ -122,7 +122,7 @@ describe('Identity Blob Encryption', () => {
 				zip: '75201'
 			},
 			verificationCredential: {
-				provider: 'self.xyz',
+				provider: 'digital-credentials-api',
 				credentialHash: 'ghi789',
 				issuedAt: Date.now()
 			},
@@ -156,7 +156,7 @@ describe('Identity Blob Encryption', () => {
 				zip: '98101'
 			},
 			verificationCredential: {
-				provider: 'didit.me',
+				provider: 'digital-credentials-api',
 				credentialHash: 'jkl012',
 				issuedAt: Date.now()
 			},

@@ -43,7 +43,7 @@ Feature-specific documentation.
 - `oauth.md` - OAuth provider flows
 - `onboarding.md` - User onboarding flows
 - `jurisdiction.md` - Jurisdiction system (TemplateJurisdiction model)
-- `identity-verification.md` - self.xyz + Didit.me flows
+- `identity-verification.md` - mDL via Digital Credentials API flows (self.xyz and Didit.me removed in Cycle 15)
 
 ### `specs/` (16 files)
 Technical specifications and design docs.

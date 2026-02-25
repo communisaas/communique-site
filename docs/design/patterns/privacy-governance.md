@@ -62,7 +62,7 @@ model User {
   congressional_district String?  // Required for federal ZK proofs
 
   // Identity verification
-  verification_method String?  // 'self.xyz' or 'didit.me'
+  verification_method String?  // 'digital-credentials-api' (mDL). Legacy values: 'self.xyz', 'didit.me' (removed in Cycle 15)
   verified_at DateTime?
 }
 
@@ -242,7 +242,7 @@ async function submitLocalTemplate(templateId: string): Promise<void> {
 ### What Platform Learns Through User Actions
 
 **Before any template selection:**
-- **Platform knows**: User exists, has verified identity (self.xyz/Didit.me)
+- **Platform knows**: User exists, has verified identity (mDL via Digital Credentials API)
 - **Platform doesn't know**: Where they live (city, state, county, or address)
 
 **After clicking "Texas state legislature" template:**

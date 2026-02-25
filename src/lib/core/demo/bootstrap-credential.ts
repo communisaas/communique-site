@@ -173,7 +173,7 @@ export async function bootstrapDemoCredential(
 		engagementTier: 0,
 		actionCount: '0',
 		diversityScore: '0',
-		verificationMethod: 'self.xyz',
+		verificationMethod: 'digital-credentials-api',
 		createdAt: now,
 		expiresAt: calculateExpirationDate()
 	};

@@ -10,8 +10,9 @@ import { generateNonce, generateChallenge } from './security';
 
 export interface CreateSessionParams {
 	userId: string;
-	method: 'self.xyz' | 'didit';
-	challenge: string; // QR code data or verification URL
+	/** Legacy values 'self.xyz' | 'didit' retained for database compatibility; new sessions use 'digital-credentials-api' */
+	method: 'self.xyz' | 'didit' | 'digital-credentials-api';
+	challenge: string; // Verification session data
 }
 
 /**

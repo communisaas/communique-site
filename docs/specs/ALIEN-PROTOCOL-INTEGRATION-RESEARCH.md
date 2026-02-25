@@ -1,9 +1,11 @@
+> **Partially Superseded (Cycle 15, 2026-02-24):** self.xyz and Didit.me were removed as identity providers in Cycle 15. mDL via Digital Credentials API is now the sole identity verification method. References to Didit.me and self.xyz throughout this document reflect the state at time of research (2026-02-02) and are no longer current. The multi-provider architecture and comparison tables are retained for historical reference.
+
 # Alien Protocol Integration Research
 
 **Created:** 2026-02-02
-**Status:** RESEARCH - Do not implement without further investigation
+**Status:** RESEARCH - Partially superseded (see note above)
 **Author:** Identity Engineering Research
-**Purpose:** Evaluate Alien as alternative identity provider alongside Didit.me
+**Purpose:** Evaluate Alien as alternative identity provider (originally alongside Didit.me, which has since been removed)
 
 ---
 

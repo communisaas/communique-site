@@ -4,7 +4,7 @@
  * POST /demo/verify-address — Simulates address verification for the demo user.
  * Bumps trust_tier to 2 (Constituent) and stores a district hash.
  *
- * In production this is handled by the real self.xyz / Didit NFC passport flow
+ * In production this is handled by the mDL Digital Credentials API flow
  * which cryptographically verifies the user's address and extracts district info.
  */
 import { json, error } from '@sveltejs/kit';

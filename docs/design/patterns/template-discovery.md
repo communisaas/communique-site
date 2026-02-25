@@ -187,10 +187,10 @@ async function inferLocationFromBehavior(): Promise<InferredLocation> {
 
 #### Signal 5: Explicit Address Entry (During Identity Verification)
 ```typescript
-// When user verifies with self.xyz or Didit.me, address is REQUIRED
+// When user verifies with mDL via Digital Credentials API, address is REQUIRED
+// (self.xyz and Didit.me removed in Cycle 15)
 async function onIdentityVerification(verificationResult: VerificationResult): Promise<void> {
-  // self.xyz NFC passport scan includes address from passport
-  // Didit.me requires address input for identity verification
+  // mDL verification provides address from mobile driver's license
 
   const address = verificationResult.address;
 
@@ -216,7 +216,7 @@ async function onIdentityVerification(verificationResult: VerificationResult): P
 }
 ```
 
-**Privacy:** Address required for identity verification anyway (self.xyz passport, Didit.me KYC). We're not asking for NEW data, just using verification flow. Address never transmitted to server, only stored locally and used for ZK proof generation (in TEE, then destroyed).
+**Privacy:** Address required for identity verification anyway (mDL via Digital Credentials API). We're not asking for NEW data, just using verification flow. Address never transmitted to server, only stored locally and used for ZK proof generation (in TEE, then destroyed).
 
 **UI Response:**
 ```
@@ -643,8 +643,7 @@ Your options:
 ⚠️  Can't send yet (address not verified)
 
 To send verified messages:
-[Button] Verify with Passport (2 min, NFC scan)
-[Button] Verify with ID (3 min, photo upload)
+[Button] Verify with Mobile Driver's License (2 min)
 
 While you wait:
 ✓ Browse templates and save favorites
@@ -756,8 +755,8 @@ Active vote Thursday 3/21
 
 ### Phase 3: Identity Verification Address (Federal Delivery)
 ```
-✅ self.xyz NFC passport scan (address from passport chip)
-✅ Didit.me government ID verification (user enters address)
+✅ mDL via Digital Credentials API (sole provider; self.xyz and Didit.me removed in Cycle 15)
+✅ Address extracted from mobile driver's license
 ✅ Address stored in IndexedDB only (never transmitted)
 ✅ ZK proof generation uses address, then destroys it
 ✅ All governance units resolved and stored locally

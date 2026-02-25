@@ -6,7 +6,7 @@
  * Returns the commitment as a valid BN254 field element so the client can
  * bootstrap a session credential for real ZK proof generation.
  *
- * In production this would be handled by self.xyz or Didit NFC passport scanning.
+ * In production this is handled by the mDL Digital Credentials API flow.
  */
 import { json, error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';

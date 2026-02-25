@@ -11,13 +11,13 @@ This document provides a comprehensive checklist of all environment variables re
 | **CRITICAL** | AI Moderation | `OPENAI_API_KEY`, `GEMINI_API_KEY` |
 | **CRITICAL** | Congressional API | `CWC_API_KEY` |
 | **CRITICAL** | Authentication | `JWT_SECRET`, `EMAIL_VERIFICATION_SECRET` |
-| **HIGH** | Identity Verification | `DIDIT_API_KEY`, `DIDIT_WORKFLOW_ID`, `DIDIT_WEBHOOK_SECRET` |
+| ~~**HIGH**~~ | ~~Identity Verification~~ | ~~`DIDIT_API_KEY`, `DIDIT_WORKFLOW_ID`, `DIDIT_WEBHOOK_SECRET`~~ (Didit.me removed in Cycle 15; mDL via Digital Credentials API requires no API keys) |
 | **HIGH** | OAuth | `GOOGLE_CLIENT_ID/SECRET`, other OAuth providers |
 | **MEDIUM** | VOTER Protocol | `VOTER_API_URL`, `VOTER_API_KEY` |
 | **MEDIUM** | Congressional Lookup | `CONGRESS_API_KEY` |
 | **MEDIUM** | House Submissions | `GCP_PROXY_URL`, `GCP_PROXY_AUTH_TOKEN` |
 | **OPTIONAL** | AI Tie-breaker | `ANTHROPIC_API_KEY` |
-| **OPTIONAL** | self.xyz | `SELF_APP_NAME`, `SELF_SCOPE`, `SELF_MOCK_PASSPORT` |
+| ~~**OPTIONAL**~~ | ~~self.xyz~~ | ~~`SELF_APP_NAME`, `SELF_SCOPE`, `SELF_MOCK_PASSPORT`~~ (self.xyz removed in Cycle 15) |
 
 ---
 
@@ -187,59 +187,16 @@ CWC_DELIVERY_AGENT_ACK=Y
 
 ---
 
-## 7. Identity Verification - Didit.me (HIGH)
+## 7. Identity Verification (REMOVED)
 
-### DIDIT_API_KEY
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | Didit.me identity verification API authentication |
-| **Used In** | `src/routes/api/identity/didit/init/+server.ts` |
-| **Obtain** | https://didit.me/dashboard (sign up for API access) |
-
-### DIDIT_WORKFLOW_ID
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | Didit.me workflow configuration ID |
-| **Used In** | `src/routes/api/identity/didit/init/+server.ts` |
-| **Obtain** | Didit.me dashboard - create verification workflow |
-
-### DIDIT_WEBHOOK_SECRET
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | HMAC signature verification for webhooks |
-| **Used In** | `src/routes/api/identity/didit/webhook/+server.ts` |
-| **Obtain** | Didit.me dashboard - webhook settings |
-
----
-
-## 8. Identity Verification - self.xyz (OPTIONAL)
-
-self.xyz uses on-chain verification and does not require API keys for basic functionality.
-
-### SELF_APP_NAME
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | App name shown in self.xyz mobile app |
-| **Default** | `Communique` |
-
-### SELF_SCOPE
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | Verification scope identifier |
-| **Default** | `communique-congressional` |
-
-### SELF_MOCK_PASSPORT
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | Enable test mode for development |
-| **Default** | `false` |
-| **Production** | Must be `false` |
+> **Cycle 15 (2026-02-24):** Both Didit.me and self.xyz were removed as identity providers. mDL via Digital Credentials API is now the sole identity verification method and does not require server-side API keys. The following secrets should be removed from production if still present:
+>
+> - `DIDIT_API_KEY`
+> - `DIDIT_WORKFLOW_ID`
+> - `DIDIT_WEBHOOK_SECRET`
+> - `SELF_APP_NAME`
+> - `SELF_SCOPE`
+> - `SELF_MOCK_PASSPORT`
 
 ---
 
@@ -377,6 +334,12 @@ These variables are **NOT USED** in the current codebase and should be removed i
 | `GROQ_API_KEY` | **Unused** - No Groq integration exists |
 | `AWS_ACCESS_KEY_ID` | **Optional** - Only for TEE deployment (not used in Cloudflare) |
 | `AWS_SECRET_ACCESS_KEY` | **Optional** - Only for TEE deployment (not used in Cloudflare) |
+| `DIDIT_API_KEY` | **Removed** - Didit.me removed in Cycle 15 |
+| `DIDIT_WORKFLOW_ID` | **Removed** - Didit.me removed in Cycle 15 |
+| `DIDIT_WEBHOOK_SECRET` | **Removed** - Didit.me removed in Cycle 15 |
+| `SELF_APP_NAME` | **Removed** - self.xyz removed in Cycle 15 |
+| `SELF_SCOPE` | **Removed** - self.xyz removed in Cycle 15 |
+| `SELF_MOCK_PASSPORT` | **Removed** - self.xyz removed in Cycle 15 |
 
 ---
 
@@ -405,10 +368,10 @@ wrangler pages secret put OPENAI_API_KEY
 wrangler pages secret put GEMINI_API_KEY
 wrangler pages secret put ANTHROPIC_API_KEY
 
-# Identity Verification - Didit.me
-wrangler pages secret put DIDIT_API_KEY
-wrangler pages secret put DIDIT_WORKFLOW_ID
-wrangler pages secret put DIDIT_WEBHOOK_SECRET
+# Identity Verification - Didit.me (REMOVED in Cycle 15 - delete these if present)
+# wrangler pages secret put DIDIT_API_KEY
+# wrangler pages secret put DIDIT_WORKFLOW_ID
+# wrangler pages secret put DIDIT_WEBHOOK_SECRET
 
 # OAuth Providers
 wrangler pages secret put OAUTH_REDIRECT_BASE_URL
@@ -455,9 +418,9 @@ wrangler pages secret put VOTER_API_KEY
 
 ### High Priority
 
-- [ ] `DIDIT_API_KEY` - For identity verification
-- [ ] `DIDIT_WORKFLOW_ID` - For identity verification
-- [ ] `DIDIT_WEBHOOK_SECRET` - For webhook security
+- [x] ~~`DIDIT_API_KEY`~~ - Removed (Cycle 15)
+- [x] ~~`DIDIT_WORKFLOW_ID`~~ - Removed (Cycle 15)
+- [x] ~~`DIDIT_WEBHOOK_SECRET`~~ - Removed (Cycle 15)
 - [ ] `OAUTH_REDIRECT_BASE_URL` - Set to production domain
 - [ ] At least one OAuth provider configured (Google recommended)
 
@@ -511,12 +474,9 @@ The fraud detection system requires this salt. Generate and set it:
 openssl rand -hex 32 | wrangler pages secret put IP_HASH_SALT
 ```
 
-### "Didit.me integration not configured"
+### ~~"Didit.me integration not configured"~~
 
-Set all three Didit variables:
-- `DIDIT_API_KEY`
-- `DIDIT_WORKFLOW_ID`
-- `DIDIT_WEBHOOK_SECRET`
+Didit.me was removed in Cycle 15. If you see this error, the codebase still contains legacy Didit.me references that need cleanup. mDL via Digital Credentials API is the sole identity provider.
 
 ### OAuth login fails
 

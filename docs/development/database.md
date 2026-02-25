@@ -101,7 +101,7 @@ npx prisma validate --schema=prisma/experimental.prisma
 │ USER'S BROWSER (Client-Side Only)                           │
 ├─────────────────────────────────────────────────────────────┤
 │ - Actual address (during verification)                      │
-│ - Passport/ID data (self.xyz or Didit.me)                  │
+│ - mDL data (via Digital Credentials API)                    │
 │ - Personally identifiable information                        │
 │ - Encrypted immediately with XChaCha20-Poly1305             │
 └─────────────────────────────────────────────────────────────┘
@@ -204,7 +204,7 @@ model User {
   id                      String    @id @default(cuid())
 
   // Verification status
-  verification_method     String?   // 'self_xyz' | 'didit'
+  verification_method     String?   // 'mdl' (legacy records may contain 'self_xyz' | 'didit')
   verification_status     String    @default("pending")
   verification_completed_at DateTime?
   verification_expires_at DateTime?
@@ -231,7 +231,7 @@ model User {
 
 **Why these fields exist:**
 - `id`: Unique identifier, generated from passkey (not linkable to real identity)
-- `verification_method`: Track which identity provider used (for debugging)
+- `verification_method`: Track which identity provider used (for debugging). Current value: `'mdl'`. Legacy records may contain `'self_xyz'` or `'didit'` (both providers removed in Cycle 15).
 - `verification_status`: Enable/disable message sending based on verification
 - `reputation_score`: On-chain reputation cache (verifiable via blockchain)
 - `blockchain_address`: Deterministic from passkey (pseudonymous)

@@ -13,7 +13,7 @@
 **Privacy-preserving constituent intelligence at legislative district granularity**
 
 **How it works**:
-1. User verifies address (Census API + self.xyz/Didit.me)
+1. User verifies address (Census API + mDL via Digital Credentials API; self.xyz and Didit.me removed in Cycle 15)
 2. System computes legislative districts (US House, State Senate, City Council, etc.)
 3. User generates ZK proof: "I'm a verified constituent of CA-12"
 4. User browses/customizes templates

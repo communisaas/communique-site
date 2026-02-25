@@ -139,17 +139,8 @@ declare global {
 			GEMINI_API_KEY?: string; // Used for quality assessment and AI agents
 			GROQ_API_KEY?: string; // Used for Llama Guard 4 safety moderation
 
-			// Identity Verification
-			DIDIT_API_KEY?: string;
-			DIDIT_WORKFLOW_ID?: string;
-			DIDIT_WEBHOOK_SECRET?: string;
+			// Identity Verification (mDL via Digital Credentials API — no provider API keys needed)
 			GOOGLE_CIVIC_API_KEY?: string; // Google Civic Information API for district lookup
-
-			// Self.xyz (Zero-knowledge passport verification)
-			SELF_APP_NAME?: string;
-			SELF_SCOPE?: string;
-			SELF_ENDPOINT?: string;
-			SELF_MOCK_PASSPORT?: string; // 'true' for testing
 
 			// Witness Encryption (X25519 keypair for witness encryption/decryption)
 			// Generate with: npx tsx scripts/generate-witness-keypair.ts

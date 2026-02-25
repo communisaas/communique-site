@@ -1,7 +1,7 @@
 # ADR 007: Identity Verification Schema Migration
 
 ## Status
-Accepted
+Accepted (Partially superseded — see Legacy Note below)
 
 ## Date
 2026-01-23
@@ -10,9 +10,11 @@ Accepted
 
 The identity verification system is fully implemented in code (`src/lib/core/server/identity-hash.ts`, `src/routes/api/identity/verify/+server.ts`, `src/routes/api/identity/didit/webhook/+server.ts`) but the database schema in `prisma/schema.prisma` was missing required fields. This created a critical gap where the verification API routes would fail at runtime when attempting to store or query identity verification data.
 
+> **Legacy Note (Cycle 15):** The self.xyz and Didit.me verification providers referenced in this ADR have been removed. mDL via the Digital Credentials API is now the sole active verification provider. The schema fields described here (identity_hash, identity_fingerprint, birth_year) remain valid and are still used by the mDL verification flow. The identity_hash generation logic is the same regardless of provider. References to self.xyz and Didit.me below are historical context for why these fields were originally added.
+
 ### The Problem
 
-Both self.xyz and Didit verification flows require storing:
+Both self.xyz and Didit verification flows require storing (now legacy — mDL flow uses the same fields):
 1. **identity_hash** - For Sybil resistance (duplicate detection)
 2. **identity_fingerprint** - For audit-safe logging
 3. **birth_year** - For age verification without storing full DOB
@@ -49,7 +51,7 @@ model VerificationAudit {
 }
 
 model VerificationSession {
-  // Ephemeral sessions for self.xyz and Didit verification flows
+  // Ephemeral sessions for verification flows (originally self.xyz and Didit, now mDL only)
 }
 ```
 
@@ -110,7 +112,7 @@ This allows:
 ### New Users
 
 New users can optionally complete identity verification, which will:
-1. Call self.xyz or Didit verification flow
+1. Complete mDL verification flow (previously self.xyz or Didit — those providers removed in Cycle 15)
 2. Generate identity hash from verified document
 3. Check for duplicates against existing hashes
 4. Store hash, fingerprint, and birth year
@@ -159,7 +161,9 @@ Default behavior:
 ## References
 
 - `src/lib/core/server/identity-hash.ts` - Hash generation implementation
-- `src/lib/core/server/selfxyz-verifier.ts` - self.xyz SDK integration
-- `src/routes/api/identity/verify/+server.ts` - self.xyz verification endpoint
-- `src/routes/api/identity/didit/webhook/+server.ts` - Didit webhook handler
+- ~~`src/lib/core/server/selfxyz-verifier.ts`~~ - self.xyz SDK integration (removed — Cycle 15)
+- ~~`src/routes/api/identity/verify/+server.ts`~~ - self.xyz verification endpoint (removed — Cycle 15)
+- ~~`src/routes/api/identity/didit/webhook/+server.ts`~~ - Didit webhook handler (removed — Cycle 15)
+- `src/routes/api/identity/verify-mdl/start/+server.ts` - mDL session start (active)
+- `src/routes/api/identity/verify-mdl/verify/+server.ts` - mDL credential verification (active)
 - `prisma/core.prisma` - Reference schema (fields were already defined here)

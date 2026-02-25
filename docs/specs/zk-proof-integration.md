@@ -28,7 +28,7 @@
 **What This Solves**: Anonymous, verifiable Congressional advocacy without revealing identity to offices or platform.
 
 **How It Works**:
-1. **Identity Verification**: User proves personhood via self.xyz NFC passport or Didit.me (FREE, 30s-2min)
+1. **Identity Verification**: User proves personhood via mDL (Digital Credentials API) (FREE, 30s-2min). self.xyz and Didit.me were removed in Cycle 15.
 2. **Shadow Atlas Registration**: Identity commitment added to district Merkle tree (tree size depends on depth: 260K-16M)
 3. **Zero-Knowledge Proof**: Browser generates Noir/UltraHonk proof of district membership **without revealing identity**
 4. **Witness Encryption**: Message content encrypted to TEE public key (XChaCha20-Poly1305 AEAD)
@@ -52,10 +52,11 @@
 │                                                                      │
 │ STEP 1: Identity Verification                                       │
 │ ┌─────────────────────────────────────────────────────────────────┐│
-│ │ self.xyz NFC Passport (70%)    OR    Didit.me (30%)            ││
-│ │ • 30 seconds, FREE                    • 2 minutes, FREE          ││
-│ │ • NFC tap on passport                 • Government ID + biometric││
-│ │ • Returns identity_commitment         • Returns identity_proof   ││
+│ │ mDL via Digital Credentials API (sole provider)                ││
+│ │ • 30 seconds - 2 minutes, FREE                                ││
+│ │ • Mobile driver's license verification                        ││
+│ │ • Returns identity_commitment                                 ││
+│ │ • (self.xyz and Didit.me removed in Cycle 15)                ││
 │ └─────────────────────────────────────────────────────────────────┘│
 │           ↓                                                          │
 │ STEP 2: Shadow Atlas Registration                                   │
@@ -503,7 +504,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json({ error: 'Authentication required' }, { status: 401 });
 	}
 
-	// Verify identity proof (self.xyz or Didit.me)
+	// Verify identity proof (mDL via Digital Credentials API)
 	const isValid = await verifyIdentityProof(identity_proof);
 	if (!isValid) {
 		return json({ error: 'Invalid identity proof' }, { status: 400 });
@@ -553,7 +554,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		where: { id: locals.user.id },
 		data: {
 			identity_verified: true,
-			verification_method: identity_proof.method,  // 'self.xyz' | 'didit'
+			verification_method: identity_proof.method,  // 'mdl' (legacy records may contain 'self.xyz' | 'didit')
 			identity_commitment,
 			shadow_atlas_leaf_index: leaf_index,
 			congressional_district
@@ -783,9 +784,9 @@ model ShadowAtlasTree {
 model User {
   // ... existing fields ...
 
-  // Identity verification (self.xyz or Didit.me)
+  // Identity verification (mDL via Digital Credentials API; self.xyz and Didit.me removed in Cycle 15)
   identity_verified      Boolean  @default(false)
-  verification_method    String?  // 'self.xyz' | 'didit'
+  verification_method    String?  // 'mdl' (legacy records may contain 'self.xyz' | 'didit')
   identity_commitment    String?  // Poseidon hash of identity secret
 
   // Shadow Atlas position
@@ -924,8 +925,8 @@ model Submission {
 
 ### Phase 1.3: Identity Verification Integration (COMPLETE - Wave 2.2)
 
-- [ ] Integrate self.xyz NFC passport SDK (Deferred - no public SDK yet)
-- [x] Integrate Didit.me identity verification SDK
+- [x] ~~self.xyz NFC passport~~ Removed in Cycle 15
+- [x] ~~Didit.me identity verification~~ Removed in Cycle 15; replaced by mDL via Digital Credentials API
 - [x] Build identity verification UI flow
 - [x] Extract identity_commitment from verification proofs
 - [x] Link verification to Shadow Atlas registration
@@ -970,7 +971,7 @@ model Submission {
 ### User Experience
 
 - **Target**: 80% of users complete identity verification <2 minutes
-- **Target**: 70% choose self.xyz (faster), 30% Didit.me
+- **Target**: 100% mDL via Digital Credentials API (sole provider; self.xyz and Didit.me removed)
 - **Target**: <5% drop-off during ZK proof generation
 
 ---

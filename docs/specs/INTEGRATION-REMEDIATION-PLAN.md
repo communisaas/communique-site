@@ -73,8 +73,8 @@
 
 | ID | Task | Owner | Days | Depends On |
 |----|------|-------|------|------------|
-| WS2.1 | self.xyz SDK Integration | Frontend | 5 | Wave 1 |
-| WS2.2 | Didit.me SDK Integration | Frontend | 5 | Wave 1 |
+| WS2.1 | ~~self.xyz SDK Integration~~ (removed Cycle 15) | Frontend | 5 | Wave 1 |
+| WS2.2 | ~~Didit.me SDK Integration~~ (removed Cycle 15) | Frontend | 5 | Wave 1 |
 | WS2.3 | Browser WASM Prover Wiring | Frontend | 3 | WS2.1 or WS2.2 |
 | WS2.4 | Congressional Submit Endpoint | Backend | 3 | WS2.3 |
 | WS2.5 | SA-004 through SA-007 Fixes | Contracts | 3 | Wave 1 |
@@ -83,9 +83,9 @@
 
 ```
 Week 1:
-  ├─ WS2.1 (self.xyz) ─────────────────┐
-  ├─ WS2.2 (Didit.me) ─────────────────┼─→ Identity verified
-  └─ WS2.5 (SA-004/005/006/007) ───────┘
+  ├─ WS2.1 (mDL via Digital Credentials API) ──┐
+  ├─ WS2.2 (identity verification) ─────────────┼─→ Identity verified
+  └─ WS2.5 (SA-004/005/006/007) ────────────────┘
 
 Week 2:
   └─ WS2.3 (Browser Prover) ───────────→ Proofs generated
@@ -99,14 +99,14 @@ Week 3:
 | Workstream | Agent | Outcome | Key Files |
 |------------|-------|---------|-----------|
 | WS2.1: Alien Protocol Research | `aa83958` | Research complete (no SDK available) | `communique/docs/specs/ALIEN-PROTOCOL-INTEGRATION-RESEARCH.md` (715 lines) |
-| WS2.2: Didit.me SDK | `ad25c30` | Full SDK integration | `communique/src/lib/core/identity/didit-client.ts`, `DIDIT-IMPLEMENTATION-SUMMARY.md` |
+| WS2.2: ~~Didit.me SDK~~ (removed Cycle 15; replaced by mDL) | `ad25c30` | Didit.me integration removed; mDL via Digital Credentials API is sole provider | `communique/src/lib/core/identity/didit-client.ts` removed |
 | WS2.3: Browser WASM Prover | `a572e80` | Complete prover integration | `communique/src/lib/core/zkp/` (1,106 lines), `ZK-PROVER-INTEGRATION-SUMMARY.md` |
 | WS2.4: Congressional Submit | `aedd846` | Full endpoint + blockchain client | `communique/src/routes/api/congressional/submit/+server.ts`, `CONGRESSIONAL-SUBMIT-IMPLEMENTATION.md` |
 | WS2.5: Security SA-004/005/006/007 | `a3cfaa0` | All fixes verified | `voter-protocol/SECURITY-FIXES-SA-004-007.md`, 101 tests pass |
 
 ### Wave 2 Key Achievements
 
-1. **Identity Verification:** Didit.me SDK fully integrated with HMAC webhook validation
+1. **Identity Verification:** mDL via Digital Credentials API is the sole identity verification provider (self.xyz and Didit.me removed in Cycle 15)
 2. **ZK Proof Generation:** Browser WASM prover wired with Svelte 5 reactive store
 3. **Congressional Submit:** Nullifier-enforced submission endpoint with blockchain client
 4. **Security Hardening:** All SA-004/005/006/007 vulnerabilities remediated
@@ -114,13 +114,15 @@ Week 3:
 
 ### Wave 2 Notes
 
-- **WS2.1 Modified:** Replaced self.xyz with Alien Protocol research (per user request)
+- **WS2.1 Modified:** Replaced self.xyz with Alien Protocol research (per user request). Both self.xyz and Didit.me were subsequently removed in Cycle 15; mDL via Digital Credentials API is now the sole identity provider.
 - **TEE Deployment (WS4.1):** Held off per user request
 - **Shadow Atlas Integration:** Deferred to address collection flow (progressive disclosure)
 
 ---
 
-### WS2.1: self.xyz SDK Integration
+### WS2.1: self.xyz SDK Integration (SUPERSEDED)
+
+> **SUPERSEDED (Cycle 15, 2026-02-24):** self.xyz was removed as an identity provider. mDL via Digital Credentials API is now the sole identity verification method. The original workstream description is retained below for historical context.
 
 **Agent:** `software-architect-mcp`
 **Repository:** communique
@@ -128,115 +130,15 @@ Week 3:
 
 #### Objective
 
-Integrate self.xyz NFC passport scanning for Tier 4/5 identity verification.
+~~Integrate self.xyz NFC passport scanning for Tier 4/5 identity verification.~~
 
-#### Files to Create
-
-```
-src/routes/api/identity/selfxyz/init/+server.ts     # SDK initialization
-src/routes/api/identity/selfxyz/verify/+server.ts   # Verification callback
-src/lib/core/identity/selfxyz-client.ts             # SDK wrapper
-```
-
-#### Technical Requirements
-
-1. **Initialize SDK with app credentials**
-   - `SELFXYZ_APP_ID` and `SELFXYZ_APP_SECRET` from environment
-   - Generate QR code for mobile scanning
-
-2. **Handle NFC scan result**
-   - Validate passport chip signature
-   - Extract nationality, DOB (for age verification)
-   - Generate identity commitment (Poseidon2)
-
-3. **Store verification session**
-   - Link to user session
-   - Store credential hash (not PII)
-   - Set expiration (6 months)
-
-#### API Flow
-
-```
-1. POST /api/identity/selfxyz/init
-   → Returns QR code URL for self.xyz mobile app
-
-2. User scans passport via NFC
-
-3. self.xyz webhook → POST /api/identity/selfxyz/verify
-   → Validates signature
-   → Generates identity commitment
-   → Stores in ShadowAtlasRegistration
-   → Returns success
-
-4. Frontend polls for completion
-```
-
-#### Context Engineering Prompt
-
-```markdown
-## MISSION: Integrate self.xyz NFC Passport SDK
-
-You are a distinguished identity engineer integrating self.xyz's NFC passport
-verification into Communique.
-
-### DOMAIN CONTEXT
-
-self.xyz provides cryptographic identity verification via NFC passport chips.
-Users scan their passport with their phone, and the chip's digital signature
-proves nationality and identity without revealing PII.
-
-### TECHNICAL CONTEXT
-
-**SDK Package:** `@selfxyz/core` (already in package.json)
-
-**Environment Variables:**
-- SELFXYZ_APP_ID: Application identifier
-- SELFXYZ_APP_SECRET: HMAC signing secret
-- SELFXYZ_WEBHOOK_URL: https://communi.email/api/identity/selfxyz/verify
-
-**Integration Pattern:**
-```typescript
-import { SelfXYZ } from '@selfxyz/core';
-
-const self = new SelfXYZ({
-  appId: process.env.SELFXYZ_APP_ID,
-  secret: process.env.SELFXYZ_APP_SECRET
-});
-
-// Initialize session
-const session = await self.createSession({
-  requestedClaims: ['nationality', 'over_18'],
-  callbackUrl: process.env.SELFXYZ_WEBHOOK_URL
-});
-
-// Verify callback
-const result = await self.verifyCallback(webhookPayload, signature);
-```
-
-### FILES TO CREATE
-
-1. `src/routes/api/identity/selfxyz/init/+server.ts`
-2. `src/routes/api/identity/selfxyz/verify/+server.ts`
-3. `src/lib/core/identity/selfxyz-client.ts`
-
-### INVARIANTS
-
-1. NEVER store raw passport data (only hashed credentials)
-2. ALWAYS verify webhook HMAC signature
-3. Use Poseidon2 for identity commitment (via generateIdentityCommitment)
-4. Link verification to user session
-
-### VERIFICATION
-
-```bash
-npm run check  # TypeScript passes
-npm run build  # Build succeeds
-```
-```
+*This workstream was first replaced by Alien Protocol research, then both self.xyz and Didit.me were removed in Cycle 15.*
 
 ---
 
-### WS2.2: Didit.me SDK Integration
+### WS2.2: Didit.me SDK Integration (SUPERSEDED)
+
+> **SUPERSEDED (Cycle 15, 2026-02-24):** Didit.me was removed as an identity provider. mDL via Digital Credentials API is now the sole identity verification method. The original workstream description is retained below for historical context.
 
 **Agent:** `software-architect-mcp`
 **Repository:** communique
@@ -244,78 +146,9 @@ npm run build  # Build succeeds
 
 #### Objective
 
-Integrate Didit.me ID document + biometric verification as alternative to passport.
+~~Integrate Didit.me ID document + biometric verification as alternative to passport.~~
 
-#### Files to Create
-
-```
-src/routes/api/identity/didit/init/+server.ts       # SDK initialization
-src/routes/api/identity/didit/webhook/+server.ts    # Webhook handler
-src/lib/core/identity/didit-client.ts               # SDK wrapper
-```
-
-#### Technical Requirements
-
-1. **Initialize verification session**
-   - Generate unique session ID
-   - Redirect user to Didit.me hosted UI
-
-2. **Handle webhook**
-   - Validate HMAC signature
-   - Extract verification result
-   - Generate identity commitment
-
-3. **Support multiple document types**
-   - Passport, Driver's License, National ID
-   - Map to appropriate authority level
-
-#### Context Engineering Prompt
-
-```markdown
-## MISSION: Integrate Didit.me Identity Verification SDK
-
-You are integrating Didit.me's ID + biometric verification as an alternative
-identity provider for users without NFC-capable passports.
-
-### DOMAIN CONTEXT
-
-Didit.me provides liveness detection + document verification. Users take a
-selfie and photo of their ID, and the system verifies they match.
-
-### TECHNICAL CONTEXT
-
-**SDK Package:** `@didit/sdk`
-
-**Environment Variables:**
-- DIDIT_API_KEY: API authentication
-- DIDIT_WEBHOOK_SECRET: HMAC signing key
-- DIDIT_REDIRECT_URL: Post-verification redirect
-
-**Webhook Validation:**
-```typescript
-import { createHmac } from 'crypto';
-
-function validateWebhook(payload: string, signature: string): boolean {
-  const expected = createHmac('sha256', process.env.DIDIT_WEBHOOK_SECRET)
-    .update(payload)
-    .digest('hex');
-  return signature === expected;
-}
-```
-
-### FILES TO CREATE
-
-1. `src/routes/api/identity/didit/init/+server.ts`
-2. `src/routes/api/identity/didit/webhook/+server.ts`
-3. `src/lib/core/identity/didit-client.ts`
-
-### INVARIANTS
-
-1. ALWAYS validate HMAC before processing webhook
-2. Map document types to authority levels (passport=4, drivers_license=3)
-3. Use Poseidon2 for identity commitment
-4. Store verification timestamp for expiry calculation
-```
+*Didit.me was removed in Cycle 15. mDL via Digital Credentials API replaced all third-party identity providers.*
 
 ---
 
@@ -945,11 +778,8 @@ describe('Proof E2E', () => {
 # Shadow Atlas API
 SHADOW_ATLAS_API_URL=https://shadow-atlas.voter-protocol.org
 
-# Identity Providers
-SELFXYZ_APP_ID=<from self.xyz>
-SELFXYZ_APP_SECRET=<from self.xyz>
-DIDIT_API_KEY=<from didit.me>
-DIDIT_WEBHOOK_SECRET=<from didit.me>
+# Identity Verification
+# mDL via Digital Credentials API is the sole identity provider (self.xyz and Didit.me removed in Cycle 15)
 
 # Blockchain
 SCROLL_RPC_URL=https://sepolia-rpc.scroll.io
@@ -968,8 +798,7 @@ TEE_PUBLIC_KEY_URL=https://tee.voter-protocol.org/public-key
 ```typescript
 // Parallel: Identity providers + security fixes
 await Promise.all([
-  Task({ subagent_type: "software-architect-mcp", description: "WS2.1 self.xyz", ... }),
-  Task({ subagent_type: "software-architect-mcp", description: "WS2.2 Didit.me", ... }),
+  // WS2.1 (self.xyz) and WS2.2 (Didit.me) removed in Cycle 15; mDL via Digital Credentials API is sole provider
   Task({ subagent_type: "software-architect-mcp", description: "WS2.5 SA-004-007", ... })
 ]);
 

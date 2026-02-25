@@ -36,8 +36,7 @@ The user should **intuit** that this is different. They should feel empowered. T
 1. Click "Send Message" on congressional template
 2. See VerificationGate modal: "Verify to Send"
 3. Choose verification method:
-   - **NFC Passport** (self.xyz) - 70% adoption target
-   - **Government ID** (Didit.me) - 30% adoption target
+   - **mDL via Digital Credentials API** (sole provider; self.xyz and Didit.me removed in Cycle 15)
 4. Complete verification (30 seconds average)
 5. Return to template submission
 

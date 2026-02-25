@@ -1,16 +1,16 @@
 # Implementation Status Report
 
-**Date:** 2026-02-18 (Updated)
-**Focus:** Honest assessment after Cycles 1-14 of Graduated Trust Architecture
-**Last Major Update:** Cycle 14 (Security-Critical Test Coverage + Production Hygiene) complete
+**Date:** 2026-02-25 (Updated)
+**Focus:** Honest assessment after Cycles 1-15 of Graduated Trust Architecture
+**Last Major Update:** Cycle 15 (Staked Deliberation + mDL-Only Identity Simplification) complete
 
 ---
 
 ## TL;DR
 
-14 implementation cycles completed across Graduated Trust Architecture. The core identity verification, ZK proof generation, encrypted delivery, and congressional submission pipeline are implemented. Government credential (mDL) verification added as Tier 4 with full COSE_Sign1 issuer signature verification. Production deployment on Cloudflare Workers with Hyperdrive connection pooling. Cycle 14 added 36 security-critical tests covering authority level derivation, pseudonymous ID generation, user secret derivation, and witness encryption round-trip. Production hygiene: debug console floods removed, HACKATHON limits tightened, demo pages dev-gated.
+15 implementation cycles completed across Graduated Trust Architecture. The core identity verification, ZK proof generation, encrypted delivery, and congressional submission pipeline are implemented. Government credential (mDL) verification is the sole identity path (self.xyz + Didit.me removed in Cycle 15). Staked deliberation infrastructure added: 9 Svelte 5 components, 6 API routes, Prisma models, debate-scoped ZK proofs. Production deployment on Cloudflare Workers with Hyperdrive connection pooling. 7 P0 launch blockers remain — see [Launch Readiness Matrix](./architecture/REMAINING-GAPS.md#launch-readiness-matrix).
 
-**What works end-to-end:** User verifies identity (NFC passport / government ID / mDL) → address encrypted client-side (XChaCha20-Poly1305) → ZK proof generated in browser (Noir/WASM) → submission created with nullifier uniqueness → encrypted witness decrypted server-side → CWC API delivery to congressional offices → status tracking with polling.
+**What works end-to-end:** User verifies identity (mDL via Digital Credentials API) → address encrypted client-side (XChaCha20-Poly1305) → ZK proof generated in browser (Noir/WASM) → submission created with nullifier uniqueness → encrypted witness decrypted server-side → CWC API delivery to congressional offices → status tracking with polling.
 
 **What doesn't work yet:** IACA root certificates (trust store structure ready, production certs pending AAMVA VICAL download), COSE_Sign1 issuer certificate chain validation (direct match implemented, full chain walking deferred).
 
@@ -33,7 +33,7 @@
 ### Identity & Authentication (Cycles 1-3, 9)
 - **Passkey registration/authentication** — @simplewebauthn/server + /browser, P-256 + Ed25519, did:key derivation
 - **Address verification** — AddressVerificationFlow, Google Civic API district lookup, DistrictCredential (W3C VC 2.0)
-- **Identity verification** — Self.xyz NFC passport, Didit.me government ID, mDL via Digital Credentials API
+- **Identity verification** — mDL via W3C Digital Credentials API (sole provider; self.xyz and Didit.me removed 2026-02-24)
 - **Session credential caching** — IndexedDB wallet with TTL, SSR-safe
 - **Trust tier computation** — `deriveTrustTier()` per-request in hooks.server.ts, 5-tier graduated model
 - **Authority levels** — 0-5 scale, `trustTierToAuthorityLevel()` mapping
@@ -69,45 +69,55 @@
 ### UI/UX (Cycles 3, 6-8)
 - **VerificationGate** — Tier-aware modal (Tier 2/3/4 specific headers + flows)
 - **TrustSignal** — Compact tier badge with upgrade affordance
-- **VerificationChoice** — 3-method selection (mDL/NFC/Government ID) with progressive enhancement
+- **VerificationChoice** — Removed (single-method mDL flow, no choice needed)
 - **SubmissionStatus** — Polling-based delivery tracking with terminal state detection
 - **Svelte 5 migration** — All auth components on callback props. ~15 non-auth components still on createEventDispatcher (UI modals, template browser, address collection)
+
+### Staked Deliberation / Debates (Cycle 15)
+- **Database models** — `Debate` + `DebateArgument` in Prisma, migrated to production DB
+- **9 Svelte 5 components** — DebateSurface, ActiveDebatePanel, ArgumentCard, DebateMetrics, PropositionDisplay, StanceSelector, StakeVisualizer, DebateProofGenerator, DebateModal
+- **6 API routes** — create, by-template, arguments (GET/POST), cosign, resolve, claim
+- **State store** — `debateState.svelte.ts` (runes-based, factory pattern)
+- **ZK integration** — `buildDebateActionDomain()` exported, DebateProofGenerator uses debate-scoped action domain
+- **Modal integration** — DebateModal registered in ModalRegistry via UnifiedModal
+- **Deep link route** — `/s/[slug]/debate/[debateId]` with template context from parent layout
+- **Resolved debate display** — Resolution banner with stance colors, winner badge on ArgumentCard
+- **Off-chain only** — All debate state in Prisma; on-chain integration pending DebateMarket.sol deployment
+- **Gaps documented** — See [docs/features/debates.md](./features/debates.md) for known gaps and resolution plan
 
 ---
 
 ## What's NOT Production-Ready
 
-### P0: Must fix before production deploy
+> **Canonical priority tracker:** [`docs/architecture/REMAINING-GAPS.md` → Launch Readiness Matrix](./architecture/REMAINING-GAPS.md#launch-readiness-matrix)
+> Items L-01 through L-20 with cross-repo ownership, status, and critical path diagram.
 
-| Gap | Detail | Status |
-|-----|--------|--------|
-| libsodium on CF Workers | Server-side decryption replaced with @noble/curves + @noble/hashes + @noble/ciphers (pure JS, zero WASM). | **FIXED** in Cycle 11C |
-| Workers KV namespace | `DC_SESSION_KV` provisioned: `a76f18d2c07042bc856a30038af05ab8`. | **FIXED** in Cycle 11C |
-| CF build verification | New deps (cbor-web, libsodium-wrappers) in `ADAPTER=cloudflare npm run build`. | **FIXED** in Cycle 10A |
-| svelte-check errors | 8 type errors resolved (dead store, PrismaClient cast, layout type). | **FIXED** in Cycle 11A — 0 errors, 88 warnings (down from 95) |
+### Resolved (Cycles 1-15)
 
-### P1: Should fix before production
+All P0 engineering gaps from Cycles 1-14 are resolved. Summary of what was fixed:
 
-| Gap | Detail | Status |
-|-----|--------|--------|
-| COSE_Sign1 verification | Full RFC 9052 COSE_Sign1 verification: ECDSA P-256 via Web Crypto, Sig_structure, MSO digest validation, X.509 DER public key extraction. | **FIXED** in Cycle 13A |
-| IACA root certificates | Trust store restructured with DER decode, AAMVA VICAL reference. Ready for production certs (structure verified, empty pending VICAL download). | **FIXED** in Cycle 13A (structure); **OPEN** — production certs pending AAMVA VICAL |
-| Auth component Svelte 5 migration | VerificationChoice, SelfXyz, Didit → callback props. | **FIXED** in Cycle 10B |
-| Legacy single-tree code | 240+ lines in prover-client, witness-builder, example-usage. | **FIXED** in Cycles 10C+10D |
-| delivery-worker Template cast | `as unknown as Template` unsafe cast for CWC calls. | **FIXED** in Cycle 10C (CwcTemplate) |
-| Submission ALS scope | Tier promotion promise not registered with waitUntil. | **FIXED** post-Cycle 10 |
-| delivery-worker status bugs | CWC 'rejected' misclassified, partial errors dropped, unsafe ALS fallback. | **FIXED** in Cycle 11B |
+| Gap | Resolution | Cycle |
+|-----|-----------|-------|
+| libsodium on CF Workers | Replaced with @noble/curves + @noble/hashes + @noble/ciphers (pure JS) | 11C |
+| Workers KV namespace | `DC_SESSION_KV` provisioned | 11C |
+| CF build verification | cbor-web + libsodium-wrappers compatible | 10A |
+| svelte-check errors | 0 errors, 88 warnings | 11A |
+| COSE_Sign1 verification | Full RFC 9052 ECDSA P-256 via Web Crypto | 13A |
+| IACA trust store structure | DER decode, AAMVA VICAL reference ready | 13A |
+| Auth component Svelte 5 | mDL-only flow, self.xyz + Didit.me removed | 10B → 15 |
+| Legacy single-tree code | ~1300 lines removed | 10C-10D |
+| delivery-worker bugs | Template cast, ALS scope, status misclassification | 10C → 11B |
+| OpenID4VP protocol | JWT/SD-JWT parsing + privacy boundary | 13C |
+| Ed25519 credential signing | Replaces HMAC-SHA256 | 13B |
+| Debate browse-view discovery | Amber "Deliberating" indicator on TemplateCard/TemplateList | 15 |
 
-### P2: Post-launch improvements
+### Open (see Launch Readiness Matrix for full detail)
 
-| Gap | Detail |
-|-----|--------|
-| OpenID4VP protocol | JWT/SD-JWT parsing implemented. Extracts mDL claims from VP tokens. Same privacy boundary as mdoc path. | **FIXED** in Cycle 13C |
-| Ed25519 credential signing | `@noble/curves/ed25519` replaces HMAC-SHA256. `proof.type: 'Ed25519Signature2020'` now truthful. HMAC backward-compat during 90-day TTL. | **FIXED** in Cycle 13B |
-| Nitro Enclave deployment | TEE is designed but not deployed. Server-side decryption runs in-process. |
-| IPFS migration | Encrypted blobs in Postgres. IPFS would reduce costs 99.97%. |
-| On-chain reputation | ERC-8004 contracts designed, not deployed to Scroll L2 |
-| Congressional office dashboard | Not started |
+**P0 — Launch blockers:** IACA production certs (L-03, AAMVA-blocked), mDL→commitment→registration pipeline (L-04), TEE infrastructure (L-05), mainnet deploy (L-01/02), Shadow Atlas server (L-06), npm registry refs (L-07)
+
+**P1 — Pre-production:** Apple Business Connect (L-08), engagement tier UI (L-09), debate on-chain settlement (L-10), debate auto-resolution (L-11), CampaignRegistry timelock review (L-12)
+
+**P2 — Post-launch:** Modal unification (L-13), congressional dashboard (L-14), IPFS migration (L-15), ERC-8004 (L-16), debate co-sign UI + indexer (L-17), rate limiting (L-18), salt rotation (L-19), BA-017 (L-20)
 
 ---
 
@@ -129,8 +139,54 @@
 | 12 | Dead Code Purge + Broken Wiring | 4 | 3 broken event mismatches repaired, ~10,500 lines dead code deleted (50+ files), Svelte 5 migration complete (0 live dispatchers), SSR nested-button bugs fixed, warnings 95→88 |
 | 13 | Cryptographic Verification Hardening | 4 | Real COSE_Sign1 ECDSA P-256 verification (RFC 9052), IACA trust store with DER decode, Ed25519 credential signing (replaces HMAC-SHA256), OpenID4VP JWT/SD-JWT support, 47 new tests |
 | 14 | Security-Critical Test Coverage + Production Hygiene | 4 | 36 new tests covering authority level, pseudonymous ID, user secret derivation, witness encrypt→decrypt round-trip. Debug console floods removed, HACKATHON limits tightened (title 200, body 10k), demo pages dev-gated, empty catches fixed |
+| 15 | Staked Deliberation + Identity Simplification | 4 | Debate infrastructure (9 components, 6 API routes, Prisma models, debate-scoped ZK proofs, DebateModal in ModalRegistry, deep link route, debate browse indicator). Identity simplified to mDL-only: self.xyz + Didit.me removed (8 files deleted, 16 files edited), VerificationChoice removed, single-path verification flow. |
 
 **Full cycle details:** `docs/architecture/graduated-trust-implementation.md`
+
+---
+
+## Identity Verification: mDL-Only Architecture (Cycle 15 Decision)
+
+**Date:** 2026-02-24
+**Decision:** Remove self.xyz (NFC passport) and Didit.me (government ID + face verification) providers. Consolidate to mDL via W3C Digital Credentials API as the sole identity verification path.
+
+### Rationale
+
+1. **Privacy alignment.** mDL via Digital Credentials API is browser-native — no third-party SDK, no server-to-server webhooks, no vendor lock-in. Credential presentation happens between the user's wallet and their browser. The platform never sees raw credential data; only the privacy boundary output (district string) crosses the trust boundary.
+
+2. **Selective disclosure.** ISO 18013-5 mdoc format allows requesting individual data elements (`age_over_18`, `resident_state`, `postal_code`) without revealing full credential. This is architecturally superior to passport NFC (which extracts full MRZ data) or photo ID verification (which transmits face images to a third party).
+
+3. **Cypherpunk coherence.** Self.xyz required a proprietary mobile app and QR code scan flow. Didit.me required server-to-server webhook with HMAC validation and stored verification sessions. Both introduced third-party trust dependencies incompatible with the project's privacy-first architecture.
+
+4. **Ecosystem convergence.** Chrome 141+ and Safari 26+ (both shipped September 2025) support the W3C Digital Credentials API natively. ~22 US states have mDL programs. Platform support will only grow.
+
+### What Was Removed (8 files deleted, 16 files edited)
+
+**Deleted:**
+- `src/routes/api/identity/didit/` (init + webhook endpoints)
+- `src/routes/api/identity/init/+server.ts` (self.xyz QR generation)
+- `src/routes/api/identity/verify/+server.ts` (self.xyz proof verification)
+- `src/lib/core/identity/didit-client.ts` (SDK wrapper)
+- `src/lib/core/server/selfxyz-verifier.ts` (SDK singleton)
+- `src/lib/components/auth/address-steps/SelfXyzVerification.svelte`
+- `src/lib/components/auth/address-steps/DiditVerification.svelte`
+- `src/lib/components/auth/address-steps/VerificationChoice.svelte`
+- `DIDIT-IMPLEMENTATION-SUMMARY.md` (root-level summary doc)
+
+**Edited:** IdentityVerificationFlow.svelte (simplified to single-path), verification-handler.ts, blob-encryption.ts, shadow-atlas-handler.ts, authority-level.ts, hooks.server.ts, session-credentials.ts, identity-binding.ts, package.json (@selfxyz deps removed), vite.config.ts, .env.example
+
+**Dependencies removed:** `@selfxyz/core`, `@selfxyz/qrcode`
+
+### Legacy Database Compatibility
+
+Existing users with `verification_method = 'self.xyz'` or `verification_method = 'didit'` retain their verification status. The `deriveAuthorityLevel()` and `deriveTrustTier()` functions still recognize these values for backward compatibility. No database migration needed — the code simply no longer creates new records with these values.
+
+### Remaining mDL Gaps (see REMAINING-GAPS.md)
+
+1. **IACA root certificates** — Trust store structure ready, production certs pending AAMVA VICAL download
+2. **Poseidon2 identity commitment** — mDL path uses SHA-256² mod BN254 (Phase 1); Poseidon2 planned for Phase 2
+3. **Selective disclosure expansion** — Currently requests only `postal_code`, `city`, `state`; should add Sybil-resistance fields (`birth_date_year`, `document_number` → identity commitment)
+4. **Shadow Atlas registration** — mDL completion doesn't trigger Shadow Atlas three-tree registration yet
 
 ---
 
@@ -154,4 +210,4 @@
 
 ---
 
-*Communique PBC | Implementation Status | 2026-02-17*
+*Communique PBC | Implementation Status | 2026-02-25*

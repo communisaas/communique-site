@@ -53,7 +53,7 @@ describe('Cell ID Integration (Three-Tree ZK Architecture)', () => {
 				email: `${userId}@example.com`,
 				identity_commitment: '0x' + 'a'.repeat(64),
 				is_verified: true,
-				verification_method: 'selfxyz'
+				verification_method: 'digital-credentials-api'
 			});
 
 			await db.session.create({
@@ -93,7 +93,7 @@ describe('Cell ID Integration (Three-Tree ZK Architecture)', () => {
 				email: `${userId}@example.com`,
 				identity_commitment: '0x' + 'a'.repeat(64),
 				is_verified: true,
-				verification_method: 'selfxyz'
+				verification_method: 'digital-credentials-api'
 			});
 
 			await db.session.create({
@@ -128,7 +128,7 @@ describe('Cell ID Integration (Three-Tree ZK Architecture)', () => {
 				email: `${userId}@example.com`,
 				identity_commitment: '0x' + 'a'.repeat(64),
 				is_verified: true,
-				verification_method: 'selfxyz'
+				verification_method: 'digital-credentials-api'
 			});
 
 			await db.session.create({

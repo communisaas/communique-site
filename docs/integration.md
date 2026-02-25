@@ -9,7 +9,7 @@
 1. [voter-protocol Integration](#voter-protocol-integration)
 2. [CWC API (Congressional Delivery)](#cwc-api-congressional-delivery)
 3. [OAuth Providers](#oauth-providers)
-4. [Identity Verification (self.xyz + Didit.me)](#identity-verification)
+4. [Identity Verification (mDL via Digital Credentials API)](#identity-verification)
 5. [TEE Encrypted Delivery](#tee-encrypted-delivery)
 
 ---
@@ -361,123 +361,156 @@ export async function GET({ url, cookies }) {
 
 ## Identity Verification
 
-**Two providers (both FREE):**
-- **self.xyz** (70%) - NFC passport, 30 seconds
-- **Didit.me** (30%) - Government ID + biometric, 2 minutes
+**Single provider: mDL via W3C Digital Credentials API**
 
-### self.xyz Integration
+As of Cycle 15 (2026-02-24), Communique uses a single identity verification provider: mobile driver's licenses (mDL) presented through the W3C Digital Credentials API. Previous providers (self.xyz NFC passport, Didit.me government ID) were removed to simplify the architecture and eliminate third-party trust dependencies.
 
-**Configuration:**
+### Why mDL Only
+
+| Criterion | mDL (Digital Credentials API) | self.xyz (NFC Passport) | Didit.me (Government ID) |
+|-----------|------------------------------|------------------------|-------------------------|
+| Third-party dependency | None (browser-native) | Self app + SDK | Didit.me API + webhook |
+| Data flow | Wallet → browser → privacy boundary | Phone NFC → Self app → QR → our backend | Camera → Didit servers → webhook → our backend |
+| Selective disclosure | Yes (ISO 18013-5 mdoc) | No (full MRZ extracted) | No (full document scan) |
+| PII exposure | Only district string crosses trust boundary | Passport number, DOB, nationality to our server | Face image + document scan to Didit servers |
+| Address data | Yes (postal_code, city, state) | No (requires separate address step) | No (requires separate address step) |
+| Browser support | Chrome 141+, Safari 26+ (Sept 2025) | Any (QR code) | Any (redirect) |
+
+### Configuration
+
 ```bash
-NEXT_PUBLIC_SELF_APP_NAME=Communiqué
-NEXT_PUBLIC_SELF_SCOPE=communique-congressional
-NEXT_PUBLIC_SELF_ENDPOINT=https://communi.email/api/identity/verify
-SELF_MOCK_PASSPORT=false  # Set to 'true' for development
+# No provider-specific API keys needed.
+# The Digital Credentials API is browser-native.
+# Only IACA root certificates are needed for production trust validation.
 ```
 
-**Flow:**
-```typescript
-// Frontend component
-import { SelfSDK } from '@self-id/sdk';
+### Verification Flow
 
-const selfSDK = new SelfSDK({
-  appId: process.env.SELF_APP_ID,
-  environment: 'production'
-});
-
-async function verifySelfIdentity(userId: string) {
-  // User scans passport NFC chip with phone
-  const result = await selfSDK.verifyPassport({
-    userId,
-    requiredFields: ['name', 'dateOfBirth', 'nationality']
-  });
-
-  if (result.verified) {
-    // Send to backend to store verification
-    await fetch('/api/identity/verify', {
-      method: 'POST',
-      body: JSON.stringify({
-        provider: 'self.xyz',
-        verificationData: result.data
-      })
-    });
-  }
-}
+```
+1. User clicks "Verify Identity" on template page
+2. IdentityVerificationFlow.svelte shows value proposition
+3. GovernmentCredentialVerification.svelte initiates Digital Credentials API request
+4. Browser prompts user's digital wallet (Apple Wallet / Google Wallet)
+5. User approves selective disclosure (postal_code, city, state only)
+6. Browser returns mdoc credential response
+7. processCredentialResponse() in mdl-verification.ts:
+   a. Parses CBOR-encoded mdoc (ISO 18013-5)
+   b. Verifies COSE_Sign1 signature (ECDSA P-256, RFC 9052)
+   c. Checks issuer certificate against IACA trust store
+   d. Extracts ONLY address fields (privacy boundary)
+   e. Derives congressional district from address
+   f. Discards all PII — only district string returned
+8. District credential issued (W3C VC 2.0 DistrictResidencyCredential)
+9. Session credential cached in IndexedDB (6-month TTL)
 ```
 
-### Didit.me Integration (IMPLEMENTED)
-
-**Status:** ✅ Complete (Wave 2.2)
-**Implementation:** `src/lib/core/identity/didit-client.ts`
-**Documentation:** `DIDIT-IMPLEMENTATION-SUMMARY.md`
-
-**Configuration:**
-```bash
-# Get credentials from: https://dashboard.didit.me/
-DIDIT_API_KEY=your-didit-api-key
-DIDIT_WORKFLOW_ID=your-didit-workflow-id
-DIDIT_WEBHOOK_SECRET=your-webhook-secret
-```
-
-**API Endpoints:**
+### API Endpoints
 
 ```typescript
-// 1. Initialize verification session
-POST /api/identity/didit/init
-// Returns: { verificationUrl, sessionId, status }
+// mDL verification start (ephemeral ECDH key generation)
+POST /api/identity/verify-mdl/start
+// Returns: { sessionId, nonce, readerPublicKey }
 
-// 2. Webhook callback (server-to-server)
-POST /api/identity/didit/webhook
-// Headers: x-didit-signature, x-didit-timestamp
-// Validates HMAC, updates user verification status
+// mDL verification complete (credential processing)
+POST /api/identity/verify-mdl/verify
+// Body: { sessionId, credentialResponse }
+// Returns: { verified, district, state }
+
+// District credential issuance (W3C VC 2.0)
+POST /api/identity/verify-address
+// Returns: DistrictResidencyCredential (Ed25519Signature2020)
 ```
 
-**Client Usage:**
-```typescript
-import {
-  createVerificationSession,
-  validateWebhook,
-  parseVerificationResult
-} from '$lib/core/identity/didit-client';
+### Key Files
 
-// Create session
-const session = await createVerificationSession(
-  { userId: 'user123', templateSlug: 'kyc-lite' },
-  'https://communi.email/api/identity/didit/webhook'
-);
+| File | Purpose |
+|------|---------|
+| `src/lib/core/identity/digital-credentials-api.ts` | Digital Credentials API client, feature detection, dual-protocol support |
+| `src/lib/core/identity/mdl-verification.ts` | ISO 18013-5 CBOR parsing, privacy boundary function |
+| `src/lib/core/identity/cose-verify.ts` | RFC 9052 COSE_Sign1 verification, ECDSA P-256 |
+| `src/lib/core/identity/iaca-roots.ts` | IACA root certificate store (structure ready, certs pending) |
+| `src/lib/components/auth/GovernmentCredentialVerification.svelte` | 6-state Svelte 5 verification component |
+| `src/lib/components/auth/IdentityVerificationFlow.svelte` | Single-path verification orchestrator |
+| `src/routes/api/identity/verify-mdl/start/+server.ts` | Ephemeral ECDH key generation |
+| `src/routes/api/identity/verify-mdl/verify/+server.ts` | Credential processing + privacy boundary |
 
-// Redirect user to Didit
-window.location.href = session.sessionUrl;
+### mDL Ecosystem Status (as of February 2026)
 
-// Validate webhook (in webhook handler)
-const isValid = validateWebhook(rawBody, signature, timestamp);
-if (!isValid) return { status: 401 };
+**US state mDL programs:** ~22 states with active programs
+**Estimated enrollment:** ~4.5M out of ~71.5M eligible drivers (~6%)
+**Browser support:** Chrome 141+ (Android), Safari 26+ (iOS) — both shipped September 2025
 
-// Parse result
-const result = parseVerificationResult(webhookEvent);
-// Returns: { userId, authorityLevel, credentialHash, ... }
+**Leading states (highest enrollment):**
+- Arizona, Colorado, Georgia, Louisiana, Maryland, Utah — mature programs
+- California, New York, Texas — large populations, newer programs
+
+**Transport protocols:**
+- `org.iso.mdoc` — ISO 18013-5 native mdoc (primary, used by Apple Wallet)
+- `openid4vp` — OpenID for Verifiable Presentations (used by Google Wallet)
+
+Both protocols are supported via `digital-credentials-api.ts` dual-protocol implementation.
+
+**Production blockers:**
+1. IACA root certificates (see REMAINING-GAPS.md Gap 1)
+2. Apple requires merchant registration via Apple Business Connect for mDL verification
+3. Not all state DMVs publish IACA certificates through AAMVA VICAL
+
+### Privacy Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│ User's Device                                        │
+│                                                      │
+│  Digital Wallet ──mdoc──→ Browser                   │
+│  (Apple/Google)          │                          │
+│                          ▼                          │
+│            processCredentialResponse()              │
+│            ┌──────────────────────────┐             │
+│            │ CBOR decode              │             │
+│            │ COSE_Sign1 verify        │             │
+│            │ Extract: postal_code,    │             │
+│            │   city, state            │             │
+│            │ Derive: district         │             │
+│            │ DISCARD: everything else │             │
+│            └──────────┬───────────────┘             │
+│                       │                              │
+│              district string ONLY                    │
+│                       │                              │
+└───────────────────────┼──────────────────────────────┘
+                        ▼
+              ┌─────────────────┐
+              │ Communique API  │
+              │ Receives:       │
+              │  - district     │
+              │  - state        │
+              │  - verified=true│
+              │ Never receives: │
+              │  - name         │
+              │  - address      │
+              │  - DOB          │
+              │  - photo        │
+              │  - doc number   │
+              └─────────────────┘
 ```
 
-**Authority Level Mapping:**
-| Document Type | Authority Level | Trust |
-|--------------|-----------------|-------|
-| Passport | 4 | Highest |
-| Driver's License | 3 | High |
-| National ID | 3 | High |
+### Legacy Provider Compatibility
 
-**Security Features:**
-- ✅ HMAC-SHA256 webhook signature validation (constant-time)
-- ✅ No raw PII storage (only hashed credentials)
-- ✅ Age verification (18+ enforcement)
-- ✅ Sybil resistance (identity_hash prevents duplicates)
-- ✅ Cross-provider identity linking (identity_commitment)
+Users who verified via self.xyz or Didit.me before Cycle 15 retain their verification status. The `deriveAuthorityLevel()` and `deriveTrustTier()` functions still recognize `verification_method = 'self.xyz'` and `verification_method = 'didit'` for backward compatibility. No re-verification required.
 
-**Three-Layer Identity Binding:**
-1. `identity_hash` - Sybil resistance (prevents duplicate accounts)
-2. `identity_commitment` - Cross-provider linking (merges OAuth accounts)
-3. `shadowAtlasCommitment` - Poseidon2 hash for ZK proofs
+### Identity Commitment Pipeline
 
-**See:** `DIDIT-IMPLEMENTATION-SUMMARY.md` for comprehensive implementation details.
+```
+mDL credential data (client-side only):
+  document_number + nationality + birth_year
+    → SHA-256(SHA-256(...)) mod BN254_MODULUS
+    → identity_commitment (Phase 1)
+
+Phase 2 (planned):
+  → Poseidon2_H4(user_secret, cell_id, registration_salt, authority_level)
+  → Shadow Atlas leaf hash
+```
+
+**Known gap:** The mDL verification path does not currently generate an identity commitment or trigger Shadow Atlas registration. This requires adding Sybil-resistance fields (`birth_date_year`, `document_number`) to the selective disclosure request and wiring the commitment pipeline.
 
 ---
 
@@ -629,10 +662,9 @@ GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 # ... other OAuth providers
 
-# Identity Verification
-NEXT_PUBLIC_SELF_APP_NAME=Communiqué
-DIDIT_API_KEY=...
-DIDIT_APP_ID=...
+# Identity Verification (mDL)
+# No provider-specific API keys needed — Digital Credentials API is browser-native
+# IACA root certificates are bundled in code (iaca-roots.ts)
 
 # TEE
 TEE_PUBLIC_KEY=<base64-encoded-X25519-public-key>
@@ -722,4 +754,4 @@ The `ActionDomainParams` TypeScript interface validates jurisdiction types at bu
 
 ---
 
-*Communiqué PBC | Integration Guide | Last Updated: 2026-02-08*
+*Communiqué PBC | Integration Guide | Last Updated: 2026-02-24*

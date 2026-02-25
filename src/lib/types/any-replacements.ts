@@ -162,11 +162,19 @@ export interface CampaignMetrics {
 
 export interface AddressVerificationResult {
 	verified: boolean;
+	/** Nominatim display_name from client-side geocoding (not Census-corrected). */
 	correctedAddress?: string;
 	representatives?: Representative[];
 	zk_eligible?: boolean;
 	zk_warning?: string;
-	[key: string]: unknown;
+	error?: string;
+	district_source?: 'shadow_atlas' | 'client_census';
+	special_status?: {
+		type: string;
+		message: string;
+		has_senators: boolean;
+		has_voting_representative: boolean;
+	};
 }
 
 export interface CertificationData {
@@ -242,7 +250,9 @@ export interface Representative {
 	office_code: string;
 	phone?: string;
 	email?: string;
-	office?: string; // For compatibility with existing code
+	office?: string;
+	is_voting_member?: boolean;
+	delegate_type?: 'delegate' | 'resident_commissioner' | string | null;
 }
 
 // Template and component types for AppHeader

@@ -20,7 +20,7 @@
  *   1 — Authenticated (OAuth login, any logged-in user)
  *   2 — Address-attested (district verified via civic data)
  *   3 — Identity-verified (ID card / drivers license)
- *   4 — Passport-verified (NFC passport via self.xyz / Didit)
+ *   4 — Passport-verified (NFC passport — legacy providers)
  *   5 — Government credential (mDL / EUDIW via Digital Credentials API)
  */
 
@@ -47,7 +47,8 @@ export function deriveAuthorityLevel(user: {
 		return 5;
 	}
 
-	// Level 4: Passport-verified via Didit or self.xyz
+	// Level 4: Passport-verified (legacy — users verified via removed providers Didit/self.xyz)
+	// Kept for backward compatibility with existing database records
 	if (
 		user.identity_commitment &&
 		(user.verification_method === 'didit' || user.verification_method === 'self.xyz') &&
@@ -106,7 +107,8 @@ export function deriveTrustTier(user: {
 		return 5;
 	}
 
-	// Tier 4: Passport-verified (NFC passport via self.xyz or Didit)
+	// Tier 4: Passport-verified (legacy — users verified via removed providers Didit/self.xyz)
+	// Kept for backward compatibility with existing database records
 	if (
 		user.identity_commitment &&
 		(user.verification_method === 'didit' || user.verification_method === 'self.xyz') &&

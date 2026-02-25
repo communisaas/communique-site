@@ -132,23 +132,16 @@ const handleAuth: Handle = async ({ event, resolve }) => {
  *    carry a same-origin Origin header (redundant with SvelteKit's check, but
  *    provides an explicit security boundary if the framework default is ever
  *    changed or bypassed).
- * 3. Exempts the Didit webhook path, which receives server-to-server POSTs
- *    authenticated via HMAC signature (no browser Origin header expected).
+ * 3. Validates same-origin for all sensitive identity endpoints.
  */
 const SENSITIVE_IDENTITY_PATHS = [
-	'/api/identity/verify',
-	'/api/identity/init',
 	'/api/identity/store-blob',
 	'/api/identity/delete-blob',
-	'/api/identity/didit/init',
 	'/api/identity/verify-mdl',
 	'/api/auth/passkey/register',
 	'/api/auth/passkey/authenticate',
 	'/api/location/resolve'
 ];
-
-// Webhook paths that receive server-to-server requests (HMAC-authenticated, no Origin)
-const WEBHOOK_PATHS = ['/api/identity/didit/webhook'];
 
 const handleCsrfGuard: Handle = async ({ event, resolve }) => {
 	const { request, url } = event;
@@ -157,11 +150,6 @@ const handleCsrfGuard: Handle = async ({ event, resolve }) => {
 
 	// Only check non-GET/HEAD/OPTIONS methods
 	if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
-		return resolve(event);
-	}
-
-	// Skip webhook paths (authenticated via HMAC, not Origin)
-	if (WEBHOOK_PATHS.some((p) => pathname.startsWith(p))) {
 		return resolve(event);
 	}
 

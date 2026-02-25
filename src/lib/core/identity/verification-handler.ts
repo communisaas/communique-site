@@ -4,7 +4,7 @@
  * Orchestrates the complete verification → encryption → storage flow.
  *
  * Progressive Verification Paradigm:
- * 1. User completes identity verification (self.xyz or Didit.me)
+ * 1. User completes identity verification (Digital Credentials API / mDL)
  * 2. Extract verified address data
  * 3. Encrypt address blob with TEE public key (XChaCha20-Poly1305)
  * 4. Store encrypted blob in Postgres
@@ -34,12 +34,12 @@ import { storeSessionCredential } from './session-cache';
 
 export interface VerificationResult {
 	/** Verification method used */
-	method: 'nfc-passport' | 'government-id';
+	method: 'digital-credentials-api';
 	/** Verification status */
 	verified: boolean;
 	/** Provider-specific data */
 	providerData: {
-		provider: 'self.xyz' | 'didit.me';
+		provider: 'digital-credentials-api';
 		credentialHash: string;
 		issuedAt: number;
 		expiresAt?: number;

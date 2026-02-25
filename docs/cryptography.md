@@ -49,7 +49,7 @@ Identity commitments are generated using Poseidon2 for ZK circuit compatibility:
 import { generateIdentityCommitment } from '$lib/core/shadow-atlas/shadow-atlas-handler';
 
 const commitment = await generateIdentityCommitment({
-  provider: 'didit.me',
+  provider: 'digital-credentials-api',  // sole active provider (didit.me and self.xyz removed in Cycle 15)
   credentialHash: result.credentialHash,
   issuedAt: Date.now()
 });

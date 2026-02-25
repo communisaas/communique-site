@@ -181,7 +181,7 @@ SHADOW_ATLAS_API_URL=http://localhost:3001
 ## Integration Flow
 
 ```
-1. User verifies identity (Didit.me or self.xyz)
+1. User verifies identity (mDL via Digital Credentials API; self.xyz and Didit.me removed in Cycle 15)
    └→ Generates identity_commitment (Poseidon2 hash)
 
 2. User provides address

@@ -13,8 +13,8 @@ The voter-protocol uses a 5-tier authority system to balance Sybil resistance wi
 | 1 | Self-claimed | None | View public content | HIGH |
 | 2 | Location-hinted | IP/GPS correlation | Community discussion | MEDIUM |
 | 3 | Socially vouched | Peer attestations | Basic constituent features | LOW |
-| 4 | Document-verified | self.xyz/Didit.me KYC | Full constituent messaging | VERY LOW |
-| 5 | Government-issued | State ID + liveness | Official petitions | MINIMAL |
+| 4 | Document-verified | mDL via Digital Credentials API | Full constituent messaging | VERY LOW |
+| 5 | Government-issued | mDL via Digital Credentials API (enhanced) | Official petitions | MINIMAL |
 
 ## Implementation
 
@@ -28,5 +28,5 @@ Authority level is:
 Users start at Tier 1 and can upgrade by:
 - Tier 2: Completing location verification
 - Tier 3: Receiving peer attestations
-- Tier 4: Completing identity verification (self.xyz or Didit.me)
-- Tier 5: Government ID verification (future)
+- Tier 4: Completing identity verification (mDL via Digital Credentials API; self.xyz and Didit.me removed in Cycle 15)
+- Tier 5: Enhanced government ID verification via mDL

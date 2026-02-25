@@ -46,7 +46,7 @@ Backend cryptographic infrastructure. Noir/UltraHonk zero-knowledge proofs, AWS 
 - ✅ **OAuth Authentication** - Google, Facebook, Twitter, LinkedIn, Discord
 - ✅ **Postgres Database** - User accounts, templates, messages, analytics
 - ✅ **Template System** - Creation, moderation, customization UI
-- ✅ **Identity Verification UI** - self.xyz NFC passport, Didit.me integration
+- ✅ **Identity Verification UI** - mDL via W3C Digital Credentials API (sole provider as of Cycle 15; self.xyz and Didit.me removed 2026-02-24)
 - ✅ **Congressional Office Lookup** - Representative directory, office codes
 - ✅ **Analytics Dashboard** - Funnel tracking, usage metrics
 - ✅ **Browser Encryption** - XChaCha20-Poly1305 address encryption to TEE public key
@@ -107,7 +107,7 @@ Browser generates ZK proofs client-side. No server sees address plaintext.
 **Flow:**
 ```
 FIRST TIME (one-time identity verification):
-1. User provides address (self.xyz NFC passport or Didit.me)
+1. User verifies via mDL (Digital Credentials API)
 2. Browser encrypts address to TEE public key (XChaCha20-Poly1305)
 3. Encrypted blob stored in Postgres (Phase 1) or IPFS (Phase 2)
 4. TEE decrypts in isolated memory, geocodes to district
@@ -189,7 +189,7 @@ model User {
   id: String  // Pseudonymous, deterministic from passkey
   email: String  // OAuth login only
   verification_status: String  // 'verified' | 'unverified'
-  verification_method: String  // 'self.xyz' | 'didit'
+  verification_method: String  // 'digital-credentials-api' (legacy: 'self.xyz' | 'didit')
   district_hash: String  // SHA-256(congressional_district) - NOT plaintext
   session_credential: String  // Cached verification (expires)
   scroll_address: String  // Blockchain wallet (public)
@@ -346,7 +346,7 @@ TOTAL COST:
 │ USER BROWSER (SvelteKit 5 Frontend)                              │
 ├─────────────────────────────────────────────────────────────────┤
 │ 1. OAuth Login (Google/Facebook/Twitter/LinkedIn/Discord)        │
-│ 2. Identity Verification UI (self.xyz NFC / Didit.me)            │
+│ 2. Identity Verification UI (mDL via Digital Credentials API)     │
 │ 3. Address Encryption (XChaCha20-Poly1305 to TEE public key)     │
 │ 4. ZK Proof Generation (WASM Noir/UltraHonk prover, 600ms-10s)   │
 │ 5. Template Customization (PUBLIC content + personal story)      │
@@ -435,11 +435,12 @@ TOTAL COST:
 - ✅ API endpoints (store/retrieve/delete blobs)
 - ✅ Integration tests passing (7/7)
 
-**Identity Verification (Wave 2):**
-- ✅ Didit.me SDK integration (HMAC webhook validation)
-- ✅ Authority level mapping (passport → 4, DL → 3)
+**Identity Verification (Wave 2, simplified Cycle 15):**
+- ✅ mDL via W3C Digital Credentials API (sole provider)
+- ✅ Authority level mapping (mDL → 5, passport → 4 legacy, DL → 3 legacy)
 - ✅ Three-layer identity binding (Sybil + cross-provider + ZK)
 - ✅ Shadow Atlas commitment generation
+- ⚠️ self.xyz and Didit.me removed 2026-02-24 (8 files deleted, 16 edited)
 
 **ZK Proof Infrastructure (Wave 2):**
 - ✅ Browser WASM prover integration (`@voter-protocol/noir-prover`)
@@ -529,9 +530,8 @@ GOOGLE_CLIENT_ID=<google-oauth-client-id>
 GOOGLE_CLIENT_SECRET=<google-oauth-secret>
 # ... other providers
 
-# Identity Verification
-SELF_APP_ID=<self-xyz-app-id>
-DIDIT_API_KEY=<didit-api-key>
+# Identity Verification (mDL — no provider API keys needed)
+# Digital Credentials API is browser-native; IACA certs bundled in code
 ```
 
 **Deployment Steps:**
@@ -539,7 +539,7 @@ DIDIT_API_KEY=<didit-api-key>
 2. Deploy updated Communique to Cloudflare Pages
 3. Verify `/api/expertise/verify` calls voter-protocol successfully
 4. Verify `/api/tee/public-key` returns valid key
-5. Test identity verification flow (self.xyz + Didit.me)
+5. Test mDL identity verification flow (requires Chrome 141+ or Safari 26+)
 
 ---
 
@@ -609,7 +609,7 @@ DIDIT_API_KEY=<didit-api-key>
 - `docs/frontend.md` - SvelteKit 5, runes, component patterns
 
 **Integration Docs:**
-- `docs/integration.md` - CWC API, OAuth, self.xyz, Didit.me, TEE delivery
+- `docs/integration.md` - CWC API, OAuth, mDL (Digital Credentials API), TEE delivery
 
 **voter-protocol Docs:**
 - `/Users/noot/Documents/voter-protocol/ARCHITECTURE.md` - Blockchain architecture

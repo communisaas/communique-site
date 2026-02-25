@@ -158,7 +158,9 @@ Remove deprecated code, consolidate schemas, establish the trust_tier field as t
 
 ## Cycle 4: Tier 3 — Proof-Verified Delivery
 
-Post-Cycle 3 research findings: self.xyz NFC (4E), Shadow Atlas two-tree registration, CWC client (Senate/House), and identity blob encryption are **already production-ready**. Cycle 4 focuses on the three remaining gaps: real proof generation, proper encryption, and end-to-end verified delivery.
+Post-Cycle 3 research findings: ~~self.xyz NFC (4E)~~ (removed — Cycle 15), Shadow Atlas two-tree registration, CWC client (Senate/House), and identity blob encryption are **already production-ready**. Cycle 4 focuses on the three remaining gaps: real proof generation, proper encryption, and end-to-end verified delivery.
+
+> **Note (Cycle 15):** self.xyz and Didit.me providers have been removed. mDL via the Digital Credentials API is the sole active verification path. References to self.xyz and Didit.me in completed cycle notes below are historical records of work done before removal.
 
 ### Wave 4A: Wire Real Proof Generation
 
@@ -333,7 +335,7 @@ Fix authority level discrepancy, extend verification type system for mDL.
 | Fix `trustTierToAuthorityLevel(4)` | `authority-level.ts` | Currently returns 4, should return 5 per arch doc |
 | Fix `deriveAuthorityLevel()` for mdl | `authority-level.ts` | Add `document_type === 'mdl'` → authority level 5 path |
 | Add `'mdl'` to `VerificationMethod` | `src/lib/types/verification.ts` | `'nfc-passport' \| 'government-id' \| 'mdl'` |
-| Add `'digital-credentials-api'` to `VerificationProvider` | `src/lib/types/verification.ts` | `'self.xyz' \| 'didit.me' \| 'digital-credentials-api'` |
+| Add `'digital-credentials-api'` to `VerificationProvider` | `src/lib/types/verification.ts` | `'self.xyz' \| 'didit.me' \| 'digital-credentials-api'` (self.xyz and didit.me are legacy values — removed as active providers in Cycle 15) |
 | Add mDL entry to `VERIFICATION_METHODS` | `src/lib/types/verification.ts` | Display metadata for new method |
 | Update session + handler types | `session-cache.ts`, `session-credentials.ts`, `shadow-atlas-handler.ts` | Add `'mdl'` / `'digital-credentials-api'` to method unions |
 | Add rate limit path | `hooks.server.ts` | Add `/api/identity/verify-mdl` to `SENSITIVE_IDENTITY_PATHS` |
@@ -450,7 +452,7 @@ After each cycle:
 | 8A: ALS safety + errors | **COMPLETE** | 2026-02-17: Added `getRequestClient()` to db.ts. delivery-worker.ts accepts optional db param. Callers capture concrete client before waitUntil. Sanitized delivery_error in status endpoint. |
 | 8B: Type safety | **COMPLETE** | 2026-02-17: Created EmailFlowTemplate shared interface. Added missing fields to ComponentTemplate. Changed emailService + templateResolver to accept EmailFlowTemplate. Eliminated 5 unsafe casts from TemplateModal + ProofGenerator. |
 | 8C: Svelte 5 migration | **COMPLETE** | 2026-02-17: Migrated IdentityVerificationFlow + TemplateModal from createEventDispatcher to callback props. Updated 2 consumers. Removed needsTier3 dead derived, double oncomplete dispatch, 22 redundant credential! assertions. |
-| 8D: Review + polish | **COMPLETE** | 2026-02-17: Opus review found 0 critical, 3 high, 5 medium, 9 low. Fixed 5: (1) trust tier promotion uses captured client + waitUntil (HIGH); (2) verificationData stores full payload (HIGH); (3) tautological validation bug (MEDIUM); (4) stale on:error comment; (5) unused {@const}. Gated legacy single-tree with deprecation warning. Remaining debt: child components (VerificationChoice, SelfXyz, Didit) still use createEventDispatcher; delivery-worker.ts still has `as unknown as Template` for CWC calls. |
+| 8D: Review + polish | **COMPLETE** | 2026-02-17: Opus review found 0 critical, 3 high, 5 medium, 9 low. Fixed 5: (1) trust tier promotion uses captured client + waitUntil (HIGH); (2) verificationData stores full payload (HIGH); (3) tautological validation bug (MEDIUM); (4) stale on:error comment; (5) unused {@const}. Gated legacy single-tree with deprecation warning. Remaining debt: child components (VerificationChoice, SelfXyz, Didit) still use createEventDispatcher (SelfXyz and Didit subsequently removed in Cycle 15); delivery-worker.ts still has `as unknown as Template` for CWC calls. |
 
 ### Cycle 9 Status
 
@@ -486,8 +488,8 @@ Complete the createEventDispatcher → callback props migration for the 3 remain
 | Task | File(s) | Detail |
 |------|---------|--------|
 | Migrate VerificationChoice | `VerificationChoice.svelte` | Replace `createEventDispatcher<{ select }>` with `onselect?: (data) => void` callback prop. Update `IdentityVerificationFlow.svelte` consumer (change `on:select={handleMethodSelection}` to `onselect={...}`, remove CustomEvent wrapper from handler). |
-| Migrate SelfXyzVerification | `SelfXyzVerification.svelte` | Replace dispatched `complete` and `error` events with `oncomplete` and `onerror` callback props. Update IdentityVerificationFlow consumer (change `on:complete={handleVerificationComplete}` to `oncomplete={...}`). |
-| Migrate DiditVerification | `DiditVerification.svelte` | Same pattern as SelfXyz — callback props instead of dispatch. Update IdentityVerificationFlow consumer. |
+| ~~Migrate SelfXyzVerification~~ | ~~`SelfXyzVerification.svelte`~~ | ~~Replace dispatched `complete` and `error` events with `oncomplete` and `onerror` callback props.~~ (Component removed — Cycle 15: self.xyz provider removed) |
+| ~~Migrate DiditVerification~~ | ~~`DiditVerification.svelte`~~ | ~~Same pattern as SelfXyz — callback props instead of dispatch.~~ (Component removed — Cycle 15: Didit.me provider removed) |
 | Update IdentityVerificationFlow handlers | `IdentityVerificationFlow.svelte` | After migrating children, `handleMethodSelection` and `handleVerificationComplete` no longer need CustomEvent wrappers. Simplify to direct function signatures. |
 
 ### Wave 10C: Dead Code + Type Cleanup
@@ -519,7 +521,7 @@ Final review gate. Verify the entire codebase builds and deploys cleanly.
 | Wave | Status | Notes |
 |------|--------|-------|
 | 10A: CF Workers Build | **COMPLETE** | 2026-02-17: Build failed on `Invalid export 'devSessionStore'` from `start/+server.ts`. Fixed by extracting to `_dev-session-store.ts` (underscore prefix = non-route SvelteKit convention). `ADAPTER=cloudflare npm run build` passes in 38s. Env var propagation verified via `handlePlatformEnv` in hooks. Commit: c0bb1ce1. **Note:** libsodium WASM and KV namespace remain untested at runtime. |
-| 10B: Svelte 5 Migration | **COMPLETE** | 2026-02-17: VerificationChoice, SelfXyzVerification, DiditVerification migrated to callback props. IdentityVerificationFlow consumer updated — all handlers take direct data instead of CustomEvent wrappers. 4 commits. svelte-check: 0 new errors. |
+| 10B: Svelte 5 Migration | **COMPLETE** | 2026-02-17: VerificationChoice, SelfXyzVerification, DiditVerification migrated to callback props. IdentityVerificationFlow consumer updated — all handlers take direct data instead of CustomEvent wrappers. 4 commits. svelte-check: 0 new errors. (Note: SelfXyzVerification and DiditVerification subsequently removed in Cycle 15.) |
 | 10C: Dead Code Cleanup | **COMPLETE** | 2026-02-17: Removed 240 lines single-tree code from prover-client.ts. Created CwcTemplate minimal interface (5 fields). Updated delivery-worker.ts to use Prisma `select` — no cast needed. Updated .env.example and wrangler.toml documentation. 4 commits. |
 | 10D: Review + Build | **COMPLETE** | 2026-02-17: Found and fixed 2 dangling files (example-usage.ts, witness-builder.ts) importing removed exports — 544 more lines deleted. Updated barrel index.ts. CF build passes. svelte-check: 18 errors, 95 warnings (0 new from Cycle 10). Total dead code removed: ~1300 lines. |
 
@@ -844,7 +846,7 @@ Five sequential cycles to close every remaining gap between "functionally comple
 
 | Cycle | Focus | Key Targets |
 |-------|-------|-------------|
-| 15 | Type Safety Purge | ~57 `as any` + ~42 `as unknown as` casts, schema-driven type gaps, Svelte 5 component types |
+| 15 | Type Safety Purge + Provider Removal | ~57 `as any` + ~42 `as unknown as` casts, schema-driven type gaps, Svelte 5 component types. **Also: removed self.xyz and Didit.me providers.** mDL via Digital Credentials API is now the sole active verification path. SelfXyzVerification.svelte, DiditVerification.svelte, and VerificationChoice.svelte removed. |
 | 16 | Workers Infrastructure Reality | 5 in-memory caches/rate limiters → Postgres/KV, module-level env reads, dead setInterval |
 | 17 | Stub Elimination + Error Discipline | CWC placeholder, zero blockchain addresses, fake reps, swallowed catches, deferred wiring |
 | 18 | Dead Code Purge + Logging Discipline | 15+ deprecated functions, ~300 console.log, intelligence provider stubs, dead file cleanup |

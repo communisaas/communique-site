@@ -375,10 +375,11 @@ This is correct behavior: ~2% of the population moves annually, and the 30-day w
 
 Currently, the `IdentityVerificationFlow.svelte` component has three steps:
 1. Value proposition
-2. Method selection (NFC passport vs. government ID)
-3. Complete verification
+2. Verification (mDL via Digital Credentials API — sole active provider)
 
-Tier 2 inserts a new path BEFORE step 2: "Just verify your address" → address form → civic data check → VC issued → done. The user can stop here. The identity verification ceremony (step 2-3) becomes an OPTIONAL upgrade to Tier 3.
+> **Note (Cycle 15):** NFC passport (self.xyz) and Government ID (Didit.me) method selection has been removed. mDL is the only active verification path.
+
+Tier 2 inserts a new path BEFORE step 2: "Just verify your address" → address form → civic data check → VC issued → done. The user can stop here. The identity verification ceremony (step 2) becomes an OPTIONAL upgrade to Tier 3.
 
 ---
 
@@ -386,12 +387,14 @@ Tier 2 inserts a new path BEFORE step 2: "Just verify your address" → address 
 
 ### Definition
 
-User has verified their identity with a government document (passport via self.xyz NFC, or government ID via Didit.me). Their identity commitment (Poseidon2 hash) is registered in the Shadow Atlas Merkle tree. They can generate zero-knowledge proofs of district membership without revealing their identity. Messages are witness-encrypted to the TEE public key and delivered through the CWC API.
+User has verified their identity with a government credential (mDL / EUDIW via Digital Credentials API). Their identity commitment (Poseidon2 hash) is registered in the Shadow Atlas Merkle tree. They can generate zero-knowledge proofs of district membership without revealing their identity. Messages are witness-encrypted to the TEE public key and delivered through the CWC API.
+
+> **Note (Cycle 15):** Previously, Tier 3 supported passport via self.xyz NFC and government ID via Didit.me. These providers have been removed. Identity verification now flows exclusively through the mDL path (Tier 4 Digital Credentials API), which also satisfies Tier 3 requirements.
 
 ### Current state: PARTIALLY IMPLEMENTED (estimated ~50%)
 
 **What works:**
-- Didit.me identity verification flow (UI + API)
+- ~~Didit.me identity verification flow (UI + API)~~ (removed — Cycle 15)
 - Identity commitment computation (`identity-binding.ts`)
 - Authority level derivation (`authority-level.ts`)
 - Credential policy with action-based TTL (`credential-policy.ts`)
@@ -402,7 +405,7 @@ User has verified their identity with a government document (passport via self.x
 - Cross-provider deduplication via identity_commitment
 
 **What's missing:**
-- self.xyz NFC passport integration (UI component exists, API integration incomplete)
+- ~~self.xyz NFC passport integration~~ (removed — Cycle 15; mDL is the sole verification path)
 - Browser-side ZK prover integration (voter-protocol has the prover, Communique hasn't wired it)
 - Browser-side witness encryption (XChaCha20-Poly1305 — no libsodium.js integration)
 - TEE infrastructure (AWS Nitro Enclave — provider interface exists, deployment missing)
@@ -447,15 +450,14 @@ This is the largest tier. The work breaks into five workstreams:
 - Delivery status tracking
 - Error handling and retry (SubmissionRetry model)
 
-**Workstream E: self.xyz Integration**
-- Complete NFC passport verification flow
-- API endpoint integration
-- Passport-specific identity commitment computation
+**~~Workstream E: self.xyz Integration~~** — REMOVED (Cycle 15)
+> self.xyz NFC passport provider has been removed. mDL via Digital Credentials API (Tier 4) is the sole active verification path and satisfies Tier 3 requirements.
 
 ### Authority level mapping
 
-`authority_level = 3` (government ID / drivers license)
-`authority_level = 4` (passport)
+`authority_level = 3` (government ID / drivers license — legacy values from removed providers)
+`authority_level = 4` (passport — legacy value from removed self.xyz provider)
+`authority_level = 5` (mDL / EUDIW via Digital Credentials API — ONLY active verification path)
 
 ### Security note: privacy profile
 
@@ -531,7 +533,7 @@ The current user base authenticates via OAuth. Migrating to passkey-primary requ
 
 ### The `is_verified` Boolean Problem
 
-The User model has `is_verified: Boolean @default(false)`. This is a Tier 3 flag — it means "has completed identity verification via self.xyz or Didit.me." It does NOT capture:
+The User model has `is_verified: Boolean @default(false)`. This is a Tier 3 flag — it means "has completed identity verification" (historically via self.xyz or Didit.me, now exclusively via mDL). It does NOT capture:
 
 - Tier 1 (passkey — cryptographic identity without identity verification)
 - Tier 2 (address attestation without identity verification)
@@ -687,8 +689,8 @@ VerificationFlow.svelte
   ├── Tier 1: PasskeyRegistration (if no passkey)
   ├── Tier 2: AddressVerification (standalone, no passport needed)
   │     └── AddressForm → CivicDataCheck → VCIssuance → Done
-  └── Tier 3: IdentityVerification (passport/ID, builds on Tier 2)
-        └── MethodSelection → SelfXyz or Didit → ShadowAtlas → Done
+  └── Tier 3+: IdentityVerification (mDL via Digital Credentials API, builds on Tier 2)
+        └── GovernmentCredentialVerification → ShadowAtlas → Done
 ```
 
 The user can stop at any tier. Each tier's UI shows what they've achieved and what the next level unlocks.

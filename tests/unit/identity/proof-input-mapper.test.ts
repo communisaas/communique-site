@@ -42,7 +42,7 @@ function makeThreeTreeCredential(overrides: Partial<SessionCredential> = {}): Se
 		engagementTier: 0 as const,
 		actionCount: '0x0000000000000000000000000000000000000000000000000000000000000000',
 		diversityScore: '0x0000000000000000000000000000000000000000000000000000000000000000',
-		verificationMethod: 'self.xyz',
+		verificationMethod: 'digital-credentials-api',
 		createdAt: new Date('2026-02-01'),
 		expiresAt: new Date('2026-08-01'),
 		...overrides

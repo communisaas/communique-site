@@ -60,34 +60,16 @@ This suite of components handles identity verification for Communiqué's congres
 
 **Flow Steps**:
 1. **Value Proposition** (optional): Why verification matters, impact statistics
-2. **Method Selection**: NFC passport (recommended) vs. Government ID (fallback)
-3. **Verification**: Execute chosen verification method
-4. **Completion**: Success state with next steps
+2. **Verification**: mDL / EUDIW via Digital Credentials API (sole active provider)
+3. **Completion**: Success state with next steps
+
+> **Note (Cycle 15):** NFC passport (self.xyz) and Government ID (Didit.me) providers have been removed. mDL via the Digital Credentials API is the only active verification path.
 
 ---
 
-### 2. `VerificationChoice.svelte` (Method Selection)
+### 2. `VerificationChoice.svelte` (Method Selection) — REMOVED
 
-**Purpose**: Present verification method options with clear affordances
-
-**Design Decisions**:
-- **Visual hierarchy**: NFC passport has "Recommended" badge and gradient background
-- **Progressive disclosure**: Benefits revealed on hover/focus
-- **Social proof**: Time estimates and trust indicators
-- **Gestalt principles**: Figure-ground relationship through shadow and color
-
-**Usage**:
-```svelte
-<VerificationChoice
-  defaultMethod={null}
-  on:select={handleMethodSelection}
-/>
-```
-
-**Cognitive Design**:
-- **Fitts's Law**: Large touch targets (entire card is clickable)
-- **Hick's Law**: Only 2 choices to minimize decision paralysis
-- **Jakob's Law**: Card-based selection pattern (familiar from e-commerce, payment methods)
+> **Removed in Cycle 15.** With the removal of self.xyz and Didit.me providers, there is no longer a multi-method choice. The sole verification path is mDL via the Digital Credentials API, handled by `GovernmentCredentialVerification.svelte`. This component is no longer used.
 
 ---
 
@@ -119,63 +101,15 @@ This suite of components handles identity verification for Communiqué's congres
 
 ---
 
-### 4. `SelfXyzVerification.svelte` (NFC Passport Flow)
+### 4. `SelfXyzVerification.svelte` (NFC Passport Flow) — REMOVED
 
-**Purpose**: Guide users through NFC passport verification
-
-**Technical Flow**:
-1. Initialize verification session via `/api/identity/init`
-2. Display QR code for mobile app
-3. Poll verification status every 2 seconds
-4. Handle success/failure states
-
-**UX Patterns**:
-- **Numbered steps**: Clear progression (1→2→3→4)
-- **Visual feedback**: Loading states, waiting animations, success icons
-- **Error recovery**: "Try Again" with retry mechanism
-- **Trust indicators**: "Trusted verification partner" with context
-
-**Usage**:
-```svelte
-<SelfXyzVerification
-  userId={currentUser.id}
-  templateSlug="contact-congress"
-  on:complete={handleVerificationComplete}
-  on:error={handleVerificationError}
-/>
-```
-
-**Privacy Messaging**:
-- ✅ "Your passport data **never leaves your device**"
-- ✅ "We verify district membership **without storing your address**"
-- ✅ "Cryptographic proof generated **locally on your phone**"
+> **Removed in Cycle 15.** The self.xyz NFC passport provider has been removed. mDL via the Digital Credentials API (`GovernmentCredentialVerification.svelte`) is the sole active verification path.
 
 ---
 
-### 5. `DiditVerification.svelte` (Government ID Flow)
+### 5. `DiditVerification.svelte` (Government ID Flow) — REMOVED
 
-**Purpose**: Alternative verification via government ID (driver's license, state ID)
-
-**Technical Flow**:
-1. Initialize Didit session via `/api/identity/didit/init`
-2. Redirect to Didit verification URL (new window)
-3. Monitor window close or webhook completion
-4. Handle return and success state
-
-**Design Decisions**:
-- **Fallback positioning**: "Alternative" badge (not "secondary" or "worse")
-- **Trust building**: SOC 2 certification, trusted partner messaging
-- **Accessibility**: No NFC hardware required
-
-**Usage**:
-```svelte
-<DiditVerification
-  userId={currentUser.id}
-  templateSlug="contact-congress"
-  on:complete={handleVerificationComplete}
-  on:error={handleVerificationError}
-/>
-```
+> **Removed in Cycle 15.** The Didit.me government ID provider has been removed. mDL via the Digital Credentials API (`GovernmentCredentialVerification.svelte`) is the sole active verification path.
 
 ---
 
@@ -223,15 +157,13 @@ This suite of components handles identity verification for Communiqué's congres
 ### Color Palette
 
 **Verification states**:
-- `blue-600` → `indigo-600`: Primary gradient (NFC passport, verified status)
-- `slate-200` → `slate-600`: Alternative method (government ID)
+- `blue-600` → `indigo-600`: Primary gradient (mDL verification, verified status)
 - `green-600`: Success states, privacy guarantees
 - `red-600`: Error states, retry prompts
 
 **Semantic colors**:
 - **Trust**: Blue/Indigo gradients
 - **Privacy**: Green accents
-- **Alternative**: Slate grays
 - **Error**: Red accents
 
 ### Typography
@@ -244,8 +176,6 @@ This suite of components handles identity verification for Communiqué's congres
 ### Icons (Lucide Svelte)
 
 - `Shield`: Primary verification icon (trust, protection)
-- `QrCode`: NFC passport flow
-- `FileText`: Government ID flow
 - `Lock`: Privacy guarantees
 - `Check`: Success states, benefits
 - `TrendingUp`: Impact statistics
@@ -299,15 +229,7 @@ This suite of components handles identity verification for Communiqué's congres
 
 ### Choice Architecture
 
-**Default to NFC passport**:
-- "Recommended" badge
-- Gradient background (visual prominence)
-- Listed first (primacy effect)
-
-**Graceful fallback to government ID**:
-- "Alternative" framing (not "worse")
-- Clear benefits (no passport required)
-- Visible but de-emphasized
+> **Updated (Cycle 15):** With the removal of self.xyz and Didit.me, the multi-method choice architecture no longer applies. The sole verification path is mDL via the Digital Credentials API. The UI presents a single verification action rather than a selection between methods.
 
 ### Friction Reduction
 
@@ -377,18 +299,21 @@ This suite of components handles identity verification for Communiqué's congres
 
 ### Backend Requirements
 
-- [x] `/api/identity/init` - Self.xyz session initialization
-- [x] `/api/identity/status` - Self.xyz verification polling
-- [x] `/api/identity/didit/init` - Didit session initialization
-- [x] `/api/identity/didit/webhook` - Didit webhook handler
+- [ ] ~~`/api/identity/init` - Self.xyz session initialization~~ (removed — Cycle 15)
+- [ ] ~~`/api/identity/status` - Self.xyz verification polling~~ (removed — Cycle 15)
+- [ ] ~~`/api/identity/didit/init` - Didit session initialization~~ (removed — Cycle 15)
+- [ ] ~~`/api/identity/didit/webhook` - Didit webhook handler~~ (removed — Cycle 15)
+- [x] `/api/identity/verify-mdl/start` - mDL session start (Digital Credentials API)
+- [x] `/api/identity/verify-mdl/verify` - mDL credential verification
 
 ### Frontend Components
 
 - [x] `IdentityVerificationFlow.svelte` - Main orchestrator
-- [x] `VerificationChoice.svelte` - Method selection
+- [ ] ~~`VerificationChoice.svelte` - Method selection~~ (removed — single provider, Cycle 15)
 - [x] `VerificationValueProp.svelte` - Value communication
-- [x] `SelfXyzVerification.svelte` - NFC passport flow
-- [x] `DiditVerification.svelte` - Government ID flow
+- [ ] ~~`SelfXyzVerification.svelte` - NFC passport flow~~ (removed — Cycle 15)
+- [ ] ~~`DiditVerification.svelte` - Government ID flow~~ (removed — Cycle 15)
+- [x] `GovernmentCredentialVerification.svelte` - mDL / EUDIW via Digital Credentials API
 - [x] `VerificationPrompt.svelte` - Contextual prompts
 
 ### Design Assets
@@ -406,9 +331,9 @@ This suite of components handles identity verification for Communiqué's congres
 
 - **Conversion rate**: % of users who start verification
 - **Completion rate**: % of users who finish verification
-- **Method preference**: NFC vs. Government ID selection
 - **Drop-off points**: Where users abandon flow
 - **Error frequency**: Which verification errors occur most
+- **Browser support rate**: % of users with Digital Credentials API support
 
 ### A/B Testing Opportunities
 
@@ -441,8 +366,8 @@ For questions about design decisions, implementation details, or user research f
 ### Cognitive Load Analysis
 
 **Information Architecture**:
-- Primary path: 3 steps (value prop → choice → verify)
-- Decision points: 2 (learn more vs. proceed, NFC vs. ID)
+- Primary path: 2 steps (value prop → verify via mDL)
+- Decision points: 1 (learn more vs. proceed)
 - Input fields: 0 (fully automated verification)
 
 **Visual Complexity**:
@@ -467,6 +392,6 @@ For questions about design decisions, implementation details, or user research f
 
 ---
 
-**Last Updated**: 2025-10-22
-**Version**: 1.0.0
-**Status**: Production-ready
+**Last Updated**: 2026-02-24
+**Version**: 2.0.0
+**Status**: Updated — self.xyz and Didit.me removed (Cycle 15). mDL via Digital Credentials API is the sole verification provider.

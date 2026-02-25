@@ -703,8 +703,7 @@ Then:
 ### The Invisible Work
 
 **Identity Verification (30s-2min):**
-- self.xyz NFC passport tap (70% of users)
-- Didit.me government ID + liveness check (30% of users)
+- mDL via Digital Credentials API (sole provider; self.xyz and Didit.me removed in Cycle 15)
 - Returns `identity_commitment` (Poseidon hash)
 - Browser encrypts address to TEE public key (XChaCha20-Poly1305)
 - Encrypted blob stored in Postgres
@@ -809,7 +808,7 @@ Trust comes from transparency WHEN ASKED, not from forcing users to understand N
 ## Next Steps
 
 - **Template System**: See `TEMPLATE-SYSTEM.md` for variable extraction, editor, moderation
-- **Integrations**: See `INTEGRATION-GUIDE.md` for CWC API, OAuth, geocoding, self.xyz
+- **Integrations**: See `INTEGRATION-GUIDE.md` for CWC API, OAuth, geocoding, mDL identity verification
 - **Development**: See `DEVELOPMENT.md` for testing, seeding, deployment
 - **Design System**: See `design-system.md` for comprehensive component library
 
