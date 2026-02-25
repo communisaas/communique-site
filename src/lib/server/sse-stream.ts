@@ -2,10 +2,12 @@
  * SSE Stream - Server-side helpers
  *
  * createSSEStream and SSE_HEADERS for server endpoints.
+ * Uses TransformStream for Cloudflare Pages compatibility.
  */
 
 /**
  * Create SSE response helper for server endpoints.
+ * Uses TransformStream (required by Cloudflare Pages Workers runtime).
  * Provides typed event emitter for consistent SSE formatting.
  */
 export function createSSEStream(traceConfig?: {
@@ -14,24 +16,19 @@ export function createSSEStream(traceConfig?: {
 	userId?: string | null;
 }) {
 	const encoder = new TextEncoder();
-	let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+	const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+	const writer = writable.getWriter();
 	let closed = false;
-
-	const stream = new ReadableStream<Uint8Array>({
-		start(c) {
-			controller = c;
-		}
-	});
 
 	const emitter = {
 		/**
 		 * Send a typed event to the stream
 		 */
 		send<T>(type: string, data: T) {
-			if (!controller || closed) return;
+			if (closed) return;
 			try {
 				const event = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
-				controller.enqueue(encoder.encode(event));
+				writer.write(encoder.encode(event));
 			} catch {
 				// Stream already closed by client disconnect or timeout
 				closed = true;
@@ -74,21 +71,24 @@ export function createSSEStream(traceConfig?: {
 			if (closed) return;
 			closed = true;
 			try {
-				controller?.close();
+				writer.close();
 			} catch {
 				// Already closed
 			}
 		}
 	};
 
-	return { stream, emitter };
+	return { stream: readable, emitter };
 }
 
 /**
  * SSE Response headers
+ * Includes anti-buffering headers for Cloudflare Pages and reverse proxies.
  */
 export const SSE_HEADERS = {
 	'Content-Type': 'text/event-stream',
 	'Cache-Control': 'no-cache',
-	Connection: 'keep-alive'
+	'Connection': 'keep-alive',
+	'X-Accel-Buffering': 'no',
+	'cf-no-buffer': '1'
 } as const;

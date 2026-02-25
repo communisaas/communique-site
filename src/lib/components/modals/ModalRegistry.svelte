@@ -10,8 +10,10 @@
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
 	import { ProgressiveFormContent } from '$lib/components/template/parts';
 	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
+	import DebateModal from '$lib/components/debate/DebateModal.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import type { ComponentTemplate } from '$lib/types/component-props';
+	import type { DebateData } from '$lib/stores/debateState.svelte';
 
 	/** Type-safe accessors for modal data fields */
 	type ModalData = Record<string, unknown>;
@@ -134,6 +136,27 @@
 					onSend?.(sendData);
 					modalActions.closeModal('progressive-form-modal');
 				}}
+			/>
+		{/if}
+	{/snippet}
+</UnifiedModal>
+
+<!-- Debate Modal (staked deliberation) -->
+<UnifiedModal
+	id="debate-modal"
+	type="debate"
+	size="lg"
+	showCloseButton={false}
+	closeOnBackdrop={false}
+	closeOnEscape={true}
+>
+	{#snippet children(data)}
+		{#if data?.template}
+			<DebateModal
+				template={data.template as { id: string; title: string; slug: string; message_body?: string }}
+				user={data.user as { id: string; trust_tier?: number } | null}
+				debate={(data.debate as DebateData) ?? null}
+				mode={(data.mode as 'initiate' | 'participate') ?? 'participate'}
 			/>
 		{/if}
 	{/snippet}

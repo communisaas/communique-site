@@ -1,0 +1,111 @@
+<script lang="ts">
+	import { Shield, Users, TrendingUp } from '@lucide/svelte';
+	import type { ArgumentData } from '$lib/stores/debateState.svelte';
+
+	interface Props {
+		argument: ArgumentData;
+		isWinner?: boolean;
+		rank?: number;
+	}
+
+	let { argument, isWinner = false, rank }: Props = $props();
+
+	const stanceBorder: Record<string, string> = {
+		SUPPORT: 'border-l-indigo-500',
+		OPPOSE: 'border-l-red-500',
+		AMEND: 'border-l-amber-500'
+	};
+
+	const stanceLabel: Record<string, string> = {
+		SUPPORT: 'Supports',
+		OPPOSE: 'Opposes',
+		AMEND: 'Amends'
+	};
+
+	const stanceBadge: Record<string, string> = {
+		SUPPORT: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+		OPPOSE: 'bg-red-50 text-red-700 border-red-200',
+		AMEND: 'bg-amber-50 text-amber-700 border-amber-200'
+	};
+
+	// Format stake for display (6-decimal token → human readable)
+	const formattedStake = $derived(() => {
+		const amount = Number(BigInt(argument.stakeAmount)) / 1e6;
+		return amount >= 1000 ? `$${(amount / 1000).toFixed(1)}k` : `$${amount.toFixed(2)}`;
+	});
+
+	const formattedWeight = $derived(() => {
+		const weight = Number(BigInt(argument.weightedScore));
+		return weight >= 1000 ? `${(weight / 1000).toFixed(1)}k` : weight.toString();
+	});
+
+	let expanded = $state(false);
+	const shouldTruncate = $derived(argument.body.length > 280);
+	const displayBody = $derived(
+		shouldTruncate && !expanded ? argument.body.slice(0, 280) + '...' : argument.body
+	);
+</script>
+
+<article
+	class="border-l-4 rounded-r-lg bg-white p-4 transition-shadow
+		{stanceBorder[argument.stance] ?? 'border-l-slate-300'}
+		{isWinner ? 'ring-2 ring-amber-300 shadow-md' : 'shadow-sm hover:shadow-md'}"
+>
+	<!-- Header: stance + tier + rank -->
+	<div class="flex items-center gap-2 mb-2">
+		<span
+			class="inline-flex items-center text-xs font-medium rounded-full px-2 py-0.5 border
+				{stanceBadge[argument.stance] ?? 'bg-slate-50 text-slate-700 border-slate-200'}"
+		>
+			{stanceLabel[argument.stance] ?? argument.stance}
+		</span>
+
+		<div class="flex items-center gap-1 text-xs text-slate-500" title="Engagement tier">
+			<Shield class="h-3 w-3" />
+			<span>Tier {argument.engagementTier}</span>
+		</div>
+
+		{#if isWinner}
+			<span class="ml-auto text-xs font-semibold text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 border border-amber-200">
+				Winner
+			</span>
+		{:else if rank !== undefined}
+			<span class="ml-auto text-xs text-slate-400">#{rank}</span>
+		{/if}
+	</div>
+
+	<!-- Body -->
+	<p class="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{displayBody}</p>
+	{#if shouldTruncate}
+		<button
+			class="mt-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+			onclick={() => (expanded = !expanded)}
+		>
+			{expanded ? 'Show less' : 'Read more'}
+		</button>
+	{/if}
+
+	{#if argument.stance === 'AMEND' && argument.amendmentText}
+		<div class="mt-3 rounded bg-amber-50/50 border border-amber-100 p-3">
+			<p class="text-xs font-medium text-amber-800 mb-1">Proposed amendment</p>
+			<p class="text-sm text-amber-900 leading-relaxed">{argument.amendmentText}</p>
+		</div>
+	{/if}
+
+	<!-- Footer: metrics -->
+	<div class="mt-3 flex items-center gap-4 text-xs text-slate-500">
+		<div class="flex items-center gap-1" title="Staked amount">
+			<TrendingUp class="h-3 w-3" />
+			<span>{formattedStake()}</span>
+		</div>
+		<div class="flex items-center gap-1" title="Weighted score: sqrt(stake) x 2^tier">
+			<span class="font-medium text-slate-700">Weight: {formattedWeight()}</span>
+		</div>
+		{#if argument.coSignCount > 0}
+			<div class="flex items-center gap-1" title="Co-signers">
+				<Users class="h-3 w-3" />
+				<span>{argument.coSignCount} co-sign{argument.coSignCount === 1 ? '' : 's'}</span>
+			</div>
+		{/if}
+	</div>
+</article>

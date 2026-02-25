@@ -54,6 +54,8 @@ export interface Template {
 	coordinationScale: number;
 	// Temporal signal for "New" badge (created within 7 days)
 	isNew: boolean;
+	// Status signal: active debate exists for this template
+	hasActiveDebate?: boolean;
 
 	metrics: {
 		sent?: number;

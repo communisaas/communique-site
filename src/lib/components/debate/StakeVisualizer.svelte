@@ -1,0 +1,123 @@
+<script lang="ts">
+	import { spring } from 'svelte/motion';
+
+	interface Props {
+		stakeAmount: number; // In 6-decimal token units (1_000_000 = $1)
+		engagementTier: number;
+		minStake?: number;
+		maxStake?: number;
+		onchange: (amount: number) => void;
+	}
+
+	let {
+		stakeAmount,
+		engagementTier,
+		minStake = 1_000_000, // $1
+		maxStake = 100_000_000, // $100
+		onchange
+	}: Props = $props();
+
+	// Human-readable amounts
+	const dollarAmount = $derived(stakeAmount / 1e6);
+	const minDollar = $derived(minStake / 1e6);
+	const maxDollar = $derived(maxStake / 1e6);
+
+	// Formula: sqrt(stake) * 2^tier
+	const sqrtStake = $derived(Math.sqrt(dollarAmount));
+	const tierMultiplier = $derived(Math.pow(2, engagementTier));
+	const weight = $derived(sqrtStake * tierMultiplier);
+
+	// Spring-animated weight display
+	const animatedWeight = spring(weight, { stiffness: 0.4, damping: 0.8 });
+	$effect(() => {
+		animatedWeight.set(weight);
+	});
+
+	// Slider position (0-100)
+	const sliderPosition = $derived(
+		((dollarAmount - minDollar) / (maxDollar - minDollar)) * 100
+	);
+
+	function handleSlider(e: Event) {
+		const target = e.target as HTMLInputElement;
+		const ratio = Number(target.value) / 100;
+		const dollar = minDollar + ratio * (maxDollar - minDollar);
+		// Round to nearest dollar
+		const rounded = Math.round(dollar);
+		onchange(rounded * 1_000_000);
+	}
+
+	// Preset amounts
+	const presets = [1, 5, 10, 25, 50, 100];
+</script>
+
+<div class="space-y-4">
+	<p class="text-sm font-medium text-slate-700">Stake your credibility</p>
+
+	<!-- Formula visualization -->
+	<div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
+		<div class="flex items-center justify-center gap-2 text-lg">
+			<span class="font-mono text-slate-800">
+				√(<span class="text-indigo-600 font-semibold">${dollarAmount.toFixed(0)}</span>)
+			</span>
+			<span class="text-slate-400">×</span>
+			<span class="font-mono text-slate-800">
+				2<sup class="text-xs">{engagementTier}</sup>
+			</span>
+			<span class="text-slate-400">=</span>
+			<span class="font-mono text-2xl font-bold text-slate-900">
+				{$animatedWeight.toFixed(1)}
+			</span>
+		</div>
+		<p class="text-xs text-slate-500 text-center mt-1">
+			argument weight
+		</p>
+	</div>
+
+	<!-- Slider -->
+	<div class="space-y-2">
+		<input
+			type="range"
+			min="0"
+			max="100"
+			value={sliderPosition}
+			oninput={handleSlider}
+			class="w-full h-2 rounded-lg appearance-none cursor-pointer
+				bg-gradient-to-r from-slate-200 via-indigo-200 to-indigo-400
+				[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
+				[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-indigo-600
+				[&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-grab
+				[&::-webkit-slider-thumb]:active:cursor-grabbing"
+		/>
+		<div class="flex justify-between text-xs text-slate-400">
+			<span>${minDollar}</span>
+			<span>${maxDollar}</span>
+		</div>
+	</div>
+
+	<!-- Preset buttons -->
+	<div class="flex flex-wrap gap-1.5">
+		{#each presets as preset}
+			<button
+				class="px-2.5 py-1 text-xs font-medium rounded-md border transition-colors
+					{dollarAmount === preset
+					? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+					: 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}"
+				onclick={() => onchange(preset * 1_000_000)}
+			>
+				${preset}
+			</button>
+		{/each}
+	</div>
+
+	<!-- Context note -->
+	<p class="text-xs text-slate-500">
+		{#if engagementTier >= 3}
+			Your Tier {engagementTier} verification gives your argument
+			<span class="font-medium text-slate-700">{tierMultiplier}x</span> the weight.
+			A $5 stake from you carries the same weight as ${Math.round(5 * tierMultiplier * tierMultiplier)} at Tier 1.
+		{:else}
+			Higher verification tiers increase your argument's weight through the trust multiplier.
+		{/if}
+	</p>
+</div>

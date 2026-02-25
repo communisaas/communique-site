@@ -14,6 +14,8 @@
 	import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import ActionBar from '$lib/components/template-browser/parts/ActionBar.svelte';
 	import TrustJourney from '$lib/components/trust/TrustJourney.svelte';
+	import DebateSurface from '$lib/components/debate/DebateSurface.svelte';
+	import type { DebateData } from '$lib/stores/debateState.svelte';
 
 	import { spring } from 'svelte/motion';
 	import { browser } from '$app/environment';
@@ -188,7 +190,7 @@
 			guestState.setAddress(address);
 
 			// Bump trust_tier to 2 (Constituent) on the server
-			// Production: self.xyz/Didit does this via callback
+			// Production: mDL Digital Credentials API does this via callback
 			// Demo: explicit endpoint
 			if (data.user) {
 				await fetch('/demo/verify-address', {
@@ -299,7 +301,7 @@
 									// Cache address locally
 									guestState.setAddress(detail.address);
 									// Bump trust_tier to 2 (Constituent) on the server
-									// Production: self.xyz/Didit does this via callback
+									// Production: mDL Digital Credentials API does this via callback
 									// Demo: explicit endpoint
 									await fetch('/demo/verify-address', {
 										method: 'POST',
@@ -316,7 +318,7 @@
 						onVerifyIdentity={async () => {
 							// Tier 3: Identity verification
 							// Demo mode: simulate via /demo/verify-identity + bootstrap ZK credential
-							// Production: self.xyz or Didit NFC passport flow → Shadow Atlas registration
+							// Production: mDL Digital Credentials API flow → Shadow Atlas registration
 							const res = await fetch('/demo/verify-identity', { method: 'POST' });
 							const result = await res.json();
 
@@ -441,4 +443,25 @@
 			}}
 		/>
 	</div>
+
+	<!-- Staked Deliberation Surface -->
+	<DebateSurface
+		debate={(data.debate as DebateData) ?? null}
+		userTrustTier={data.user?.trust_tier ?? 0}
+		onInitiateDebate={() => {
+			modalActions.openModal('debate-modal', 'debate', {
+				template,
+				user: data.user,
+				mode: 'initiate'
+			});
+		}}
+		onParticipate={() => {
+			modalActions.openModal('debate-modal', 'debate', {
+				template,
+				user: data.user,
+				debate: data.debate,
+				mode: 'participate'
+			});
+		}}
+	/>
 </div>

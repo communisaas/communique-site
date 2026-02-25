@@ -1,0 +1,187 @@
+<script lang="ts">
+  import { Users, MessageSquare, Clock, Coins } from '@lucide/svelte';
+
+  interface Props {
+    debateId: string;
+    propositionText: string;
+    status: 'active' | 'resolved';
+    argumentCount: number;
+    totalStake: string;
+    uniqueParticipants: number;
+    deadline: string;
+    prices?: Record<number, number>;
+    stanceCounts?: { support: number; oppose: number; amend: number };
+    href?: string;
+  }
+
+  let {
+    debateId,
+    propositionText,
+    status,
+    argumentCount,
+    totalStake,
+    uniqueParticipants,
+    deadline,
+    prices,
+    stanceCounts,
+    href,
+  }: Props = $props();
+
+  // ---------------------------------------------------------------------------
+  // Derived values
+  // ---------------------------------------------------------------------------
+
+  const snippet = $derived(
+    propositionText.length > 120
+      ? propositionText.slice(0, 120).trimEnd() + '...'
+      : propositionText,
+  );
+
+  /** Format total stake from 6-decimal BigInt string to human-readable dollars. */
+  const formattedStake = $derived(() => {
+    const raw = Number(totalStake) / 1e6;
+    if (raw >= 1000) return '$' + (raw / 1000).toFixed(1) + 'k';
+    if (raw >= 1) return '$' + raw.toFixed(0);
+    return '$' + raw.toFixed(2);
+  });
+
+  /** Time remaining relative to deadline. */
+  const timeRemaining = $derived(() => {
+    const now = Date.now();
+    const end = new Date(deadline).getTime();
+    const diff = end - now;
+    if (diff <= 0) return 'Ended';
+    const days = Math.floor(diff / 86_400_000);
+    const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+    if (days > 0) return `${days}d ${hours}h`;
+    const minutes = Math.floor((diff % 3_600_000) / 60_000);
+    return `${hours}h ${minutes}m`;
+  });
+
+  // ---------------------------------------------------------------------------
+  // Mini price bar — stance-weighted proportions
+  // ---------------------------------------------------------------------------
+
+  const priceBarSegments = $derived(() => {
+    if (!prices) return null;
+
+    const entries = Object.values(prices);
+    if (entries.length === 0) return null;
+
+    const total = entries.reduce((s, p) => s + p, 0);
+    if (total === 0) return null;
+
+    // Simple aggregate: sum all prices (each argument's price already reflects
+    // belief in that outcome). We split into three buckets based on stance
+    // when stanceCounts is available; otherwise show the raw proportional bar.
+    return {
+      total,
+      segments: entries.map((p) => (p / total) * 100),
+    };
+  });
+
+  // Stance dot colors (for the optional stance summary row)
+  const STANCE_DOT: Record<string, string> = {
+    support: 'bg-indigo-500',
+    oppose: 'bg-red-500',
+    amend: 'bg-amber-500',
+  };
+</script>
+
+<!--
+  Wrapper: if `href` is provided the card acts as a link.
+  We use an <a> or a <div> accordingly to keep semantics correct.
+-->
+{#if href}
+  <a
+    {href}
+    class="group block rounded-xl border border-slate-200 bg-white p-4 shadow-sm
+      transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-indigo-300
+      focus-visible:outline-none"
+    data-debate-id={debateId}
+  >
+    {@render cardContent()}
+  </a>
+{:else}
+  <div
+    class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+    data-debate-id={debateId}
+  >
+    {@render cardContent()}
+  </div>
+{/if}
+
+<!-- ====================================================================== -->
+<!-- Card content snippet (shared between link and static variants)          -->
+<!-- ====================================================================== -->
+{#snippet cardContent()}
+  <!-- Status badge -------------------------------------------------------- -->
+  <div class="mb-2 flex items-start justify-between gap-3">
+    <p class="text-sm font-medium leading-snug text-slate-800">
+      {snippet}
+    </p>
+
+    <span
+      class="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium
+        {status === 'active'
+        ? 'bg-emerald-50 text-emerald-700'
+        : 'bg-slate-100 text-slate-500'}"
+    >
+      <span
+        class="inline-block h-1.5 w-1.5 rounded-full
+          {status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}"
+      ></span>
+      {status === 'active' ? 'Active' : 'Resolved'}
+    </span>
+  </div>
+
+  <!-- Mini price bar ------------------------------------------------------ -->
+  {#if priceBarSegments()}
+    <div class="mb-3 flex h-1 w-full overflow-hidden rounded-full bg-slate-100">
+      {#each priceBarSegments()!.segments as pct, i}
+        <div
+          class="h-full transition-all duration-300
+            {i % 3 === 0 ? 'bg-indigo-500' : i % 3 === 1 ? 'bg-red-400' : 'bg-amber-400'}"
+          style="width: {pct}%"
+        ></div>
+      {/each}
+    </div>
+  {:else}
+    <div class="mb-3 h-1 w-full rounded-full bg-slate-100"></div>
+  {/if}
+
+  <!-- Stats row ----------------------------------------------------------- -->
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+    <span class="inline-flex items-center gap-1">
+      <Users class="h-3.5 w-3.5 text-slate-400" />
+      <span class="font-mono">{uniqueParticipants}</span>
+    </span>
+
+    <span class="inline-flex items-center gap-1">
+      <Coins class="h-3.5 w-3.5 text-slate-400" />
+      <span class="font-mono">{formattedStake()}</span>
+    </span>
+
+    <span class="inline-flex items-center gap-1">
+      <Clock class="h-3.5 w-3.5 text-slate-400" />
+      <span class="font-mono">{timeRemaining()}</span>
+    </span>
+
+    <span class="inline-flex items-center gap-1">
+      <MessageSquare class="h-3.5 w-3.5 text-slate-400" />
+      <span class="font-mono">{argumentCount}</span>
+    </span>
+  </div>
+
+  <!-- Stance summary (optional) ------------------------------------------ -->
+  {#if stanceCounts}
+    <div class="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
+      {#each Object.entries(stanceCounts) as [stance, count]}
+        <span class="inline-flex items-center gap-1">
+          <span class="inline-block h-2 w-2 rounded-full {STANCE_DOT[stance]}"></span>
+          <span class="font-mono">{count}</span>
+        </span>
+      {/each}
+    </div>
+  {/if}
+{/snippet}
