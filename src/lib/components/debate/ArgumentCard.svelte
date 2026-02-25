@@ -1,14 +1,32 @@
 <script lang="ts">
-	import { Shield, Users, TrendingUp } from '@lucide/svelte';
+	import { Users, TrendingUp } from '@lucide/svelte';
 	import type { ArgumentData } from '$lib/stores/debateState.svelte';
+	import TierExplanation from './TierExplanation.svelte';
 
 	interface Props {
 		argument: ArgumentData;
 		isWinner?: boolean;
 		rank?: number;
+		tierBreakdown?: {
+			compositeScore: number;
+			metrics: {
+				actionCount: number;
+				diversityScore: number;
+				shannonH: number;
+				tenureMonths: number;
+				adoptionCount: number;
+			};
+			factors: {
+				action: number;
+				diversity: number;
+				tenure: number;
+				adoption: number;
+			};
+			tierBoundaries: Array<{ tier: number; label: string; minScore: number }>;
+		};
 	}
 
-	let { argument, isWinner = false, rank }: Props = $props();
+	let { argument, isWinner = false, rank, tierBreakdown }: Props = $props();
 
 	const stanceBorder: Record<string, string> = {
 		SUPPORT: 'border-l-indigo-500',
@@ -60,10 +78,13 @@
 			{stanceLabel[argument.stance] ?? argument.stance}
 		</span>
 
-		<div class="flex items-center gap-1 text-xs text-slate-500" title="Engagement tier">
-			<Shield class="h-3 w-3" />
-			<span>Tier {argument.engagementTier}</span>
-		</div>
+		<TierExplanation
+			currentTier={argument.engagementTier}
+			compositeScore={tierBreakdown?.compositeScore}
+			metrics={tierBreakdown?.metrics}
+			factors={tierBreakdown?.factors}
+			tierBoundaries={tierBreakdown?.tierBoundaries}
+		/>
 
 		{#if isWinner}
 			<span class="ml-auto text-xs font-semibold text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 border border-amber-200">

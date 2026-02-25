@@ -620,6 +620,63 @@ export async function getEngagementMetrics(identityCommitment: string): Promise<
 	return result.data;
 }
 
+/**
+ * Detailed engagement breakdown result from Shadow Atlas.
+ */
+export interface EngagementBreakdownResult {
+	identityCommitment: string;
+	currentTier: number;
+	compositeScore: number;
+	metrics: {
+		actionCount: number;
+		diversityScore: number;
+		shannonH: number;
+		tenureMonths: number;
+		adoptionCount: number;
+	};
+	factors: {
+		action: number;
+		diversity: number;
+		tenure: number;
+		adoption: number;
+	};
+	tierBoundaries: Array<{ tier: number; label: string; minScore: number }>;
+	leafIndex: number;
+}
+
+/**
+ * Get detailed engagement breakdown for an identity.
+ * Includes composite score factors, tier progression, and boundaries.
+ *
+ * @param identityCommitment - Hex-encoded identity commitment (with 0x prefix)
+ * @returns Detailed breakdown or null if identity not found
+ */
+export async function getEngagementBreakdown(identityCommitment: string): Promise<EngagementBreakdownResult | null> {
+	const icForUrl = identityCommitment.startsWith('0x') ? identityCommitment : '0x' + identityCommitment;
+	const url = `${SHADOW_ATLAS_URL}/v1/engagement-breakdown/${icForUrl}`;
+
+	const response = await fetch(url, {
+		headers: {
+			Accept: 'application/json',
+			'X-Client-Version': 'communique-v1',
+		},
+	});
+
+	if (!response.ok) {
+		if (response.status === 404) return null;
+		const errorData = await response.json().catch(() => ({
+			error: { code: 'NETWORK_ERROR', message: response.statusText },
+		}));
+		const code = errorData.error?.code || 'UNKNOWN';
+		const msg = errorData.error?.message || response.statusText;
+		throw new Error(`Shadow Atlas engagement breakdown failed [${code}]: ${msg}`);
+	}
+
+	const result = await response.json();
+	if (!result.success || !result.data) return null;
+	return result.data;
+}
+
 // ============================================================================
 // Officials (Pre-Ingested Congress Data)
 // ============================================================================
