@@ -4,6 +4,8 @@
   import Button from '$lib/components/ui/Button.svelte';
   import PrivacyProofStatus from './PrivacyProofStatus.svelte';
   import type { DebateData } from '$lib/stores/debateState.svelte';
+  import { generateDebateWeightProof } from '$lib/core/zkp/debate-weight-client';
+  import { BN254_MODULUS } from '$lib/core/crypto/bn254';
 
   interface Props {
     debate: DebateData;
@@ -14,7 +16,7 @@
       argumentIndex: number;
       direction: 'BUY' | 'SELL';
       stakeAmount: number;
-      weightedAmount: number;
+      weightedAmount: string;
       noteCommitment: string;
       proof?: Uint8Array;
     }) => void;
@@ -42,13 +44,16 @@
 
   let proofStatus = $state<'idle' | 'generating' | 'complete' | 'failed'>('idle');
   let proofResult = $state<{
-    weightedAmount: number;
+    weightedAmount: string;
     noteCommitment: string;
     proof: Uint8Array;
   } | null>(null);
   let proofError = $state<string | null>(null);
   let proofElapsedSeconds = $state(0);
   let proofTimer = $state<ReturnType<typeof setInterval> | null>(null);
+  // Tracks the WASM init sub-stage ('loading' | 'initializing' | 'ready' | 'generating' | 'complete' | 'error')
+  // to adjust the estimated-seconds hint shown in PrivacyProofStatus.
+  let proofStage = $state<string>('idle');
 
   // ---------------------------------------------------------------------------
   // Derived values — anti-plutocratic weight formula
@@ -118,54 +123,75 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Privacy proof generation (simulated)
+  // Privacy proof generation — real debate_weight circuit
   // ---------------------------------------------------------------------------
 
   /**
-   * Generate a debate_weight ZK proof locally.
+   * Generate a debate_weight ZK proof in the browser via WASM.
    *
-   * TODO: Replace with real proof generation using DebateWeightNoirProver
-   * once the circuit is compiled:
+   * Proves without revealing inputs:
+   *   weightedAmount = floor(sqrt(stake)) * 2^tier
+   *   noteCommitment = H3(stake, tier, randomness)
    *
-   *   import { DebateWeightNoirProver } from '@voter-protocol/noir-prover';
-   *   const prover = new DebateWeightNoirProver();
-   *   const result = await prover.generateProof({
-   *     stake: BigInt(stake),
-   *     tier,
-   *     randomness,
-   *   });
+   * WASM init takes ~5-15s on the first call; subsequent calls reuse the
+   * cached prover and take ~2-8s. The progress callback stages are:
+   *   'loading'      — fetching circuit artifacts
+   *   'initializing' — compiling WASM backend
+   *   'ready'        — prover cached, beginning proof
+   *   'generating'   — proof computation in progress
+   *   'complete'     — proof bytes returned
+   *   'error'        — init or proving failed (prover cache cleared for retry)
    *
-   * Currently simulates computation with a 1.5s delay and placeholder
-   * outputs so the frontend flow can be tested end-to-end.
+   * SharedArrayBuffer: if COOP/COEP headers are absent the prover falls back
+   * to single-threaded mode transparently — no action required here.
+   *
+   * @param stakeUsdc6 - Stake in USDC with 6 decimals (e.g., 25_000_000n = $25)
+   * @param tier       - Engagement tier 1-4 (tier 0 rejected by DebateMarket)
+   * @param debateId   - Debate ID for sessionStorage keying of randomness
    */
   async function generatePrivacyProof(
-    stake: number,
-    tier: number,
+    stakeUsdc6: bigint,
+    tier: 1 | 2 | 3 | 4,
+    debateId: string,
   ): Promise<{
-    weightedAmount: number;
+    weightedAmount: string;
     noteCommitment: string;
     proof: Uint8Array;
   }> {
-    // Generate 128-bit randomness for note commitment blinding
-    const randomBytes = new Uint8Array(16);
-    crypto.getRandomValues(randomBytes);
-    const randomness = Array.from(randomBytes)
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
+    // Generate 128-bit randomness for note commitment entropy.
+    // Read as big-endian unsigned integer → bigint.
+    // Retry on the astronomically unlikely zero value (validator requires > 0).
+    let randomness = 0n;
+    while (randomness === 0n) {
+      const randomBytes = new Uint8Array(16);
+      crypto.getRandomValues(randomBytes);
+      randomness = randomBytes.reduce((acc, byte) => (acc << 8n) | BigInt(byte), 0n);
+    }
 
-    // Simulate computation time (real proof takes ~2-5s in browser WASM)
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // Clamp randomness into the BN254 scalar field if somehow >= modulus.
+    // This cannot happen for a 128-bit value against the ~254-bit modulus,
+    // but the validation check in generateDebateWeightProof requires it.
+    randomness = randomness % BN254_MODULUS;
 
-    // Anti-plutocratic weight: sqrt(stake) * 2^tier
-    const sqrtOfStake = Math.floor(Math.sqrt(stake));
-    const weightedAmount = sqrtOfStake * Math.pow(2, tier);
+    // Persist randomness in sessionStorage before proving so it survives a
+    // page refresh during the long WASM init window. The reveal route needs
+    // it to reconstruct the note commitment for settlement.
+    sessionStorage.setItem(
+      `debate:${debateId}:randomness`,
+      randomness.toString(),
+    );
+
+    const result = await generateDebateWeightProof(
+      { stake: stakeUsdc6, tier, randomness },
+      (stage) => {
+        proofStage = stage;
+      },
+    );
 
     return {
-      weightedAmount,
-      // Placeholder noteCommitment — real implementation uses Poseidon2 hash
-      noteCommitment: `0x${randomness}${'0'.repeat(48)}`,
-      // Placeholder proof bytes — real implementation returns ~2KB SNARK
-      proof: new Uint8Array(0),
+      weightedAmount: result.weightedAmount,
+      noteCommitment: result.noteCommitment,
+      proof: result.proof,
     };
   }
 
@@ -194,27 +220,36 @@
   async function handleCommit() {
     if (!canSubmit || selectedArgumentIndex === null || direction === null) return;
 
-    // Capture values before async gap (user could change inputs)
+    // Capture values before async gap (user could change inputs mid-proving)
     const tradeArgumentIndex = selectedArgumentIndex;
     const tradeDirection = direction;
-    const tradeStakeAmount = stakeAmount;
-    const tradeDollarAmount = dollarAmount;
-    const tradeTier = engagementTier;
+    const tradeStakeAmount = stakeAmount; // 6-decimal USDC integer
+    const tradeTier = Math.max(1, Math.min(4, engagementTier)) as 1 | 2 | 3 | 4;
+    const tradeDebateId = debate.id;
 
     // Reset any prior proof state
     proofStatus = 'generating';
+    proofStage = 'loading';
     proofResult = null;
     proofError = null;
     startProofTimer();
 
     try {
-      const result = await generatePrivacyProof(tradeDollarAmount, tradeTier);
+      const result = await generatePrivacyProof(
+        BigInt(tradeStakeAmount), // 6-decimal USDC → bigint (matches circuit u64)
+        tradeTier,
+        tradeDebateId,
+      );
       stopProofTimer();
 
       proofResult = result;
       proofStatus = 'complete';
 
-      // Auto-submit: user already clicked "Commit Trade", send the enhanced trade
+      // Auto-submit: user already clicked "Commit Trade", send the enhanced trade.
+      // weightedAmount and noteCommitment are 0x-prefixed hex strings from the
+      // circuit's public inputs — the parent's reveal call should pass them as:
+      //   debateWeightProof: '0x' + Array.from(result.proof).map(b => b.toString(16).padStart(2, '0')).join('')
+      //   debateWeightPublicInputs: [result.weightedAmount, result.noteCommitment]
       onCommit?.({
         argumentIndex: tradeArgumentIndex,
         direction: tradeDirection,
@@ -225,6 +260,7 @@
       });
     } catch (err) {
       stopProofTimer();
+      proofStage = 'error';
       proofStatus = 'failed';
       proofError = err instanceof Error ? err.message : 'Unknown proof generation error';
       console.error('Privacy proof generation failed:', err);
@@ -369,7 +405,7 @@
     <div class="mb-4">
       <PrivacyProofStatus
         status={proofStatus}
-        estimatedSeconds={2}
+        estimatedSeconds={proofStage === 'loading' || proofStage === 'initializing' ? 15 : 8}
         elapsedSeconds={proofElapsedSeconds}
       />
     </div>

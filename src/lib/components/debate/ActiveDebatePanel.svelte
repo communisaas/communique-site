@@ -5,7 +5,9 @@
 	import MarketPriceBar from './MarketPriceBar.svelte';
 	import EpochPhaseIndicator from './EpochPhaseIndicator.svelte';
 	import TradePanel from './TradePanel.svelte';
+	import ResolutionPanel from './ResolutionPanel.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { ShieldCheck } from '@lucide/svelte';
 	import type { DebateData } from '$lib/stores/debateState.svelte';
 	import { debateState } from '$lib/stores/debateState.svelte';
 
@@ -22,9 +24,12 @@
 			noteCommitment: string;
 			proof?: Uint8Array;
 		}) => void;
+		onAppeal?: () => void;
+		onEscalate?: () => void;
+		onVerifyIdentity?: () => void;
 	}
 
-	let { debate, userTrustTier = 0, onParticipate, onCoSign, onCommit }: Props = $props();
+	let { debate, userTrustTier = 0, onParticipate, onCoSign, onCommit, onAppeal, onEscalate, onVerifyIdentity }: Props = $props();
 
 	const hasMarket = $derived(
 		debate.marketStatus === 'active' && Object.keys(debateState.lmsrPrices).length > 0
@@ -58,8 +63,11 @@
 </script>
 
 <div class="space-y-4">
-	<!-- Resolution banner -->
-	{#if debate.status === 'resolved' && debate.winningStance}
+	<!-- Resolution panel (replaces simple banner when AI resolution data exists) -->
+	{#if debate.status !== 'active' && debate.aiResolution}
+		<ResolutionPanel {debate} {onAppeal} {onEscalate} />
+	{:else if debate.status === 'resolved' && debate.winningStance}
+		<!-- Fallback: community-only resolution (no AI data) -->
 		{@const stanceColors: Record<string, string> = {
 			SUPPORT: 'bg-indigo-50 border-indigo-200 text-indigo-800',
 			OPPOSE: 'bg-red-50 border-red-200 text-red-800',
@@ -175,8 +183,20 @@
 			</Button>
 		</div>
 	{:else if debate.status === 'active' && userTrustTier < 3}
-		<p class="text-xs text-slate-500 pt-2">
-			Identity verification (Tier 3) required to participate in debates.
-		</p>
+		<div class="pt-3 mt-1 border-t border-amber-200/30">
+			<p class="text-sm text-slate-600">
+				Verified participants can add arguments and stake their credibility.
+			</p>
+			{#if onVerifyIdentity}
+				<button
+					class="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-amber-700
+						hover:text-amber-800 transition-colors"
+					onclick={onVerifyIdentity}
+				>
+					<ShieldCheck class="h-4 w-4" />
+					Verify your identity to join this deliberation
+				</button>
+			{/if}
+		</div>
 	{/if}
 </div>

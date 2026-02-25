@@ -7,7 +7,7 @@
 		totalStake: string; // BigInt serialized
 		deadline: string; // ISO date string
 		jurisdictionSize: number;
-		status: 'active' | 'resolved';
+		status: 'active' | 'resolving' | 'resolved' | 'awaiting_governance' | 'under_appeal';
 	}
 
 	let {
@@ -27,7 +27,7 @@
 	});
 
 	const timeRemaining = $derived(() => {
-		if (status === 'resolved') return 'Resolved';
+		if (status !== 'active') return status === 'resolved' ? 'Resolved' : 'Deadline passed';
 		const now = Date.now();
 		const end = new Date(deadline).getTime();
 		const diff = end - now;
@@ -74,7 +74,7 @@
 	<div
 		class="flex items-center gap-1.5"
 		class:text-amber-700={status === 'active'}
-		class:text-slate-500={status === 'resolved'}
+		class:text-slate-500={status !== 'active'}
 	>
 		<Clock class="h-4 w-4" />
 		<span class="font-medium">{timeRemaining()}</span>

@@ -107,5 +107,23 @@
 				<span>{argument.coSignCount} co-sign{argument.coSignCount === 1 ? '' : 's'}</span>
 			</div>
 		{/if}
+		{#if argument.finalScore !== undefined}
+			<div class="ml-auto flex items-center gap-1.5" title="AI-blended final score">
+				<span class="font-mono font-semibold text-violet-600">
+					{(argument.finalScore / 100).toFixed(1)}%
+				</span>
+				{#if argument.modelAgreement !== undefined}
+					<div class="flex items-center gap-0.5" title="{Math.round(argument.modelAgreement * 100)}% model agreement">
+						{#each Array(5) as _, i}
+							<div class="rounded-full h-1 w-1
+								{i < Math.round(argument.modelAgreement * 5)
+									? 'bg-emerald-400'
+									: 'bg-slate-200'}">
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{/if}
 	</div>
 </article>

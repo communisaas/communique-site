@@ -2,7 +2,7 @@
 	interface Props {
 		propositionText: string;
 		propositionHash: string;
-		status?: 'active' | 'resolved';
+		status?: 'active' | 'resolving' | 'resolved' | 'awaiting_governance' | 'under_appeal';
 	}
 
 	let { propositionText, propositionHash, status = 'active' }: Props = $props();

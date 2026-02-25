@@ -1,0 +1,349 @@
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { env } from '$env/dynamic/private';
+import { prisma } from '$lib/core/db';
+import { escalateToGovernance } from '$lib/core/blockchain/debate-market-client';
+
+// ── Rate limiting ────────────────────────────────────────────────────────
+// Guards against accidental double-triggers and runaway cron jobs.
+// Each evaluation calls 5 LLM APIs (~$0.05) + 2 on-chain TXs (~0.003 ETH).
+const activeEvaluations = new Set<string>();
+const recentEvaluations = new Map<string, number>(); // debateId → timestamp
+const DEBOUNCE_MS = 5 * 60 * 1000; // 5 minutes per debate
+const HOURLY_LIMIT = 10;
+let hourlyCount = 0;
+let hourlyResetAt = Date.now() + 3600_000;
+
+function checkRateLimit(debateId: string): string | null {
+	const now = Date.now();
+
+	// Reset hourly window
+	if (now > hourlyResetAt) {
+		hourlyCount = 0;
+		hourlyResetAt = now + 3600_000;
+	}
+
+	if (activeEvaluations.has(debateId)) {
+		return `Evaluation already in progress for debate ${debateId}`;
+	}
+
+	const lastEval = recentEvaluations.get(debateId);
+	if (lastEval && now - lastEval < DEBOUNCE_MS) {
+		const waitSec = Math.ceil((DEBOUNCE_MS - (now - lastEval)) / 1000);
+		return `Debate ${debateId} was recently evaluated. Retry in ${waitSec}s`;
+	}
+
+	if (hourlyCount >= HOURLY_LIMIT) {
+		return `Hourly evaluation limit (${HOURLY_LIMIT}) reached. Resets at ${new Date(hourlyResetAt).toISOString()}`;
+	}
+
+	return null;
+}
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/debates/[debateId]/evaluate
+ *
+ * Trigger AI evaluation for a debate that has passed its deadline.
+ * 1. Fetches argument bodies from DB
+ * 2. Runs 5-model AI evaluation panel (@voter-protocol/ai-evaluator)
+ * 3. Aggregates scores via median-of-N
+ * 4. Signs EIP-712 attestations and submits on-chain
+ * 5. Resolves with α-blended final scores
+ *
+ * Operator-only endpoint (protected by CRON_SECRET).
+ * Rate limited: 1 concurrent per debate, 5-min debounce, 10/hour global.
+ *
+ * NOTE: @voter-protocol/ai-evaluator is imported dynamically since it lives
+ * in the voter-protocol monorepo, not the communique workspace.
+ */
+export const POST: RequestHandler = async ({ params, request }) => {
+	const { debateId } = params;
+
+	// Auth: operator-only via CRON_SECRET header
+	const authHeader = request.headers.get('Authorization');
+	const cronSecret = env.CRON_SECRET;
+	if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+		throw error(403, 'Operator access required');
+	}
+
+	// Rate limit check
+	const rateLimitError = checkRateLimit(debateId);
+	if (rateLimitError) {
+		throw error(429, rateLimitError);
+	}
+
+	const debate = await prisma.debate.findUnique({
+		where: { id: debateId },
+		select: {
+			id: true,
+			status: true,
+			deadline: true,
+			debate_id_onchain: true,
+			proposition_text: true,
+			arguments: {
+				orderBy: { argument_index: 'asc' },
+				select: {
+					argument_index: true,
+					stance: true,
+					body: true,
+					amendment_text: true,
+					stake_amount: true,
+					engagement_tier: true,
+					weighted_score: true
+				}
+			}
+		}
+	});
+
+	if (!debate) {
+		throw error(404, 'Debate not found');
+	}
+	if (debate.status !== 'active') {
+		throw error(400, `Debate is not active (status: ${debate.status})`);
+	}
+	if (new Date() <= debate.deadline) {
+		throw error(400, 'Debate deadline has not passed yet');
+	}
+	if (debate.arguments.length === 0) {
+		throw error(400, 'Cannot evaluate a debate with no arguments');
+	}
+	if (!debate.debate_id_onchain) {
+		throw error(400, 'Debate has no on-chain ID');
+	}
+
+	// Acquire rate limit slot
+	activeEvaluations.add(debateId);
+	hourlyCount++;
+
+	try {
+	// Dynamic import — ai-evaluator lives in voter-protocol monorepo
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let aiEvaluator: any;
+	try {
+		aiEvaluator = await import('@voter-protocol/ai-evaluator');
+	} catch {
+		throw error(503, 'AI evaluator service not available. Ensure @voter-protocol/ai-evaluator is installed.');
+	}
+
+	// Load model configs from environment
+	let modelConfigs: Array<{ provider: number; modelName: string; apiKey: string; signerPrivateKey: string }>;
+	try {
+		modelConfigs = aiEvaluator.loadModelConfigs();
+	} catch (err: unknown) {
+		const msg = err instanceof Error ? err.message : String(err);
+		throw error(503, `AI evaluator configuration error: ${msg}`);
+	}
+
+	// Instantiate model providers
+	const providerClasses: Record<number, string> = {
+		0: 'OpenAIProvider',
+		1: 'GoogleProvider',
+		2: 'DeepSeekProvider',
+		3: 'MistralProvider',
+		4: 'AnthropicProvider'
+	};
+
+	const providers = modelConfigs.map((config) => {
+		const className = providerClasses[config.provider];
+		if (!className || !aiEvaluator[className]) {
+			throw error(503, `Unknown provider: ${config.provider}`);
+		}
+		return new aiEvaluator[className](config);
+	});
+
+	// Format arguments for the evaluator
+	const debateArguments = debate.arguments.map((arg) => ({
+		index: arg.argument_index,
+		stance: arg.stance,
+		bodyText: arg.body,
+		amendmentText: arg.amendment_text ?? undefined
+	}));
+
+	// Step 1: Run 5-model evaluation panel
+	console.debug('[evaluate] Running AI evaluation panel for debate:', debateId);
+
+	let evaluationResult: {
+		packedScores: bigint[];
+		aggregatedScores: Array<{
+			argumentIndex: number;
+			medianScores: Record<string, number>;
+			weightedScore: number;
+			modelAgreement: number;
+		}>;
+		modelEvaluations: Array<{ provider: number; modelName: string; timestamp: number }>;
+		consensusAchieved: boolean;
+		quorumMet: boolean;
+	};
+
+	try {
+		evaluationResult = await aiEvaluator.evaluateDebate(
+			debate.debate_id_onchain,
+			debateArguments,
+			{ providers, timeoutMs: 90_000 }
+		);
+	} catch (err: unknown) {
+		const msg = err instanceof Error ? err.message : String(err);
+		console.error('[evaluate] AI evaluation failed:', msg);
+		throw error(502, `AI evaluation failed: ${msg}`);
+	}
+
+	// Step 2: Check consensus — if no quorum, escalate to governance
+	if (!evaluationResult.quorumMet || !evaluationResult.consensusAchieved) {
+		console.warn('[evaluate] AI consensus not reached, escalating to governance');
+
+		const escResult = await escalateToGovernance(debate.debate_id_onchain);
+
+		await prisma.debate.update({
+			where: { id: debateId },
+			data: {
+				status: 'awaiting_governance',
+				ai_resolution: {
+					scores: evaluationResult.aggregatedScores,
+					consensusAchieved: false,
+					quorumMet: evaluationResult.quorumMet,
+					evaluatedAt: new Date().toISOString()
+				} as object,
+				ai_panel_consensus: Math.min(
+					...evaluationResult.aggregatedScores.map((a) => a.modelAgreement)
+				)
+			}
+		});
+
+		return json({
+			debateId,
+			status: 'awaiting_governance',
+			reason: evaluationResult.quorumMet
+				? 'AI scores diverged beyond consensus threshold'
+				: 'Insufficient model responses (quorum not met)',
+			txHash: escResult.success ? escResult.txHash : undefined,
+			error: escResult.success ? undefined : escResult.error
+		});
+	}
+
+	// Step 3: Sign and submit on-chain via submitAndResolve
+	const rpcUrl = env.SCROLL_RPC_URL;
+	const submitterKey = env.SCROLL_PRIVATE_KEY;
+	const debateMarketAddress = env.DEBATE_MARKET_ADDRESS;
+
+	if (!rpcUrl || !submitterKey || !debateMarketAddress) {
+		throw error(503, 'Blockchain not configured (SCROLL_RPC_URL, SCROLL_PRIVATE_KEY, DEBATE_MARKET_ADDRESS)');
+	}
+
+	let eip712Domain: { name: string; version: string; chainId: bigint; verifyingContract: string };
+	try {
+		eip712Domain = aiEvaluator.loadEIP712Domain();
+	} catch (err: unknown) {
+		const msg = err instanceof Error ? err.message : String(err);
+		throw error(503, `EIP-712 domain config error: ${msg}`);
+	}
+
+	const { ethers } = await import('ethers');
+	const rpcProvider = new ethers.JsonRpcProvider(rpcUrl);
+	const signatureDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+
+	let submissionResult: { submitTxHash: string; resolveTxHash: string; gasUsed: bigint };
+	try {
+		submissionResult = await aiEvaluator.submitAndResolve(
+			rpcProvider,
+			submitterKey,
+			debateMarketAddress,
+			debate.debate_id_onchain,
+			evaluationResult.aggregatedScores,
+			modelConfigs,
+			eip712Domain,
+			signatureDeadline
+		);
+	} catch (err: unknown) {
+		const msg = err instanceof Error ? err.message : String(err);
+		console.error('[evaluate] On-chain submission failed:', msg);
+		throw error(502, `On-chain submission failed: ${msg}`);
+	}
+
+	// Step 4: Compute overall consensus for Prisma
+	const overallAgreement =
+		evaluationResult.aggregatedScores.reduce((sum, a) => sum + a.modelAgreement, 0) /
+		evaluationResult.aggregatedScores.length;
+
+	// Step 5: Determine winner (highest weighted score from aggregated)
+	let winnerIndex = 0;
+	let bestScore = 0;
+	for (const agg of evaluationResult.aggregatedScores) {
+		if (agg.weightedScore > bestScore) {
+			bestScore = agg.weightedScore;
+			winnerIndex = agg.argumentIndex;
+		}
+	}
+	const winnerArg = debate.arguments.find((a) => a.argument_index === winnerIndex);
+
+	// Step 6: Update Prisma with resolution data
+	await prisma.debate.update({
+		where: { id: debateId },
+		data: {
+			status: 'resolved',
+			ai_resolution: {
+				scores: evaluationResult.aggregatedScores,
+				models: evaluationResult.modelEvaluations.map((m) => ({
+					provider: m.provider,
+					modelName: m.modelName,
+					timestamp: m.timestamp
+				})),
+				consensusAchieved: true,
+				evaluatedAt: new Date().toISOString(),
+				submitTxHash: submissionResult.submitTxHash,
+				resolveTxHash: submissionResult.resolveTxHash,
+				gasUsed: submissionResult.gasUsed.toString()
+			} as object,
+			ai_signature_count: modelConfigs.length,
+			ai_panel_consensus: overallAgreement,
+			resolution_method: 'ai_community',
+			winning_argument_index: winnerIndex,
+			winning_stance: winnerArg?.stance ?? null,
+			resolved_at: new Date()
+		}
+	});
+
+	// Update per-argument AI scores
+	for (const agg of evaluationResult.aggregatedScores) {
+		await prisma.debateArgument.updateMany({
+			where: {
+				debate_id: debateId,
+				argument_index: agg.argumentIndex
+			},
+			data: {
+				ai_scores: agg.medianScores as object,
+				ai_weighted: agg.weightedScore,
+				final_score: agg.weightedScore,
+				model_agreement: agg.modelAgreement
+			}
+		});
+	}
+
+	console.debug('[evaluate] Debate resolved with AI:', {
+		debateId,
+		winnerIndex,
+		winnerStance: winnerArg?.stance,
+		signatureCount: modelConfigs.length,
+		consensus: overallAgreement.toFixed(2),
+		gasUsed: submissionResult.gasUsed.toString()
+	});
+
+	return json({
+		debateId,
+		status: 'resolved',
+		resolutionMethod: 'ai_community',
+		winningArgumentIndex: winnerIndex,
+		winningStance: winnerArg?.stance,
+		signatureCount: modelConfigs.length,
+		panelConsensus: overallAgreement,
+		submitTxHash: submissionResult.submitTxHash,
+		resolveTxHash: submissionResult.resolveTxHash,
+		gasUsed: submissionResult.gasUsed.toString()
+	});
+
+	} finally {
+		// Release rate limit slot
+		activeEvaluations.delete(debateId);
+		recentEvaluations.set(debateId, Date.now());
+	}
+};
