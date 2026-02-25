@@ -168,6 +168,12 @@
 	<div
 		class="mt-auto border-t border-slate-100/50 bg-gradient-to-br from-slate-50/30 to-violet-50/10 p-4"
 	>
+		{#if template.hasActiveDebate}
+			<div class="mb-2 flex items-center gap-2 text-sm">
+				<span class="debate-pulse h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
+				<span class="font-brand text-amber-600">Deliberating</span>
+			</div>
+		{/if}
 		<div class="flex items-center justify-between gap-4">
 			{#if hasEngagement}
 				<!-- Metrics Section: Only show when there's real engagement (post-launch) -->
@@ -251,3 +257,19 @@
 		</div>
 	</div>
 </button>
+
+<style>
+	.debate-pulse {
+		animation: debate-pulse 1.4s ease-in-out infinite;
+	}
+
+	@keyframes debate-pulse {
+		0%,
+		100% {
+			opacity: 0.5;
+		}
+		50% {
+			opacity: 1;
+		}
+	}
+</style>

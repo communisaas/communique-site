@@ -165,6 +165,7 @@
 			});
 		} else {
 			console.warn('[AddressForm] No oncomplete callback registered!');
+			isSaving = false;
 		}
 	}
 

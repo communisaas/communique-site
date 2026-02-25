@@ -428,6 +428,13 @@
 							</p>
 
 							<MessageMetrics {template} />
+
+							{#if template.hasActiveDebate}
+								<div class="mt-1 flex items-center gap-2 text-sm">
+									<span class="debate-pulse h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
+									<span class="font-brand text-amber-600">Deliberating</span>
+								</div>
+							{/if}
 						</div>
 
 						<!-- Mobile indicator -->
@@ -582,6 +589,21 @@
 		50% {
 			opacity: 1;
 			transform: scale(1.2);
+		}
+	}
+
+	/* Debate Deliberation Indicator (Ambient Status Signal) */
+	.debate-pulse {
+		animation: debate-pulse 1.4s ease-in-out infinite;
+	}
+
+	@keyframes debate-pulse {
+		0%,
+		100% {
+			opacity: 0.5;
+		}
+		50% {
+			opacity: 1;
 		}
 	}
 </style>

@@ -22,6 +22,19 @@ export const load: PageServerLoad = async () => {
 			}
 		});
 
+		// Batch query: which templates have active debates?
+		let activeDebateTemplateIds = new Set<string>();
+		try {
+			const activeDebates = await db.debate.findMany({
+				where: { status: 'active' },
+				select: { template_id: true },
+				distinct: ['template_id']
+			});
+			activeDebateTemplateIds = new Set(activeDebates.map((d: { template_id: string }) => d.template_id));
+		} catch {
+			// debate table may not exist yet
+		}
+
 		// Zod schema for metrics validation
 		const MetricsSchema = z
 			.object({
@@ -74,6 +87,9 @@ export const load: PageServerLoad = async () => {
 				preview: template.preview,
 				message_body: template.message_body,
 				subject: template.title,
+
+				// === PERCEPTUAL ENCODING ===
+				hasActiveDebate: activeDebateTemplateIds.has(template.id),
 
 				// === AGGREGATE METRICS (consistent structure) ===
 				verified_sends: template.verified_sends,

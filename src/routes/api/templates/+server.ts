@@ -181,6 +181,27 @@ export const GET: RequestHandler = async () => {
 			}
 		});
 
+		// Batch query: which templates have active debates? (one query, Set lookup)
+		let activeDebateTemplateIds = new Set<string>();
+		try {
+			if ('debate' in db) {
+				const activeDebates = await (
+					db as unknown as {
+						debate: {
+							findMany: (params: unknown) => Promise<{ template_id: string }[]>;
+						};
+					}
+				).debate.findMany({
+					where: { status: 'active' },
+					select: { template_id: true },
+					distinct: ['template_id']
+				});
+				activeDebateTemplateIds = new Set(activeDebates.map((d) => d.template_id));
+			}
+		} catch {
+			// debate table may not exist yet — continue without debate indicators
+		}
+
 		// Include template scopes - handle if table doesn't exist
 		let scopes: UnknownRecord[] = [];
 		try {
@@ -281,6 +302,7 @@ export const GET: RequestHandler = async () => {
 				// === PERCEPTUAL ENCODING PROPERTIES ===
 				coordinationScale, // 0-1 scale for visual weight (card size)
 				isNew, // Temporal signal for "New" badge
+				hasActiveDebate: activeDebateTemplateIds.has(template.id), // Status signal for deliberation
 
 				// === AGGREGATE METRICS (consistent with schema) ===
 				verified_sends: template.verified_sends, // Integer field from schema
