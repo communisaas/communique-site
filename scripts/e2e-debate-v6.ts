@@ -114,6 +114,7 @@ const DEBATE_MARKET_ABI = [
 	'function currentEpoch(bytes32 debateId) view returns (uint256)',
 	'function epochStartTime(bytes32 debateId) view returns (uint256)',
 	'function epochDuration() view returns (uint256)',
+	'function debateWeightVerifier() view returns (address)',
 	'function MIN_DURATION() view returns (uint256)',
 	'function MIN_PROPOSER_BOND() view returns (uint256)',
 	'function MIN_ARGUMENT_STAKE() view returns (uint256)',
@@ -898,10 +899,25 @@ async function main() {
 	const now = Math.floor(Date.now() / 1000);
 
 	if (now < revealPhaseStart) {
-		const waitMs = (revealPhaseStart - now + 5) * 1000;
+		const waitMs = (revealPhaseStart - now + 15) * 1000;
 		console.log(`  Waiting ${Math.ceil(waitMs / 1000)}s for reveal phase...`);
 		await sleep(waitMs);
 	}
+
+	// Check debateWeightVerifier is deployed and valid
+	const dwVerifierAddr = await debateMarket.debateWeightVerifier();
+	const dwVerifierCode = await provider.getCode(dwVerifierAddr);
+	ok(`DebateWeightVerifier: ${dwVerifierAddr} (code: ${dwVerifierCode.length > 2 ? dwVerifierCode.length + ' bytes' : 'NONE — EOA or missing!'})`);
+
+	// Reconstruct expected commit hash to verify it matches before calling revealTrade
+	const expectedCommitHash = keccak256(
+		solidityPacked(
+			['uint256', 'uint8', 'uint256', 'bytes32', 'uint256', 'bytes32'],
+			[argumentIndex1, DIRECTION_BUY, weightedAmount, noteCommitment, epoch0, tradeNonce]
+		)
+	);
+	ok(`Expected commit hash: ${expectedCommitHash.slice(0, 18)}... (should match: ${commitHash.slice(0, 18)}...)`);
+	ok(`Match: ${expectedCommitHash === commitHash}`);
 
 	// revealTrade with MockDebateWeightVerifier (always returns true)
 	// debateWeightPublicInputs = [weightedAmount, noteCommitment] — must match commit hash preimage
@@ -910,6 +926,32 @@ async function main() {
 		toBytes32(weightedAmount),
 		noteCommitment
 	];
+
+	// staticCall first to get revert reason before spending gas
+	try {
+		await debateMarket.revealTrade.staticCall(
+			debateId!, epoch0, commitIndex, argumentIndex1, DIRECTION_BUY,
+			tradeNonce, debateWeightProof, debateWeightPublicInputs,
+			{ gasLimit: 600_000 }
+		);
+		ok('staticCall passed — revealTrade should succeed');
+	} catch (err: any) {
+		const data = err.data || err.info?.error?.data || '';
+		const SELECTORS: Record<string, string> = {
+			'0xaa34db46': 'EpochNotInRevealPhase()',
+			'0x7e1574eb': 'InvalidCommitIndex()',
+			'0x2e3bec61': 'NotCommitter()',
+			'0xa89ac151': 'AlreadyRevealed()',
+			'0x160c2e77': 'InvalidDebateWeightProof()',
+			'0x5746ff11': 'CommitHashMismatch()',
+			'0x214d337a': 'ThreeTreeVerifierNotFound()',
+			'0x99505c1b': 'ThreeTreeVerificationFailed()',
+		};
+		const sel = typeof data === 'string' && data.length >= 10 ? data.slice(0, 10) : '';
+		warn(`staticCall reverted: selector=${sel} ${SELECTORS[sel] || '(unknown)'}`);
+		if (err.reason) warn(`  reason: ${err.reason}`);
+		if (err.message && err.message.length < 300) warn(`  message: ${err.message}`);
+	}
 
 	try {
 		const tx = await debateMarket.revealTrade(
@@ -955,7 +997,7 @@ async function main() {
 	const executableAt = epochStart + epochDur;
 	const nowExec = Math.floor(Date.now() / 1000);
 	if (nowExec < executableAt) {
-		const waitMs = (executableAt - nowExec + 5) * 1000;
+		const waitMs = (executableAt - nowExec + 15) * 1000;
 		console.log(`  Waiting ${Math.ceil(waitMs / 1000)}s for epoch to be executable...`);
 		await sleep(waitMs);
 	}
