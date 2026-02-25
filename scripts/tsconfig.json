@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"allowJs": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"strict": true,
+		"moduleResolution": "bundler",
+		"module": "esnext",
+		"target": "ES2020",
+		"paths": {
+			"$lib": ["../src/lib"],
+			"$lib/*": ["../src/lib/*"],
+			"$app/environment": ["./shims/app-environment.ts"],
+			"$app/*": ["./shims/app-environment.ts"],
+			"$env/dynamic/private": ["./shims/env-dynamic-private.ts"],
+			"$env/dynamic/public": ["./shims/env-dynamic-public.ts"],
+			"$env/static/private": ["./shims/env-static-private.ts"],
+			"$env/static/private/*": ["./shims/env-static-private.ts"],
+			"$env/*": ["./shims/env-dynamic-private.ts"]
+		},
+		"rootDir": ".."
+	},
+	"include": ["./**/*.ts", "../src/**/*.ts"]
+}
