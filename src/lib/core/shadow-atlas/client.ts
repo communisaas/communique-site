@@ -28,7 +28,7 @@ const CIRCUIT_DEPTH: number = (() => {
 	return (p === 18 || p === 20 || p === 22 || p === 24) ? p : 20;
 })();
 
-import { BN254_MODULUS } from '@voter-protocol/noir-prover';
+import { BN254_MODULUS } from '$lib/core/crypto/bn254';
 
 /**
  * BR5-009: All hex field elements from Shadow Atlas must be validated

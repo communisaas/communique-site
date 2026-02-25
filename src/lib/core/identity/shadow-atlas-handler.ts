@@ -3,7 +3,7 @@
  *
  * Orchestrates the three-tree registration flow after identity verification:
  *
- * 1. User completes identity verification (self.xyz or Didit.me)
+ * 1. User completes identity verification (Digital Credentials API / mDL)
  * 2. Browser generates user_secret and registration_salt
  * 3. Browser computes leaf = Poseidon2_H4(user_secret, cell_id, registration_salt, authority_level)
  * 4. Browser sends ONLY the leaf hash to communique server
@@ -41,7 +41,7 @@ export interface ThreeTreeRegistrationRequest {
 	/** Registration salt (stored client-side only, never sent to server) */
 	registrationSalt: string;
 	/** Verification method used */
-	verificationMethod: 'self.xyz' | 'didit' | 'digital-credentials-api';
+	verificationMethod: 'digital-credentials-api';
 }
 
 export interface ThreeTreeRegistrationResult {
@@ -62,7 +62,7 @@ export interface ThreeTreeRecoveryRequest {
 	/** New random registration salt */
 	registrationSalt: string;
 	/** Verification method (carried from original registration) */
-	verificationMethod: 'self.xyz' | 'didit' | 'digital-credentials-api';
+	verificationMethod: 'digital-credentials-api';
 }
 
 // ============================================================================
@@ -447,7 +447,7 @@ export async function recoverThreeTree(
  * @returns Identity commitment (hex string with 0x prefix)
  */
 export async function generateIdentityCommitment(providerData: {
-	provider: 'self.xyz' | 'didit.me';
+	provider: 'digital-credentials-api';
 	credentialHash: string;
 }): Promise<string> {
 	const { poseidonHash } = await import('../crypto/poseidon');

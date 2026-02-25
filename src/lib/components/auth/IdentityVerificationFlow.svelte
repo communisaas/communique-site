@@ -2,10 +2,7 @@
 	import { untrack } from 'svelte';
 	import { ChevronLeft, Check } from '@lucide/svelte';
 
-	import VerificationChoice from './address-steps/VerificationChoice.svelte';
 	import VerificationValueProp from './address-steps/VerificationValueProp.svelte';
-	import SelfXyzVerification from './address-steps/SelfXyzVerification.svelte';
-	import DiditVerification from './address-steps/DiditVerification.svelte';
 	import GovernmentCredentialVerification from './GovernmentCredentialVerification.svelte';
 
 	interface Props {
@@ -13,8 +10,6 @@
 		templateSlug?: string;
 		/** Skip value proposition (if already shown earlier in flow) */
 		skipValueProp?: boolean;
-		/** Default verification method (if user already made a choice) */
-		defaultMethod?: 'nfc' | 'government-id' | 'mdl' | null;
 		/**
 		 * Census Block GEOID (15-digit cell identifier) for three-tree ZK architecture
 		 * PRIVACY: Neighborhood-level precision (600-3000 people)
@@ -29,7 +24,7 @@
 			address?: { street: string; city: string; state: string; zip: string };
 			cell_id?: string;
 			providerData?: {
-				provider: 'self.xyz' | 'didit.me' | 'digital-credentials-api';
+				provider: 'digital-credentials-api';
 				credentialHash: string;
 				issuedAt: number;
 				expiresAt?: number;
@@ -39,13 +34,14 @@
 		onback?: () => void;
 	}
 
-	let { userId, templateSlug, skipValueProp = false, defaultMethod = null, cellId, oncomplete, oncancel, onback }: Props = $props();
+	let { userId, templateSlug, skipValueProp = false, cellId, oncomplete, oncancel, onback }: Props = $props();
 
-	type FlowStep = 'value-prop' | 'choice' | 'verify-nfc' | 'verify-id' | 'verify-mdl' | 'complete';
+	type FlowStep = 'value-prop' | 'verify-mdl' | 'complete';
 
-	let currentStep = $state<FlowStep>(untrack(() => skipValueProp ? 'choice' : 'value-prop'));
-	let selectedMethod = $state<'nfc' | 'government-id' | 'mdl' | null>(untrack(() => defaultMethod));
+	let currentStep = $state<FlowStep>(untrack(() => skipValueProp ? 'verify-mdl' : 'value-prop'));
 	let verificationComplete = $state(false);
+	let registrationInProgress = $state(false);
+	let registrationError = $state<string | null>(null);
 	let verificationData = $state<{
 		verified: boolean;
 		method: string;
@@ -54,160 +50,19 @@
 		address?: { street: string; city: string; state: string; zip: string };
 		cell_id?: string;
 		providerData?: {
-			provider: 'self.xyz' | 'didit.me' | 'digital-credentials-api';
+			provider: 'digital-credentials-api';
 			credentialHash: string;
 			issuedAt: number;
 			expiresAt?: number;
 		};
 	} | null>(null);
 
-	function handleMethodSelection(data: { method: 'nfc' | 'government-id' | 'mdl' }) {
-		selectedMethod = data.method;
-
-		// Automatically advance to verification step
-		if (selectedMethod === 'nfc') {
-			currentStep = 'verify-nfc';
-		} else if (selectedMethod === 'government-id') {
-			currentStep = 'verify-id';
-		} else if (selectedMethod === 'mdl') {
-			currentStep = 'verify-mdl';
-		}
-	}
-
-	async function handleVerificationComplete(data: {
-		verified: boolean;
-		method: string;
-		district?: string;
-		state?: string;
-		address?: { street: string; city: string; state: string; zip: string };
-		/**
-		 * Census Block GEOID (15-digit cell identifier) for three-tree ZK architecture
-		 * PRIVACY: Neighborhood-level precision (600-3000 people), encrypted at rest
-		 */
-		cell_id?: string;
-		providerData?: {
-			provider: 'self.xyz' | 'didit.me';
-			credentialHash: string;
-			issuedAt: number;
-			expiresAt?: number;
-		};
-	}) {
-		verificationComplete = true;
-		verificationData = data;
-		currentStep = 'complete';
-
-		// Add verified location signal to IndexedDB (client-side only)
-		// This is the highest confidence signal (1.0) in our 5-signal progressive inference
-		if (data.district && data.state) {
-			try {
-				const { addVerifiedLocationSignal } = await import('$lib/core/location');
-				await addVerifiedLocationSignal(data.district || '', data.state || '');
-				console.log('[Verification] Added verified location signal:', {
-					district: data.district,
-					state: data.state
-				});
-			} catch (error) {
-				console.error('[Verification] Failed to add location signal:', error);
-			}
-		}
-
-		// Handle complete verification flow: encryption + storage + caching
-		// This is the critical integration point that makes progressive verification work
-		if (data.address && data.providerData) {
-			try {
-				// Step 1: Encrypt address and store blob (existing flow)
-				const { handleVerificationComplete: processVerification } = await import(
-					'$lib/core/identity/verification-handler'
-				);
-
-				const result = await processVerification(userId, {
-					method: data.method as 'nfc-passport' | 'government-id',
-					verified: data.verified,
-					providerData: data.providerData,
-					address: data.address,
-					district: data.district
-						? {
-								congressional: data.district
-							}
-						: undefined
-				});
-
-				if (result.success) {
-					console.log('[Verification Flow] Complete encryption/storage flow successful:', {
-						blobId: result.blobId,
-						sessionCached: !!result.sessionCredential
-					});
-				} else {
-					console.error('[Verification Flow] Encryption/storage failed:', result.error);
-					// Don't block UI - allow user to continue even if storage fails
-					// They can retry later or verification can be re-triggered
-				}
-
-				// Step 2: Register in Shadow Atlas for ZK proof generation (new flow)
-				if (data.district && data.providerData) {
-					try {
-						const { registerInShadowAtlas, generateIdentityCommitment } = await import(
-							'$lib/core/identity/shadow-atlas-handler'
-						);
-
-						// Generate identity commitment from provider data
-						const identityCommitment = await generateIdentityCommitment(data.providerData);
-
-						// Register in Shadow Atlas (with cell_id for three-tree architecture)
-						// Use cell_id from data if available, otherwise use cellId prop
-						const resolvedCellId = data.cell_id || cellId;
-						const atlasResult = await registerInShadowAtlas({
-							userId,
-							identityCommitment,
-							congressionalDistrict: (data.district as string) || '',
-							cellId: (resolvedCellId as string | undefined),
-							verificationMethod:
-								data.providerData.provider === 'self.xyz' ? 'self.xyz' : 'didit',
-							verificationId: data.providerData.credentialHash
-						} as any);
-
-						if (atlasResult.success) {
-							console.log('[Verification Flow] Shadow Atlas registration successful:', {
-								district: data.district,
-								leafIndex: atlasResult.sessionCredential?.leafIndex,
-								expiresAt: atlasResult.sessionCredential?.expiresAt,
-								credentialType: 'three-tree'
-							});
-						} else {
-							console.error(
-								'[Verification Flow] Shadow Atlas registration failed:',
-								atlasResult.error
-							);
-							// Non-blocking error - user can still proceed
-							// Proof generation will fail gracefully and prompt re-registration
-						}
-					} catch (error) {
-						console.error('[Verification Flow] Failed to register in Shadow Atlas:', error);
-						// Non-blocking error - log and continue
-					}
-				}
-			} catch (error) {
-				console.error('[Verification Flow] Failed to process verification:', error);
-				// Non-blocking error - log and continue
-			}
-		}
-
-		// Notify parent component
-		oncomplete?.({
-			...data,
-			userId
-		});
-	}
-
-	function handleVerificationError(data: { message: string }) {
-		console.error('Verification error:', data.message);
-		// Error handling is managed within child components
-		// Could optionally dispatch to parent for additional handling
-	}
-
 	/**
 	 * Handle mDL verification completion (callback props, not CustomEvent).
 	 * GovernmentCredentialVerification uses Svelte 5 callback pattern.
+	 *
+	 * After identity verification succeeds, triggers Shadow Atlas three-tree
+	 * registration so the user can generate ZK proofs for congressional submissions.
 	 */
 	async function handleMdlComplete(data: {
 		verified: boolean;
@@ -240,6 +95,15 @@
 			}
 		}
 
+		// Trigger Shadow Atlas three-tree registration (non-blocking)
+		// This registers the user's leaf hash in Tree 1 and fetches Tree 2/3 proofs,
+		// enabling ZK proof generation for congressional submissions.
+		if (cellId) {
+			triggerShadowAtlasRegistration(data.cell_id ?? cellId);
+		} else {
+			console.warn('[Verification] No cellId available — Shadow Atlas registration deferred');
+		}
+
 		// Notify parent component
 		oncomplete?.({
 			...data,
@@ -247,20 +111,92 @@
 		});
 	}
 
+	/**
+	 * Register in Shadow Atlas three-tree architecture after identity verification.
+	 *
+	 * Generates client-side secrets (userSecret, registrationSalt) that NEVER
+	 * leave the browser. Only the leaf hash (H4 of secrets + cellId + authorityLevel)
+	 * is sent to the server.
+	 */
+	async function triggerShadowAtlasRegistration(resolvedCellId: string) {
+		registrationInProgress = true;
+		registrationError = null;
+
+		try {
+			const { registerThreeTree } = await import('$lib/core/identity/shadow-atlas-handler');
+			const { poseidon2Hash4 } = await import('$lib/core/crypto/poseidon');
+
+			// Generate client-side secrets (never sent to server)
+			const userSecretBytes = new Uint8Array(32);
+			const registrationSaltBytes = new Uint8Array(32);
+			crypto.getRandomValues(userSecretBytes);
+			crypto.getRandomValues(registrationSaltBytes);
+
+			const userSecret =
+				'0x' +
+				Array.from(userSecretBytes)
+					.map((b) => b.toString(16).padStart(2, '0'))
+					.join('');
+			const registrationSalt =
+				'0x' +
+				Array.from(registrationSaltBytes)
+					.map((b) => b.toString(16).padStart(2, '0'))
+					.join('');
+
+			// Encode cellId (Census GEOID like "060750102001001") as a BN254 field element
+			const cellIdBigInt = BigInt(resolvedCellId);
+			const cellIdHex = '0x' + cellIdBigInt.toString(16).padStart(64, '0');
+
+			// Encode authority level as a field element
+			const authorityLevel = 5; // mDL = highest authority
+			const authorityHex = '0x' + authorityLevel.toString(16).padStart(64, '0');
+
+			// Compute leaf: Poseidon2_H4(userSecret, cellId, registrationSalt, authorityLevel)
+			// Uses 2-round sponge with DOMAIN_HASH4 — matches Noir circuit exactly
+			const leaf = await poseidon2Hash4(userSecret, cellIdHex, registrationSalt, authorityHex);
+
+			const result = await registerThreeTree({
+				userId,
+				leaf,
+				cellId: resolvedCellId,
+				userSecret,
+				registrationSalt,
+				verificationMethod: 'digital-credentials-api'
+			});
+
+			if (result.success) {
+				console.log('[Verification] Shadow Atlas registration complete:', {
+					leafIndex: result.sessionCredential?.leafIndex,
+					districts: result.sessionCredential?.districts?.length ?? 0,
+					engagementTier: result.sessionCredential?.engagementTier ?? 0
+				});
+			} else {
+				console.error('[Verification] Shadow Atlas registration failed:', result.error);
+				registrationError = result.error ?? 'Registration failed';
+			}
+		} catch (error) {
+			console.error('[Verification] Shadow Atlas registration error:', error);
+			registrationError = error instanceof Error ? error.message : 'Unknown error';
+		} finally {
+			registrationInProgress = false;
+		}
+	}
+
 	function handleMdlError(data: { message: string }) {
 		console.error('mDL verification error:', data.message);
 	}
 
 	function handleMdlCancel() {
-		currentStep = 'choice';
-		selectedMethod = null;
+		// Since mDL is the only method, canceling goes back to value-prop or parent
+		if (!skipValueProp) {
+			currentStep = 'value-prop';
+		} else {
+			onback?.();
+		}
 	}
 
 	function goBack() {
-		if (currentStep === 'verify-nfc' || currentStep === 'verify-id' || currentStep === 'verify-mdl') {
-			currentStep = 'choice';
-			selectedMethod = null;
-		} else if (currentStep === 'choice' && !skipValueProp) {
+		if (currentStep === 'verify-mdl' && !skipValueProp) {
 			currentStep = 'value-prop';
 		} else {
 			onback?.();
@@ -268,7 +204,7 @@
 	}
 
 	function proceedFromValueProp() {
-		currentStep = 'choice';
+		currentStep = 'verify-mdl';
 	}
 </script>
 
@@ -279,18 +215,14 @@
 			<div class="flex items-center justify-between text-sm">
 				<span class="font-medium text-slate-700">
 					{#if currentStep === 'value-prop'}
-						Step 1 of 3: Understand Verification
-					{:else if currentStep === 'choice'}
-						Step 2 of 3: Choose Method
-					{:else if currentStep === 'verify-nfc' || currentStep === 'verify-id' || currentStep === 'verify-mdl'}
-						Step 3 of 3: Complete Verification
+						Step 1 of 2: Understand Verification
+					{:else if currentStep === 'verify-mdl'}
+						Step 2 of 2: Complete Verification
 					{/if}
 				</span>
 				<span class="text-slate-500">
 					{#if currentStep === 'value-prop'}
-						33%
-					{:else if currentStep === 'choice'}
-						66%
+						50%
 					{:else}
 						99%
 					{/if}
@@ -299,11 +231,7 @@
 			<div class="mt-2 h-2 w-full rounded-full bg-slate-200">
 				<div
 					class="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-500"
-					style="width: {currentStep === 'value-prop'
-						? '33%'
-						: currentStep === 'choice'
-							? '66%'
-							: '99%'}"
+					style="width: {currentStep === 'value-prop' ? '50%' : '99%'}"
 				></div>
 			</div>
 		</div>
@@ -336,25 +264,6 @@
 					Continue to Verification
 				</button>
 			</div>
-		{:else if currentStep === 'choice'}
-			<!-- Method Selection -->
-			<VerificationChoice defaultMethod={selectedMethod} onselect={handleMethodSelection} />
-		{:else if currentStep === 'verify-nfc'}
-			<!-- NFC Passport Verification -->
-			<SelfXyzVerification
-				{userId}
-				{templateSlug}
-				oncomplete={handleVerificationComplete}
-				onerror={handleVerificationError}
-			/>
-		{:else if currentStep === 'verify-id'}
-			<!-- Government ID Verification -->
-			<DiditVerification
-				{userId}
-				{templateSlug}
-				oncomplete={handleVerificationComplete}
-				onerror={handleVerificationError}
-			/>
 		{:else if currentStep === 'verify-mdl'}
 			<!-- mDL / Digital ID Verification (Svelte 5 callback props) -->
 			<GovernmentCredentialVerification

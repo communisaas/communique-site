@@ -62,6 +62,8 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 		const { encode, Tagged } = cbor;
 
 		// ItemsRequest: what we're asking the wallet to disclose
+		// Fields: address (district derivation) + identity (commitment for Sybil resistance)
+		// All fields use intentToRetain: false — wallet should not persist disclosure
 		const itemsRequest = new Map<string, unknown>([
 			['docType', 'org.iso.18013.5.1.mDL'],
 			[
@@ -70,9 +72,15 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 					[
 						'org.iso.18013.5.1',
 						new Map<string, boolean>([
-							['resident_postal_code', false], // false = intentToRetain: false
+							// Address fields → district derivation (discarded after deriveDistrict)
+							['resident_postal_code', false],
 							['resident_city', false],
-							['resident_state', false]
+							['resident_state', false],
+							// Identity fields → identity commitment (hashed, then discarded)
+							// birth_date: only year extracted for commitment computation
+							// document_number: hashed into commitment, never stored
+							['birth_date', false],
+							['document_number', false]
 						])
 					]
 				])
@@ -119,7 +127,9 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 								'org.iso.18013.5.1': [
 									{ name: 'resident_postal_code', intent_to_retain: false },
 									{ name: 'resident_city', intent_to_retain: false },
-									{ name: 'resident_state', intent_to_retain: false }
+									{ name: 'resident_state', intent_to_retain: false },
+									{ name: 'birth_date', intent_to_retain: false },
+									{ name: 'document_number', intent_to_retain: false }
 								]
 							}
 						}

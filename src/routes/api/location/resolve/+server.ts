@@ -59,7 +59,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		const { lat, lng, signal_type, confidence, cell_id, district_code, country_code: _country_code } = parseResult.data;
+		const { lat, lng, signal_type, confidence, cell_id, district_code: rawDistrictCode, country_code: _country_code } = parseResult.data;
+
+		// Normalize Census at-large format: XX-00 → XX-AL
+		const district_code = rawDistrictCode?.endsWith('-00')
+			? rawDistrictCode.replace(/-00$/, '-AL')
+			: rawDistrictCode;
 
 		// District resolution
 		let resolvedDistrictCode: string | null = null;

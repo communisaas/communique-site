@@ -24,7 +24,7 @@ export interface IdentityBlob {
 
 	// REQUIRED: Identity verification proof
 	verificationCredential: {
-		provider: 'self.xyz' | 'didit.me';
+		provider: 'digital-credentials-api';
 		credentialHash: string;
 		issuedAt: number;
 		expiresAt?: number;
@@ -87,8 +87,15 @@ export async function fetchTEEPublicKey(): Promise<TEEPublicKey> {
 
 	const data = await response.json();
 
+	// /api/tee/public-key returns hex-encoded X25519 key (0x-prefixed)
+	const hexKey = (data.publicKey as string).replace(/^0x/, '');
+	const keyBytes = new Uint8Array(hexKey.length / 2);
+	for (let i = 0; i < hexKey.length; i += 2) {
+		keyBytes[i / 2] = parseInt(hexKey.substr(i, 2), 16);
+	}
+
 	return {
-		publicKey: sodium.from_base64(data.publicKey, sodium.base64_variants.ORIGINAL),
+		publicKey: keyBytes,
 		keyId: data.keyId,
 		expiresAt: data.expiresAt
 	};

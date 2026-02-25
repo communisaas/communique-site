@@ -35,6 +35,13 @@ export type MdlVerificationResult =
 			credentialHash: string;
 			/** Verification method identifier */
 			verificationMethod: 'mdl';
+			/**
+			 * Identity commitment (BN254 field element, hex string).
+			 * Computed from document_number + birth_year INSIDE the privacy boundary.
+			 * Raw identity fields are discarded after commitment computation.
+			 * Undefined if wallet did not disclose document_number or birth_date.
+			 */
+			identityCommitment?: string;
 	  }
 	| {
 			success: false;
@@ -174,15 +181,59 @@ async function processMdocResponse(
 						message: `COSE_Sign1 verification failed: ${coseResult.reason}`
 					};
 				}
-				// Optionally: validate MSO digests
-				// (validates that extracted field values match the signed digests)
+
+				// MSO digest validation: proves extracted field values match the
+				// signed digests in the Mobile Security Object. Defense-in-depth —
+				// a tampered field would pass COSE signature but fail digest check.
+				if (coseResult.mso) {
+					const { validateMsoDigests } = await import('./cose-verify');
+					const cborModule = await import('cbor-web');
+					const cborEncode = cborModule.default?.encode ?? cborModule.encode;
+					const nsData = (issuerSigned.nameSpaces ?? issuerSigned.namespaces) as
+						| Record<string, unknown[]>
+						| undefined;
+					if (nsData) {
+						const digestsValid = await validateMsoDigests(
+							coseResult.mso,
+							nsData,
+							decode,
+							(data: unknown) => new Uint8Array(cborEncode(data))
+						);
+						if (!digestsValid) {
+							return {
+								success: false,
+								error: 'signature_invalid',
+								message: 'MSO digest validation failed — field values do not match signed digests'
+							};
+						}
+					}
+				}
 			} else {
-				// No IACA roots loaded -- log warning but proceed
-				// This allows development/testing without real certificates
-				console.warn('[mDL] No IACA roots loaded -- skipping issuer verification');
+				// No IACA roots loaded.
+				// Production: hard fail. Dev: bypass with explicit opt-in.
+				const skipVerification = process.env.SKIP_ISSUER_VERIFICATION === 'true';
+				if (skipVerification) {
+					console.warn('[mDL] SKIP_ISSUER_VERIFICATION=true — bypassing issuer verification (DEV ONLY)');
+				} else {
+					return {
+						success: false,
+						error: 'signature_invalid',
+						message: 'No IACA root certificates loaded — cannot verify mDL issuer. ' +
+							'Set SKIP_ISSUER_VERIFICATION=true for development.'
+					};
+				}
 			}
 		} else {
-			console.warn('[mDL] No issuerAuth in issuerSigned -- cannot verify issuer');
+			// No issuerAuth — cannot verify credential origin.
+			const skipVerification = process.env.SKIP_ISSUER_VERIFICATION === 'true';
+			if (!skipVerification) {
+				return {
+					success: false,
+					error: 'signature_invalid',
+					message: 'No issuerAuth in credential — cannot verify mDL issuer'
+				};
+			}
+			console.warn('[mDL] No issuerAuth — bypassing (SKIP_ISSUER_VERIFICATION=true)');
 		}
 
 		// Step 4: Extract namespace elements
@@ -215,6 +266,13 @@ async function processMdocResponse(
 			};
 		}
 
+		// Step 5b: Extract identity fields, compute commitment, DISCARD raw fields.
+		// The raw document_number and birth_date NEVER leave this function.
+		// Only the resulting identity commitment (a single BN254 field element) propagates.
+		const documentNumber = fields.get('document_number');
+		const birthDateRaw = fields.get('birth_date');
+		const birthYear = extractBirthYear(birthDateRaw);
+
 		// Step 6: Derive congressional district from address
 		// PRIVACY BOUNDARY: After this point, raw address fields are no longer used
 		const district = await deriveDistrict(postalCode, city ?? '', state);
@@ -238,14 +296,24 @@ async function processMdocResponse(
 			.map((b) => b.toString(16).padStart(2, '0'))
 			.join('');
 
-		// Raw address fields (postalCode, city, state) go out of scope here.
-		// Only district and credentialHash are returned.
+		// Compute identity commitment INSIDE the privacy boundary.
+		// Raw documentNumber and birthYear are consumed here and never returned.
+		let identityCommitment: string | undefined;
+		if (documentNumber && birthYear) {
+			identityCommitment = await computeIdentityCommitmentInBoundary(
+				documentNumber,
+				birthYear
+			);
+		}
+		// documentNumber and birthYear go out of scope here — DISCARDED.
+		// Only district, credentialHash, and the hashed identityCommitment are returned.
 		return {
 			success: true,
 			district,
 			state,
 			credentialHash,
-			verificationMethod: 'mdl'
+			verificationMethod: 'mdl',
+			identityCommitment
 		};
 	} catch (err) {
 		console.error('[mDL] mdoc processing error:', err);
@@ -348,6 +416,11 @@ async function processOid4vpResponse(
 			};
 		}
 
+		// Extract identity fields, compute commitment, discard raw fields
+		const documentNumber = findClaim(claims, 'document_number');
+		const birthDateRaw = findClaim(claims, 'birth_date');
+		const birthYear = extractBirthYear(birthDateRaw);
+
 		// Derive congressional district
 		// PRIVACY BOUNDARY: After this point, raw address fields are no longer used
 		const district = await deriveDistrict(postalCode, city ?? '', state);
@@ -370,12 +443,22 @@ async function processOid4vpResponse(
 			.map((b) => b.toString(16).padStart(2, '0'))
 			.join('');
 
+		// Compute identity commitment INSIDE the privacy boundary
+		let identityCommitment: string | undefined;
+		if (documentNumber && birthYear) {
+			identityCommitment = await computeIdentityCommitmentInBoundary(
+				documentNumber,
+				birthYear
+			);
+		}
+
 		return {
 			success: true,
 			district,
 			state,
 			credentialHash,
-			verificationMethod: 'mdl'
+			verificationMethod: 'mdl',
+			identityCommitment
 		};
 	} catch (err) {
 		console.error('[mDL] OpenID4VP processing error:', err);
@@ -584,6 +667,80 @@ async function deriveDistrict(
 		console.error('[mDL] District derivation failed:', err);
 		return null;
 	}
+}
+
+/**
+ * Extract birth year from various birth_date formats.
+ *
+ * ISO 18013-5 birth_date may be:
+ * - CBOR tag 1004 full-date string: "1990-05-15" (decoded by cbor-web as string)
+ * - Plain CBOR integer: year directly (e.g. 1990) or Unix timestamp
+ * - extractMdlFields converts everything to String() — so we handle both
+ */
+function extractBirthYear(raw: string | null | undefined): number | undefined {
+	if (!raw) return undefined;
+
+	// Check if it's a numeric string that could be a year or Unix timestamp
+	const numValue = Number(raw);
+	if (!isNaN(numValue) && Number.isInteger(numValue)) {
+		// Direct year (1900-2099 range)
+		if (numValue >= 1900 && numValue <= 2099) return numValue;
+		// Unix timestamp (seconds since epoch) — convert to year
+		if (numValue > 100000000) {
+			const d = new Date(numValue * 1000);
+			return isNaN(d.getTime()) ? undefined : d.getUTCFullYear();
+		}
+	}
+
+	// ISO 8601 date string: "YYYY-MM-DD" or "YYYY"
+	const yearMatch = raw.match(/^(\d{4})/);
+	return yearMatch ? parseInt(yearMatch[1], 10) : undefined;
+}
+
+/**
+ * Compute identity commitment INSIDE the privacy boundary.
+ *
+ * Uses the same pipeline as identity-binding.ts computeIdentityCommitment():
+ * SHA-256(SHA-256(domain:salt:documentNumber:US:birthYear:mdl)) mod BN254
+ *
+ * This function is called within processMdocResponse/processOid4vpResponse
+ * so that raw identity fields never leave the privacy boundary.
+ */
+async function computeIdentityCommitmentInBoundary(
+	documentNumber: string,
+	birthYear: number
+): Promise<string> {
+	const DOMAIN_PREFIX = 'communique-identity-v1';
+	const COMMITMENT_SALT = process.env.IDENTITY_COMMITMENT_SALT;
+
+	if (!COMMITMENT_SALT) {
+		console.warn('[mDL] IDENTITY_COMMITMENT_SALT not configured — identity commitment skipped');
+		return '';
+	}
+
+	// Normalize inputs identically to identity-binding.ts computeIdentityCommitment()
+	const normalized = [
+		DOMAIN_PREFIX,
+		COMMITMENT_SALT,
+		documentNumber.toUpperCase().trim(),
+		'US', // mDL is US-only
+		birthYear.toString(),
+		'mdl'
+	].join(':');
+
+	// Double-hash with domain separation for preimage resistance
+	const innerBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalized));
+	const outerBuf = await crypto.subtle.digest('SHA-256', innerBuf);
+	const rawHex = Array.from(new Uint8Array(outerBuf))
+		.map((b) => b.toString(16).padStart(2, '0'))
+		.join('');
+
+	// Reduce mod BN254 — ensures valid field element for ZK circuit
+	const BN254_MODULUS =
+		21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+	const value = BigInt('0x' + rawHex);
+	const reduced = value % BN254_MODULUS;
+	return reduced.toString(16).padStart(64, '0');
 }
 
 /** Convert base64 string to Uint8Array */

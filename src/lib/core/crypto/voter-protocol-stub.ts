@@ -9,11 +9,11 @@
 /** BN254 scalar field modulus (Fr order) */
 export const BN254_MODULUS = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
-/** Number of public inputs in three-tree circuit */
-export const THREE_TREE_PUBLIC_INPUT_COUNT = 5;
+/** Number of public inputs in three-tree circuit (29 two-tree + engagement_root + engagement_tier) */
+export const THREE_TREE_PUBLIC_INPUT_COUNT = 31;
 
 /** Circuit depth type — stub for type imports */
-export type CircuitDepth = 10 | 20 | 32;
+export type CircuitDepth = 18 | 20 | 22 | 24;
 
 /** Three-tree proof input — stub interface */
 export interface ThreeTreeProofInput {

@@ -79,7 +79,7 @@ async function getBarretenbergSync(): Promise<BarretenbergSyncType> {
 	return bbSyncInstance;
 }
 
-import { BN254_MODULUS } from '@voter-protocol/noir-prover';
+import { BN254_MODULUS } from '$lib/core/crypto/bn254';
 
 /**
  * Convert hex string to Fr (field element).
@@ -340,7 +340,7 @@ export async function poseidonHash(input: string): Promise<string> {
  * nullifier = poseidon2_hash2(identityCommitment, actionDomain)
  *
  * NUL-001 fix: Uses identity_commitment (deterministic per verified person from
- * self.xyz/didit) instead of user_secret. This prevents Sybil attacks via
+ * identity verification) instead of user_secret. This prevents Sybil attacks via
  * re-registration — same person always produces same nullifier for same action.
  *
  * CVE-002 fix: action_domain is a PUBLIC contract-controlled field that

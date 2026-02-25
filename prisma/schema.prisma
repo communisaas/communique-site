@@ -109,6 +109,12 @@ model User {
 
   verification_sessions VerificationSession[]
 
+  // === SHADOW ATLAS REGISTRATION (Three-Tree ZK Architecture) ===
+  shadow_atlas_registration ShadowAtlasRegistration?
+
+  // === VERIFICATION AUDIT (Compliance Trail) ===
+  verification_audits VerificationAudit[]
+
   @@map("user")
 }
 
@@ -187,6 +193,9 @@ model Template {
 
   // NEW: Verifiable messages (pseudonymous, NO user linkage)
   messages Message[]
+
+  // Staked deliberation (DebateMarket.sol off-chain content storage)
+  debates Debate[]
 
   @@index([verification_status])
   @@index([country_code])
@@ -708,6 +717,8 @@ model Submission {
   created_at DateTime @default(now()) @map("created_at")
   updated_at DateTime @updatedAt @map("updated_at")
 
+  retry SubmissionRetry?
+
   @@index([pseudonymous_id])
   @@index([template_id])
   @@index([delivery_status])
@@ -877,4 +888,181 @@ model ResolvedContact {
   @@unique([orgKey, title])
   @@index([expiresAt])
   @@map("resolved_contact")
+}
+
+// ============================================================================
+// Staked Deliberation — DebateMarket.sol off-chain content storage
+// Arguments are content-addressed: body stored here, bodyHash stored on-chain.
+// No CoSign model — co-signs are on-chain only (stakeRecords mapping).
+// Aggregate caches (co_sign_count, total_stake) updated by event indexer.
+// ============================================================================
+
+model Debate {
+  id                  String   @id @default(cuid())
+  template_id         String   @map("template_id")
+
+  // On-chain identifiers
+  debate_id_onchain   String   @unique @map("debate_id_onchain") // bytes32 from proposeDebate()
+  action_domain       String   @map("action_domain") // Derived debate action domain (BN254)
+  proposition_hash    String   @map("proposition_hash") // keccak256(proposition_text)
+
+  // Proposition content (stored off-chain, hash on-chain)
+  proposition_text    String   @map("proposition_text")
+
+  // Debate parameters
+  deadline            DateTime
+  jurisdiction_size   Int      @default(0) @map("jurisdiction_size")
+  status              String   @default("active") // 'active' | 'resolved'
+
+  // Aggregate metrics (mirrors on-chain, updated via event indexer)
+  argument_count       Int     @default(0) @map("argument_count")
+  unique_participants  Int     @default(0) @map("unique_participants")
+  total_stake          BigInt  @default(0) @map("total_stake")
+
+  // Resolution (populated after resolveDebate())
+  winning_argument_index  Int?    @map("winning_argument_index")
+  winning_stance          String? @map("winning_stance")
+  resolved_at             DateTime? @map("resolved_at")
+
+  // Proposer (pseudonymous — wallet address, not identity)
+  proposer_address    String   @map("proposer_address")
+  proposer_bond       BigInt   @map("proposer_bond")
+
+  // LMSR market state (populated after first epoch)
+  market_status       String   @default("pre_market") @map("market_status") // 'pre_market' | 'active' | 'resolved'
+  market_liquidity    BigInt?  @map("market_liquidity") // LMSR b parameter (SD59x18 raw)
+  current_prices      Json?    @map("current_prices") // { "0": "0.333", "1": "0.333", "2": "0.333" }
+  current_epoch       Int      @default(0) @map("current_epoch")
+  trade_deadline      DateTime? @map("trade_deadline") // current epoch commit deadline
+  resolution_deadline DateTime? @map("resolution_deadline") // market resolution deadline
+
+  // Timestamps
+  created_at          DateTime @default(now()) @map("created_at")
+  updated_at          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  template            Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  arguments           DebateArgument[]
+
+  @@index([template_id])
+  @@index([status])
+  @@index([debate_id_onchain])
+  @@map("debate")
+}
+
+model DebateArgument {
+  id              String   @id @default(cuid())
+  debate_id       String   @map("debate_id")
+  argument_index  Int      @map("argument_index") // On-chain index in debate.arguments[]
+
+  // Content (stored off-chain, bodyHash on-chain)
+  stance          String   // 'SUPPORT' | 'OPPOSE' | 'AMEND'
+  body            String
+  body_hash       String   @map("body_hash") // keccak256(body)
+  amendment_text  String?  @map("amendment_text") // Only for AMEND stance
+  amendment_hash  String?  @map("amendment_hash")
+
+  // Scoring (from on-chain events, updated by indexer)
+  stake_amount     BigInt   @map("stake_amount")
+  engagement_tier  Int      @map("engagement_tier")
+  weighted_score   BigInt   @map("weighted_score") // sqrt(stake) * 2^tier
+  total_stake      BigInt   @default(0) @map("total_stake") // Including co-signs
+  co_sign_count    Int      @default(0) @map("co_sign_count")
+
+  // LMSR pricing (updated by chain event indexer)
+  current_price    String?  @map("current_price") // "0.42" (decimal string)
+  price_history    Json?    @map("price_history") // [{ epoch: 0, price: "0.333", timestamp: "..." }, ...]
+  position_count   Int      @default(0) @map("position_count") // total unique traders on this argument
+
+  // Timestamps
+  created_at       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  debate           Debate   @relation(fields: [debate_id], references: [id], onDelete: Cascade)
+
+  @@unique([debate_id, argument_index])
+  @@index([debate_id])
+  @@index([weighted_score])
+  @@map("debate_argument")
+}
+
+// =============================================================================
+// SHADOW ATLAS REGISTRATION (Three-Tree Architecture)
+// =============================================================================
+
+/// Tracks user registration in the Shadow Atlas identity tree (Tree 1).
+/// The leaf hash is Poseidon2_H4(user_secret, cell_id, registration_salt, authority_level),
+/// computed entirely in the browser. Only the leaf hash and Merkle proof are stored here.
+model ShadowAtlasRegistration {
+  id                    String   @id @default(cuid())
+  user_id               String   @unique @map("user_id")
+  congressional_district String  @map("congressional_district")
+  identity_commitment   String   @map("identity_commitment")
+  leaf_index            Int      @map("leaf_index")
+  merkle_root           String   @map("merkle_root")
+  merkle_path           Json     @map("merkle_path") // string[] of sibling hashes
+  credential_type       String   @map("credential_type") // 'three-tree'
+  cell_id               String?  @map("cell_id") // Census block GEOID (nullable for privacy)
+  verification_method   String   @map("verification_method") // 'mdl' | 'digital-credentials-api'
+  verification_id       String   @map("verification_id")
+  verification_timestamp DateTime @map("verification_timestamp")
+  registration_status   String   @default("registered") @map("registration_status")
+  expires_at            DateTime @map("expires_at")
+  created_at            DateTime @default(now()) @map("created_at")
+  updated_at            DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([identity_commitment])
+  @@index([registration_status])
+  @@map("shadow_atlas_registration")
+}
+
+// =============================================================================
+// VERIFICATION AUDIT (Compliance Trail)
+// =============================================================================
+
+/// Audit log for identity verification events. Tracks verification attempts
+/// and outcomes for compliance reporting. No PII stored — only method, result,
+/// and timestamps.
+model VerificationAudit {
+  id                  String   @id @default(cuid())
+  user_id             String   @map("user_id")
+  verification_method String   @map("verification_method")
+  result              String   @map("result") // 'success' | 'failure' | 'expired'
+  error_code          String?  @map("error_code")
+  ip_hash             String?  @map("ip_hash") // SHA-256 of IP for rate limiting, not PII
+  created_at          DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([created_at])
+  @@map("verification_audit")
+}
+
+// ============= SUBMISSION RETRY QUEUE =============
+// Database-backed retry queue for failed blockchain submissions.
+// Exponential backoff: 30s, 60s, 120s, 240s → exhausted after 4 attempts.
+// Idempotency via nullifier check against on-chain state.
+
+model SubmissionRetry {
+  id              String   @id @default(cuid())
+  submission_id   String   @unique @map("submission_id")
+  nullifier       String   @map("nullifier")
+  proof_hex       String   @map("proof_hex")
+  public_inputs   Json     @map("public_inputs") // string[] — 31 field elements (three-tree circuit)
+  verifier_depth  Int      @map("verifier_depth")
+  retry_count     Int      @default(0) @map("retry_count")
+  next_retry_at   DateTime @map("next_retry_at")
+  status          String   @default("pending") @map("status") // 'pending' | 'succeeded' | 'exhausted'
+  last_error      String?  @map("last_error")
+  created_at      DateTime @default(now()) @map("created_at")
+  updated_at      DateTime @updatedAt @map("updated_at")
+
+  submission Submission @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+
+  @@index([status, next_retry_at])
+  @@index([nullifier])
+  @@map("submission_retry")
 }

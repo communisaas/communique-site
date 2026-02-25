@@ -15,15 +15,15 @@
  * Three-tree: initializeThreeTreeProver() → ThreeTreeNoirProver.init() → prover.generateProof() → ThreeTreeProofResult
  */
 
-import type { CircuitDepth } from '@voter-protocol/noir-prover';
+import type { CircuitDepth } from '$lib/core/crypto/noir-prover-shim';
 import {
-	BN254_MODULUS,
 	getThreeTreeProverForDepth,
 	type ThreeTreeNoirProver,
 	type ThreeTreeProofInput,
 	type ThreeTreeProofResult as NoirThreeTreeProofResult,
 	THREE_TREE_PUBLIC_INPUT_COUNT
-} from '@voter-protocol/noir-prover';
+} from '$lib/core/crypto/noir-prover-shim';
+import { BN254_MODULUS } from '$lib/core/crypto/bn254';
 
 /**
  * Circuit depth for Merkle tree proofs. Controls path length validation and tree capacity (2^depth leaves).

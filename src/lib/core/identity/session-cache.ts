@@ -44,7 +44,7 @@ export interface SessionCredential {
 	/** Verification status */
 	isVerified: boolean;
 	/** Verification method used */
-	verificationMethod: 'nfc-passport' | 'government-id' | 'mdl';
+	verificationMethod: 'digital-credentials-api' | 'mdl' | 'nfc-passport' | 'government-id';
 	/** Congressional district (e.g., "CA-12") */
 	congressionalDistrict?: string;
 	/** Encrypted blob ID in Postgres */
@@ -174,7 +174,7 @@ function deserializeAfterDecryption(data: Record<string, unknown>): SessionCrede
 	return {
 		userId: data.userId as string,
 		isVerified: data.isVerified as boolean,
-		verificationMethod: data.verificationMethod as 'nfc-passport' | 'government-id' | 'mdl',
+		verificationMethod: data.verificationMethod as SessionCredential['verificationMethod'],
 		congressionalDistrict: data.congressionalDistrict as string | undefined,
 		blobId: data.blobId as string,
 		encryptedAt: data.encryptedAt as string,

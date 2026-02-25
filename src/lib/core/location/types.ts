@@ -124,7 +124,7 @@ export const SIGNAL_CONFIDENCE_WEIGHTS: Record<LocationSignalType, number> = {
 	oauth: 0.8, // High - verified with OAuth provider
 	behavioral: 0.9, // Very high - revealed preference from template engagement
 	user_selected: 0.9, // Very high - explicit user intent from breadcrumb selection
-	verified: 1.0 // Absolute - cryptographic proof from self.xyz/Didit.me
+	verified: 1.0 // Absolute - cryptographic proof from mDL Digital Credentials API
 };
 
 /**

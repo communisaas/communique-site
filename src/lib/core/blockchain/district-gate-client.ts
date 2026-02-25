@@ -33,7 +33,7 @@ import {
 	solidityPacked,
 	type TransactionReceipt
 } from 'ethers';
-import { BN254_MODULUS } from '@voter-protocol/noir-prover';
+import { BN254_MODULUS } from '$lib/core/crypto/bn254';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CIRCUIT BREAKER

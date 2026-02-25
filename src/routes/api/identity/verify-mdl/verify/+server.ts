@@ -2,6 +2,9 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
 import { processCredentialResponse } from '$lib/core/identity/mdl-verification';
+import {
+	bindIdentityCommitment
+} from '$lib/core/identity/identity-binding';
 
 /**
  * mDL Verification Verify Endpoint
@@ -74,46 +77,75 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			return json({ error: result.error, message: result.message }, { status: 422 });
 		}
 
+		// Identity commitment was computed INSIDE the privacy boundary
+		// (mdl-verification.ts). Raw document_number and birth_date never reach this endpoint.
+		let identityCommitment: string;
+		if (result.identityCommitment) {
+			identityCommitment = result.identityCommitment;
+		} else {
+			// Wallet did not disclose birth_date / document_number — derive from credentialHash
+			// Reduce mod BN254 to ensure valid field element (~25% of raw SHA-256 exceed modulus)
+			const BN254_MODULUS =
+				21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+			const hashValue = BigInt('0x' + result.credentialHash);
+			const reduced = hashValue % BN254_MODULUS;
+			identityCommitment = reduced.toString(16).padStart(64, '0');
+			console.warn(
+				'[mDL Verify] Identity fields not disclosed — using reduced credentialHash as fallback commitment'
+			);
+		}
+
+		// Bind identity commitment for Sybil detection and account merging
+		// If this commitment already exists on another user, accounts are merged
+		const bindingResult = await bindIdentityCommitment(session.userId, identityCommitment);
+
+		// Use the canonical userId after potential merge
+		const canonicalUserId = bindingResult.userId;
+
+		if (bindingResult.linkedToExisting) {
+			console.log('[mDL Verify] Account merged:', {
+				from: session.userId,
+				to: canonicalUserId,
+				accountsMoved: bindingResult.mergeDetails?.accountsMoved
+			});
+		}
+
 		// Update user record with mDL verification
-		// Use updateMany with lt condition to only upgrade trust_tier, never downgrade
-		// CRITICAL: Set document_type='mdl' and identity_commitment so deriveTrustTier()
-		// and deriveAuthorityLevel() correctly compute Tier 5 / Level 5 on subsequent sessions
-		await prisma.user.updateMany({
-			where: { id: session.userId, trust_tier: { lt: 5 } },
-			data: {
-				verified_at: new Date(),
-				address_verification_method: 'mdl',
-				address_verified_at: new Date(),
-				trust_tier: 5,
-				document_type: 'mdl',
-				identity_commitment: result.credentialHash
-			}
+		// Always set verification metadata; only upgrade trust_tier (never downgrade)
+		const now = new Date();
+		const user = await prisma.user.findUnique({
+			where: { id: canonicalUserId },
+			select: { trust_tier: true }
 		});
 
-		// Also update verification metadata for users already at tier 4+
-		// (they may be re-verifying with mDL after a different method)
 		await prisma.user.update({
-			where: { id: session.userId },
+			where: { id: canonicalUserId },
 			data: {
+				verified_at: now,
 				address_verification_method: 'mdl',
-				address_verified_at: new Date(),
+				address_verified_at: now,
 				document_type: 'mdl',
-				identity_commitment: result.credentialHash
+				// Only upgrade trust_tier, never downgrade
+				...((!user?.trust_tier || user.trust_tier < 5) ? { trust_tier: 5 } : {})
 			}
 		});
 
 		console.log('[mDL Verify] Success:', {
-			userId: session.userId,
+			userId: canonicalUserId,
 			district: result.district,
 			state: result.state,
-			credentialHash: result.credentialHash.slice(0, 12) + '...'
+			commitmentFingerprint: identityCommitment.slice(0, 16) + '...',
+			identityFieldsAvailable: !!result.identityCommitment
 		});
 
 		return json({
 			success: true,
 			district: result.district,
 			state: result.state,
-			credentialHash: result.credentialHash
+			credentialHash: result.credentialHash,
+			// Signal to client whether Shadow Atlas registration can proceed
+			identityCommitmentBound: true,
+			userId: canonicalUserId
 		});
 	} catch (err) {
 		console.error('[mDL Verify] Error:', err);

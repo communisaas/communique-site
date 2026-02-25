@@ -27,7 +27,7 @@ import { json } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db';
 import type { RequestHandler } from './$types';
 import { registerLeaf, replaceLeaf } from '$lib/core/shadow-atlas/client';
-import { BN254_MODULUS } from '@voter-protocol/noir-prover';
+import { BN254_MODULUS } from '$lib/core/crypto/bn254';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {

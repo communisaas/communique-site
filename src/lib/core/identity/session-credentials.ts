@@ -104,7 +104,7 @@ export interface SessionCredential {
 
 	// ═══════════════════════════════════════════════════════════════════════
 
-	/** Verification method used */
+	/** Verification method used ('self.xyz' and 'didit' retained for database backward compatibility) */
 	verificationMethod: 'self.xyz' | 'didit' | 'digital-credentials-api';
 
 	/**
@@ -146,6 +146,7 @@ interface StoredCredential {
 	merklePath?: string[];
 	merkleRoot?: string;
 	congressionalDistrict?: string;
+	/** Legacy values 'self.xyz' | 'didit' retained for migration compatibility */
 	verificationMethod?: 'self.xyz' | 'didit' | 'digital-credentials-api';
 	createdAt?: Date;
 

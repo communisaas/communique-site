@@ -12,7 +12,7 @@
  *
  * Flow:
  * 1. User signs up via OAuth (Google, Twitter, etc.)
- * 2. User completes identity verification (self.xyz or Didit.me)
+ * 2. User completes identity verification (Digital Credentials API / mDL)
  * 3. bindIdentityCommitment() is called with the cryptographic commitment
  * 4. If commitment already exists for another user, accounts are MERGED
  * 5. Future logins with any OAuth provider recognize the same identity
@@ -20,7 +20,7 @@
 
 import { prisma } from '$lib/core/db';
 import { createHash } from 'crypto';
-import { BN254_MODULUS } from '@voter-protocol/noir-prover';
+import { BN254_MODULUS } from '$lib/core/crypto/bn254';
 
 // =============================================================================
 // TYPES
@@ -260,6 +260,25 @@ async function mergeAccounts(sourceUserId: string, targetUserId: string): Promis
 			if (isPrismaUniqueViolation) {
 				// Both users have same rep — delete source user's duplicates
 				await tx.user_representatives.deleteMany({
+					where: { user_id: sourceUserId }
+				});
+			} else {
+				throw e;
+			}
+		}
+
+		// Move Shadow Atlas registrations (NUL-001: preserve nullifier continuity)
+		try {
+			await tx.shadowAtlasRegistration.updateMany({
+				where: { user_id: sourceUserId },
+				data: { user_id: targetUserId }
+			});
+		} catch (e: unknown) {
+			const isPrismaUniqueViolation =
+				e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'P2002';
+			if (isPrismaUniqueViolation) {
+				// Both users registered — keep target's registration, delete source's
+				await tx.shadowAtlasRegistration.deleteMany({
 					where: { user_id: sourceUserId }
 				});
 			} else {

@@ -23,6 +23,7 @@ export {
 // Action domain builder
 export {
 	buildActionDomain,
+	buildDebateActionDomain,
 	isValidActionDomain,
 	type ActionDomainParams,
 	type JurisdictionType
