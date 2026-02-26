@@ -334,8 +334,7 @@ export function generateMailtoUrl(
 		}
 
 		// Direct recipient delivery
-		const recipients =
-			resolved.recipients.length > 0 ? resolved.recipients.join(',') : 'test@example.com'; // Fallback for development
+		const recipients = resolved.recipients.join(',');
 
 		const bodyEncoded = encodeURIComponent(resolved.body || '');
 

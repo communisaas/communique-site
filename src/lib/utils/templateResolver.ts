@@ -9,7 +9,6 @@ import type { Template, EmailFlowTemplate } from '$lib/types/template';
 import type { HeaderTemplate } from '$lib/types/any-replacements';
 import type { EmailServiceUser } from '$lib/types/user';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
-import { z } from 'zod';
 
 // Enhanced interface with better type safety
 export interface ResolvedTemplate {
@@ -261,35 +260,18 @@ export function resolveTemplate(
 	const isCongressional =
 		template.deliveryMethod === 'certified' || template.deliveryMethod === 'cwc';
 
-	// Parse recipient_config safely with Zod validation
-	const RecipientConfigSchema = z.unknown();
-	let recipientConfig: unknown = null;
-
-	if (typeof template.recipient_config === 'string') {
+	// Extract recipient emails from recipient_config (JSON object or string)
+	let recipientConfig: unknown = template.recipient_config;
+	if (typeof recipientConfig === 'string') {
 		try {
-			const parsed = JSON.parse(template.recipient_config);
-			const result = RecipientConfigSchema.safeParse(parsed);
-			if (result.success) {
-				recipientConfig = result.data;
-			} else {
-				console.warn('[TemplateResolver] Invalid recipient_config:', result.error.flatten());
-			}
-		} catch (error) {
-			console.warn('[TemplateResolver] Failed to parse recipient_config JSON:', error);
+			recipientConfig = JSON.parse(recipientConfig);
+		} catch {
+			recipientConfig = null;
 		}
-	} else {
-		const result = RecipientConfigSchema.safeParse(template.recipient_config);
-		recipientConfig = result.success ? result.data : null;
 	}
 
-	let recipients: string[] = [];
-	try {
-		recipients = extractRecipientEmails(recipientConfig)
-			.filter(e => e !== '__CONGRESSIONAL__'); // Strip legacy sentinel from stored templates
-	} catch (error) {
-		console.warn('[TemplateResolver] Failed to extract recipient emails:', error);
-		recipients = [];
-	}
+	const recipients = extractRecipientEmails(recipientConfig)
+		.filter(e => e !== '__CONGRESSIONAL__');
 
 	let routingEmail: string | undefined;
 	if (isCongressional) {

@@ -25,6 +25,7 @@ import {
 	logLLMOperation
 } from '$lib/server/llm-cost-protection';
 import { moderatePromptOnly } from '$lib/core/server/moderation';
+import { traceRequest } from '$lib/server/agent-trace';
 
 interface RequestBody {
 	subject_line: string;
@@ -87,6 +88,23 @@ export const POST: RequestHandler = async (event) => {
 
 	const userId = session.userId;
 	const traceId = crypto.randomUUID();
+
+	traceRequest(traceId, 'decision-makers', {
+		metadata: {
+			subjectLength: subject_line.length,
+			coreMessageLength: core_message.length,
+			topicCount: topics.length,
+			topics,
+			hasVoiceSample: !!voice_sample,
+			targetType: body.target_type || 'local_government',
+			targetEntity: body.target_entity || null
+		},
+		content: {
+			subjectLine: subject_line,
+			coreMessage: core_message,
+			voiceSample: voice_sample
+		}
+	}, { userId });
 
 	// Prompt injection detection
 	// NOTE: core_message is AI-refined (from subject-line agent), not raw user input.

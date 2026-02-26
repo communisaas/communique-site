@@ -32,6 +32,7 @@ import {
 	logLLMOperation
 } from '$lib/server/llm-cost-protection';
 import { moderatePromptOnly } from '$lib/core/server/moderation';
+import { traceRequest } from '$lib/server/agent-trace';
 
 interface RequestBody {
 	message: string;
@@ -62,6 +63,15 @@ export const POST: RequestHandler = async (event) => {
 			headers: { 'Content-Type': 'application/json' }
 		});
 	}
+
+	traceRequest(traceId, 'subject-line', {
+		metadata: {
+			messageLength: body.message.length
+		},
+		content: {
+			message: body.message
+		}
+	}, { userId: userContext.userId });
 
 	// Prompt injection detection
 	const injectionCheck = await moderatePromptOnly(body.message);

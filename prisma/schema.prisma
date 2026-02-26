@@ -891,6 +891,33 @@ model ResolvedContact {
 }
 
 // ============================================================================
+// Agent Trace — Fire-and-forget observability for LLM agent pipelines
+// Tracks requests, completions, costs, and errors per traceId.
+// TTL-based: AGENT_TRACE_TTL_DAYS (default 30), purged by daily cron.
+// ============================================================================
+
+model AgentTrace {
+  id         String   @id @default(cuid())
+  traceId    String   @map("trace_id")
+  userId     String?  @map("user_id")
+  endpoint   String
+  eventType  String   @map("event_type")
+  payload    Json     @default("{}")
+  success    Boolean?
+  durationMs Int?     @map("duration_ms")
+  costUsd    Float?   @map("cost_usd")
+  createdAt  DateTime @default(now()) @map("created_at")
+  expiresAt  DateTime @map("expires_at")
+
+  @@index([traceId])
+  @@index([userId, createdAt])
+  @@index([endpoint, createdAt])
+  @@index([eventType, createdAt])
+  @@index([expiresAt])
+  @@map("agent_trace")
+}
+
+// ============================================================================
 // Staked Deliberation — DebateMarket.sol off-chain content storage
 // Arguments are content-addressed: body stored here, bodyHash stored on-chain.
 // No CoSign model — co-signs are on-chain only (stakeRecords mapping).

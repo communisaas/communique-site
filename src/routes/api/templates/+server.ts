@@ -359,26 +359,14 @@ export const GET: RequestHandler = async () => {
 				scope: idToScope.get(template.id) || null,
 
 				recipientEmails: (() => {
-					// Validate and parse recipient_config
-					const RecipientConfigSchema = z.unknown();
-					let recipientConfig = null;
-
-					if (typeof template.recipient_config === 'string') {
+					let recipientConfig: unknown = template.recipient_config;
+					if (typeof recipientConfig === 'string') {
 						try {
-							const parsed = JSON.parse(template.recipient_config);
-							const result = RecipientConfigSchema.safeParse(parsed);
-							recipientConfig = result.success ? result.data : null;
-						} catch (error) {
-							console.warn(
-								`[Templates API] Failed to parse recipient_config for template ${template.id}:`,
-								error
-							);
+							recipientConfig = JSON.parse(recipientConfig);
+						} catch {
+							recipientConfig = null;
 						}
-					} else {
-						const result = RecipientConfigSchema.safeParse(template.recipient_config);
-						recipientConfig = result.success ? result.data : null;
 					}
-
 					return extractRecipientEmails(recipientConfig);
 				})()
 			};

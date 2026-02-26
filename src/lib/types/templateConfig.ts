@@ -111,6 +111,23 @@ export function extractRecipientEmails(recipient_config: unknown): string[] {
 	if (isValidRecipientConfig(recipient_config)) {
 		return recipient_config.emails;
 	}
+
+	// Fallback: extract emails from decisionMakers array when top-level emails is absent
+	if (recipient_config && typeof recipient_config === 'object' && recipient_config !== null) {
+		const config = recipient_config as Record<string, unknown>;
+		if (Array.isArray(config.decisionMakers)) {
+			const emails = config.decisionMakers
+				.map((dm: unknown) => {
+					if (dm && typeof dm === 'object' && dm !== null && 'email' in dm) {
+						return (dm as Record<string, unknown>).email;
+					}
+					return null;
+				})
+				.filter((e): e is string => typeof e === 'string' && e.length > 0 && e.includes('@'));
+			if (emails.length > 0) return emails;
+		}
+	}
+
 	return [];
 }
 
