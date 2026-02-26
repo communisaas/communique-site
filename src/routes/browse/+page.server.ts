@@ -22,15 +22,34 @@ export const load: PageServerLoad = async () => {
 			}
 		});
 
-		// Batch query: which templates have active debates?
-		let activeDebateTemplateIds = new Set<string>();
+		// Batch query: debate summaries for all templates
+		let debateSummaryMap = new Map<string, {
+			status: string;
+			winning_stance: string | null;
+			unique_participants: number;
+			argument_count: number;
+			deadline: Date;
+		}>();
 		try {
-			const activeDebates = await db.debate.findMany({
-				where: { status: 'active' },
-				select: { template_id: true },
+			const debates = await db.debate.findMany({
+				where: {
+					template_id: { in: dbTemplates.map(t => t.id) },
+					status: { not: 'cancelled' }
+				},
+				select: {
+					template_id: true,
+					status: true,
+					winning_stance: true,
+					unique_participants: true,
+					argument_count: true,
+					deadline: true,
+				},
+				orderBy: { created_at: 'desc' },
 				distinct: ['template_id']
 			});
-			activeDebateTemplateIds = new Set(activeDebates.map((d: { template_id: string }) => d.template_id));
+			for (const d of debates) {
+				debateSummaryMap.set(d.template_id, d);
+			}
 		} catch {
 			// debate table may not exist yet
 		}
@@ -89,7 +108,20 @@ export const load: PageServerLoad = async () => {
 				subject: template.title,
 
 				// === PERCEPTUAL ENCODING ===
-				hasActiveDebate: activeDebateTemplateIds.has(template.id),
+				hasActiveDebate: debateSummaryMap.has(template.id) &&
+					['active', 'resolving', 'awaiting_governance', 'under_appeal'].includes(
+						debateSummaryMap.get(template.id)!.status
+					),
+				debateSummary: debateSummaryMap.has(template.id) ? (() => {
+					const d = debateSummaryMap.get(template.id)!;
+					return {
+						status: d.status as 'active' | 'resolving' | 'resolved' | 'awaiting_governance' | 'under_appeal',
+						winningStance: d.winning_stance ?? undefined,
+						uniqueParticipants: d.unique_participants,
+						argumentCount: d.argument_count,
+						deadline: d.deadline?.toISOString() ?? undefined,
+					};
+				})() : undefined,
 
 				// === AGGREGATE METRICS (consistent structure) ===
 				verified_sends: template.verified_sends,

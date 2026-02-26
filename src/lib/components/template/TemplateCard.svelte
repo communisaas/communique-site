@@ -168,7 +168,34 @@
 	<div
 		class="mt-auto border-t border-slate-100/50 bg-gradient-to-br from-slate-50/30 to-violet-50/10 p-4"
 	>
-		{#if template.hasActiveDebate}
+		{#if template.debateSummary}
+			{@const ds = template.debateSummary}
+			<div class="mb-2 flex items-center gap-2 text-sm">
+				{#if ds.status === 'resolved'}
+					{#if ds.winningStance === 'SUPPORT'}
+						<span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/60 bg-emerald-50 px-2 py-0.5">
+							<span class="font-brand font-medium text-emerald-700">Community-reviewed</span>
+							<span class="text-xs text-emerald-600/70">&middot; {ds.uniqueParticipants}</span>
+						</span>
+					{:else if ds.winningStance === 'OPPOSE'}
+						<span class="inline-flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-slate-50 px-2 py-0.5">
+							<span class="font-brand font-medium text-slate-700">Debated</span>
+							<span class="text-xs text-slate-600/70">&middot; {ds.uniqueParticipants}</span>
+						</span>
+					{:else if ds.winningStance === 'AMEND'}
+						<span class="inline-flex items-center gap-1.5 rounded-full border border-amber-200/60 bg-amber-50 px-2 py-0.5">
+							<span class="font-brand font-medium text-amber-700">Amended</span>
+							<span class="text-xs text-amber-600/70">&middot; {ds.uniqueParticipants}</span>
+						</span>
+					{/if}
+				{:else if ds.status === 'active'}
+					<span class="debate-pulse h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
+					<span class="font-brand text-amber-600">{ds.uniqueParticipants} debating</span>
+				{:else}
+					<span class="font-brand text-slate-500">Resolving...</span>
+				{/if}
+			</div>
+		{:else if template.hasActiveDebate}
 			<div class="mb-2 flex items-center gap-2 text-sm">
 				<span class="debate-pulse h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
 				<span class="font-brand text-amber-600">Deliberating</span>

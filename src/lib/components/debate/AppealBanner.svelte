@@ -27,7 +27,7 @@
 
 	let confirmingAppeal = $state(false);
 
-	const appealTimeRemaining = $derived(() => {
+	const appealTimeRemaining = $derived.by(() => {
 		if (!appealDeadline) return null;
 		const now = Date.now();
 		const end = new Date(appealDeadline).getTime();
@@ -63,10 +63,10 @@
 						{#if appealBondAmount}
 							<span class="font-semibold text-slate-700">{appealBondAmount}</span> required.
 						{/if}
-						{#if appealTimeRemaining()}
+						{#if appealTimeRemaining}
 							<span class="inline-flex items-center gap-1 font-medium text-amber-700">
 								<Clock size={10} />
-								{appealTimeRemaining()} remaining
+								{appealTimeRemaining} remaining
 							</span>
 						{/if}
 					</p>

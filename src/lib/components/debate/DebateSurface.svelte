@@ -56,7 +56,7 @@
 	const canInitiate = $derived(userTrustTier >= 3 && debate === null);
 </script>
 
-<div class="mt-8 rounded-xl border border-amber-200/50 bg-amber-50/30 p-6">
+<div class="rounded-xl border border-amber-200/50 bg-amber-50/30 p-4 sm:p-6" data-debate-surface>
 	{#if debate}
 		<!-- Active or resolved debate — full panel, visible to all tiers -->
 		<div class="mb-4 flex items-center gap-2">

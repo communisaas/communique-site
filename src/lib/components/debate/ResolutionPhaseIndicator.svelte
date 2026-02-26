@@ -44,7 +44,7 @@
 
 	const config = $derived(PHASE_CONFIG[phase]);
 
-	const methodLabel = $derived(() => {
+	const methodLabel = $derived.by(() => {
 		if (!resolutionMethod) return '';
 		const labels: Record<string, string> = {
 			ai_community: 'AI + Community',
@@ -55,7 +55,7 @@
 	});
 
 	// Appeal countdown
-	const appealTimeRemaining = $derived(() => {
+	const appealTimeRemaining = $derived.by(() => {
 		if (!appealDeadline || phase !== 'under_appeal') return null;
 		const now = Date.now();
 		const end = new Date(appealDeadline).getTime();
@@ -87,16 +87,16 @@
 		{config.label}
 	</span>
 
-	{#if methodLabel() && phase === 'resolved'}
+	{#if methodLabel && phase === 'resolved'}
 		<span class="text-xs font-medium text-slate-500">
-			via {methodLabel()}
+			via {methodLabel}
 		</span>
 	{/if}
 
-	{#if appealTimeRemaining()}
+	{#if appealTimeRemaining}
 		<span class="inline-flex items-center gap-1 text-xs font-medium text-red-600">
 			<Clock size={12} />
-			{appealTimeRemaining()}
+			{appealTimeRemaining}
 		</span>
 	{/if}
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Users, TrendingUp } from '@lucide/svelte';
+	import { Users, TrendingUp, UserPlus } from '@lucide/svelte';
 	import type { ArgumentData } from '$lib/stores/debateState.svelte';
 	import TierExplanation from './TierExplanation.svelte';
 
@@ -24,9 +24,14 @@
 			};
 			tierBoundaries: Array<{ tier: number; label: string; minScore: number }>;
 		};
+		// Interaction affordances (Wave 4: co-sign + trade bridge)
+		canCoSign?: boolean;
+		onCoSign?: (argumentIndex: number) => void;
+		canTrade?: boolean;
+		onTradeOn?: (argumentIndex: number) => void;
 	}
 
-	let { argument, isWinner = false, rank, tierBreakdown }: Props = $props();
+	let { argument, isWinner = false, rank, tierBreakdown, canCoSign = false, onCoSign, canTrade = false, onTradeOn }: Props = $props();
 
 	const stanceBorder: Record<string, string> = {
 		SUPPORT: 'border-l-indigo-500',
@@ -47,12 +52,12 @@
 	};
 
 	// Format stake for display (6-decimal token → human readable)
-	const formattedStake = $derived(() => {
+	const formattedStake = $derived.by(() => {
 		const amount = Number(BigInt(argument.stakeAmount)) / 1e6;
 		return amount >= 1000 ? `$${(amount / 1000).toFixed(1)}k` : `$${amount.toFixed(2)}`;
 	});
 
-	const formattedWeight = $derived(() => {
+	const formattedWeight = $derived.by(() => {
 		const weight = Number(BigInt(argument.weightedScore));
 		return weight >= 1000 ? `${(weight / 1000).toFixed(1)}k` : weight.toString();
 	});
@@ -117,10 +122,10 @@
 	<div class="mt-3 flex items-center gap-4 text-xs text-slate-500">
 		<div class="flex items-center gap-1" title="Staked amount">
 			<TrendingUp class="h-3 w-3" />
-			<span>{formattedStake()}</span>
+			<span>{formattedStake}</span>
 		</div>
 		<div class="flex items-center gap-1" title="Weighted score: sqrt(stake) x 2^tier">
-			<span class="font-medium text-slate-700">Weight: {formattedWeight()}</span>
+			<span class="font-medium text-slate-700">Weight: {formattedWeight}</span>
 		</div>
 		{#if argument.coSignCount > 0}
 			<div class="flex items-center gap-1" title="Co-signers">
@@ -147,4 +152,29 @@
 			</div>
 		{/if}
 	</div>
+
+	{#if canCoSign || canTrade}
+		<div class="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2">
+			{#if canCoSign && onCoSign}
+				<button
+					class="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium
+						   text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+					onclick={() => onCoSign(argument.argumentIndex)}
+				>
+					<UserPlus class="h-3 w-3" />
+					Co-sign
+				</button>
+			{/if}
+			{#if canTrade && onTradeOn}
+				<button
+					class="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium
+						   text-indigo-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
+					onclick={() => onTradeOn(argument.argumentIndex)}
+				>
+					<TrendingUp class="h-3 w-3" />
+					Stake on this
+				</button>
+			{/if}
+		</div>
+	{/if}
 </article>

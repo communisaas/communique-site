@@ -10,7 +10,7 @@
 
   let { status, progress, estimatedSeconds, elapsedSeconds }: Props = $props();
 
-  const statusConfig = $derived(() => {
+  const statusConfig = $derived.by(() => {
     switch (status) {
       case 'generating':
         return {
@@ -43,7 +43,7 @@
 </script>
 
 {#if status !== 'idle'}
-  {@const config = statusConfig()}
+  {@const config = statusConfig}
   {#if config}
     <div
       class="flex items-center gap-2.5 rounded-lg border border-slate-100 border-l-[3px] {config.border} {config.bg} px-3 py-2"

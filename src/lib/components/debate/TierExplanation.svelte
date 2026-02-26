@@ -64,7 +64,7 @@
 	const hasBreakdown = $derived(!!metrics && !!factors);
 
 	// Progress toward next tier (0-100)
-	const progress = $derived(() => {
+	const progress = $derived.by(() => {
 		if (!compositeScore || !nextBoundary) return 100;
 		const currentMin = currentBoundary?.minScore ?? 0;
 		const nextMin = nextBoundary.minScore;
@@ -130,7 +130,7 @@
 						<div class="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
 							<div
 								class="h-full rounded-full transition-all duration-500 {colors.ring}"
-								style="width: {progress()}%"
+								style="width: {progress}%"
 							></div>
 						</div>
 						<div class="flex justify-between mt-0.5 text-[10px] text-slate-400">

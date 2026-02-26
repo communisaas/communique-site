@@ -103,7 +103,7 @@
 {:else}
 	<!-- Other pages: Header padding for fixed IdentityStrip -->
 	<div class="relative min-h-screen pt-[48px]">
-		<div class="p-6 md:p-10" class:pb-24={isTemplatePage} class:sm:pb-10={isTemplatePage}>
+		<div class="p-6 md:p-10" class:pb-24={isTemplatePage} class:sm:pb-10={isTemplatePage} class:max-w-7xl={isTemplatePage} class:mx-auto={isTemplatePage}>
 			<ErrorBoundary fallback="detailed" showRetry={true}>
 				{@render children()}
 			</ErrorBoundary>

@@ -38,7 +38,7 @@
   );
 
   /** Format total stake from 6-decimal BigInt string to human-readable dollars. */
-  const formattedStake = $derived(() => {
+  const formattedStake = $derived.by(() => {
     const raw = Number(totalStake) / 1e6;
     if (raw >= 1000) return '$' + (raw / 1000).toFixed(1) + 'k';
     if (raw >= 1) return '$' + raw.toFixed(0);
@@ -46,7 +46,7 @@
   });
 
   /** Time remaining relative to deadline. */
-  const timeRemaining = $derived(() => {
+  const timeRemaining = $derived.by(() => {
     const now = Date.now();
     const end = new Date(deadline).getTime();
     const diff = end - now;
@@ -62,7 +62,7 @@
   // Mini price bar — stance-weighted proportions
   // ---------------------------------------------------------------------------
 
-  const priceBarSegments = $derived(() => {
+  const priceBarSegments = $derived.by(() => {
     if (!prices) return null;
 
     const entries = Object.values(prices);
@@ -136,9 +136,9 @@
   </div>
 
   <!-- Mini price bar ------------------------------------------------------ -->
-  {#if priceBarSegments()}
+  {#if priceBarSegments}
     <div class="mb-3 flex h-1 w-full overflow-hidden rounded-full bg-slate-100">
-      {#each priceBarSegments()!.segments as pct, i}
+      {#each priceBarSegments!.segments as pct, i}
         <div
           class="h-full transition-all duration-300
             {i % 3 === 0 ? 'bg-indigo-500' : i % 3 === 1 ? 'bg-red-400' : 'bg-amber-400'}"
@@ -159,12 +159,12 @@
 
     <span class="inline-flex items-center gap-1">
       <Coins class="h-3.5 w-3.5 text-slate-400" />
-      <span class="font-mono">{formattedStake()}</span>
+      <span class="font-mono">{formattedStake}</span>
     </span>
 
     <span class="inline-flex items-center gap-1">
       <Clock class="h-3.5 w-3.5 text-slate-400" />
-      <span class="font-mono">{timeRemaining()}</span>
+      <span class="font-mono">{timeRemaining}</span>
     </span>
 
     <span class="inline-flex items-center gap-1">

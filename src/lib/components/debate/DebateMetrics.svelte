@@ -19,14 +19,14 @@
 		status
 	}: Props = $props();
 
-	const formattedStake = $derived(() => {
+	const formattedStake = $derived.by(() => {
 		const amount = Number(BigInt(totalStake)) / 1e6;
 		if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
 		if (amount >= 1_000) return `$${(amount / 1_000).toFixed(1)}k`;
 		return `$${amount.toFixed(2)}`;
 	});
 
-	const timeRemaining = $derived(() => {
+	const timeRemaining = $derived.by(() => {
 		if (status !== 'active') return status === 'resolved' ? 'Resolved' : 'Deadline passed';
 		const now = Date.now();
 		const end = new Date(deadline).getTime();
@@ -40,7 +40,7 @@
 		return `${minutes}m remaining`;
 	});
 
-	const participationDepth = $derived(() => {
+	const participationDepth = $derived.by(() => {
 		if (jurisdictionSize <= 0) return null;
 		const pct = (uniqueParticipants / jurisdictionSize) * 100;
 		return pct < 0.1 ? '<0.1%' : `${pct.toFixed(1)}%`;
@@ -53,16 +53,16 @@
 		<span>
 			<span class="font-medium text-slate-800">{uniqueParticipants}</span>
 			participant{uniqueParticipants === 1 ? '' : 's'}
-			{#if participationDepth()}
-				<span class="text-slate-400">({participationDepth()} of district)</span>
+			{#if participationDepth}
+				<span class="text-slate-400">({participationDepth} of district)</span>
 			{/if}
 		</span>
 	</div>
 
-	<div class="flex items-center gap-1.5" title="Total staked: {formattedStake()}">
+	<div class="flex items-center gap-1.5" title="Total staked: {formattedStake}">
 		<Coins class="h-4 w-4 text-slate-400" />
 		<span>
-			<span class="font-medium text-slate-800">{formattedStake()}</span> staked
+			<span class="font-medium text-slate-800">{formattedStake}</span> staked
 		</span>
 	</div>
 
@@ -77,6 +77,6 @@
 		class:text-slate-500={status !== 'active'}
 	>
 		<Clock class="h-4 w-4" />
-		<span class="font-medium">{timeRemaining()}</span>
+		<span class="font-medium">{timeRemaining}</span>
 	</div>
 </div>

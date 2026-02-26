@@ -40,7 +40,7 @@
     Object.keys(prices).length > 0 && Object.values(prices).some((p) => p > 0),
   );
 
-  const stanceTotals = $derived(() => {
+  const stanceTotals = $derived.by(() => {
     const totals: Partial<Record<Stance, number>> = {};
     for (const arg of args) {
       const price = prices[arg.argumentIndex] ?? 0;
@@ -49,8 +49,8 @@
     return totals;
   });
 
-  const segments = $derived(() => {
-    const totals = stanceTotals();
+  const segments = $derived.by(() => {
+    const totals = stanceTotals;
     const raw: { stance: Stance; value: number }[] = [];
 
     for (const stance of STANCE_ORDER) {
@@ -71,8 +71,8 @@
   });
 
   // Normalize so percentages add to exactly 100 after applying minimums
-  const normalizedSegments = $derived(() => {
-    const segs = segments();
+  const normalizedSegments = $derived.by(() => {
+    const segs = segments;
     if (segs.length === 0) return [];
 
     const total = segs.reduce((acc, s) => acc + s.pct, 0);
@@ -94,7 +94,7 @@
   };
 
   $effect(() => {
-    const segs = normalizedSegments();
+    const segs = normalizedSegments;
     for (const stance of STANCE_ORDER) {
       const seg = segs.find((s) => s.stance === stance);
       const target = seg ? seg.pct : 0;
@@ -106,14 +106,14 @@
     }
   });
 
-  const visibleStances = $derived(() => {
-    const segs = normalizedSegments();
+  const visibleStances = $derived.by(() => {
+    const segs = normalizedSegments;
     return STANCE_ORDER.filter((stance) => segs.some((s) => s.stance === stance));
   });
 
   // Display percentages (rounded, derived from raw totals for label accuracy)
-  const displayPcts = $derived(() => {
-    const totals = stanceTotals();
+  const displayPcts = $derived.by(() => {
+    const totals = stanceTotals;
     const sum = Object.values(totals).reduce((a, b) => a + b, 0);
     if (sum === 0) return {};
 
@@ -135,10 +135,10 @@
       role="img"
       aria-label="Market price distribution"
     >
-      {#each visibleStances() as stance, i}
+      {#each visibleStances as stance, i}
         {@const config = STANCE_CONFIG[stance]}
         {@const isFirst = i === 0}
-        {@const isLast = i === visibleStances().length - 1}
+        {@const isLast = i === visibleStances.length - 1}
         {@const w = stance === 'SUPPORT' ? $supportWidth : stance === 'OPPOSE' ? $opposeWidth : $amendWidth}
         <div
           class="{config.color} transition-none {isFirst ? 'rounded-l-lg' : ''} {isLast ? 'rounded-r-lg' : ''}"
@@ -154,9 +154,9 @@
 
     {#if showLabels}
       <div class="mt-2 flex items-center gap-4">
-        {#each visibleStances() as stance}
+        {#each visibleStances as stance}
           {@const config = STANCE_CONFIG[stance]}
-          {@const pct = displayPcts()[stance] ?? 0}
+          {@const pct = displayPcts[stance] ?? 0}
           <div class="flex items-center gap-1.5">
             <span class="inline-block h-2 w-2 rounded-full {config.color}"></span>
             <span class="text-sm font-medium text-slate-600">

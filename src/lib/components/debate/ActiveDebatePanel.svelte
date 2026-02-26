@@ -10,6 +10,7 @@
 	import { ShieldCheck } from '@lucide/svelte';
 	import type { DebateData } from '$lib/stores/debateState.svelte';
 	import { debateState } from '$lib/stores/debateState.svelte';
+	import { computeStanceCounts } from '$lib/utils/debate-stats';
 
 	interface Props {
 		debate: DebateData;
@@ -39,17 +40,21 @@
 	type StanceFilter = 'all' | 'SUPPORT' | 'OPPOSE' | 'AMEND';
 	let stanceFilter = $state<StanceFilter>('all');
 
+	// Pre-select argument in TradePanel when user clicks "Stake on this" on an ArgumentCard
+	let preselectedTradeArgument = $state<number | null>(null);
+
 	const filteredArguments = $derived(
 		stanceFilter === 'all'
 			? debate.arguments
 			: debate.arguments.filter((a) => a.stance === stanceFilter)
 	);
 
+	const _counts = $derived(computeStanceCounts(debate.arguments));
 	const stanceCounts = $derived({
 		all: debate.arguments.length,
-		SUPPORT: debate.arguments.filter((a) => a.stance === 'SUPPORT').length,
-		OPPOSE: debate.arguments.filter((a) => a.stance === 'OPPOSE').length,
-		AMEND: debate.arguments.filter((a) => a.stance === 'AMEND').length
+		SUPPORT: _counts.support,
+		OPPOSE: _counts.oppose,
+		AMEND: _counts.amend
 	});
 
 	const canParticipate = $derived(userTrustTier >= 3 && debate.status === 'active');
@@ -150,6 +155,18 @@
 				isWinner={debate.status === 'resolved' &&
 					argument.argumentIndex === debate.winningArgumentIndex}
 				rank={i + 1}
+				canCoSign={canParticipate}
+				{onCoSign}
+				canTrade={hasMarket && canParticipate && debateState.epochPhase === 'commit'}
+				onTradeOn={(argIdx) => {
+					preselectedTradeArgument = argIdx;
+					const tradePanel = document.querySelector('[data-trade-panel]');
+					if (tradePanel) {
+						tradePanel.scrollIntoView({ behavior: 'smooth' });
+					} else {
+						console.warn('[ActiveDebatePanel] Trade panel not available for scroll target');
+					}
+				}}
 			/>
 		{/each}
 
@@ -166,13 +183,16 @@
 
 	<!-- Trade panel -->
 	{#if hasMarket && debate.status === 'active' && userTrustTier >= 3}
-		<TradePanel
-			{debate}
-			prices={debateState.lmsrPrices}
-			epochPhase={debateState.epochPhase}
-			engagementTier={userTrustTier}
-			{onCommit}
-		/>
+		<div data-trade-panel>
+			<TradePanel
+				{debate}
+				prices={debateState.lmsrPrices}
+				epochPhase={debateState.epochPhase}
+				engagementTier={userTrustTier}
+				{onCommit}
+				preselectedArgument={preselectedTradeArgument}
+			/>
+		</div>
 	{/if}
 
 	<!-- Participate CTA -->

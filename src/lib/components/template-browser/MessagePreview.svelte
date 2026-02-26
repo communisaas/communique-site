@@ -660,7 +660,7 @@
 				? ''
 				: 'absolute inset-0 overflow-y-auto'} {expandToContent
 				? 'overflow-visible'
-				: ''} whitespace-pre-wrap rounded-lg bg-slate-50/70 p-4"
+				: ''} max-w-prose whitespace-pre-wrap rounded-lg bg-slate-50/70 p-4"
 			bind:this={scrollContainer}
 			onscroll={expandToContent ? undefined : handleScroll}
 			ontouchstart={expandToContent ? undefined : handleTouchStart}

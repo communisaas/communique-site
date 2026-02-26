@@ -24,7 +24,8 @@
 		onEmailModalClose = () => {
 			/* Optional email modal close handler */
 		},
-		expandToContent = false
+		expandToContent = false,
+		debateResolution = null
 	}: {
 		template: Template;
 		inModal?: boolean;
@@ -36,6 +37,7 @@
 		showEmailModal?: boolean;
 		onEmailModalClose?: () => void;
 		expandToContent?: boolean;
+		debateResolution?: { winningStance: string; participants: number } | null;
 	} = $props();
 
 	let localShowEmailModal = $state(false);
@@ -251,6 +253,7 @@
 				bind:personalConnectionValue
 				{componentId}
 				{expandToContent}
+				{debateResolution}
 			/>
 
 			<!-- Only show ActionBar in list/modal contexts, not on page -->

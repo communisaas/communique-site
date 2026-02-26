@@ -23,7 +23,7 @@
 
 	const agreeingCount = $derived(Math.round(agreement * modelCount));
 
-	const consensusColor = $derived(() => {
+	const consensusColor = $derived.by(() => {
 		if (agreement >= 0.8) return { dot: 'bg-emerald-500', text: 'text-emerald-700', label: 'Strong' };
 		if (agreement >= 0.6) return { dot: 'bg-amber-500', text: 'text-amber-700', label: 'Moderate' };
 		return { dot: 'bg-red-500', text: 'text-red-700', label: 'Weak' };
@@ -40,14 +40,14 @@
 			<div
 				class="rounded-full transition-colors duration-300
 					{compact ? 'h-1.5 w-1.5' : 'h-2 w-2'}
-					{agreed ? consensusColor().dot : 'bg-slate-200'}"
+					{agreed ? consensusColor.dot : 'bg-slate-200'}"
 			></div>
 		{/each}
 	</div>
 
 	<!-- Label -->
-	<span class="text-xs font-medium {consensusColor().text}">
-		{compact ? `${Math.round(agreement * 100)}%` : `${consensusColor().label} (${Math.round(agreement * 100)}%)`}
+	<span class="text-xs font-medium {consensusColor.text}">
+		{compact ? `${Math.round(agreement * 100)}%` : `${consensusColor.label} (${Math.round(agreement * 100)}%)`}
 	</span>
 
 	<!-- Quorum badge -->

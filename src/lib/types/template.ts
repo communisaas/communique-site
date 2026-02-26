@@ -31,6 +31,16 @@ export interface EmailFlowTemplate {
 	recipientEmails?: string[];
 }
 
+/** Lightweight debate summary for card-level rendering (browse page) */
+export interface DebateSummary {
+	status: 'active' | 'resolving' | 'resolved' | 'awaiting_governance' | 'under_appeal';
+	winningStance?: string;
+	uniqueParticipants: number;
+	argumentCount: number;
+	deadline?: string;
+	stanceCounts?: { support: number; oppose: number; amend: number };
+}
+
 export interface Template {
 	id: string;
 	slug: string; // Required in database with unique constraint
@@ -56,6 +66,8 @@ export interface Template {
 	isNew: boolean;
 	// Status signal: active debate exists for this template
 	hasActiveDebate?: boolean;
+	// Lightweight debate summary for card-level rendering
+	debateSummary?: DebateSummary;
 
 	metrics: {
 		sent?: number;

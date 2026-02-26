@@ -15,6 +15,8 @@
 	import ActionBar from '$lib/components/template-browser/parts/ActionBar.svelte';
 	import TrustJourney from '$lib/components/trust/TrustJourney.svelte';
 	import DebateSurface from '$lib/components/debate/DebateSurface.svelte';
+	import DebateSignal from '$lib/components/debate/DebateSignal.svelte';
+	import MobileDebateBanner from '$lib/components/debate/MobileDebateBanner.svelte';
 	import type { DebateData } from '$lib/stores/debateState.svelte';
 
 	import { spring } from 'svelte/motion';
@@ -65,6 +67,16 @@
 	);
 	const isCongressional = $derived(template.deliveryMethod === 'cwc');
 	const addressRequired = $derived(isCongressional && !hasCompleteAddress && (data.user?.trust_tier ?? 0) < 2);
+
+	// Debate resolution signal for message preview banner
+	const debateResolution = $derived(
+		data.debate && (data.debate as DebateData).status === 'resolved' && (data.debate as DebateData).winningStance
+			? {
+					winningStance: (data.debate as DebateData).winningStance as string,
+					participants: (data.debate as DebateData).uniqueParticipants
+				}
+			: null
+	);
 
 	_onMount(() => {
 		// Clean up OAuth redirect hash fragment from Facebook
@@ -247,7 +259,7 @@
 <!-- Template content with integrated header -->
 <div class="py-6">
 	<!-- Template Header with Action -->
-	<div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+	<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 		<div class="min-w-0 flex-1">
 			<!-- Template title as primary header -->
 			<h1 class="mb-3 text-3xl font-bold text-slate-900 sm:text-4xl">
@@ -283,6 +295,7 @@
 					<ShareButton url={shareUrl} _title={template.title} variant="secondary" size="sm" />
 				</div>
 			</div>
+
 		</div>
 
 		<!-- User greeting, Trust Journey, and Action Button -->
@@ -345,6 +358,9 @@
 				</div>
 			{/if}
 
+			<!-- Debate signal — adjacent to send action for decision-critical visibility -->
+			<DebateSignal debate={(data.debate as DebateData) ?? null} variant="inline" />
+
 			<!-- ActionBar positioned in header -->
 			<div class="w-full sm:w-auto [&>div]:mt-0">
 				<ActionBar
@@ -372,119 +388,130 @@
 		</div>
 	</div>
 
-	<!-- Template Preview -->
-	<div class="rounded-xl border border-slate-200 bg-white shadow-sm">
-		{#if addressRequired}
-			<!-- Address Required Notice -->
-			<div class="border-b border-amber-200 bg-amber-50 px-6 py-4">
-				<div class="flex items-center gap-3">
-					<div class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
-						<svg class="h-4 w-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-							<path
-								fill-rule="evenodd"
-								d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-								clip-rule="evenodd"
-							/>
-						</svg>
+	<!-- Two-column field: message left, deliberation right -->
+	<div class="lg:grid lg:grid-cols-[minmax(0,65ch)_minmax(340px,1fr)] lg:gap-8 lg:items-start">
+		<!-- LEFT: Message (sticky on desktop) -->
+		<div class="lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
+			<div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+				{#if addressRequired}
+					<!-- Address Required Notice -->
+					<div class="border-b border-amber-200 bg-amber-50 px-6 py-4">
+						<div class="flex items-center gap-3">
+							<div class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
+								<svg class="h-4 w-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+									<path
+										fill-rule="evenodd"
+										d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+										clip-rule="evenodd"
+									/>
+								</svg>
+							</div>
+							<div>
+								<h3 class="text-sm font-semibold text-amber-900">Address Required</h3>
+								<p class="text-xs text-amber-700">
+									They only count messages from their district. No address = no impact.
+								</p>
+							</div>
+							<Button
+								variant="secondary"
+								onclick={() =>
+									modalActions.openModal('address-modal', 'address', {
+										template,
+										source,
+										mode: 'collection',
+										onComplete: async (detail: AddressModalDetail) => {
+											await _handleAddressSubmit(detail.address);
+										}
+									})}
+								classNames="ml-auto"
+							>
+								Add Address
+							</Button>
+						</div>
 					</div>
-					<div>
-						<h3 class="text-sm font-semibold text-amber-900">Address Required</h3>
-						<p class="text-xs text-amber-700">
-							They only count messages from their district. No address = no impact.
-						</p>
-					</div>
-					<Button
-						variant="secondary"
-						onclick={() =>
-							modalActions.openModal('address-modal', 'address', {
-								template,
-								source,
-								mode: 'collection',
-								onComplete: async (detail: AddressModalDetail) => {
-									await _handleAddressSubmit(detail.address);
-								}
-							})}
-						classNames="ml-auto"
-					>
-						Add Address
-					</Button>
-				</div>
+				{/if}
+
+				<TemplatePreview
+					{template}
+					context="page"
+					user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
+					showEmailModal={false}
+					{debateResolution}
+					onEmailModalClose={() => {
+						/* Intentionally empty - modal close handled elsewhere */
+					}}
+					onScroll={() => {
+						/* Intentionally empty - scroll handling not needed */
+					}}
+					expandToContent={true}
+					onOpenModal={() => {
+						const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+						if (isMobile) {
+							modalActions.openModal('mobile-preview', 'mobile_preview', { template, user: data.user });
+						}
+					}}
+					onSendMessage={async () => {
+						if (!data.user) {
+							// Guest: straight to template modal (mailto relay)
+							modalActions.openModal('template-modal', 'template_modal', { template, user: null });
+							return;
+						}
+
+						// Authenticated user: use unified post-auth flow
+						// (checks trust_tier/guestState before address gate)
+						handlePostAuthFlow();
+					}}
+				/>
 			</div>
-		{/if}
+		</div>
 
-		<TemplatePreview
-			{template}
-			context="page"
-			user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
-			showEmailModal={false}
-			onEmailModalClose={() => {
-				/* Intentionally empty - modal close handled elsewhere */
-			}}
-			onScroll={() => {
-				/* Intentionally empty - scroll handling not needed */
-			}}
-			expandToContent={true}
-			onOpenModal={() => {
-				const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
-				if (isMobile) {
-					modalActions.openModal('mobile-preview', 'mobile_preview', { template, user: data.user });
-				}
-			}}
-			onSendMessage={async () => {
-				if (!data.user) {
-					// Guest: straight to template modal (mailto relay)
-					modalActions.openModal('template-modal', 'template_modal', { template, user: null });
-					return;
-				}
-
-				// Authenticated user: use unified post-auth flow
-				// (checks trust_tier/guestState before address gate)
-				handlePostAuthFlow();
-			}}
-		/>
-	</div>
-
-	<!-- Staked Deliberation Surface -->
-	<DebateSurface
-		debate={(data.debate as DebateData) ?? null}
-		userTrustTier={data.user?.trust_tier ?? 0}
-		onInitiateDebate={() => {
-			modalActions.openModal('debate-modal', 'debate', {
-				template,
-				user: data.user,
-				mode: 'initiate'
-			});
-		}}
-		onParticipate={() => {
-			modalActions.openModal('debate-modal', 'debate', {
-				template,
-				user: data.user,
-				debate: data.debate,
-				mode: 'participate'
-			});
-		}}
-		onVerifyIdentity={async () => {
-			if (data.user?.trust_tier != null && data.user.trust_tier < 2) {
-				// Tier 0-1: need address first
-				modalActions.openModal('address-modal', 'address', {
-					template,
-					user: data.user,
-					context: 'debate'
-				});
-			} else {
-				// Tier 2: identity verification
-				const res = await fetch('/demo/verify-identity', { method: 'POST' });
-				const result = await res.json();
-				if (result.identity_commitment && data.user?.id) {
-					try {
-						const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
-						await bootstrapDemoCredential(data.user.id, result.identity_commitment);
-					} catch (e) {
-						console.error('[Demo] Credential bootstrap failed:', e);
+		<!-- RIGHT: Deliberation (scrollable, beside message on desktop) -->
+		<div class="mt-8 lg:mt-0">
+			<DebateSurface
+				debate={(data.debate as DebateData) ?? null}
+				userTrustTier={data.user?.trust_tier ?? 0}
+				onInitiateDebate={() => {
+					modalActions.openModal('debate-modal', 'debate', {
+						template,
+						user: data.user,
+						mode: 'initiate'
+					});
+				}}
+				onParticipate={() => {
+					modalActions.openModal('debate-modal', 'debate', {
+						template,
+						user: data.user,
+						debate: data.debate,
+						mode: 'participate'
+					});
+				}}
+				onVerifyIdentity={async () => {
+					if (data.user?.trust_tier != null && data.user.trust_tier < 2) {
+						// Tier 0-1: need address first
+						modalActions.openModal('address-modal', 'address', {
+							template,
+							user: data.user,
+							context: 'debate'
+						});
+					} else {
+						// Tier 2: identity verification
+						const res = await fetch('/demo/verify-identity', { method: 'POST' });
+						const result = await res.json();
+						if (result.identity_commitment && data.user?.id) {
+							try {
+								const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
+								await bootstrapDemoCredential(data.user.id, result.identity_commitment);
+							} catch (e) {
+								console.error('[Demo] Credential bootstrap failed:', e);
+							}
+						}
+						await invalidateAll();
 					}
-				}
-				await invalidateAll();
-			}
-		}}
-	/>
+				}}
+			/>
+		</div>
+	</div>
 </div>
+
+<!-- Mobile debate awareness — sticky banner below lg: breakpoint -->
+<MobileDebateBanner debate={(data.debate as DebateData) ?? null} />

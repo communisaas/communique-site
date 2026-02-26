@@ -4,8 +4,14 @@
   import Button from '$lib/components/ui/Button.svelte';
   import PrivacyProofStatus from './PrivacyProofStatus.svelte';
   import type { DebateData } from '$lib/stores/debateState.svelte';
+  import { onDestroy } from 'svelte';
   import { generateDebateWeightProof } from '$lib/core/zkp/debate-weight-client';
   import { BN254_MODULUS } from '$lib/core/crypto/bn254';
+
+  // Module-scope storage for proof randomness — kept in memory only.
+  // sessionStorage would leak ZK note commitment entropy to same-origin scripts.
+  // Trade-off: randomness is lost on tab close, requiring re-commit.
+  const proofRandomnessStore = new Map<string, bigint>();
 
   interface Props {
     debate: DebateData;
@@ -20,6 +26,7 @@
       noteCommitment: string;
       proof?: Uint8Array;
     }) => void;
+    preselectedArgument?: number | null;
   }
 
   let {
@@ -28,6 +35,7 @@
     epochPhase,
     engagementTier,
     onCommit,
+    preselectedArgument = null,
   }: Props = $props();
 
   // ---------------------------------------------------------------------------
@@ -37,6 +45,13 @@
   let selectedArgumentIndex = $state<number | null>(null);
   let direction = $state<'BUY' | 'SELL' | null>(null);
   let stakeAmount = $state(0);
+
+  // Apply pre-selection from ArgumentCard "Stake on this" button
+  $effect(() => {
+    if (preselectedArgument != null) {
+      selectedArgumentIndex = preselectedArgument;
+    }
+  });
 
   // ---------------------------------------------------------------------------
   // Privacy proof state
@@ -84,7 +99,7 @@
       proofStatus !== 'generating',
   );
 
-  const disabledReason = $derived(() => {
+  const disabledReason = $derived.by(() => {
     if (epochPhase === 'idle') return 'Market paused';
     if (epochPhase === 'reveal') return 'Reveal phase — trades locked';
     if (epochPhase === 'executing') return 'Epoch executing — please wait';
@@ -173,13 +188,10 @@
     // but the validation check in generateDebateWeightProof requires it.
     randomness = randomness % BN254_MODULUS;
 
-    // Persist randomness in sessionStorage before proving so it survives a
-    // page refresh during the long WASM init window. The reveal route needs
-    // it to reconstruct the note commitment for settlement.
-    sessionStorage.setItem(
-      `debate:${debateId}:randomness`,
-      randomness.toString(),
-    );
+    // Store randomness in memory before proving. The reveal route needs it
+    // to reconstruct the note commitment for settlement. Module-scope Map
+    // survives the WASM init window but not tab close (re-commit required).
+    proofRandomnessStore.set(`debate:${debateId}:randomness`, randomness);
 
     const result = await generateDebateWeightProof(
       { stake: stakeUsdc6, tier, randomness },
@@ -212,6 +224,9 @@
       proofTimer = null;
     }
   }
+
+  // Cleanup proof timer on component destroy (navigation during proof generation)
+  onDestroy(stopProofTimer);
 
   // ---------------------------------------------------------------------------
   // Commit handler — now generates proof before submitting
@@ -464,8 +479,8 @@
       Market is currently paused
     {/if}
 
-    {#if disabledReason() && isCommitPhase}
-      <span class="mt-0.5 block text-slate-400/80">{disabledReason()}</span>
+    {#if disabledReason && isCommitPhase}
+      <span class="mt-0.5 block text-slate-400/80">{disabledReason}</span>
     {/if}
   </p>
 </div>

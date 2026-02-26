@@ -60,7 +60,7 @@
 
   const isUrgent = $derived(countdown > 0 && countdown < 30);
 
-  const formattedTime = $derived(() => {
+  const formattedTime = $derived.by(() => {
     if (countdown <= 0) return '\u2014';
     const mins = Math.floor(countdown / 60);
     const secs = countdown % 60;
@@ -73,7 +73,7 @@
 <div
   class="inline-flex items-center {compact ? 'gap-2' : 'gap-3'}"
   role="status"
-  aria-label="{config.label}, {formattedTime()} remaining, Epoch {epoch}"
+  aria-label="{config.label}, {formattedTime} remaining, Epoch {epoch}"
 >
   <!-- Phase badge -->
   <span
@@ -96,7 +96,7 @@
       {compact ? 'text-sm' : 'text-base'}
       {isUrgent ? 'text-red-600 animate-pulse' : 'text-slate-700'}"
   >
-    {formattedTime()}
+    {formattedTime}
   </span>
 
   <!-- Epoch number (hidden in compact mode) -->

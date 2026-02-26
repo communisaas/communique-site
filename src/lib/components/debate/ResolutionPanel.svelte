@@ -59,7 +59,7 @@
 	}
 
 	// Sort arguments by final score (descending)
-	const rankedArguments = $derived(() => {
+	const rankedArguments = $derived.by(() => {
 		if (!resolution) return debate.arguments;
 		return [...debate.arguments].sort((a, b) => {
 			const scoreA = resolution.argumentScores.find((s) => s.argumentIndex === a.argumentIndex);
@@ -148,7 +148,7 @@
 				</h3>
 			</div>
 
-			{#each rankedArguments() as arg, rank}
+			{#each rankedArguments as arg, rank}
 				{@const score = resolution.argumentScores.find((s) => s.argumentIndex === arg.argumentIndex)}
 				{@const isWinner = arg.argumentIndex === debate.winningArgumentIndex}
 				{@const isExpanded = expandedArg === arg.argumentIndex}

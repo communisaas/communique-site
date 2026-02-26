@@ -34,7 +34,8 @@
 		onScrollStateChange,
 		onTouchStateChange,
 		componentId,
-		expandToContent = false
+		expandToContent = false,
+		debateResolution = null
 	}: {
 		template: Template;
 		inModal: boolean;
@@ -46,6 +47,7 @@
 		onTouchStateChange?: (touchState: unknown) => void;
 		componentId: string;
 		expandToContent?: boolean;
+		debateResolution?: { winningStance: string; participants: number } | null;
 	} = $props();
 
 	const recipients = $derived(extractRecipientEmails(template?.recipient_config));
@@ -110,6 +112,26 @@
 		}
 	}
 </script>
+
+{#if debateResolution}
+	<div class="mb-3 rounded-lg border px-3 py-2 text-sm
+		{debateResolution.winningStance === 'SUPPORT'
+			? 'border-emerald-200/60 bg-emerald-50/50 text-emerald-700'
+			: debateResolution.winningStance === 'OPPOSE'
+				? 'border-red-200/60 bg-red-50/50 text-red-700'
+				: 'border-amber-200/60 bg-amber-50/50 text-amber-700'}">
+		{#if debateResolution.winningStance === 'SUPPORT'}
+			<span class="font-medium">Community-validated framing</span>
+			<span class="opacity-70"> · {debateResolution.participants} participants</span>
+		{:else if debateResolution.winningStance === 'OPPOSE'}
+			<span class="font-medium">Framing contested by community deliberation</span>
+			<a href="#debate-surface" class="ml-1 underline opacity-70">View arguments</a>
+		{:else}
+			<span class="font-medium">Amendment proposed by deliberation</span>
+			<a href="#debate-surface" class="ml-1 underline opacity-70">View amendment</a>
+		{/if}
+	</div>
+{/if}
 
 <div class="relative mb-4 shrink-0 space-y-4 overflow-visible">
 	<TemplateTips isCertified={template.type === 'certified'} />
