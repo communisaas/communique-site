@@ -46,7 +46,10 @@ export default defineConfig({
 			external: [
 				// 'redis' is optionally imported in rate-limiter.ts (only when REDIS_URL is set).
 				// Not available on Cloudflare Workers (no TCP).
-				'redis'
+				'redis',
+				// ai-evaluator lives in voter-protocol monorepo, dynamically imported with try/catch fallback.
+				// Not published to npm yet — evaluate endpoint returns 503 when unavailable.
+				'@voter-protocol/ai-evaluator'
 				// Note: @voter-protocol/noir-prover is stubbed via voter-protocol-ssr-stub plugin (SSR only).
 				// Client gets the real package for in-browser ZK proving.
 			]
