@@ -18,7 +18,7 @@
 	 * - Focus management
 	 */
 
-	import { searchLocations, type LocationHierarchy } from '$lib/core/location/geocoding-api';
+	import { searchLocations, type LocationHierarchy } from '$lib/core/location/location-search';
 	import { resolveToGeoScope } from '$lib/core/location/location-resolver';
 	import type { GeoScope } from '$lib/core/agents/types';
 	import { Search, Globe, Loader2, X } from '@lucide/svelte';

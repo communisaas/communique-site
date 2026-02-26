@@ -5,8 +5,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { AddressVerificationResult, Representative } from '$lib/types/any-replacements.js';
 	import type { Representative as ProviderRepresentative } from '$lib/core/legislative/types';
-	import { geocodeAddress } from '$lib/core/location/address-geocode';
-
 	let {
 		_template,
 		oncomplete
@@ -71,52 +69,36 @@
 		try {
 			const fullAddress = `${streetAddress}, ${city}, ${stateCode} ${zipCode}`;
 
-			// Step 1: Geocode address → coordinates (Nominatim, via server proxy)
-			const geocodeResult = await geocodeAddress({
-				street: streetAddress,
-				city,
-				state: stateCode,
-				zip: zipCode,
-				countryCode: 'US'
+			// Unified address resolution: geocode + district + officials in one call
+			const response = await fetch('/api/location/resolve-address', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					street: streetAddress.trim(),
+					city: city.trim(),
+					state: stateCode.trim().toUpperCase(),
+					zip: zipCode.trim()
+				})
 			});
 
-			if (!geocodeResult) {
-				addressError = 'Unable to locate this address. Please check and try again.';
+			const data = await response.json();
+
+			if (!response.ok || !data.resolved) {
+				addressError =
+					data.error || 'Unable to verify address. Please check and try again.';
 				return;
 			}
 
-			// Step 2: Resolve coordinates → district + officials + cell_id
-			// Server handles Census Bureau (cell_id) + Shadow Atlas (district + officials)
-			const { api } = await import('$lib/core/api/client');
-			const result = await api.post('/location/resolve', {
-				lat: geocodeResult.lat,
-				lng: geocodeResult.lng,
-				signal_type: 'verified',
-				confidence: geocodeResult.confidence
-			});
+			const officials = (data.officials ?? []) as Representative[];
 
-			if (result.success && result.data) {
-				const data = result.data as Record<string, unknown>;
-				if (data.resolved && data.district) {
-					const district = data.district as { code: string; name: string; state: string };
-					const officials = (data.officials ?? []) as Representative[];
-
-					verificationResult = {
-						verified: true,
-						correctedAddress: geocodeResult.formattedAddress,
-						representatives: officials,
-						zk_eligible: data.zk_eligible as boolean | undefined
-					};
-					selectedAddress = geocodeResult.formattedAddress || fullAddress;
-					currentStep = 'verify';
-				} else {
-					addressError =
-						(data.error as string) || 'Unable to determine your district. Please check and try again.';
-				}
-			} else {
-				addressError =
-					(result.error as string) || 'Unable to verify address. Please check and try again.';
-			}
+			verificationResult = {
+				verified: true,
+				correctedAddress: data.address.matched,
+				representatives: officials,
+				zk_eligible: data.zk_eligible as boolean | undefined
+			};
+			selectedAddress = data.address.matched || fullAddress;
+			currentStep = 'verify';
 		} catch (error) {
 			console.error('[AddressCollectionForm] verifyAddress failed:', error instanceof Error ? error.message : String(error));
 			addressError =
@@ -256,9 +238,8 @@
 						<div>
 							<h3 class="text-sm font-semibold text-blue-900">Private & Secure</h3>
 							<p class="mt-1 text-xs leading-relaxed text-blue-700">
-								Your address is geocoded via <strong>OpenStreetMap</strong> (open source).
-								Only coordinates are sent to resolve your district. Your address is never
-								stored on our servers.
+								Geocoded via <strong>U.S. Census Bureau</strong> (public infrastructure).
+								Your address is not stored on our server.
 							</p>
 						</div>
 					</div>

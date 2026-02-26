@@ -19,7 +19,7 @@
 		InferredContext
 	} from '$lib/core/agents/types/clarification';
 	import LocationAutocomplete from '../../template-browser/LocationAutocomplete.svelte';
-	import type { LocationHierarchy } from '$lib/core/location/geocoding-api';
+	import type { LocationHierarchy } from '$lib/core/location/location-search';
 	import { slide, fade } from 'svelte/transition';
 
 	interface Props {

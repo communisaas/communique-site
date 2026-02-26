@@ -106,6 +106,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			where: { id: locals.user.id },
 			select: {
 				representatives: {
+					where: { is_active: true },
 					select: {
 						relationship: true,
 						representative: {

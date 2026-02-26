@@ -1,52 +1,22 @@
 /**
- * Unit tests for Autocomplete Cache
+ * Location Search Module Tests
  *
- * Tests IndexedDB-backed caching of Nominatim location search results
- * with TTL expiry, cache key generation, and all 6 exported functions.
+ * Tests the in-memory cached location search client (location-search.ts)
+ * which replaces the old IndexedDB-backed autocomplete-cache.ts.
+ *
+ * The module calls GET /api/location/search via fetch and caches results
+ * in a Map with 1-hour TTL and 200-entry eviction.
  *
  * Strategy:
- * - Uses fake-indexeddb/auto for IndexedDB polyfill in jsdom
- * - Does NOT use vi.useFakeTimers() (incompatible with fake-indexeddb async)
- * - Uses vi.spyOn(Date, 'now') to control time for TTL tests
- * - Uses clearAllCache() between tests instead of vi.resetModules()
+ * - Mocks the module's internal fetch call via vi.mock + hoisted mock
+ * - Uses vi.spyOn(Date, 'now') for TTL testing
+ * - Uses vi.resetModules() to clear the module-level cache between tests
  *
  * @vitest-environment jsdom
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { LocationHierarchy } from '$lib/core/location/geocoding-api';
-
-// ---------------------------------------------------------------------------
-// IndexedDB polyfill (must precede all imports)
-// ---------------------------------------------------------------------------
-
-import 'fake-indexeddb/auto';
-
-// ---------------------------------------------------------------------------
-// Hoisted mocks
-// ---------------------------------------------------------------------------
-
-const mockSearchLocations = vi.hoisted(() => vi.fn());
-
-vi.mock('$lib/core/location/geocoding-api', () => ({
-	searchLocations: (...args: unknown[]) => mockSearchLocations(...args),
-	searchCities: vi.fn(),
-	searchStates: vi.fn(),
-	searchCountries: vi.fn()
-}));
-
-// ---------------------------------------------------------------------------
-// Import SUT (single import, no resetModules)
-// ---------------------------------------------------------------------------
-
-import {
-	searchLocationsCached,
-	searchCitiesCached,
-	searchStatesCached,
-	searchCountriesCached,
-	clearExpiredCache,
-	clearAllCache
-} from '$lib/core/location/autocomplete-cache';
+import type { LocationHierarchy } from '$lib/core/location/location-search';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -68,26 +38,69 @@ function makeLocationResult(overrides: Partial<LocationHierarchy> = {}): Locatio
 	};
 }
 
-/** Small delay to let IndexedDB transactions commit */
-function tick(ms = 50): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+const BASE_TIME = new Date('2026-02-23T12:00:00Z').getTime();
+
+// ---------------------------------------------------------------------------
+// Tracking mock for fetch — captures URL and returns configured responses
+// ---------------------------------------------------------------------------
+
+let fetchResponses: Array<{ data: unknown; status: number } | { error: Error }> = [];
+let fetchCalls: string[] = [];
+
+/**
+ * Custom fetch that the module calls. Captures URLs and returns
+ * pre-configured responses from the fetchResponses queue.
+ */
+async function mockFetchImpl(input: string | URL | Request): Promise<Response> {
+	const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+	fetchCalls.push(url);
+
+	const next = fetchResponses.shift();
+	if (!next) {
+		// Default: return empty array (no data configured)
+		return new Response(JSON.stringify([]), {
+			status: 200,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	}
+
+	if ('error' in next) {
+		throw next.error;
+	}
+
+	return new Response(JSON.stringify(next.data), {
+		status: next.status,
+		headers: { 'Content-Type': 'application/json' }
+	});
 }
 
-const BASE_TIME = new Date('2026-02-23T12:00:00Z').getTime();
+/** Queue a successful fetch response */
+function queueFetchSuccess(data: unknown) {
+	fetchResponses.push({ data, status: 200 });
+}
+
+/** Queue a fetch error response */
+function queueFetchError(status = 500) {
+	fetchResponses.push({ data: { error: 'Server error' }, status });
+}
+
+/** Queue a network error */
+function queueFetchNetworkError() {
+	fetchResponses.push({ error: new TypeError('Failed to fetch') });
+}
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('Autocomplete Cache', () => {
+describe('Location Search (location-search.ts)', () => {
 	let dateNowSpy: ReturnType<typeof vi.spyOn> | null = null;
 	let simulatedNow: number;
 
-	function setTime(time: number) {
-		simulatedNow = time;
-		if (dateNowSpy) dateNowSpy.mockRestore();
-		dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(simulatedNow);
-	}
+	let searchLocations: typeof import('$lib/core/location/location-search').searchLocations;
+	let searchCities: typeof import('$lib/core/location/location-search').searchCities;
+	let searchStates: typeof import('$lib/core/location/location-search').searchStates;
+	let searchCountries: typeof import('$lib/core/location/location-search').searchCountries;
 
 	function advanceTime(ms: number) {
 		simulatedNow += ms;
@@ -95,316 +108,296 @@ describe('Autocomplete Cache', () => {
 	}
 
 	beforeEach(async () => {
-		vi.clearAllMocks();
+		// Reset response queue and call tracker
+		fetchResponses = [];
+		fetchCalls = [];
 		simulatedNow = BASE_TIME;
 		dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(simulatedNow);
 
-		mockSearchLocations.mockResolvedValue([makeLocationResult()]);
+		// Stub global fetch BEFORE importing the module
+		vi.stubGlobal('fetch', mockFetchImpl);
 
-		// Clear all cache entries to start fresh each test
-		await clearAllCache();
+		// Reset modules to clear the module-level cache Map
+		vi.resetModules();
+		const mod = await import('$lib/core/location/location-search');
+		searchLocations = mod.searchLocations;
+		searchCities = mod.searchCities;
+		searchStates = mod.searchStates;
+		searchCountries = mod.searchCountries;
 	});
 
 	afterEach(() => {
 		if (dateNowSpy) dateNowSpy.mockRestore();
 		dateNowSpy = null;
+		vi.unstubAllGlobals();
 	});
 
 	// =========================================================================
-	// searchLocationsCached - cache miss vs hit
+	// searchLocations - cache miss vs hit
 	// =========================================================================
 
-	describe('searchLocationsCached', () => {
-		it('should call API on cache miss and return results', async () => {
-			const results = await searchLocationsCached('San Francisco', 'city', 'US', 'CA');
+	describe('searchLocations', () => {
+		it('should call fetch on cache miss and return results', async () => {
+			queueFetchSuccess([makeLocationResult()]);
 
-			expect(results).toHaveLength(1);
-			expect(results[0].city?.name).toBe('San Francisco');
-			expect(mockSearchLocations).toHaveBeenCalledWith('San Francisco', 'city', 'US', 'CA');
+			const actual = await searchLocations('San Francisco', 'city', 'US', 'CA');
+
+			expect(actual).toHaveLength(1);
+			expect(actual[0].city?.name).toBe('San Francisco');
+			expect(fetchCalls).toHaveLength(1);
+
+			// Verify the fetch URL
+			expect(fetchCalls[0]).toContain('/api/location/search');
+			expect(fetchCalls[0]).toContain('q=San+Francisco');
+			expect(fetchCalls[0]).toContain('scope=city');
+			expect(fetchCalls[0]).toContain('country=US');
+			expect(fetchCalls[0]).toContain('state=CA');
 		});
 
-		it('should return cached results on cache hit without calling API', async () => {
-			await searchLocationsCached('San Francisco', 'city', 'US', 'CA');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(1);
+		it('should return cached results on cache hit without calling fetch', async () => {
+			queueFetchSuccess([makeLocationResult()]);
 
-			await tick();
+			await searchLocations('San Francisco', 'city', 'US', 'CA');
+			expect(fetchCalls).toHaveLength(1);
 
-			const results = await searchLocationsCached('San Francisco', 'city', 'US', 'CA');
+			// Second call should use cache
+			const results = await searchLocations('San Francisco', 'city', 'US', 'CA');
 			expect(results).toHaveLength(1);
 			expect(results[0].city?.name).toBe('San Francisco');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(1);
+			expect(fetchCalls).toHaveLength(1); // Still 1 — cache hit
 		});
 
-		it('should re-fetch after TTL expiry (24 hours)', async () => {
-			await searchLocationsCached('Austin', 'city', 'US', 'TX');
-			await tick();
+		it('should re-fetch after TTL expiry (1 hour)', async () => {
+			queueFetchSuccess([makeLocationResult()]);
+			await searchLocations('Austin', 'city', 'US', 'TX');
 
-			advanceTime(25 * 60 * 60 * 1000);
+			// Advance past the 1-hour TTL
+			advanceTime(61 * 60 * 1000);
 
 			const updatedResult = makeLocationResult({
-				city: { name: 'Austin Updated', state_code: 'TX', country_code: 'US', lat: 30.2672, lon: -97.7431 }
+				city: {
+					name: 'Austin Updated',
+					state_code: 'TX',
+					country_code: 'US',
+					lat: 30.2672,
+					lon: -97.7431
+				}
 			});
-			mockSearchLocations.mockResolvedValue([updatedResult]);
+			queueFetchSuccess([updatedResult]);
 
-			const results = await searchLocationsCached('Austin', 'city', 'US', 'TX');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(2);
+			const results = await searchLocations('Austin', 'city', 'US', 'TX');
+			expect(fetchCalls).toHaveLength(2);
 			expect(results[0].city?.name).toBe('Austin Updated');
 		});
 
-		it('should serve from cache within TTL (12 hours)', async () => {
-			await searchLocationsCached('Denver', 'city', 'US', 'CO');
-			await tick();
+		it('should serve from cache within TTL (30 minutes)', async () => {
+			queueFetchSuccess([makeLocationResult()]);
+			await searchLocations('Denver', 'city', 'US', 'CO');
 
-			advanceTime(12 * 60 * 60 * 1000);
+			advanceTime(30 * 60 * 1000); // 30 minutes
 
-			await searchLocationsCached('Denver', 'city', 'US', 'CO');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(1);
+			await searchLocations('Denver', 'city', 'US', 'CO');
+			expect(fetchCalls).toHaveLength(1); // Cache hit
 		});
 
 		it('should use default scope of city when not specified', async () => {
-			await searchLocationsCached('Portland');
-			expect(mockSearchLocations).toHaveBeenCalledWith('Portland', 'city', undefined, undefined);
+			queueFetchSuccess([makeLocationResult()]);
+
+			await searchLocations('Portland');
+
+			expect(fetchCalls[0]).toContain('scope=city');
 		});
 
 		it('should cache different queries separately', async () => {
 			const sfResult = [makeLocationResult()];
-			const laResult = [makeLocationResult({
-				city: { name: 'Los Angeles', state_code: 'CA', country_code: 'US', lat: 34.0522, lon: -118.2437 },
-				display_name: 'Los Angeles, California, United States'
-			})];
+			const laResult = [
+				makeLocationResult({
+					city: {
+						name: 'Los Angeles',
+						state_code: 'CA',
+						country_code: 'US',
+						lat: 34.0522,
+						lon: -118.2437
+					},
+					display_name: 'Los Angeles, California, United States'
+				})
+			];
 
-			mockSearchLocations.mockResolvedValueOnce(sfResult).mockResolvedValueOnce(laResult);
+			queueFetchSuccess(sfResult);
+			queueFetchSuccess(laResult);
 
-			const r1 = await searchLocationsCached('San Francisco', 'city');
-			const r2 = await searchLocationsCached('Los Angeles', 'city');
+			const r1 = await searchLocations('San Francisco', 'city');
+			const r2 = await searchLocations('Los Angeles', 'city');
 
 			expect(r1[0].city?.name).toBe('San Francisco');
 			expect(r2[0].city?.name).toBe('Los Angeles');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(2);
+			expect(fetchCalls).toHaveLength(2);
 		});
 
 		it('should generate case-insensitive cache keys (lowercase + trim)', async () => {
-			await searchLocationsCached('  San Francisco  ', 'city', 'US', 'CA');
-			await tick();
+			queueFetchSuccess([makeLocationResult()]);
 
-			await searchLocationsCached('san francisco', 'city', 'US', 'CA');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(1);
+			await searchLocations('  San Francisco  ', 'city', 'US', 'CA');
+
+			// Same query in lowercase should be a cache hit
+			await searchLocations('san francisco', 'city', 'US', 'CA');
+			expect(fetchCalls).toHaveLength(1);
 		});
 
 		it('should treat different scopes as separate cache entries', async () => {
-			await searchLocationsCached('California', 'state', 'US');
-			await tick();
+			queueFetchSuccess([makeLocationResult()]);
+			queueFetchSuccess([makeLocationResult()]);
 
-			await searchLocationsCached('California', 'city', 'US');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(2);
+			await searchLocations('California', 'state', 'US');
+			await searchLocations('California', 'city', 'US');
+			expect(fetchCalls).toHaveLength(2);
 		});
 
-		it('should handle API returning empty results', async () => {
-			mockSearchLocations.mockResolvedValue([]);
+		it('should return empty array for queries shorter than 2 characters', async () => {
+			const results = await searchLocations('A');
+			expect(results).toHaveLength(0);
+			expect(fetchCalls).toHaveLength(0);
+		});
 
-			const results = await searchLocationsCached('Nonexistent Place', 'city');
+		it('should return empty array for empty query', async () => {
+			const results = await searchLocations('');
+			expect(results).toHaveLength(0);
+			expect(fetchCalls).toHaveLength(0);
+		});
+
+		it('should return empty array on fetch error (graceful degradation)', async () => {
+			queueFetchError(500);
+
+			const results = await searchLocations('ErrorCity', 'city');
 			expect(results).toHaveLength(0);
 		});
 
-		it('should propagate API errors', async () => {
-			mockSearchLocations.mockRejectedValueOnce(new Error('Network error'));
+		it('should return empty array on network error (graceful degradation)', async () => {
+			queueFetchNetworkError();
 
-			await expect(searchLocationsCached('ErrorCity', 'city')).rejects.toThrow('Network error');
+			const results = await searchLocations('OfflineCity', 'city');
+			expect(results).toHaveLength(0);
+		});
+
+		it('should handle API returning empty results', async () => {
+			queueFetchSuccess([]);
+
+			const results = await searchLocations('Nonexistent Place', 'city');
+			expect(results).toHaveLength(0);
 		});
 	});
 
 	// =========================================================================
-	// searchCitiesCached
+	// searchCities
 	// =========================================================================
 
-	describe('searchCitiesCached', () => {
-		it('should delegate to searchLocationsCached with city scope', async () => {
-			const results = await searchCitiesCached('Austin', 'TX', 'US');
+	describe('searchCities', () => {
+		it('should delegate to searchLocations with city scope', async () => {
+			queueFetchSuccess([makeLocationResult()]);
+
+			const results = await searchCities('Austin', 'TX', 'US');
+
 			expect(results).toHaveLength(1);
-			expect(mockSearchLocations).toHaveBeenCalledWith('Austin', 'city', 'US', 'TX');
+			expect(fetchCalls[0]).toContain('scope=city');
+			expect(fetchCalls[0]).toContain('country=US');
+			expect(fetchCalls[0]).toContain('state=TX');
 		});
 
 		it('should default countryCode to US', async () => {
-			await searchCitiesCached('Portland', 'OR');
-			expect(mockSearchLocations).toHaveBeenCalledWith('Portland', 'city', 'US', 'OR');
+			queueFetchSuccess([makeLocationResult()]);
+
+			await searchCities('Portland', 'OR');
+
+			expect(fetchCalls[0]).toContain('country=US');
+			expect(fetchCalls[0]).toContain('state=OR');
 		});
 
 		it('should accept non-US country codes', async () => {
-			await searchCitiesCached('Toronto', 'ON', 'CA');
-			expect(mockSearchLocations).toHaveBeenCalledWith('Toronto', 'city', 'CA', 'ON');
+			queueFetchSuccess([makeLocationResult()]);
+
+			await searchCities('Toronto', 'ON', 'CA');
+
+			expect(fetchCalls[0]).toContain('country=CA');
+			expect(fetchCalls[0]).toContain('state=ON');
 		});
 
 		it('should return cached city results on repeated calls', async () => {
-			await searchCitiesCached('Austin', 'TX', 'US');
-			await tick();
+			queueFetchSuccess([makeLocationResult()]);
 
-			await searchCitiesCached('Austin', 'TX', 'US');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(1);
+			await searchCities('Austin', 'TX', 'US');
+			await searchCities('Austin', 'TX', 'US');
+			expect(fetchCalls).toHaveLength(1);
 		});
 	});
 
 	// =========================================================================
-	// searchStatesCached
+	// searchStates
 	// =========================================================================
 
-	describe('searchStatesCached', () => {
-		it('should delegate to searchLocationsCached with state scope', async () => {
-			await searchStatesCached('California');
-			expect(mockSearchLocations).toHaveBeenCalledWith('California', 'state', 'US', undefined);
+	describe('searchStates', () => {
+		it('should delegate to searchLocations with state scope', async () => {
+			queueFetchSuccess([makeLocationResult()]);
+
+			await searchStates('California');
+
+			expect(fetchCalls[0]).toContain('scope=state');
+			expect(fetchCalls[0]).toContain('country=US');
 		});
 
 		it('should default countryCode to US', async () => {
-			await searchStatesCached('Texas');
-			expect(mockSearchLocations).toHaveBeenCalledWith('Texas', 'state', 'US', undefined);
+			queueFetchSuccess([makeLocationResult()]);
+
+			await searchStates('Texas');
+
+			expect(fetchCalls[0]).toContain('country=US');
 		});
 
 		it('should accept non-US country codes', async () => {
-			await searchStatesCached('Ontario', 'CA');
-			expect(mockSearchLocations).toHaveBeenCalledWith('Ontario', 'state', 'CA', undefined);
+			queueFetchSuccess([makeLocationResult()]);
+
+			await searchStates('Ontario', 'CA');
+
+			expect(fetchCalls[0]).toContain('country=CA');
 		});
 
 		it('should cache state search results', async () => {
-			await searchStatesCached('New York');
-			await tick();
+			queueFetchSuccess([makeLocationResult()]);
 
-			await searchStatesCached('New York');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(1);
+			await searchStates('New York');
+			await searchStates('New York');
+			expect(fetchCalls).toHaveLength(1);
 		});
 	});
 
 	// =========================================================================
-	// searchCountriesCached
+	// searchCountries
 	// =========================================================================
 
-	describe('searchCountriesCached', () => {
-		it('should delegate to searchLocationsCached with country scope', async () => {
-			await searchCountriesCached('United States');
-			expect(mockSearchLocations).toHaveBeenCalledWith('United States', 'country', undefined, undefined);
+	describe('searchCountries', () => {
+		it('should delegate to searchLocations with country scope', async () => {
+			queueFetchSuccess([makeLocationResult()]);
+
+			await searchCountries('United States');
+
+			expect(fetchCalls[0]).toContain('scope=country');
+			expect(fetchCalls[0]).not.toContain('country=');
+			expect(fetchCalls[0]).not.toContain('state=');
 		});
 
 		it('should cache country search results', async () => {
-			await searchCountriesCached('Canada');
-			await tick();
+			queueFetchSuccess([makeLocationResult()]);
 
-			await searchCountriesCached('Canada');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(1);
+			await searchCountries('Canada');
+			await searchCountries('Canada');
+			expect(fetchCalls).toHaveLength(1);
 		});
 
 		it('should handle partial country names', async () => {
-			await searchCountriesCached('Unit');
-			expect(mockSearchLocations).toHaveBeenCalledWith('Unit', 'country', undefined, undefined);
-		});
-	});
+			queueFetchSuccess([makeLocationResult()]);
 
-	// =========================================================================
-	// clearExpiredCache
-	// =========================================================================
+			await searchCountries('Unit');
 
-	describe('clearExpiredCache', () => {
-		it('should not remove entries within TTL', async () => {
-			await searchLocationsCached('San Francisco', 'city', 'US');
-			await tick();
-
-			advanceTime(12 * 60 * 60 * 1000); // 12 hours
-
-			await clearExpiredCache();
-
-			mockSearchLocations.mockClear();
-			await searchLocationsCached('San Francisco', 'city', 'US');
-			expect(mockSearchLocations).not.toHaveBeenCalled();
-		});
-
-		it('should remove entries past TTL', async () => {
-			await searchLocationsCached('Portland', 'city', 'US');
-			await tick();
-
-			advanceTime(25 * 60 * 60 * 1000); // 25 hours
-
-			await clearExpiredCache();
-
-			mockSearchLocations.mockClear();
-			mockSearchLocations.mockResolvedValue([makeLocationResult()]);
-			await searchLocationsCached('Portland', 'city', 'US');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(1);
-		});
-
-		it('should selectively remove only expired entries', async () => {
-			// First entry at t=0
-			await searchLocationsCached('Austin', 'city', 'US');
-			await tick();
-
-			// Advance 23 hours
-			advanceTime(23 * 60 * 60 * 1000);
-
-			// Second entry at t=23h
-			const denverResult = makeLocationResult({
-				city: { name: 'Denver', state_code: 'CO', country_code: 'US', lat: 39.7392, lon: -104.9903 }
-			});
-			mockSearchLocations.mockResolvedValue([denverResult]);
-			await searchLocationsCached('Denver', 'city', 'US');
-			await tick();
-
-			// Advance 2 more hours (Austin: 25h = expired, Denver: 2h = fresh)
-			advanceTime(2 * 60 * 60 * 1000);
-
-			await clearExpiredCache();
-
-			mockSearchLocations.mockClear();
-			mockSearchLocations.mockResolvedValue([makeLocationResult()]);
-
-			// Denver should still be cached
-			await searchLocationsCached('Denver', 'city', 'US');
-			expect(mockSearchLocations).not.toHaveBeenCalled();
-
-			// Austin expired and was cleared
-			await searchLocationsCached('Austin', 'city', 'US');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(1);
-		});
-
-		it('should handle empty cache without error', async () => {
-			await expect(clearExpiredCache()).resolves.toBeUndefined();
-		});
-	});
-
-	// =========================================================================
-	// clearAllCache
-	// =========================================================================
-
-	describe('clearAllCache', () => {
-		it('should remove all cached entries', async () => {
-			await searchLocationsCached('San Francisco', 'city', 'US');
-			await tick();
-			await searchLocationsCached('New York', 'city', 'US');
-			await tick();
-
-			await clearAllCache();
-
-			mockSearchLocations.mockClear();
-			mockSearchLocations.mockResolvedValue([makeLocationResult()]);
-
-			await searchLocationsCached('San Francisco', 'city', 'US');
-			await searchLocationsCached('New York', 'city', 'US');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(2);
-		});
-
-		it('should handle empty cache without error', async () => {
-			await expect(clearAllCache()).resolves.toBeUndefined();
-		});
-
-		it('should allow re-populating cache after clear', async () => {
-			await searchLocationsCached('Austin', 'city');
-			await tick();
-
-			await clearAllCache();
-
-			mockSearchLocations.mockClear();
-			mockSearchLocations.mockResolvedValue([makeLocationResult()]);
-			await searchLocationsCached('Austin', 'city');
-			await tick();
-
-			mockSearchLocations.mockClear();
-			await searchLocationsCached('Austin', 'city');
-			expect(mockSearchLocations).not.toHaveBeenCalled();
+			expect(fetchCalls[0]).toContain('q=Unit');
 		});
 	});
 
@@ -414,57 +407,60 @@ describe('Autocomplete Cache', () => {
 
 	describe('Edge cases', () => {
 		it('should handle special characters in query strings', async () => {
-			await searchLocationsCached("St. Louis' Park", 'city', 'US');
-			expect(mockSearchLocations).toHaveBeenCalledWith("St. Louis' Park", 'city', 'US', undefined);
-		});
+			queueFetchSuccess([makeLocationResult()]);
 
-		it('should handle very long query strings', async () => {
-			const longQuery = 'A'.repeat(500);
-			await searchLocationsCached(longQuery, 'city');
-			expect(mockSearchLocations).toHaveBeenCalledWith(longQuery, 'city', undefined, undefined);
+			await searchLocations("St. Louis' Park", 'city', 'US');
+
+			expect(fetchCalls[0]).toContain('q=St.');
 		});
 
 		it('should handle unicode characters', async () => {
-			await searchLocationsCached('Munchen', 'city');
-			expect(mockSearchLocations).toHaveBeenCalledWith('Munchen', 'city', undefined, undefined);
+			queueFetchSuccess([makeLocationResult()]);
+
+			await searchLocations('München', 'city');
+
+			expect(fetchCalls).toHaveLength(1);
 		});
 
 		it('should cache results with multiple locations', async () => {
 			const multipleResults = [
 				makeLocationResult({ display_name: 'Portland, Oregon, US' }),
 				makeLocationResult({
-					city: { name: 'Portland', state_code: 'ME', country_code: 'US', lat: 43.6591, lon: -70.2568 },
+					city: {
+						name: 'Portland',
+						state_code: 'ME',
+						country_code: 'US',
+						lat: 43.6591,
+						lon: -70.2568
+					},
 					display_name: 'Portland, Maine, US'
 				})
 			];
-			mockSearchLocations.mockResolvedValue(multipleResults);
+			queueFetchSuccess(multipleResults);
 
-			const first = await searchLocationsCached('Portland', 'city', 'US');
-			await tick();
-
-			mockSearchLocations.mockClear();
-			const second = await searchLocationsCached('Portland', 'city', 'US');
+			const first = await searchLocations('Portland', 'city', 'US');
+			const second = await searchLocations('Portland', 'city', 'US');
 
 			expect(first).toHaveLength(2);
 			expect(second).toHaveLength(2);
-			expect(mockSearchLocations).not.toHaveBeenCalled();
+			expect(fetchCalls).toHaveLength(1); // Cache hit on second call
 		});
 
 		it('should generate distinct cache keys for different state filters', async () => {
-			await searchLocationsCached('Portland', 'city', 'US', 'OR');
-			await tick();
+			queueFetchSuccess([makeLocationResult()]);
+			queueFetchSuccess([makeLocationResult()]);
 
-			await searchLocationsCached('Portland', 'city', 'US', 'ME');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(2);
+			await searchLocations('Portland', 'city', 'US', 'OR');
+			await searchLocations('Portland', 'city', 'US', 'ME');
+			expect(fetchCalls).toHaveLength(2);
 		});
 
 		it('should treat undefined and missing filters as equivalent', async () => {
-			await searchLocationsCached('London', 'city', undefined, undefined);
-			await tick();
+			queueFetchSuccess([makeLocationResult()]);
 
-			mockSearchLocations.mockClear();
-			await searchLocationsCached('London', 'city');
-			expect(mockSearchLocations).not.toHaveBeenCalled();
+			await searchLocations('London', 'city', undefined, undefined);
+			await searchLocations('London', 'city');
+			expect(fetchCalls).toHaveLength(1); // Cache hit
 		});
 	});
 
@@ -473,32 +469,62 @@ describe('Autocomplete Cache', () => {
 	// =========================================================================
 
 	describe('Concurrent access', () => {
-		it('should handle concurrent requests for the same query', async () => {
-			const [r1, r2] = await Promise.all([
-				searchLocationsCached('San Diego', 'city', 'US'),
-				searchLocationsCached('San Diego', 'city', 'US')
-			]);
-
-			expect(r1).toHaveLength(1);
-			expect(r2).toHaveLength(1);
-		});
-
 		it('should handle concurrent requests for different queries', async () => {
 			const sfResult = [makeLocationResult()];
-			const laResult = [makeLocationResult({
-				city: { name: 'Los Angeles', state_code: 'CA', country_code: 'US', lat: 34.0522, lon: -118.2437 }
-			})];
+			const laResult = [
+				makeLocationResult({
+					city: {
+						name: 'Los Angeles',
+						state_code: 'CA',
+						country_code: 'US',
+						lat: 34.0522,
+						lon: -118.2437
+					}
+				})
+			];
 
-			mockSearchLocations.mockResolvedValueOnce(sfResult).mockResolvedValueOnce(laResult);
+			queueFetchSuccess(sfResult);
+			queueFetchSuccess(laResult);
 
 			const [r1, r2] = await Promise.all([
-				searchLocationsCached('San Francisco', 'city'),
-				searchLocationsCached('Los Angeles', 'city')
+				searchLocations('San Francisco', 'city'),
+				searchLocations('Los Angeles', 'city')
 			]);
 
 			expect(r1[0].city?.name).toBe('San Francisco');
 			expect(r2[0].city?.name).toBe('Los Angeles');
-			expect(mockSearchLocations).toHaveBeenCalledTimes(2);
+			expect(fetchCalls).toHaveLength(2);
+		});
+	});
+
+	// =========================================================================
+	// Query parameter generation
+	// =========================================================================
+
+	describe('query parameter generation', () => {
+		it('should not include country param when not provided', async () => {
+			queueFetchSuccess([makeLocationResult()]);
+
+			await searchLocations('London', 'city');
+
+			expect(fetchCalls[0]).not.toContain('country=');
+		});
+
+		it('should not include state param when not provided', async () => {
+			queueFetchSuccess([makeLocationResult()]);
+
+			await searchLocations('California', 'state', 'US');
+
+			expect(fetchCalls[0]).not.toContain('state=');
+		});
+
+		it('should trim whitespace from query', async () => {
+			queueFetchSuccess([makeLocationResult()]);
+
+			await searchLocations('  Portland  ', 'city');
+
+			// The fetch URL should have trimmed query
+			expect(fetchCalls[0]).toContain('q=Portland');
 		});
 	});
 });

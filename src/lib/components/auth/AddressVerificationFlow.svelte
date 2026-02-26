@@ -3,17 +3,15 @@
 
   Dual-path Tier 2 verification flow: geolocation OR address-based.
   Path A: Browser geolocation → /api/location/resolve (Census + Shadow Atlas server-side)
-  Path B: Manual address → Nominatim geocode (server proxy) → /api/location/resolve
+  Path B: Manual address → Census Bureau (server-side) → district + representatives
 
   Flow: path-select → [geolocating | address-input] → resolving → confirm-district → issuing-credential → complete
 -->
 
 <script lang="ts">
 	import { MapPin, CheckCircle2, Loader2, AlertCircle, Building2, ChevronRight, Navigation, Lock } from '@lucide/svelte';
-	import { invalidateAll } from '$app/navigation';
 	import { storeCredential } from '$lib/core/identity/credential-store';
 	import { getBrowserGeolocation } from '$lib/core/location/census-api';
-	import { geocodeAddress } from '$lib/core/location/address-geocode';
 	import { storeConstituentAddress } from '$lib/core/identity/constituent-address';
 	import { addVerifiedLocationSignal } from '$lib/core/location/inference-engine';
 
@@ -61,22 +59,6 @@
 	);
 
 	/**
-	 * Client-side address geocoding via Nominatim (Unit 1).
-	 * Address never reaches our server — geocoded entirely in the browser.
-	 */
-	async function geocodeAddressClient(streetVal: string, cityVal: string, stateVal: string, zip: string): Promise<{lat: number, lng: number} | null> {
-		const result = await geocodeAddress({
-			street: streetVal,
-			city: cityVal,
-			state: stateVal,
-			zip,
-			countryCode: 'US'
-		});
-		if (!result) return null;
-		return { lat: result.lat, lng: result.lng };
-	}
-
-	/**
 	 * Process the /api/location/resolve response and transition to confirm-district.
 	 *
 	 * Response shape: { resolved, district: { code, name, state }, officials: [...], ... }
@@ -90,7 +72,11 @@
 
 		const district = data.district as { code: string; name: string; state: string };
 		verifiedDistrict = district.code || '';
-		correctedAddress = '';
+
+		// Use Census-standardized address if available (from resolve-address endpoint)
+		const address = data.address as { matched?: string } | undefined;
+		correctedAddress = address?.matched || '';
+
 		representatives = ((data.officials as typeof representatives) || []);
 		verifiedStateSenate = '';
 		verifiedStateAssembly = '';
@@ -164,54 +150,36 @@
 		errorMessage = '';
 
 		try {
-			// Step 1: Geocode address → coordinates (Nominatim, via server proxy)
-			const coords = await geocodeAddressClient(
-				street.trim(),
-				city.trim(),
-				stateCode.trim().toUpperCase(),
-				zipCode.trim()
-			);
-
-			if (!coords) {
-				errorMessage = 'Could not geocode your address. Please check and try again.';
-				flowStep = 'address-input';
-				return;
-			}
-
-			// Step 2: Store address encrypted in IndexedDB (before resolve, so it's saved even on failure)
-			await storeConstituentAddress(userId, {
-				street: street.trim(),
-				city: city.trim(),
-				state: stateCode.trim().toUpperCase(),
-				zip: zipCode.trim(),
-				district: ''
-			});
-
-			// Step 3: Resolve coordinates → district + officials + cell_id (server handles Census + Shadow Atlas)
-			const response = await fetch('/api/location/resolve', {
+			// Single call: address → Census-standardized address + district + officials + cell_id
+			const response = await fetch('/api/location/resolve-address', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					lat: coords.lat,
-					lng: coords.lng,
-					signal_type: 'verified',
-					confidence: 0.85
+					street: street.trim(),
+					city: city.trim(),
+					state: stateCode.trim().toUpperCase(),
+					zip: zipCode.trim()
 				})
 			});
 
 			const data = await response.json();
 
-			// Update stored address with resolved district
-			if (data.resolved && data.district?.code) {
-				await storeConstituentAddress(userId, {
-					street: street.trim(),
-					city: city.trim(),
-					state: stateCode.trim().toUpperCase(),
-					zip: zipCode.trim(),
-					district: data.district.code
-				});
+			if (!response.ok || !data.resolved) {
+				errorMessage = data.error || 'Could not verify your address. Please check and try again.';
+				flowStep = 'address-input';
+				return;
 			}
 
+			// Store Census-standardized address in IndexedDB
+			await storeConstituentAddress(userId, {
+				street: data.address?.street || street.trim(),
+				city: data.address?.city || city.trim(),
+				state: data.address?.state || stateCode.trim().toUpperCase(),
+				zip: data.address?.zip || zipCode.trim(),
+				district: data.district?.code || ''
+			});
+
+			// Process response (same as geolocation path)
 			processResolveResponse(data, response.ok);
 		} catch (err) {
 			console.error('[AddressVerificationFlow] Address verification error:', err);
@@ -235,7 +203,8 @@
 					district: verifiedDistrict,
 					state_senate_district: verifiedStateSenate || undefined,
 					state_assembly_district: verifiedStateAssembly || undefined,
-					verification_method: 'civic_api'
+					verification_method: 'civic_api',
+					officials: representatives
 				})
 			});
 
@@ -265,8 +234,14 @@
 				}
 			}
 
-			// Refresh session data so trust_tier reflects the upgrade
-			await invalidateAll();
+			// NOTE: Do NOT call invalidateAll() here. This component is conditionally
+			// rendered inside VerificationGate via {#if needsTier2}, which is a $derived
+			// value of userTrustTier. Calling invalidateAll() refreshes page data, which
+			// updates trustTier to 2, which flips needsTier2 to false, which DESTROYS
+			// this component mid-execution — before the success screen renders or
+			// onComplete fires. The parent (profile page, TemplateModal) handles
+			// invalidateAll() in its own onverified/onComplete callback, AFTER the
+			// modal closes and the reactive cascade is harmless.
 
 			flowStep = 'complete';
 
@@ -527,9 +502,9 @@
 					How is my address used?
 				</summary>
 				<p class="mt-2 text-xs leading-relaxed text-slate-500">
-					Your address is geocoded via OpenStreetMap (open source, server-proxied), then coordinates
-					are resolved to your district via Census Bureau and Shadow Atlas. After verification,
-					the address is encrypted locally. Only your district is sent to issue a verifiable credential.
+					Your address is sent to our server, geocoded via the U.S. Census Bureau (public infrastructure),
+					and matched to your congressional district. After verification, the address is encrypted
+					locally. Only your district is sent to issue a verifiable credential.
 				</p>
 			</details>
 		</div>

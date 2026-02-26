@@ -442,13 +442,14 @@
 				trustUpgradePhase = 'simulating';
 				modalActions.setState('trust-upgrade');
 
-				// Call verify-address to set verified_at + identity_commitment
+				// Call verify-address to set verified_at + identity_commitment + persist representatives
 				const verifyRes = await fetch('/api/identity/verify-address', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						district,
-						verification_method: 'civic_api'
+						verification_method: 'civic_api',
+						officials: data.representatives
 					})
 				});
 				const verifyResult = await verifyRes.json();

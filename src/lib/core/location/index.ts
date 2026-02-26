@@ -115,11 +115,16 @@ export {
 } from './location-resolver';
 
 // ============================================================================
-// Address Geocoding (client-side, privacy-preserving)
+// Location Search (server-proxied Nominatim autocomplete)
 // ============================================================================
 
-export { geocodeAddress } from './address-geocode';
-export type { StructuredAddress, GeocodeResult } from './address-geocode';
+export {
+	searchLocations,
+	searchCities,
+	searchStates,
+	searchCountries
+} from './location-search';
+export type { LocationHierarchy } from './location-search';
 
 // ============================================================================
 // State Code Maps (shared by geocoding modules)

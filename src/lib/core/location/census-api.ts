@@ -7,8 +7,7 @@
  * API Documentation: https://geocoding.geo.census.gov/geocoder/
  */
 
-import type { CensusGeocodingResponse, CensusAddressMatch, LocationSignal, CellId } from './types';
-import { createCellId } from './types';
+import type { CensusGeocodingResponse, CensusAddressMatch, LocationSignal } from './types';
 
 // ============================================================================
 // Census API Client
@@ -103,93 +102,6 @@ export class CensusAPIClient {
 		}
 
 		throw lastError || new Error('Request failed after retries');
-	}
-
-	/**
-	 * Geocode coordinates to congressional district via server proxy.
-	 * Server calls Nominatim (reverse) + Census Bureau (coordinates) in parallel.
-	 */
-	async geocodeCoordinates(latitude: number, longitude: number): Promise<LocationSignal | null> {
-		try {
-			const response = await this.fetchWithRetry('/api/location/geocode-coordinates', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ latitude, longitude })
-			});
-
-			if (!response.ok) {
-				console.error('[Census API] Server geocode failed:', response.status);
-				return null;
-			}
-
-			const data = await response.json();
-			const { nominatim, census } = data as {
-				nominatim: { city: string | null; state: string | null; county: string | null } | null;
-				census: {
-					congressionalDistrict: string | null;
-					stateCode: string | null;
-					countyFips: string | null;
-					countyName: string | null;
-					districtName: string | null;
-					cellId: string | null;
-					tract: string | null;
-				} | null;
-			};
-
-			const cityName = nominatim?.city ?? null;
-			const stateCode = census?.stateCode ?? nominatim?.state ?? null;
-			const cell_id: CellId | null = createCellId(census?.cellId ?? undefined);
-
-			if (!census?.congressionalDistrict && !stateCode) {
-				console.warn('[Census API] No district or state data from server');
-				if (!cityName) return null;
-
-				return {
-					signal_type: 'browser',
-					confidence: 0.4,
-					country_code: 'US',
-					congressional_district: null,
-					state_code: stateCode,
-					city_name: cityName,
-					county_fips: null,
-					latitude,
-					longitude,
-					source: 'nominatim.server',
-					timestamp: new Date().toISOString(),
-					metadata: {
-						county_name: nominatim?.county ?? null,
-						fallback: true,
-						reason: 'Census API unavailable'
-					}
-				};
-			}
-
-			const signal: LocationSignal = {
-				signal_type: 'browser',
-				confidence: cell_id ? 0.7 : 0.6,
-				country_code: 'US',
-				congressional_district: census?.congressionalDistrict ?? null,
-				state_code: stateCode,
-				city_name: cityName,
-				county_fips: census?.countyFips ?? null,
-				cell_id,
-				latitude,
-				longitude,
-				source: 'census.server',
-				timestamp: new Date().toISOString(),
-				metadata: {
-					county_name: census?.countyName ?? nominatim?.county ?? null,
-					district_name: census?.districtName ?? null,
-					tract: census?.tract ?? null
-				}
-			};
-
-			console.debug('[Census API] Location signal extracted via server');
-			return signal;
-		} catch (error) {
-			console.error('Census geocoding error:', error);
-			return null;
-		}
 	}
 
 	/**

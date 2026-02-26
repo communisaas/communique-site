@@ -42,7 +42,7 @@
 	import PrivacyIndicator from './PrivacyBadge.svelte';
 	import LocationAutocomplete from './LocationAutocomplete.svelte';
 	import DistrictBreadcrumb from './DistrictBreadcrumb.svelte';
-	import type { LocationHierarchy } from '$lib/core/location/geocoding-api';
+	import type { LocationHierarchy } from '$lib/core/location/location-search';
 	import { locationInferenceEngine } from '$lib/core/location/inference-engine';
 	import { getDistrictConfig, type DistrictConfig } from '$lib/core/location/district-config';
 

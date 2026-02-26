@@ -14,8 +14,7 @@
 	 * - Focus trap within dropdown
 	 */
 
-	import { searchLocationsCached } from '$lib/core/location/autocomplete-cache';
-	import type { LocationHierarchy } from '$lib/core/location/geocoding-api';
+	import { searchLocations, type LocationHierarchy } from '$lib/core/location/location-search';
 	import { browser } from '$app/environment';
 
 	interface LocationAutocompleteProps {
@@ -67,7 +66,7 @@
 			// Map level to search scope
 			const scope = level === 'country' ? 'country' : level === 'state' ? 'state' : 'city';
 
-			const searchResults = await searchLocationsCached(query, scope, currentCountry, currentState);
+			const searchResults = await searchLocations(query, scope, currentCountry, currentState);
 
 			results = searchResults;
 			selectedIndex = 0; // Reset selection on new results

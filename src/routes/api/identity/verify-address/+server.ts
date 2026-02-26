@@ -38,11 +38,26 @@ const BN254_MODULUS = 2188824287183927522224640574525727508854836440041603434369
 /** Matches "XX-NN" (state abbreviation + district number) or "XX-AL" (at-large). */
 const DISTRICT_FORMAT = /^[A-Z]{2}-(\d{2}|AL)$/;
 
+interface OfficialInput {
+	name: string;
+	chamber: 'house' | 'senate';
+	party: string;
+	state: string;
+	district: string;
+	bioguide_id: string;
+	is_voting_member?: boolean;
+	delegate_type?: string | null;
+	phone?: string;
+	office_code?: string;
+	office?: string;
+}
+
 interface VerifyAddressInput {
 	district: string;
 	state_senate_district?: string;
 	state_assembly_district?: string;
 	verification_method: 'civic_api' | 'postal';
+	officials?: OfficialInput[];
 }
 
 function validateInput(body: unknown): VerifyAddressInput {
@@ -65,13 +80,40 @@ function validateInput(body: unknown): VerifyAddressInput {
 		throw new Error('verification_method must be "civic_api" or "postal"');
 	}
 
+	// Validate officials array if present
+	let officials: OfficialInput[] | undefined;
+	if (Array.isArray(b.officials)) {
+		officials = (b.officials as Record<string, unknown>[])
+			.filter(
+				(o) =>
+					typeof o.bioguide_id === 'string' &&
+					typeof o.name === 'string' &&
+					typeof o.chamber === 'string' &&
+					typeof o.party === 'string'
+			)
+			.map((o) => ({
+				name: o.name as string,
+				chamber: o.chamber as 'house' | 'senate',
+				party: o.party as string,
+				state: (o.state as string) || '',
+				district: (o.district as string) || '',
+				bioguide_id: o.bioguide_id as string,
+				is_voting_member: typeof o.is_voting_member === 'boolean' ? o.is_voting_member : true,
+				delegate_type: typeof o.delegate_type === 'string' ? o.delegate_type : null,
+				phone: typeof o.phone === 'string' ? o.phone : undefined,
+				office_code: typeof o.office_code === 'string' ? o.office_code : undefined,
+				office: typeof o.office === 'string' ? o.office : undefined
+			}));
+	}
+
 	return {
 		district: b.district as string,
 		state_senate_district:
 			typeof b.state_senate_district === 'string' ? b.state_senate_district : undefined,
 		state_assembly_district:
 			typeof b.state_assembly_district === 'string' ? b.state_assembly_district : undefined,
-		verification_method: b.verification_method as 'civic_api' | 'postal'
+		verification_method: b.verification_method as 'civic_api' | 'postal',
+		officials
 	};
 }
 
@@ -133,7 +175,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const outer = createHash('sha256').update(inner).digest('hex');
 		const identityCommitment = (BigInt('0x' + outer) % BN254_MODULUS).toString(16).padStart(64, '0');
 
-		// 8. Database transaction: insert DistrictCredential + update User
+		// 8. Database transaction: insert DistrictCredential + update User + upsert representatives
 		await db.$transaction(async (tx) => {
 			// Insert credential record
 			await tx.districtCredential.create({
@@ -167,6 +209,68 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					identity_commitment: identityCommitment
 				}
 			});
+
+			// Upsert representatives and create junction records
+			if (input.officials && input.officials.length > 0) {
+				// Deactivate existing user_representatives (district may have changed)
+				await tx.user_representatives.updateMany({
+					where: { user_id: userId },
+					data: { is_active: false }
+				});
+
+				for (const official of input.officials) {
+					// Upsert the representative record (by bioguide_id)
+					const rep = await tx.representative.upsert({
+						where: { bioguide_id: official.bioguide_id },
+						create: {
+							bioguide_id: official.bioguide_id,
+							name: official.name,
+							party: official.party,
+							state: official.state,
+							district: official.district,
+							chamber: official.chamber,
+							office_code: official.office_code || `${official.chamber}-${official.state}`,
+							phone: official.phone,
+							is_active: true,
+							data_source: 'congress_api',
+							source_updated_at: now
+						},
+						update: {
+							name: official.name,
+							party: official.party,
+							state: official.state,
+							district: official.district,
+							chamber: official.chamber,
+							phone: official.phone,
+							is_active: true,
+							last_updated: now,
+							data_source: 'congress_api',
+							source_updated_at: now
+						}
+					});
+
+					// Upsert junction record
+					await tx.user_representatives.upsert({
+						where: {
+							user_id_representative_id: {
+								user_id: userId,
+								representative_id: rep.id
+							}
+						},
+						create: {
+							user_id: userId,
+							representative_id: rep.id,
+							relationship: 'constituent',
+							is_active: true,
+							last_validated: now
+						},
+						update: {
+							is_active: true,
+							last_validated: now
+						}
+					});
+				}
+			}
 		});
 
 		// 9. Return credential + identity_commitment to client

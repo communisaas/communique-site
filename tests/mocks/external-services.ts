@@ -214,63 +214,104 @@ export const sqsHandlers = [
 ];
 
 // Census and Congress.gov API Handlers
+// Shared address mapping used by both Census endpoint handlers
+const FIPS_TO_STUSAB: Record<string, string> = {
+  '06': 'CA', '48': 'TX', '36': 'NY', '08': 'CO', '50': 'VT',
+  '11': 'DC', '72': 'PR', '78': 'VI', '66': 'GU', '17': 'IL'
+};
+
+interface CensusTestAddress {
+  match: (a: string) => boolean;
+  cd: string;
+  geoid: string;
+  state: string;
+  stusab: string;
+  blockGeoid?: string;
+  countyGeoid?: string;
+  coordinates?: { x: number; y: number };
+  matchedAddress?: string;
+}
+
+const censusAddressMap: CensusTestAddress[] = [
+  // CA: San Francisco City Hall → CA-11
+  { match: (a) => a.includes('san francisco') || (a.includes('ca') && a.includes('94102')), cd: '11', geoid: '0611', state: '06', stusab: 'CA', blockGeoid: '060750201001001', countyGeoid: '06075', coordinates: { x: -122.4194, y: 37.7749 }, matchedAddress: '1 DR CARLTON B GOODLETT PL, SAN FRANCISCO, CA, 94102' },
+  // TX: Austin City Hall → TX-21
+  { match: (a) => a.includes('austin') || (a.includes('tx') && a.includes('78701')), cd: '21', geoid: '4821', state: '48', stusab: 'TX', countyGeoid: '48453', coordinates: { x: -97.7431, y: 30.2672 }, matchedAddress: '301 W 2ND ST, AUSTIN, TX, 78701' },
+  // NY: NYC City Hall → NY-10
+  { match: (a) => a.includes('new york') || a.includes('350 fifth') || a.includes('350 5th') || (a.includes('ny') && a.includes('10007')), cd: '10', geoid: '3610', state: '36', stusab: 'NY', blockGeoid: '360610076001234', countyGeoid: '36061', coordinates: { x: -74.0060, y: 40.7128 }, matchedAddress: 'CITY HALL, NEW YORK, NY, 10007' },
+  // CO: Denver City Hall → CO-01
+  { match: (a) => a.includes('denver') || (a.includes('co') && a.includes('80202')), cd: '01', geoid: '0801', state: '08', stusab: 'CO', countyGeoid: '08031', coordinates: { x: -104.9903, y: 39.7392 }, matchedAddress: '1437 BANNOCK ST, DENVER, CO, 80202' },
+  // VT: At-large → VT-AL (CD119=00)
+  { match: (a) => a.includes('richmond') && a.includes('vt') || (a.includes('vt') && a.includes('05401')), cd: '00', geoid: '5000', state: '50', stusab: 'VT', coordinates: { x: -72.5778, y: 44.2601 }, matchedAddress: '115 STATE ST, MONTPELIER, VT, 05602' },
+  // IL: Springfield → IL-18
+  { match: (a) => a.includes('springfield') && (a.includes('il') || a.includes('62704')), cd: '18', geoid: '1718', state: '17', stusab: 'IL', blockGeoid: '170010001001001', countyGeoid: '17001', coordinates: { x: -89.6501, y: 39.7817 }, matchedAddress: '123 MAIN ST, SPRINGFIELD, IL, 62704' },
+  // DC: Pennsylvania Ave → DC delegate (CD119=98)
+  { match: (a) => a.includes('pennsylvania') || a.includes('washington') && a.includes('dc') || (a.includes('dc') && a.includes('20500')), cd: '98', geoid: '1100', state: '11', stusab: 'DC', blockGeoid: '110010062001001', countyGeoid: '11001', coordinates: { x: -77.0369, y: 38.8977 }, matchedAddress: '1600 PENNSYLVANIA AVE NW, WASHINGTON, DC, 20500' },
+  // PR: San Juan → PR delegate (CD119=98)
+  { match: (a) => a.includes('san juan') || a.includes('puerto rico') || (a.includes('pr') && a.includes('00901')), cd: '98', geoid: '7200', state: '72', stusab: 'PR', blockGeoid: '720070065003001', countyGeoid: '72001', coordinates: { x: -66.1057, y: 18.4655 }, matchedAddress: '100 SAN JUAN ST, SAN JUAN, PR, 00901' },
+  // VI: Charlotte Amalie → VI delegate (CD119=98)
+  { match: (a) => a.includes('virgin islands') || a.includes('vi') && a.includes('00802'), cd: '98', geoid: '7800', state: '78', stusab: 'VI', coordinates: { x: -64.9307, y: 18.3358 }, matchedAddress: '100 MAIN ST, CHARLOTTE AMALIE, VI, 00802' },
+  // GU: Hagatna → GU delegate (CD119=98)
+  { match: (a) => a.includes('guam') || (a.includes('gu') && a.includes('96910')), cd: '98', geoid: '6600', state: '66', stusab: 'GU', coordinates: { x: 144.7937, y: 13.4443 }, matchedAddress: '100 HAGATNA ST, HAGATNA, GU, 96910' },
+];
+
+/** Build full Census Bureau response from a matched entry */
+function buildCensusResponse(matched: CensusTestAddress, address: string) {
+  return {
+    result: {
+      addressMatches: [
+        {
+          matchedAddress: matched.matchedAddress || address.toUpperCase(),
+          coordinates: matched.coordinates || { x: -89.6501, y: 39.7817 },
+          geographies: {
+            '119th Congressional Districts': [
+              { CD119: matched.cd, GEOID: matched.geoid, STATE: matched.state }
+            ],
+            'States': [
+              { STUSAB: matched.stusab || FIPS_TO_STUSAB[matched.state] || matched.state }
+            ],
+            ...(matched.blockGeoid ? {
+              '2020 Census Blocks': [
+                { GEOID: matched.blockGeoid, STATE: matched.state }
+              ]
+            } : {}),
+            ...(matched.countyGeoid ? {
+              'Counties': [
+                { GEOID: matched.countyGeoid }
+              ]
+            } : {})
+          }
+        }
+      ]
+    }
+  };
+}
+
 export const censusAndCongressHandlers = [
-  // Census Bureau Geocoding API
-  // Handles all test addresses from tests/fixtures/test-addresses.ts
+  // Census Bureau Geocoding API — onelineaddress (used by address-lookup.ts)
   http.get('https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress', ({ request }) => {
     const url = new URL(request.url);
     const address = (url.searchParams.get('address') || '').toLowerCase();
+    const matched = censusAddressMap.find((entry) => entry.match(address));
 
-    // Address → district mapping for all test addresses
-    const addressMap: Array<{ match: (a: string) => boolean; cd: string; geoid: string; state: string; blockGeoid?: string }> = [
-      // CA: San Francisco City Hall → CA-11
-      { match: (a) => a.includes('san francisco') || (a.includes('ca') && a.includes('94102')), cd: '11', geoid: '0611', state: '06', blockGeoid: '060750201001001' },
-      // TX: Austin City Hall → TX-21
-      { match: (a) => a.includes('austin') || (a.includes('tx') && a.includes('78701')), cd: '21', geoid: '4821', state: '48' },
-      // NY: NYC City Hall → NY-10
-      { match: (a) => a.includes('new york') || a.includes('350 fifth') || a.includes('350 5th') || (a.includes('ny') && a.includes('10007')), cd: '10', geoid: '3610', state: '36', blockGeoid: '360610076001234' },
-      // CO: Denver City Hall → CO-01
-      { match: (a) => a.includes('denver') || (a.includes('co') && a.includes('80202')), cd: '01', geoid: '0801', state: '08' },
-      // VT: At-large → VT-AL (CD119=00)
-      { match: (a) => a.includes('richmond') && a.includes('vt') || (a.includes('vt') && a.includes('05401')), cd: '00', geoid: '5000', state: '50' },
-      // DC: Pennsylvania Ave → DC delegate (CD119=98)
-      { match: (a) => a.includes('pennsylvania') || a.includes('washington, dc') || (a.includes('dc') && a.includes('20500')), cd: '98', geoid: '1100', state: '11', blockGeoid: '110010062001001' },
-      // PR: San Juan → PR delegate (CD119=98)
-      { match: (a) => a.includes('san juan') || a.includes('puerto rico') || (a.includes('pr') && a.includes('00901')), cd: '98', geoid: '7200', state: '72', blockGeoid: '720070065003001' },
-      // VI: Charlotte Amalie → VI delegate (CD119=98)
-      { match: (a) => a.includes('virgin islands') || a.includes('vi') && a.includes('00802'), cd: '98', geoid: '7800', state: '78' },
-      // GU: Hagatna → GU delegate (CD119=98)
-      { match: (a) => a.includes('guam') || (a.includes('gu') && a.includes('96910')), cd: '98', geoid: '6600', state: '66' },
-    ];
+    if (matched) return HttpResponse.json(buildCensusResponse(matched, address));
+    return HttpResponse.json({ result: { addressMatches: [] } });
+  }),
 
-    const matched = addressMap.find((entry) => entry.match(address));
+  // Census Bureau Geocoding API — structured address (used by resolve-address endpoint)
+  http.get('https://geocoding.geo.census.gov/geocoder/geographies/address', ({ request }) => {
+    const url = new URL(request.url);
+    const street = (url.searchParams.get('street') || '').toLowerCase();
+    const city = (url.searchParams.get('city') || '').toLowerCase();
+    const state = (url.searchParams.get('state') || '').toLowerCase();
+    const zip = (url.searchParams.get('zip') || '').toLowerCase();
 
-    if (matched) {
-      return HttpResponse.json({
-        result: {
-          addressMatches: [
-            {
-              matchedAddress: address,
-              geographies: {
-                '119th Congressional Districts': [
-                  { CD119: matched.cd, GEOID: matched.geoid, STATE: matched.state }
-                ],
-                ...(matched.blockGeoid ? {
-                  '2020 Census Blocks': [
-                    { GEOID: matched.blockGeoid, STATE: matched.state }
-                  ]
-                } : {})
-              }
-            }
-          ]
-        }
-      });
-    }
+    // Combine fields for matching (same as onelineaddress but structured)
+    const combined = `${street} ${city} ${state} ${zip}`;
+    const matched = censusAddressMap.find((entry) => entry.match(combined));
 
-    // No match → empty result (invalid/unknown address)
-    return HttpResponse.json({
-      result: { addressMatches: [] }
-    });
+    if (matched) return HttpResponse.json(buildCensusResponse(matched, combined));
+    return HttpResponse.json({ result: { addressMatches: [] } });
   }),
 
   // Congress.gov API - Representatives
@@ -397,6 +438,32 @@ export const censusAndCongressHandlers = [
   })
 ];
 
+// Shadow Atlas API Mocks (localhost:3000 default in test environment)
+export const shadowAtlasHandlers = [
+  // District lookup (fire-and-forget from resolve-address endpoint)
+  http.get('http://localhost:3000/v1/lookup', () => {
+    return HttpResponse.json({
+      districts: [{ code: 'CA-11', name: "California's 11th", type: 'congressional' }],
+      cell_id: '060750201001'
+    });
+  }),
+
+  // Health check
+  http.get('http://localhost:3000/v1/health', () => {
+    return HttpResponse.json({ status: 'ok' });
+  }),
+
+  // Officials lookup
+  http.get('http://localhost:3000/v1/officials', () => {
+    return HttpResponse.json({ officials: [], source: 'mock' }, { status: 501 });
+  }),
+
+  // Location resolve
+  http.get('http://localhost:3000/v1/resolve', () => {
+    return HttpResponse.json({ districts: [], cell_id: null });
+  })
+];
+
 // Combine all handlers
 export const externalServiceHandlers = [
   ...cwcHandlers,
@@ -404,7 +471,8 @@ export const externalServiceHandlers = [
   ...selfXyzHandlers,
   ...congressionalDataHandlers,
   ...sqsHandlers,
-  ...censusAndCongressHandlers
+  ...censusAndCongressHandlers,
+  ...shadowAtlasHandlers
 ];
 
 // Error scenario handlers for testing edge cases

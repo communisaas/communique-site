@@ -9,7 +9,7 @@
  * - Fallback to code-to-name mappings when displayName is missing
  */
 
-import type { LocationHierarchy } from './geocoding-api';
+import type { LocationHierarchy } from './location-search';
 import type { GeoScope } from '../agents/types';
 
 // ============================================================================

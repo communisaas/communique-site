@@ -12,7 +12,7 @@ import { PrismaClient } from '@prisma/client';
 
 // Test-specific database client that doesn't depend on SvelteKit env
 const testDb = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/test',
+  datasourceUrl: process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/test',
   log: ['error']
 });
 

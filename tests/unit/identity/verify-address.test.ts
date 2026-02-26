@@ -183,7 +183,14 @@ beforeEach(() => {
 	mockDbTransaction.mockImplementation(async (fn: (tx: any) => Promise<void>) => {
 		const tx = {
 			districtCredential: { create: vi.fn().mockResolvedValue({}) },
-			user: { update: vi.fn().mockResolvedValue({}) }
+			user: { update: vi.fn().mockResolvedValue({}) },
+			user_representatives: {
+				updateMany: vi.fn().mockResolvedValue({}),
+				upsert: vi.fn().mockResolvedValue({})
+			},
+			representative: {
+				upsert: vi.fn().mockResolvedValue({ id: 'rep-mock' })
+			}
 		};
 		return fn(tx);
 	});
@@ -900,6 +907,270 @@ describe('POST /api/identity/verify-address', () => {
 			expect(response.status).toBe(500);
 			expect(data.success).toBe(false);
 			expect(data.error).toContain('Failed to issue district credential');
+		});
+	});
+
+	// ============================================================================
+	// Officials Upsert (Representative Persistence)
+	// ============================================================================
+
+	describe('officials upsert', () => {
+		it('should accept and validate officials array in input', async () => {
+			const event = makeRequestEvent({
+				body: {
+					district: 'IL-18',
+					verification_method: 'civic_api',
+					officials: [
+						{
+							name: 'Senator One (Illinois)',
+							chamber: 'senate',
+							party: 'Democratic',
+							state: 'IL',
+							district: 'IL',
+							bioguide_id: 'ILS001'
+						},
+						{
+							name: 'Representative (Illinois-18)',
+							chamber: 'house',
+							party: 'Republican',
+							state: 'IL',
+							district: 'IL-18',
+							bioguide_id: 'ILH018',
+							phone: '202-555-0100',
+							office_code: 'IL18'
+						}
+					]
+				}
+			});
+
+			const response = await POST(event);
+			expect(response.status).toBe(200);
+		});
+
+		it('should call representative upsert and user_representatives upsert in transaction', async () => {
+			const repUpsertCalls: any[] = [];
+			const junctionUpsertCalls: any[] = [];
+			const updateManyCalls: any[] = [];
+
+			mockDbTransaction.mockImplementation(async (fn: any) => {
+				const tx = {
+					districtCredential: { create: vi.fn().mockResolvedValue({}) },
+					user: { update: vi.fn().mockResolvedValue({}) },
+					user_representatives: {
+						updateMany: vi.fn().mockImplementation((args: any) => {
+							updateManyCalls.push(args);
+							return {};
+						}),
+						upsert: vi.fn().mockImplementation((args: any) => {
+							junctionUpsertCalls.push(args);
+							return {};
+						})
+					},
+					representative: {
+						upsert: vi.fn().mockImplementation((args: any) => {
+							repUpsertCalls.push(args);
+							return { id: `rep-${args.where.bioguide_id}` };
+						})
+					}
+				};
+				return fn(tx);
+			});
+
+			const event = makeRequestEvent({
+				body: {
+					district: 'IL-18',
+					verification_method: 'civic_api',
+					officials: [
+						{
+							name: 'Senator Test',
+							chamber: 'senate',
+							party: 'Democratic',
+							state: 'IL',
+							district: 'IL',
+							bioguide_id: 'ILS001'
+						},
+						{
+							name: 'Rep Test',
+							chamber: 'house',
+							party: 'Republican',
+							state: 'IL',
+							district: 'IL-18',
+							bioguide_id: 'ILH018'
+						}
+					]
+				}
+			});
+
+			const response = await POST(event);
+			expect(response.status).toBe(200);
+
+			// Should deactivate existing user_representatives first
+			expect(updateManyCalls).toHaveLength(1);
+			expect(updateManyCalls[0].where.user_id).toBe(TEST_USER_ID);
+			expect(updateManyCalls[0].data.is_active).toBe(false);
+
+			// Should upsert 2 representatives
+			expect(repUpsertCalls).toHaveLength(2);
+			expect(repUpsertCalls[0].where.bioguide_id).toBe('ILS001');
+			expect(repUpsertCalls[0].create.name).toBe('Senator Test');
+			expect(repUpsertCalls[0].create.chamber).toBe('senate');
+			expect(repUpsertCalls[0].create.data_source).toBe('congress_api');
+			expect(repUpsertCalls[1].where.bioguide_id).toBe('ILH018');
+			expect(repUpsertCalls[1].create.chamber).toBe('house');
+
+			// Should create 2 junction records
+			expect(junctionUpsertCalls).toHaveLength(2);
+			expect(junctionUpsertCalls[0].create.user_id).toBe(TEST_USER_ID);
+			expect(junctionUpsertCalls[0].create.relationship).toBe('constituent');
+			expect(junctionUpsertCalls[0].create.is_active).toBe(true);
+		});
+
+		it('should skip representative upsert when no officials provided', async () => {
+			const repUpsertCalls: any[] = [];
+
+			mockDbTransaction.mockImplementation(async (fn: any) => {
+				const tx = {
+					districtCredential: { create: vi.fn().mockResolvedValue({}) },
+					user: { update: vi.fn().mockResolvedValue({}) },
+					user_representatives: {
+						updateMany: vi.fn(),
+						upsert: vi.fn()
+					},
+					representative: {
+						upsert: vi.fn().mockImplementation((args: any) => {
+							repUpsertCalls.push(args);
+							return { id: 'nope' };
+						})
+					}
+				};
+				return fn(tx);
+			});
+
+			const event = makeRequestEvent({
+				body: {
+					district: 'CA-12',
+					verification_method: 'civic_api'
+					// No officials field
+				}
+			});
+
+			const response = await POST(event);
+			expect(response.status).toBe(200);
+
+			// Should NOT have called representative upsert
+			expect(repUpsertCalls).toHaveLength(0);
+		});
+
+		it('should filter out officials missing required fields', async () => {
+			const repUpsertCalls: any[] = [];
+
+			mockDbTransaction.mockImplementation(async (fn: any) => {
+				const tx = {
+					districtCredential: { create: vi.fn().mockResolvedValue({}) },
+					user: { update: vi.fn().mockResolvedValue({}) },
+					user_representatives: {
+						updateMany: vi.fn().mockResolvedValue({}),
+						upsert: vi.fn().mockResolvedValue({})
+					},
+					representative: {
+						upsert: vi.fn().mockImplementation((args: any) => {
+							repUpsertCalls.push(args);
+							return { id: `rep-${args.where.bioguide_id}` };
+						})
+					}
+				};
+				return fn(tx);
+			});
+
+			const event = makeRequestEvent({
+				body: {
+					district: 'CA-12',
+					verification_method: 'civic_api',
+					officials: [
+						// Valid official
+						{
+							name: 'Valid Rep',
+							chamber: 'house',
+							party: 'Democratic',
+							bioguide_id: 'CAH012'
+						},
+						// Missing bioguide_id — should be filtered out
+						{
+							name: 'Invalid Rep',
+							chamber: 'house',
+							party: 'Republican'
+						},
+						// Missing name — should be filtered out
+						{
+							chamber: 'senate',
+							party: 'Democratic',
+							bioguide_id: 'CAS001'
+						}
+					]
+				}
+			});
+
+			const response = await POST(event);
+			expect(response.status).toBe(200);
+
+			// Only the valid official should be upserted
+			expect(repUpsertCalls).toHaveLength(1);
+			expect(repUpsertCalls[0].where.bioguide_id).toBe('CAH012');
+		});
+
+		it('should use office_code from official or generate fallback', async () => {
+			const repUpsertCalls: any[] = [];
+
+			mockDbTransaction.mockImplementation(async (fn: any) => {
+				const tx = {
+					districtCredential: { create: vi.fn().mockResolvedValue({}) },
+					user: { update: vi.fn().mockResolvedValue({}) },
+					user_representatives: {
+						updateMany: vi.fn().mockResolvedValue({}),
+						upsert: vi.fn().mockResolvedValue({})
+					},
+					representative: {
+						upsert: vi.fn().mockImplementation((args: any) => {
+							repUpsertCalls.push(args);
+							return { id: `rep-${args.where.bioguide_id}` };
+						})
+					}
+				};
+				return fn(tx);
+			});
+
+			const event = makeRequestEvent({
+				body: {
+					district: 'CA-12',
+					verification_method: 'civic_api',
+					officials: [
+						{
+							name: 'With Office Code',
+							chamber: 'house',
+							party: 'Democratic',
+							state: 'CA',
+							district: 'CA-12',
+							bioguide_id: 'CAH012',
+							office_code: 'HCA12'
+						},
+						{
+							name: 'Without Office Code',
+							chamber: 'senate',
+							party: 'Republican',
+							state: 'CA',
+							district: 'CA',
+							bioguide_id: 'CAS001'
+							// No office_code — should fall back to chamber-state
+						}
+					]
+				}
+			});
+
+			const response = await POST(event);
+			expect(response.status).toBe(200);
+
+			expect(repUpsertCalls[0].create.office_code).toBe('HCA12');
+			expect(repUpsertCalls[1].create.office_code).toBe('senate-CA');
 		});
 	});
 

@@ -12,7 +12,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import ProfileEditModal from '$lib/components/profile/ProfileEditModal.svelte';
 	import GroundCard from '$lib/components/profile/GroundCard.svelte';
-	import { modalActions } from '$lib/stores/modalSystem.svelte';
+	import VerificationGate from '$lib/components/auth/VerificationGate.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 
@@ -31,6 +31,7 @@
 	let avatarError = $state(false);
 	let showEditModal = $state(false);
 	let editingSection = $state<EditSection>('basic');
+	let showVerificationGate = $state(false);
 
 	const user = $derived(data.user);
 	const userDetailsPromise = $derived(data.streamed?.userDetails);
@@ -133,10 +134,12 @@
 	}
 
 	function handleVerifyAddress(): void {
-		modalActions.openModal('address-modal', 'address', {
-			source: 'profile',
-			user: data.user
-		});
+		showVerificationGate = true;
+	}
+
+	function handleVerificationComplete() {
+		showVerificationGate = false;
+		invalidateAll();
 	}
 </script>
 
@@ -450,6 +453,17 @@
 		section={editingSection}
 		onclose={() => (showEditModal = false)}
 		onsave={handleProfileSave}
+	/>
+{/if}
+
+{#if user}
+	<VerificationGate
+		userId={user.id}
+		bind:showModal={showVerificationGate}
+		minimumTier={2}
+		userTrustTier={trustTier}
+		onverified={handleVerificationComplete}
+		oncancel={() => (showVerificationGate = false)}
 	/>
 {/if}
 
