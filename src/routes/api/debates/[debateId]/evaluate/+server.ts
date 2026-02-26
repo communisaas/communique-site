@@ -135,22 +135,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		throw error(503, `AI evaluator configuration error: ${msg}`);
 	}
 
-	// Instantiate model providers
-	const providerClasses: Record<number, string> = {
-		0: 'OpenAIProvider',
-		1: 'GoogleProvider',
-		2: 'DeepSeekProvider',
-		3: 'MistralProvider',
-		4: 'AnthropicProvider'
-	};
-
-	const providers = modelConfigs.map((config) => {
-		const className = providerClasses[config.provider];
-		if (!className || !aiEvaluator[className]) {
-			throw error(503, `Unknown provider: ${config.provider}`);
-		}
-		return new aiEvaluator[className](config);
-	});
+	// Instantiate model providers (handles both direct + OpenRouter mode)
+	const providers = aiEvaluator.createProviders(modelConfigs);
 
 	// Format arguments for the evaluator
 	const debateArguments = debate.arguments.map((arg) => ({
