@@ -2,7 +2,16 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
 
-export const POST: RequestHandler = async ({ params, request }) => {
+export const POST: RequestHandler = async ({ params, request, locals }) => {
+	const session = locals.session;
+	if (!session?.userId) {
+		throw error(401, 'Authentication required');
+	}
+	const user = locals.user;
+	if (!user || (user.trust_tier ?? 0) < 3) {
+		throw error(403, 'Tier 3+ verification required for market operations');
+	}
+
 	const { debateId } = params;
 	const body = await request.json();
 

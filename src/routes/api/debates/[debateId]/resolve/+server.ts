@@ -19,6 +19,10 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 	if (!session?.userId) {
 		throw error(401, 'Authentication required');
 	}
+	const user = locals.user;
+	if (!user || (user.trust_tier ?? 0) < 3) {
+		throw error(403, 'Tier 3+ verification required to resolve debates');
+	}
 
 	const debate = await prisma.debate.findUnique({
 		where: { id: debateId },
@@ -68,23 +72,31 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		}
 	}
 
-	const resolved = await prisma.debate.update({
-		where: { id: debateId },
-		data: {
-			status: 'resolved',
-			winning_argument_index: winner.argument_index,
-			winning_stance: winner.stance,
-			resolved_at: new Date(),
-			resolution_method: 'community_only'
-		}
-	});
+	try {
+		const resolved = await prisma.debate.update({
+			where: { id: debateId, status: 'active' },
+			data: {
+				status: 'resolved',
+				winning_argument_index: winner.argument_index,
+				winning_stance: winner.stance,
+				resolved_at: new Date(),
+				resolution_method: 'community_only'
+			}
+		});
 
-	return json({
-		debateId: resolved.id,
-		status: 'resolved',
-		winningArgumentIndex: resolved.winning_argument_index,
-		winningStance: resolved.winning_stance,
-		resolvedAt: resolved.resolved_at?.toISOString(),
-		...(txHash && { txHash })
-	});
+		return json({
+			debateId: resolved.id,
+			status: 'resolved',
+			winningArgumentIndex: resolved.winning_argument_index,
+			winningStance: resolved.winning_stance,
+			resolvedAt: resolved.resolved_at?.toISOString(),
+			...(txHash && { txHash })
+		});
+	} catch (err: unknown) {
+		// P2025: Record not found (status already changed by concurrent request)
+		if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2025') {
+			throw error(409, 'Debate has already been resolved or status changed');
+		}
+		throw err;
+	}
 };

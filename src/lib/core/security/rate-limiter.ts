@@ -456,6 +456,18 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		windowMs: 60 * 1000, // 10 req/min — prevents confirmation token brute-force
 		keyStrategy: 'ip',
 		includeGet: true
+	},
+	// ── Debate market rate limits (Wave 7B — endpoint hardening) ──
+	// Blanket limit on all debate mutations. The prefix /api/debates/ catches
+	// all sub-endpoints (arguments, commit, reveal, cosign, appeal, resolve, etc.)
+	// since the rate limiter uses segment-boundary prefix matching.
+	// includeGet: true so that argument listing + SSE stream are also covered.
+	{
+		pattern: '/api/debates/',
+		maxRequests: 20,
+		windowMs: 60 * 1000, // 20 req/min per user — browsing/reading + mutations
+		keyStrategy: 'user',
+		includeGet: true
 	}
 ];
 

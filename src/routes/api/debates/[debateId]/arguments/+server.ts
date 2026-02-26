@@ -115,6 +115,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const body = await request.json();
 	const { stance, body: argumentBody, amendmentText, stakeAmount, proofHex, publicInputs, nullifierHex, walletAddress } = body;
 
+	// Validate stake amount: must be a positive number within bounds
+	const stakeNum = Number(stakeAmount);
+	if (!stakeAmount || isNaN(stakeNum) || stakeNum <= 0 || stakeNum > 100_000_000_000) {
+		throw error(400, 'stakeAmount must be a positive number up to 100 billion (micro-units)');
+	}
+
 	// Validate stance
 	if (!['SUPPORT', 'OPPOSE', 'AMEND'].includes(stance)) {
 		throw error(400, 'stance must be SUPPORT, OPPOSE, or AMEND');
@@ -146,6 +152,15 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	// Compute weighted score: sqrt(stake) * 2^tier
 	const stakeInDollars = Number(stakeAmount) / 1e6;
 	const tier = user.trust_tier ?? 0;
+
+	// Verify client-claimed tier doesn't exceed server-known tier (off-chain defense)
+	if (publicInputs && Array.isArray(publicInputs) && publicInputs.length > 30) {
+		const claimedTier = Number(publicInputs[30]);
+		if (Number.isInteger(claimedTier) && claimedTier > tier) {
+			console.warn(`[debates/arguments] Tier mismatch: claimed=${claimedTier}, server=${tier}, user=${session.userId}`);
+		}
+	}
+
 	const weightedScore = Math.floor(Math.sqrt(stakeInDollars) * Math.pow(2, tier) * 1e6);
 
 	const argumentIndex = debate.argument_count;

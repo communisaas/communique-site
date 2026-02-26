@@ -56,6 +56,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const body = await request.json();
 	const { argumentIndex, stakeAmount, proofHex, publicInputs, nullifierHex, walletAddress } = body;
 
+	// Validate stake amount: must be a positive number within bounds
+	const stakeNum = Number(stakeAmount);
+	if (!stakeAmount || isNaN(stakeNum) || stakeNum <= 0 || stakeNum > 100_000_000_000) {
+		throw error(400, 'stakeAmount must be a positive number up to 100 billion (micro-units)');
+	}
+
 	if (argumentIndex === undefined || typeof argumentIndex !== 'number') {
 		throw error(400, 'argumentIndex is required');
 	}
@@ -119,11 +125,17 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	// ── Prisma off-chain update ────────────────────────────────────────
-	// Extract co-signer's engagement tier from ZK public inputs
-	// publicInputs[30] = engagement_tier (31st element, 0-indexed)
-	const coSignerTier = Number(publicInputs[30]);
-	if (!Number.isInteger(coSignerTier) || coSignerTier < 0 || coSignerTier > 7) {
+	// Extract co-signer's engagement tier with server-side enforcement.
+	// In off-chain mode the ZK proof isn't verified, so we clamp to the
+	// server-known trust tier to prevent client-side tier inflation.
+	const serverTier = user.trust_tier ?? 0;
+	const claimedTier = Number(publicInputs[30]);
+	if (!Number.isInteger(claimedTier) || claimedTier < 0 || claimedTier > 7) {
 		throw error(400, 'Invalid engagement tier in public inputs');
+	}
+	const coSignerTier = Math.min(claimedTier, serverTier);
+	if (claimedTier > serverTier) {
+		console.warn(`[debates/cosign] Tier inflation attempt: claimed=${claimedTier}, actual=${serverTier}, user=${session.userId}`);
 	}
 
 	// Compute the co-signer's individual weight contribution
