@@ -53,7 +53,16 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			weightedScore: arg.weighted_score.toString(),
 			totalStake: arg.total_stake.toString(),
 			coSignCount: arg.co_sign_count,
-			createdAt: arg.created_at.toISOString()
+			createdAt: arg.created_at.toISOString(),
+			// LMSR pricing (optional)
+			currentPrice: arg.current_price ?? undefined,
+			priceHistory: arg.price_history ?? undefined,
+			positionCount: arg.position_count ?? undefined,
+			// AI evaluation (optional, populated after resolution)
+			aiScore: arg.ai_scores as Record<string, number> | undefined,
+			weightedAIScore: arg.ai_weighted ?? undefined,
+			finalScore: arg.final_score ?? undefined,
+			modelAgreement: arg.model_agreement ?? undefined,
 		}))
 	});
 };

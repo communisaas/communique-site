@@ -14,6 +14,7 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import type { InputJsonValue } from '@prisma/client/runtime/library';
+import { keccak256, toUtf8Bytes } from 'ethers';
 
 const db = new PrismaClient();
 
@@ -2057,9 +2058,8 @@ const JURISDICTIONS = [
 // SEED DATA -- Debates (built on actual resolved templates)
 // ============================================================================
 
-function hashBody(body: string): string {
-	// Deterministic pseudo-hash for seed data (no crypto import needed)
-	return '0x' + Buffer.from(body.slice(0, 32)).toString('hex').padEnd(64, '0');
+function hashText(text: string): string {
+	return keccak256(toUtf8Bytes(text));
 }
 
 const WALLET_ADDRS = [
@@ -2170,8 +2170,8 @@ const DEBATES: DebateSeed[] = [
 				amendment_text: null,
 				stake_amount: BigInt('1200000'),
 				engagement_tier: 3,
-				weighted_score: 7100,
-				total_stake: BigInt('2400000'),
+				weighted_score: 8763560,
+				total_stake: BigInt('2200000'),
 				co_sign_count: 5,
 				current_price: '0.28',
 				price_history: [
@@ -2192,8 +2192,8 @@ const DEBATES: DebateSeed[] = [
 				amendment_text: 'Replace the blanket advertising ban with mandatory privacy-by-default architecture standards, enforce quarterly third-party audits by a new Federal Children\'s Data Protection Authority, and require platforms to offer ad-free tiers at no cost for verified minors under 17.',
 				stake_amount: BigInt('1500000'),
 				engagement_tier: 4,
-				weighted_score: 8200,
-				total_stake: BigInt('3800000'),
+				weighted_score: 19595917,
+				total_stake: BigInt('3300000'),
 				co_sign_count: 9,
 				current_price: '0.52',
 				price_history: [
@@ -2212,10 +2212,10 @@ const DEBATES: DebateSeed[] = [
 				stance: 'OPPOSE',
 				body: 'COPPA 2.0 is a well-intentioned approach with dangerous unintended consequences. Age verification at scale requires collecting MORE personal data from children, not less — creating exactly the surveillance risk it claims to solve. Additionally, extending protections to 16-year-olds infantilizes teenagers who are already making complex digital decisions. The better path is platform liability reform and parental control tools, not an expansive federal data regime.',
 				amendment_text: null,
-				stake_amount: BigInt('800000'),
+				stake_amount: BigInt('1000000'),
 				engagement_tier: 2,
-				weighted_score: 5200,
-				total_stake: BigInt('1200000'),
+				weighted_score: 4000000,
+				total_stake: BigInt('1400000'),
 				co_sign_count: 2,
 				current_price: '0.20',
 				price_history: [
@@ -2243,7 +2243,7 @@ const DEBATES: DebateSeed[] = [
 		deadline: new Date(now + 4 * DAY),
 		jurisdiction_size: 12,
 		proposer_index: 1,
-		proposer_bond: BigInt('500000'),
+		proposer_bond: BigInt('1000000'),
 		market_status: 'active',
 		market_liquidity: BigInt('3000000'),
 		current_prices: { '0': '0.42', '1': '0.35', '2': '0.23' },
@@ -2264,10 +2264,10 @@ const DEBATES: DebateSeed[] = [
 				stance: 'SUPPORT',
 				body: 'The numbers speak for themselves: 3D-printed homes cost $160K compared to $350K+ for traditional construction, and they can be built in days rather than months. Community land trusts in Austin have maintained affordability 25-30% below market for decades. The only thing standing between families and affordable housing is the building code, and that is a choice we can change tomorrow. Every month of regulatory delay means more families on the street.',
 				amendment_text: null,
-				stake_amount: BigInt('800000'),
+				stake_amount: BigInt('1200000'),
 				engagement_tier: 3,
-				weighted_score: 6500,
-				total_stake: BigInt('1600000'),
+				weighted_score: 8763560,
+				total_stake: BigInt('2000000'),
 				co_sign_count: 4,
 				current_price: '0.42',
 				price_history: [
@@ -2284,10 +2284,10 @@ const DEBATES: DebateSeed[] = [
 				stance: 'AMEND',
 				body: 'Fast-tracking is necessary but insufficient without quality safeguards. 3D-printed homes need a separate certification pathway — not exemption from safety standards. Propose a 12-month pilot program in 3 cities with independent structural monitoring, then use those results to write national model codes. Community land trusts should require minimum 50-year deed restrictions to prevent eventual gentrification.',
 				amendment_text: 'Add: "through a structured 12-month pilot program with independent structural certification and minimum 50-year community land trust deed restrictions."',
-				stake_amount: BigInt('600000'),
+				stake_amount: BigInt('1000000'),
 				engagement_tier: 3,
-				weighted_score: 5800,
-				total_stake: BigInt('1200000'),
+				weighted_score: 8000000,
+				total_stake: BigInt('1600000'),
 				co_sign_count: 3,
 				current_price: '0.35',
 				price_history: [
@@ -2304,10 +2304,10 @@ const DEBATES: DebateSeed[] = [
 				stance: 'OPPOSE',
 				body: 'Fast-tracking construction codes for unproven technology is irresponsible. We have seen what happens when building standards are relaxed for cost savings — the Surfside condo collapse killed 98 people. 3D-printed concrete has no long-term performance data beyond 5 years. Community land trusts sound appealing but create perpetual dependency on nonprofit governance. Let the market innovate; government should verify safety, not pick winners.',
 				amendment_text: null,
-				stake_amount: BigInt('400000'),
+				stake_amount: BigInt('1000000'),
 				engagement_tier: 2,
-				weighted_score: 4200,
-				total_stake: BigInt('600000'),
+				weighted_score: 4000000,
+				total_stake: BigInt('1200000'),
 				co_sign_count: 1,
 				current_price: '0.23',
 				price_history: [
@@ -2333,7 +2333,7 @@ const DEBATES: DebateSeed[] = [
 		deadline: new Date(now - 1 * DAY),
 		jurisdiction_size: 338,
 		proposer_index: 2,
-		proposer_bond: BigInt('750000'),
+		proposer_bond: BigInt('1000000'),
 		market_status: 'resolved',
 		market_liquidity: BigInt('4000000'),
 		current_prices: { '0': '0.41', '1': '0.39', '2': '0.20' },
@@ -2371,10 +2371,10 @@ const DEBATES: DebateSeed[] = [
 				stance: 'SUPPORT',
 				body: 'Our national parks generate $3.3 billion in visitor spending annually on a $900 million budget — a 3.6x ROI that almost no government program can match. Cutting $450 million from an agency that literally pays for itself is not fiscal responsibility, it is fiscal illiteracy. The $3.6 billion maintenance backlog grows by hundreds of millions each year of inaction. Every dollar not invested now costs $3-4 in emergency repairs later.',
 				amendment_text: null,
-				stake_amount: BigInt('900000'),
+				stake_amount: BigInt('1200000'),
 				engagement_tier: 3,
-				weighted_score: 6800,
-				total_stake: BigInt('1800000'),
+				weighted_score: 8763560,
+				total_stake: BigInt('2000000'),
 				co_sign_count: 4,
 				current_price: '0.41',
 				price_history: [
@@ -2392,10 +2392,10 @@ const DEBATES: DebateSeed[] = [
 				stance: 'AMEND',
 				body: 'Reversing cuts is necessary but a dedicated maintenance trust creates a dangerous precedent — it locks future governments into spending commitments regardless of fiscal conditions. Instead, introduce a Parks Canada Infrastructure Bond program backed by park revenue, allowing capital markets to fund the backlog while maintaining budget flexibility. Tie executive compensation at Parks Canada to maintenance reduction targets.',
 				amendment_text: 'Replace "dedicated maintenance trust" with "Parks Canada Infrastructure Bond program backed by park entry fee revenue, with executive performance metrics tied to annual backlog reduction targets of at least 5%."',
-				stake_amount: BigInt('850000'),
+				stake_amount: BigInt('1100000'),
 				engagement_tier: 3,
-				weighted_score: 6600,
-				total_stake: BigInt('1700000'),
+				weighted_score: 8390470,
+				total_stake: BigInt('1900000'),
 				co_sign_count: 4,
 				current_price: '0.39',
 				price_history: [
@@ -2413,10 +2413,10 @@ const DEBATES: DebateSeed[] = [
 				stance: 'OPPOSE',
 				body: 'The $3.6 billion backlog narrative ignores that much of it represents aspirational upgrades, not critical safety needs. Parks Canada should triage its portfolio — sell or transfer underperforming sites to provinces and focus federal resources on the 20 flagship parks that generate 80% of revenue. Throwing more money at an agency with a proven track record of mismanagement rewards failure.',
 				amendment_text: null,
-				stake_amount: BigInt('500000'),
+				stake_amount: BigInt('1000000'),
 				engagement_tier: 2,
-				weighted_score: 4100,
-				total_stake: BigInt('700000'),
+				weighted_score: 4000000,
+				total_stake: BigInt('1200000'),
 				co_sign_count: 1,
 				current_price: '0.20',
 				price_history: [
@@ -2482,10 +2482,10 @@ const DEBATES: DebateSeed[] = [
 				stance: 'SUPPORT',
 				body: 'When 15 minutes of passive interest income exceeds a worker\'s entire annual salary, the value assigned to human labor has been completely decoupled from economic reality. Apple holds $132.4 billion in liquid assets while its median worker earns $35,570. This is not a market outcome — it is a power imbalance. Apple can afford to pay living wages that reflect the dignity of the people who make their brand successful.',
 				amendment_text: null,
-				stake_amount: BigInt('700000'),
+				stake_amount: BigInt('1000000'),
 				engagement_tier: 2,
-				weighted_score: 5200,
-				total_stake: BigInt('1100000'),
+				weighted_score: 4000000,
+				total_stake: BigInt('1400000'),
 				co_sign_count: 2,
 				current_price: '0.22',
 				price_history: [
@@ -2505,10 +2505,10 @@ const DEBATES: DebateSeed[] = [
 				stance: 'AMEND',
 				body: 'The moral argument is compelling but the mechanism is wrong. Tying wages to interest income creates a volatile compensation structure that could actually hurt workers during low-rate environments. Instead, mandate that Apple allocate a fixed percentage (5%) of annual free cash flow to a worker equity pool, giving retail employees actual ownership in the company they build. Profit-sharing creates alignment; wage mandates create adversarial dynamics.',
 				amendment_text: 'Replace salary restructuring with mandatory 5% annual free cash flow allocation to a worker equity pool for all employees below VP level, with 3-year vesting.',
-				stake_amount: BigInt('600000'),
+				stake_amount: BigInt('1000000'),
 				engagement_tier: 2,
-				weighted_score: 4800,
-				total_stake: BigInt('900000'),
+				weighted_score: 4000000,
+				total_stake: BigInt('1200000'),
 				co_sign_count: 1,
 				current_price: '0.18',
 				price_history: [
@@ -2530,8 +2530,8 @@ const DEBATES: DebateSeed[] = [
 				amendment_text: null,
 				stake_amount: BigInt('1800000'),
 				engagement_tier: 4,
-				weighted_score: 8500,
-				total_stake: BigInt('4200000'),
+				weighted_score: 21466252,
+				total_stake: BigInt('4000000'),
 				co_sign_count: 11,
 				current_price: '0.60',
 				price_history: [
@@ -2709,7 +2709,8 @@ async function main() {
 		// ── Create Debates ───────────────────────────────────────
 		console.log('\nSeeding debates...');
 		for (const d of DEBATES) {
-			const propositionHash = hashBody(d.proposition_text);
+			const propositionHash = hashText(d.proposition_text);
+			const actionDomain = hashText('debate.' + d.id);
 			await db.debate.create({
 				data: {
 					id: d.id,
@@ -2717,7 +2718,7 @@ async function main() {
 					debate_id_onchain: d.debate_id_onchain,
 					proposition_text: d.proposition_text,
 					proposition_hash: propositionHash,
-					action_domain: `debate.${d.template_id.slice(0, 8)}`,
+					action_domain: actionDomain,
 					proposer_address: WALLET_ADDRS[d.proposer_index],
 					proposer_bond: d.proposer_bond,
 					deadline: d.deadline,
@@ -2748,7 +2749,7 @@ async function main() {
 			// Create arguments for this debate
 			for (let i = 0; i < d.arguments.length; i++) {
 				const arg = d.arguments[i];
-				const bodyHash = hashBody(arg.body);
+				const bodyHash = hashText(arg.body);
 				await db.debateArgument.create({
 					data: {
 						debate_id: d.id,
@@ -2757,7 +2758,7 @@ async function main() {
 						body: arg.body,
 						body_hash: bodyHash,
 						amendment_text: arg.amendment_text,
-						amendment_hash: arg.amendment_text ? hashBody(arg.amendment_text) : null,
+						amendment_hash: arg.amendment_text ? hashText(arg.amendment_text) : null,
 						stake_amount: arg.stake_amount,
 						engagement_tier: arg.engagement_tier,
 						weighted_score: arg.weighted_score,
