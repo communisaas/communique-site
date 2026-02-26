@@ -183,18 +183,7 @@ describe('llm-cost-protection', () => {
 			expect(ctx.identifier).toBe('ip:10.0.0.1');
 		});
 
-		it('falls back to fly-client-ip when getClientAddress throws', () => {
-			const event = createMockEvent({
-				userId: null,
-				getClientAddressThrows: true,
-				headers: { 'fly-client-ip': '172.16.0.1' }
-			});
-			const ctx = getUserContext(event);
-
-			expect(ctx.identifier).toBe('ip:172.16.0.1');
-		});
-
-		it('falls back to cf-connecting-ip when fly header is absent', () => {
+		it('falls back to cf-connecting-ip when getClientAddress throws', () => {
 			const event = createMockEvent({
 				userId: null,
 				getClientAddressThrows: true,

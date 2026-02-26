@@ -1,27 +1,17 @@
-import adapterNode from '@sveltejs/adapter-node';
 import adapterCloudflare from '@sveltejs/adapter-cloudflare';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
-// Use Node adapter for local dev / Docker, Cloudflare adapter for CF Pages
-// Auto-detect Cloudflare Pages via CF_PAGES env var, or explicit ADAPTER=cloudflare
-const useCloudflare = process.env.ADAPTER === 'cloudflare' || process.env.CF_PAGES === '1';
-
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
-	// Consult https://svelte.dev/docs/kit/integrations
-	// for more information about preprocessors
 	preprocess: [vitePreprocess()],
 
 	kit: {
-		adapter: useCloudflare
-			? adapterCloudflare({
-					// Skip prerendering to avoid post-build analysis issues
-					prerender: {
-						handleHttpError: 'warn',
-						handleMissingId: 'warn'
-					}
-				})
-			: adapterNode(),
+		adapter: adapterCloudflare({
+			prerender: {
+				handleHttpError: 'warn',
+				handleMissingId: 'warn'
+			}
+		}),
 		// BR5-015: Content Security Policy — SvelteKit auto-injects nonces for its inline scripts.
 		// Mode 'auto' uses hashes for prerendered pages, nonces for dynamic pages.
 		// 'wasm-unsafe-eval' required for Noir/Barretenberg WASM execution.

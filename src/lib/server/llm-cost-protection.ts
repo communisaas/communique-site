@@ -90,10 +90,8 @@ export function getUserContext(event: RequestEvent): UserContext {
 	const session = event.locals.session;
 	const userId = session?.userId || null;
 
-	// SECURITY FIX: Use SvelteKit's trusted client address extraction
-	// This respects adapter-node's trust proxy configuration and handles
-	// proxy chains correctly (unlike raw x-forwarded-for parsing).
-	// Falls back to 'unknown' only if truly unavailable.
+	// SECURITY FIX: Use SvelteKit's trusted client address extraction.
+	// Falls back to CF/proxy headers only if truly unavailable.
 	let ip: string;
 	try {
 		ip = event.getClientAddress();
@@ -102,7 +100,6 @@ export function getUserContext(event: RequestEvent): UserContext {
 		// Fall back to platform-specific headers in priority order
 		const headers = event.request.headers;
 		ip =
-			headers.get('fly-client-ip') || // Fly.io's trusted header
 			headers.get('cf-connecting-ip') || // Cloudflare's trusted header
 			headers.get('x-real-ip') || // Common reverse proxy header
 			'unknown';

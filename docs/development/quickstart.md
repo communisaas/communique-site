@@ -735,23 +735,21 @@ GOOGLE_CLIENT_SECRET=...
 
 ### Deployment Platforms
 
-**SvelteKit supports multiple adapters:**
-
-- **Node.js** (default): `@sveltejs/adapter-node`
-- **Vercel**: `@sveltejs/adapter-vercel`
-- **Netlify**: `@sveltejs/adapter-netlify`
-- **Cloudflare Pages**: `@sveltejs/adapter-cloudflare`
-
-**Current Configuration** (`svelte.config.js`):
+**Production runs on Cloudflare Workers** (Pages) via `@sveltejs/adapter-cloudflare`.
 
 ```javascript
-import adapter from '@sveltejs/adapter-node';
+import adapterCloudflare from '@sveltejs/adapter-cloudflare';
 
 export default {
   kit: {
-    adapter: adapter()
+    adapter: adapterCloudflare()
   }
 };
+```
+
+Build and deploy:
+```bash
+npm run build && npx wrangler pages deploy .svelte-kit/cloudflare --project-name communique-site
 ```
 
 ### Database Migrations (Production)
