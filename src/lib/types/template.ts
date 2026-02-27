@@ -1,6 +1,20 @@
 import type { TemplateScope } from './jurisdiction';
 import type { GeoScope } from '$lib/core/agents/types';
 
+// ============================================================================
+// Power Landscape Types (Cycle 37)
+// ============================================================================
+
+/** Functional role a decision-maker plays in the decision */
+export type RoleCategory = 'votes' | 'executes' | 'shapes' | 'funds' | 'oversees';
+
+/** Group of decision-makers sharing the same functional role */
+export interface RoleGroup {
+	category: RoleCategory;
+	label: string; // "VOTE ON IT", "EXECUTE IT", etc.
+	memberIndices: number[]; // indices into decision_makers array
+}
+
 /**
  * Minimal template interface for CWC (Communicating With Congress) submission pipeline.
  * Used by cwc-client and cwc-generator to avoid unsafe casts with Prisma model types.
@@ -167,6 +181,7 @@ export interface TemplateFormData {
 		topics?: string[]; // Topic tags from AI or manual entry (1-5 lowercase strings)
 		slug?: string;
 		voiceSample?: string; // Emotional peak from rawInput - flows to downstream agents
+		audienceGuidance?: string; // Optional user guidance for decision-maker targeting
 		aiGenerated?: boolean; // Flag indicating content was AI-generated
 	};
 	audience: {
@@ -211,6 +226,18 @@ export interface ProcessedDecisionMaker {
 	contactNotes?: string;
 	/** true if discovered from page content rather than the initial identity list */
 	discovered?: boolean;
+
+	// === Power Landscape fields (Cycle 37) ===
+	/** Factual accountability line from Phase 4 agent */
+	accountabilityOpener?: string | null;
+	/** Functional role in the decision */
+	roleCategory?: RoleCategory;
+	/** Relevance rank: 1 = most direct power */
+	relevanceRank?: number;
+	/** Specific votes, decisions, statements */
+	publicActions?: string[];
+	/** Issue-specific prompt for compose Zone 2 */
+	personalPrompt?: string | null;
 }
 
 /**
@@ -231,6 +258,28 @@ export interface Source {
 	title: string; // Source title
 	url: string; // Source URL
 	type: 'journalism' | 'research' | 'government' | 'legal' | 'advocacy' | 'other'; // Source type
+}
+
+// ============================================================================
+// RecipientConfig — Typed wrapper for Template.recipient_config JSON field
+// ============================================================================
+
+/** Typed representation of the `recipient_config` JSON blob on a Template. */
+export interface RecipientConfig {
+	decisionMakers?: ProcessedDecisionMaker[];
+	roleGroups?: RoleGroup[];
+	personalPrompt?: string;
+	recipientEmails?: string[];
+	includesCongress?: boolean;
+	customRecipients?: Array<{ name: string; email: string; title?: string; organization?: string }>;
+}
+
+/** Parse an unknown recipient_config value into a typed RecipientConfig (graceful fallback). */
+export function parseRecipientConfig(value: unknown): RecipientConfig {
+	if (value && typeof value === 'object' && !Array.isArray(value)) {
+		return value as RecipientConfig;
+	}
+	return {};
 }
 
 // ============================================================================

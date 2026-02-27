@@ -28,9 +28,10 @@ const handlePlatformEnv: Handle = async ({ event, resolve }) => {
 	}
 	// Initialize per-request PrismaClient with Hyperdrive connection.
 	// On Workers, Hyperdrive provides a local connection string to its pool.
-	// On dev, falls back to DATABASE_URL.
-	const hyperdrive = event.platform?.env?.HYPERDRIVE;
-	const connectionString = hyperdrive?.connectionString || process.env.DATABASE_URL || '';
+	// In dev, wrangler.toml's localConnectionString populates Hyperdrive but
+	// points to a local DB that may not exist — prefer DIRECT_URL from .env.
+	const hyperdrive = dev ? undefined : event.platform?.env?.HYPERDRIVE;
+	const connectionString = hyperdrive?.connectionString || process.env.DIRECT_URL || process.env.DATABASE_URL || '';
 	const client = createRequestClient(connectionString);
 
 	// Wrap the entire request in AsyncLocalStorage so all `db.xxx()` calls
@@ -83,6 +84,8 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 					passkey_credential_id: user.passkey_credential_id ?? null,
 					// did:key from WebAuthn public key
 					did_key: user.did_key ?? null,
+					// Cryptographic identity commitment (Semaphore/ZK)
+					identity_commitment: user.identity_commitment ?? null,
 					// Privacy-preserving district (hash only, no PII)
 					district_hash: user.district_hash ?? null,
 					district_verified: user.district_verified ?? false,
@@ -96,6 +99,11 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 					// Reputation
 					trust_score: user.trust_score ?? 0,
 					reputation_tier: user.reputation_tier ?? 'novice',
+					// Wallet integration
+					wallet_address: user.wallet_address ?? null,
+					wallet_type: user.wallet_type ?? null,
+					near_account_id: user.near_account_id ?? null,
+					near_derived_scroll_address: user.near_derived_scroll_address ?? null,
 					// Timestamps
 					createdAt: user.createdAt,
 					updatedAt: user.updatedAt
@@ -140,7 +148,9 @@ const SENSITIVE_IDENTITY_PATHS = [
 	'/api/identity/verify-mdl',
 	'/api/auth/passkey/register',
 	'/api/auth/passkey/authenticate',
-	'/api/location/resolve'
+	'/api/location/resolve',
+	'/api/wallet/connect',
+	'/api/wallet/near/sponsor'
 ];
 
 const handleCsrfGuard: Handle = async ({ event, resolve }) => {
@@ -249,7 +259,7 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
 	const pathname = url.pathname;
 
 	// Bypass rate limiting for demo user
-	if (locals.user?.id === 'user-demo-1') {
+	if (locals.user?.id === 'user-seed-1') {
 		return resolve(event);
 	}
 

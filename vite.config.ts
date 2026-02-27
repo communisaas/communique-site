@@ -15,14 +15,18 @@ const voterProtocolStubPath = fileURLToPath(
 
 export default defineConfig({
 	plugins: [
-		// CRITICAL: alias plugin must be in main plugins for DEV mode worker support
-		// (worker.plugins only applies at BUILD time - see https://github.com/vitejs/vite/issues/8520)
-		alias({
-			entries: [
-				{ find: 'buffer', replacement: bufferShimPath },
-				{ find: 'pino', replacement: pinoShimPath }
-			]
-		}),
+		// Client-only buffer/pino shims for @aztec/bb.js ZK proving.
+		// CRITICAL: Must NOT apply to SSR — server-side pg/Prisma needs real Node.js buffer.
+		{
+			name: 'client-only-shims',
+			enforce: 'pre',
+			resolveId(source, _importer, options) {
+				if (options?.ssr) return null;
+				if (source === 'buffer') return bufferShimPath;
+				if (source === 'pino') return pinoShimPath;
+				return null;
+			}
+		},
 		// Stub @voter-protocol/noir-prover ONLY during SSR.
 		// SSR only needs BN254_MODULUS (a constant). Client needs the real package
 		// with WASM prover for in-browser ZK proof generation.
@@ -57,15 +61,10 @@ export default defineConfig({
 	},
 
 	// Polyfill Node.js globals for browser (needed for @aztec/bb.js)
-	resolve: {
-		alias: {
-			// Use local buffer shim for all buffer imports (including @aztec/bb.js)
-			// This ensures consistent resolution in both dev and build modes
-			buffer: bufferShimPath,
-			// Shim pino for @aztec/bb.js - browser.js uses CJS but bb.js expects named export
-			pino: pinoShimPath
-		}
-	},
+	// NOTE: buffer/pino aliases are applied ONLY via the alias() plugin (client + workers).
+	// resolve.alias is NOT used because it also applies to SSR, which breaks pg/Prisma
+	// (they need the real Node.js buffer, not the browser shim).
+	resolve: {},
 
 	optimizeDeps: {
 		exclude: [

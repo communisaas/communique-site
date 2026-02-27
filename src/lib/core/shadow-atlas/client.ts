@@ -95,7 +95,7 @@ export interface MerkleProof {
  */
 export interface DistrictLookupResult {
 	district: District;
-	merkleProof: MerkleProof;
+	merkleProof: MerkleProof | null;
 }
 
 /**
@@ -172,26 +172,29 @@ export async function lookupDistrict(lat: number, lng: number): Promise<District
 			throw new Error('Shadow Atlas returned invalid district data');
 		}
 
-		if (!merkleProof?.root || !merkleProof?.siblings || !merkleProof?.pathIndices) {
-			throw new Error('Shadow Atlas returned invalid Merkle proof');
-		}
+		// Merkle proof may be null when ProofService has no data (e.g., serve-only mode)
+		if (merkleProof) {
+			if (!merkleProof.root || !merkleProof.siblings || !merkleProof.pathIndices) {
+				throw new Error('Shadow Atlas returned invalid Merkle proof');
+			}
 
-		if (merkleProof.depth !== CIRCUIT_DEPTH) {
-			throw new Error(
-				`Shadow Atlas returned invalid tree depth: ${merkleProof.depth}. Expected ${CIRCUIT_DEPTH}.`
-			);
-		}
+			if (merkleProof.depth !== CIRCUIT_DEPTH) {
+				throw new Error(
+					`Shadow Atlas returned invalid tree depth: ${merkleProof.depth}. Expected ${CIRCUIT_DEPTH}.`
+				);
+			}
 
-		if (merkleProof.siblings.length !== CIRCUIT_DEPTH || merkleProof.pathIndices.length !== CIRCUIT_DEPTH) {
-			throw new Error(
-				`Shadow Atlas returned invalid proof length: siblings=${merkleProof.siblings.length}, indices=${merkleProof.pathIndices.length}. Expected ${CIRCUIT_DEPTH}.`
-			);
-		}
+			if (merkleProof.siblings.length !== CIRCUIT_DEPTH || merkleProof.pathIndices.length !== CIRCUIT_DEPTH) {
+				throw new Error(
+					`Shadow Atlas returned invalid proof length: siblings=${merkleProof.siblings.length}, indices=${merkleProof.pathIndices.length}. Expected ${CIRCUIT_DEPTH}.`
+				);
+			}
 
-		// 29M-005: Validate BN254 field bounds on lookup Merkle proof (matches BR5-009)
-		validateBN254Hex(merkleProof.root, 'merkleProof.root');
-		validateBN254Hex(merkleProof.leaf, 'merkleProof.leaf');
-		validateBN254HexArray(merkleProof.siblings, 'merkleProof.siblings');
+			// 29M-005: Validate BN254 field bounds on lookup Merkle proof (matches BR5-009)
+			validateBN254Hex(merkleProof.root, 'merkleProof.root');
+			validateBN254Hex(merkleProof.leaf, 'merkleProof.leaf');
+			validateBN254HexArray(merkleProof.siblings, 'merkleProof.siblings');
+		}
 
 		return result.data;
 	} catch (error) {
@@ -824,27 +827,29 @@ export async function resolveLocation(
 		throw new Error('Shadow Atlas resolve returned invalid district data');
 	}
 
-	// Validate Merkle proof
-	if (!data.merkleProof?.root || !data.merkleProof?.siblings || !data.merkleProof?.pathIndices) {
-		throw new Error('Shadow Atlas resolve returned invalid Merkle proof');
-	}
+	// Validate Merkle proof (may be null in serve-only mode without ProofService data)
+	if (data.merkleProof) {
+		if (!data.merkleProof.root || !data.merkleProof.siblings || !data.merkleProof.pathIndices) {
+			throw new Error('Shadow Atlas resolve returned invalid Merkle proof');
+		}
 
-	if (data.merkleProof.depth !== CIRCUIT_DEPTH) {
-		throw new Error(
-			`Shadow Atlas resolve returned invalid tree depth: ${data.merkleProof.depth}. Expected ${CIRCUIT_DEPTH}.`
-		);
-	}
+		if (data.merkleProof.depth !== CIRCUIT_DEPTH) {
+			throw new Error(
+				`Shadow Atlas resolve returned invalid tree depth: ${data.merkleProof.depth}. Expected ${CIRCUIT_DEPTH}.`
+			);
+		}
 
-	if (data.merkleProof.siblings.length !== CIRCUIT_DEPTH || data.merkleProof.pathIndices.length !== CIRCUIT_DEPTH) {
-		throw new Error(
-			`Shadow Atlas resolve returned invalid proof length: siblings=${data.merkleProof.siblings.length}, indices=${data.merkleProof.pathIndices.length}. Expected ${CIRCUIT_DEPTH}.`
-		);
-	}
+		if (data.merkleProof.siblings.length !== CIRCUIT_DEPTH || data.merkleProof.pathIndices.length !== CIRCUIT_DEPTH) {
+			throw new Error(
+				`Shadow Atlas resolve returned invalid proof length: siblings=${data.merkleProof.siblings.length}, indices=${data.merkleProof.pathIndices.length}. Expected ${CIRCUIT_DEPTH}.`
+			);
+		}
 
-	// BR5-009: Validate BN254 field bounds
-	validateBN254Hex(data.merkleProof.root, 'merkleProof.root');
-	validateBN254Hex(data.merkleProof.leaf, 'merkleProof.leaf');
-	validateBN254HexArray(data.merkleProof.siblings, 'merkleProof.siblings');
+		// BR5-009: Validate BN254 field bounds
+		validateBN254Hex(data.merkleProof.root, 'merkleProof.root');
+		validateBN254Hex(data.merkleProof.leaf, 'merkleProof.leaf');
+		validateBN254HexArray(data.merkleProof.siblings, 'merkleProof.siblings');
+	}
 
 	// Validate officials if present
 	const officials: OfficialsResponse | null = data.officials || null;
@@ -861,6 +866,85 @@ export async function resolveLocation(
 		} as DistrictLookupResult,
 		officials,
 	};
+}
+
+// ============================================================================
+// Address Resolution (Sovereign — self-hosted geocoding + district lookup)
+// ============================================================================
+
+/**
+ * Address resolution response from Shadow Atlas POST /v1/resolve-address.
+ * Composite: geocode + district lookup + officials in one call.
+ * All processing is local (Nominatim + R-tree + SQLite). Zero external API calls.
+ */
+export interface AddressResolutionResult {
+	geocode: {
+		lat: number;
+		lng: number;
+		matched_address: string;
+		confidence: number;
+		country: 'US' | 'CA';
+	};
+	district: {
+		id: string;
+		name: string;
+		jurisdiction: string;
+		district_type: string;
+	} | null;
+	officials: OfficialsResponse | null;
+	cell_id: string | null;
+	vintage: string;
+}
+
+/**
+ * Resolve a structured address to district + officials via Shadow Atlas.
+ * Uses self-hosted Nominatim geocoding — zero external government API calls.
+ *
+ * @param address - Structured US address (street, city, state, zip)
+ * @returns Address resolution result with geocode, district, and officials
+ * @throws Error if address not found or service unavailable
+ */
+export async function resolveAddress(address: {
+	street: string;
+	city: string;
+	state: string;
+	zip: string;
+	country?: 'US' | 'CA';
+}): Promise<AddressResolutionResult> {
+	const response = await fetch(`${SHADOW_ATLAS_URL}/v1/resolve-address`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Accept: 'application/json',
+			'X-Client-Version': 'communique-v1',
+		},
+		body: JSON.stringify(address),
+		signal: AbortSignal.timeout(15000),
+	});
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({
+			error: { code: 'NETWORK_ERROR', message: response.statusText },
+		})) as ShadowAtlasError;
+
+		if (response.status === 404) {
+			throw new Error(
+				errorData.error?.message || 'Address not found. Please check your address and try again.'
+			);
+		}
+
+		throw new Error(
+			`Shadow Atlas address resolution failed: ${errorData.error?.message || response.statusText}`
+		);
+	}
+
+	const result = await response.json();
+
+	if (!result.success || !result.data) {
+		throw new Error('Shadow Atlas returned invalid resolve-address response');
+	}
+
+	return result.data as AddressResolutionResult;
 }
 
 // ============================================================================

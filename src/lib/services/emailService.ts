@@ -363,6 +363,59 @@ export function generateMailtoUrl(
 	}
 }
 
+/**
+ * Generate a personalized mailto URL for the Power Landscape compose pane.
+ * Concatenates non-empty zones into a single email body.
+ *
+ * Zone assembly: opener + personal input + template body + attestation
+ * Empty zones are skipped — no blank lines in the final email.
+ */
+export function generatePersonalizedMailto(params: {
+	recipient: { name: string; email: string; title?: string; organization?: string };
+	subject: string;
+	opener: string;
+	personalInput?: string;
+	templateBody: string;
+	attestation?: string;
+}): { url: string } | { error: { code: string; message: string } } {
+	const bodyParts: string[] = [];
+
+	// Zone 1: Accountability opener
+	if (params.opener.trim()) {
+		bodyParts.push(params.opener.trim());
+	}
+
+	// Zone 2: Personal input (only if non-empty)
+	if (params.personalInput?.trim()) {
+		bodyParts.push(params.personalInput.trim());
+	}
+
+	// Zone 3: Template body
+	if (params.templateBody.trim()) {
+		bodyParts.push(params.templateBody.trim());
+	}
+
+	// Zone 4: Attestation (separated by rule)
+	if (params.attestation?.trim()) {
+		bodyParts.push('---');
+		bodyParts.push(params.attestation.trim());
+	}
+
+	const body = bodyParts.join('\n\n');
+	const url = `mailto:${encodeURIComponent(params.recipient.email)}?subject=${encodeURIComponent(params.subject)}&body=${encodeURIComponent(body)}`;
+
+	if (url.length > 8000) {
+		return {
+			error: {
+				code: 'URL_TOO_LONG',
+				message: 'Email content too long for mailto URL. Try shortening your message.'
+			}
+		};
+	}
+
+	return { url };
+}
+
 // =============================================================================
 // ADVANCED EMAIL FLOW FUNCTIONS
 // =============================================================================

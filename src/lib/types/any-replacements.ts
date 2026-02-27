@@ -292,6 +292,11 @@ export interface HeaderUser {
 	verification_method?: string | null;
 	verified_at?: Date | null;
 	address?: string | null;
+	// Wallet integration
+	wallet_address?: string | null;
+	wallet_type?: string | null;
+	near_account_id?: string | null;
+	near_derived_scroll_address?: string | null;
 }
 
 // UI Component types

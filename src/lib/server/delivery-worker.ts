@@ -7,7 +7,7 @@
  * Flow:
  * 1. Update delivery_status to 'processing'
  * 2. Decrypt encrypted witness to extract deliveryAddress
- * 3. Look up congressional representatives for address
+ * 3. Look up congressional representatives via Shadow Atlas (pre-ingested, zero gov API calls)
  * 4. Fetch template for message body
  * 5. Submit to each representative via CWC (Senate direct, House via GCP proxy)
  * 6. Update Submission record with delivery results
@@ -20,7 +20,7 @@
 
 import type { PrismaClient } from '@prisma/client';
 import { decryptWitness, type EncryptedWitnessPayload } from '$lib/server/witness-decryption';
-import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup';
+import { getOfficials, type Official } from '$lib/core/shadow-atlas/client';
 import { cwcClient, type CongressionalOffice } from '$lib/core/congress/cwc-client';
 import type { CwcTemplate } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
@@ -126,21 +126,34 @@ export async function processSubmissionDelivery(
 			district: deliveryAddress.congressional_district || 'unknown'
 		});
 
-		// Step 5: Look up representatives
-		const representatives = await getRepresentativesForAddress({
-			street: deliveryAddress.street,
-			city: deliveryAddress.city,
-			state: deliveryAddress.state,
-			zip: deliveryAddress.zip
-		});
+		// Step 5: Look up representatives via Shadow Atlas (pre-ingested, zero gov API calls)
+		const districtCode = deliveryAddress.congressional_district;
+		if (!districtCode) {
+			throw new Error('No congressional_district in delivery address — cannot route to representatives');
+		}
 
-		if (!representatives || representatives.length === 0) {
-			throw new Error('No representatives found for address');
+		const saResponse = await getOfficials(districtCode);
+
+		// Map Shadow Atlas officials to the shape the CWC client expects
+		const representatives = saResponse.officials.map((o: Official) => ({
+			bioguide_id: o.bioguide_id,
+			name: o.name,
+			party: o.party,
+			state: o.state,
+			district: o.chamber === 'senate' ? o.state : (o.district ?? districtCode.split('-')[1]),
+			chamber: o.chamber,
+			office_code: o.cwc_code ?? o.bioguide_id,
+			is_voting_member: o.is_voting,
+			delegate_type: o.delegate_type
+		}));
+
+		if (representatives.length === 0) {
+			throw new Error(`No representatives found for district ${districtCode}`);
 		}
 
 		console.debug(
-			'[Delivery] Found representatives:',
-			representatives.map((r) => `${r.name} (${r.chamber})`)
+			'[Delivery] Found representatives via Shadow Atlas:',
+			representatives.map((r: { name: string; chamber: string }) => `${r.name} (${r.chamber})`)
 		);
 
 		// Step 6: Fetch template for message body

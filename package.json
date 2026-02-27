@@ -110,7 +110,7 @@
 		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.1.0",
 		"@prisma/adapter-pg": "^6.19.2",
-		"@prisma/client": "^6.16.1",
+		"@prisma/client": "^6.19.1",
 		"@scure/base": "^2.0.0",
 		"@sentry/sveltekit": "^10.34.0",
 		"@simplewebauthn/browser": "^13.2.2",

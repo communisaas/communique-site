@@ -12,7 +12,7 @@ import { db } from '$lib/core/db';
 import { createSession, sessionCookieName } from '$lib/core/auth/auth';
 import type { RequestHandler } from './$types';
 
-const DEMO_USER_ID = 'user-demo-1';
+const DEMO_USER_ID = 'user-seed-1';
 
 export const GET: RequestHandler = async ({ cookies }) => {
 	if (!dev && env.DEMO_MODE !== 'true') {

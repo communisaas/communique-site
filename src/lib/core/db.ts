@@ -62,9 +62,10 @@ function getInstance(): PrismaClient {
 	const client = requestDb.getStore();
 	if (client) return client;
 
-	// Fallback for dev: create singleton from DATABASE_URL
+	// Fallback for dev: create singleton from DIRECT_URL (bypasses PgBouncer,
+	// which breaks pg driver adapter's prepared statements)
 	if (dev) {
-		const connectionString = process.env.DATABASE_URL || '';
+		const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL || '';
 		if (!globalForPrisma.prisma) {
 			const adapter = new PrismaPg({ connectionString });
 			globalForPrisma.prisma = new PrismaClient({
