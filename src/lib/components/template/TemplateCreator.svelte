@@ -317,26 +317,7 @@
 			recipient_config: {
 				reach: formData.audience.includesCongress ? 'district-based' : 'location-specific',
 				emails: formData.audience.recipientEmails,
-				decisionMakers: formData.audience.decisionMakers
-					.filter((dm) => dm.email)
-					.map((dm) => ({
-						name: dm.name,
-						shortName: dm.title
-						? (() => {
-								const role = dm.title.split(/[,;]|\band\b/i)[0].trim();
-								const lastName = dm.name.split(' ').pop();
-								const short =
-									role.length > 30
-										? role.lastIndexOf(' ', 30) > 10
-											? role.slice(0, role.lastIndexOf(' ', 30))
-											: role.slice(0, 30)
-										: role;
-								return `${short} ${lastName}`;
-							})()
-						: undefined,
-						role: dm.title || undefined,
-						organization: dm.organization || undefined
-					})),
+				decisionMakers: formData.audience.decisionMakers.filter((dm) => dm.email),
 				cwcRouting: formData.audience.includesCongress || undefined
 			},
 			metrics: {

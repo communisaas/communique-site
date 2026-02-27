@@ -34,6 +34,7 @@ interface RequestBody {
 	voice_sample?: string;
 	target_type?: string;
 	target_entity?: string;
+	audience_guidance?: string;
 }
 
 export const POST: RequestHandler = async (event) => {
@@ -54,7 +55,7 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
-	const { subject_line, core_message, topics, voice_sample } = body;
+	const { subject_line, core_message, topics, voice_sample, audience_guidance } = body;
 
 	if (!subject_line?.trim()) {
 		return new Response(JSON.stringify({ error: 'Subject line is required' }), {
@@ -96,13 +97,15 @@ export const POST: RequestHandler = async (event) => {
 			topicCount: topics.length,
 			topics,
 			hasVoiceSample: !!voice_sample,
+			hasAudienceGuidance: !!audience_guidance,
 			targetType: body.target_type || 'local_government',
 			targetEntity: body.target_entity || null
 		},
 		content: {
 			subjectLine: subject_line,
 			coreMessage: core_message,
-			voiceSample: voice_sample
+			voiceSample: voice_sample,
+			audienceGuidance: audience_guidance
 		}
 	}, { userId });
 
@@ -113,7 +116,7 @@ export const POST: RequestHandler = async (event) => {
 	// The raw input was already checked at the subject-line step, so we use a higher
 	// threshold here (0.8) to avoid false positives on AI-generated descriptions
 	// while still catching clear attacks (which score 0.9+).
-	const contentToCheck = `${subject_line}\n${core_message}\n${topics.join(' ')}`;
+	const contentToCheck = `${subject_line}\n${core_message}\n${topics.join(' ')}${audience_guidance ? `\n${audience_guidance}` : ''}`;
 	const injectionCheck = await moderatePromptOnly(contentToCheck, 0.8);
 
 	if (!injectionCheck.safe) {
@@ -139,7 +142,8 @@ export const POST: RequestHandler = async (event) => {
 		subject: subject_line.substring(0, 50),
 		topics,
 		targetType: body.target_type,
-		targetEntity: body.target_entity
+		targetEntity: body.target_entity,
+		hasAudienceGuidance: !!audience_guidance
 	});
 
 	const { stream, emitter } = createSSEStream({
@@ -165,6 +169,7 @@ export const POST: RequestHandler = async (event) => {
 				coreMessage: core_message,
 				topics,
 				voiceSample: voice_sample,
+				audienceGuidance: audience_guidance,
 				signal: abortController.signal
 			};
 
@@ -192,7 +197,17 @@ export const POST: RequestHandler = async (event) => {
 					sourceUrl: dm.emailSource || dm.source || '',
 					sourceTitle: dm.emailSourceTitle || '',
 					provenance: dm.provenance,
-					discovered: dm.discovered || false
+					discovered: dm.discovered || false,
+					emailGrounded: dm.emailGrounded || false,
+					emailSource: dm.emailSource || '',
+					confidence: dm.confidence,
+					contactNotes: dm.contactNotes,
+					// Phase 4: Accountability & Classification
+					accountabilityOpener: dm.accountabilityOpener || null,
+					roleCategory: dm.roleCategory || null,
+					relevanceRank: dm.relevanceRank ?? null,
+					publicActions: dm.publicActions || [],
+					personalPrompt: dm.personalPrompt || null
 				})),
 				research_summary: result.researchSummary || 'Decision-makers resolved successfully.',
 				pipeline_stats: {
