@@ -61,6 +61,11 @@ export const load: LayoutServerLoad = async ({ locals, depends }) => {
 				// Privacy-preserving district (hash only)
 				district_hash: locals.user.district_hash,
 				district_verified: locals.user.district_verified,
+				// Wallet integration
+				wallet_address: userWithRepresentatives?.wallet_address ?? null,
+				wallet_type: userWithRepresentatives?.wallet_type ?? null,
+				near_account_id: userWithRepresentatives?.near_account_id ?? null,
+				near_derived_scroll_address: userWithRepresentatives?.near_derived_scroll_address ?? null,
 				// Representatives data for template resolution
 				representatives: representatives
 			}
@@ -81,6 +86,11 @@ export const load: LayoutServerLoad = async ({ locals, depends }) => {
 				passkey_credential_id: null, // Not available in fallback path
 				district_hash: locals.user.district_hash,
 				district_verified: locals.user.district_verified,
+				// Wallet integration
+				wallet_address: locals.user.wallet_address ?? null,
+				wallet_type: locals.user.wallet_type ?? null,
+				near_account_id: locals.user.near_account_id ?? null,
+				near_derived_scroll_address: locals.user.near_derived_scroll_address ?? null,
 				representatives: []
 			}
 		};

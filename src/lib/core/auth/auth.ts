@@ -41,8 +41,12 @@ export interface User {
 	// Privacy-preserving district (hash only, no plaintext)
 	district_hash: string | null;
 	district_verified: boolean;
-	// VOTER Protocol blockchain identity
+	// Wallet integration
 	wallet_address: string | null;
+	wallet_type: string | null;
+	near_account_id: string | null;
+	near_derived_scroll_address: string | null;
+	// Reputation
 	trust_score: number;
 	reputation_tier: string;
 	// Profile fields (general, non-PII)

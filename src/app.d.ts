@@ -36,6 +36,11 @@ declare global {
 				// Reputation
 				trust_score: number;
 				reputation_tier: string;
+				// Wallet integration
+				wallet_address: string | null;
+				wallet_type: string | null;
+				near_account_id: string | null;
+				near_derived_scroll_address: string | null;
 				// Timestamps
 				createdAt: Date;
 				updatedAt: Date;

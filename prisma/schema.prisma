@@ -71,9 +71,17 @@ model User {
   address_verification_method String?   @map("address_verification_method") // 'civic_api' | 'postal' | 'mdl'
   address_verified_at         DateTime? @map("address_verified_at")
 
-  // === CONSOLIDATED WALLET FIELDS (CRITICAL FIX) ===
-  wallet_address  String? @unique @map("wallet_address") // Consolidate voter_address + wallet_address
+  // === WALLET & ACCOUNT FIELDS ===
+  wallet_address  String? @unique @map("wallet_address") // EVM wallet (MetaMask/WC binding)
+  wallet_type     String? @map("wallet_type")             // 'evm' | 'near' | null
   district_hash   String? @map("district_hash")
+
+  // === NEAR ACCOUNT (Paths 1 + 3: invisible account for non-crypto / non-EVM users) ===
+  near_account_id            String? @unique @map("near_account_id")             // Implicit account ID (64-char hex pubkey)
+  near_public_key            String?         @map("near_public_key")             // Ed25519 public key (base58 or hex)
+  encrypted_near_private_key String?         @map("encrypted_near_private_key")  // AES-256-GCM encrypted primary key
+  near_recovery_public_key   String?         @map("near_recovery_public_key")    // FunctionCall recovery key (server-held)
+  near_derived_scroll_address String?        @map("near_derived_scroll_address") // Scroll address from Chain Signatures
   trust_score     Int     @default(0) @map("trust_score")
   reputation_tier String  @default("novice") @map("reputation_tier")
 
@@ -184,6 +192,9 @@ model Template {
 
   // === EXISTING RELATIONS (preserve all) ===
   template_campaign         template_campaign[]
+
+  // Power Landscape: position registrations (Cycle 37)
+  positionRegistrations PositionRegistration[]
 
   // NEW: Structured jurisdictions (replaces deprecated string arrays)
   jurisdictions TemplateJurisdiction[]
@@ -981,6 +992,7 @@ model Debate {
   // Relations
   template            Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
   arguments           DebateArgument[]
+  nullifiers          DebateNullifier[]
 
   @@index([template_id])
   @@index([status])
@@ -999,6 +1011,7 @@ model DebateArgument {
   body_hash       String   @map("body_hash") // keccak256(body)
   amendment_text  String?  @map("amendment_text") // Only for AMEND stance
   amendment_hash  String?  @map("amendment_hash")
+  nullifier_hash  String?  @map("nullifier_hash")
 
   // Scoring (from on-chain events, updated by indexer)
   stake_amount     BigInt   @map("stake_amount")
@@ -1025,9 +1038,31 @@ model DebateArgument {
   debate           Debate   @relation(fields: [debate_id], references: [id], onDelete: Cascade)
 
   @@unique([debate_id, argument_index])
+  @@unique([debate_id, nullifier_hash])
   @@index([debate_id])
   @@index([weighted_score])
   @@map("debate_argument")
+}
+
+// =============================================================================
+// Debate Nullifier Dedup — tracks all ZK nullifiers per debate to enforce
+// one-action-per-identity (arguments + co-signs share the same constraint).
+// PostgreSQL treats NULL != NULL in unique constraints, so existing rows
+// without nullifiers won't conflict.
+// =============================================================================
+
+model DebateNullifier {
+  id              String   @id @default(cuid())
+  debate_id       String   @map("debate_id")
+  nullifier_hash  String   @map("nullifier_hash")
+  action_type     String   @map("action_type") // 'argument' | 'cosign'
+  created_at      DateTime @default(now()) @map("created_at")
+
+  debate          Debate   @relation(fields: [debate_id], references: [id], onDelete: Cascade)
+
+  @@unique([debate_id, nullifier_hash])
+  @@index([debate_id])
+  @@map("debate_nullifier")
 }
 
 // =============================================================================
@@ -1109,4 +1144,42 @@ model SubmissionRetry {
   @@index([status, next_retry_at])
   @@index([nullifier])
   @@map("submission_retry")
+}
+
+// =============================================================================
+// POWER LANDSCAPE — Position Registration (Cycle 37)
+// =============================================================================
+// Tracks citizens who register a position (support/oppose) on a template.
+// Keyed by identity_commitment (privacy-preserving, no user_id linkage).
+// One position per identity per template (enforced by unique constraint).
+
+model PositionRegistration {
+  id                   String   @id @default(cuid())
+  template_id          String   @map("template_id")
+  identity_commitment  String   @map("identity_commitment")
+  stance               String   // 'support' | 'oppose'
+  district_code        String?  @map("district_code")
+  registered_at        DateTime @default(now()) @map("registered_at")
+
+  deliveries           PositionDelivery[]
+  template             Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@unique([template_id, identity_commitment])
+  @@index([template_id])
+  @@map("position_registration")
+}
+
+model PositionDelivery {
+  id                   String    @id @default(cuid())
+  registration_id      String    @map("registration_id")
+  recipient_name       String    @map("recipient_name")
+  recipient_email      String?   @map("recipient_email")
+  delivery_method      String    @map("delivery_method") // 'cwc' | 'email' | 'recorded'
+  delivery_status      String    @default("pending") @map("delivery_status") // 'pending' | 'delivered' | 'failed'
+  delivered_at         DateTime? @map("delivered_at")
+
+  registration         PositionRegistration @relation(fields: [registration_id], references: [id], onDelete: Cascade)
+
+  @@index([registration_id])
+  @@map("position_delivery")
 }

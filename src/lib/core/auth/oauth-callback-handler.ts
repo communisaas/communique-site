@@ -18,19 +18,18 @@ import { dev } from '$app/environment';
 import { db } from '$lib/core/db';
 import { createSession, sessionCookieName } from '$lib/core/auth/auth';
 import { validateReturnTo } from '$lib/core/auth/oauth';
+import { createNearAccount } from '$lib/core/near/account';
 
 /**
- * BLOCKCHAIN ACCOUNT CREATION DEFERRED TO CLIENT
+ * NEAR IMPLICIT ACCOUNT CREATION (fire-and-forget)
  *
- * Previously, OAuth callback handler attempted to create blockchain accounts
- * server-side, which caused SSR build failures due to browser-only dependencies.
- * NEAR was removed in favor of direct Scroll L2 wallet interaction.
+ * New users automatically get a NEAR implicit account at signup.
+ * createNearAccount() generates Ed25519 keypairs, encrypts private keys,
+ * stores in DB, and derives a Scroll address via Chain Signatures MPC.
+ * Called fire-and-forget after db.user.create() — the OAuth redirect
+ * does NOT wait for it. Failures are logged but never block auth.
  *
- * NEW ARCHITECTURE:
- * 1. OAuth callback completes authentication (server-side)
- * 2. Uses dynamic imports + browser guards for SSR safety
- *
- * See: /src/lib/core/blockchain/use-blockchain.ts
+ * See: /src/lib/core/near/account.ts
  */
 
 // =============================================================================
@@ -337,6 +336,11 @@ export class OAuthCallbackHandler {
 					}
 				}
 			}
+		});
+
+		// Fire-and-forget NEAR account creation — invisible wallet for non-crypto users
+		createNearAccount(newUser.id).catch((err) => {
+			console.warn('[OAuth] NEAR account creation failed (non-blocking):', err);
 		});
 
 		// Log Sybil resistance action for audit
