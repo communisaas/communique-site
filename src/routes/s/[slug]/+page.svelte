@@ -10,6 +10,7 @@
 	import { modalActions, modalSystem } from '$lib/stores/modalSystem.svelte';
 	import { guestState } from '$lib/stores/guestState.svelte';
 	import { analyzeEmailFlow, generatePersonalizedMailto } from '$lib/services/emailService';
+	import { resolveTemplate } from '$lib/utils/templateResolver';
 	import { trackTemplateView, trackDeliveryAttempt } from '$lib/core/analytics/client';
 	import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import ActionBar from '$lib/components/template-browser/parts/ActionBar.svelte';
@@ -291,7 +292,7 @@
 				user: data.user
 			});
 		} else if (member.deliveryRoute === 'email' && member.email) {
-			// Direct mailto — opener + template body, no intermediate compose view
+			// Direct mailto — opener + resolved template body, no intermediate compose view
 			const districtName = data.userDistrictCode ?? '';
 			const subject = template.subject
 				? `[${template.slug}] ${template.subject}`
@@ -302,6 +303,10 @@
 				? `Verified resident, ${districtName}\nCryptographic proof of residency`
 				: undefined;
 
+			// Resolve all template placeholders ([Name], [Representative], [Personal Connection], etc.)
+			const resolved = resolveTemplate(template as any, data.user as any ?? null);
+			const resolvedBody = resolved.body.replace(/\[District\]/g, districtName);
+
 			const result = generatePersonalizedMailto({
 				recipient: {
 					name: member.name,
@@ -311,7 +316,7 @@
 				},
 				subject,
 				opener: member.accountabilityOpener ?? '',
-				templateBody: template.message_body.replace(/\[District\]/g, districtName),
+				templateBody: resolvedBody,
 				attestation
 			});
 
@@ -372,9 +377,12 @@
 				? `Verified resident, ${districtName}\nCryptographic proof of residency`
 				: undefined;
 
+			// Resolve all template placeholders ([Name], [Representative], [Personal Connection], etc.)
+			const resolved = resolveTemplate(template as any, data.user as any ?? null);
+			const resolvedBody = resolved.body.replace(/\[District\]/g, districtName).trim();
+
 			const bodyParts: string[] = [];
-			const body = template.message_body.replace(/\[District\]/g, districtName).trim();
-			if (body) bodyParts.push(body);
+			if (resolvedBody) bodyParts.push(resolvedBody);
 			if (attestation?.trim()) {
 				bodyParts.push('---');
 				bodyParts.push(attestation.trim());
