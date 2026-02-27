@@ -1,0 +1,183 @@
+<script lang="ts">
+	import { mergeLandscape, type LandscapeMember, type DistrictOfficialInput } from '$lib/utils/landscapeMerge';
+	import RoleGroup from './RoleGroup.svelte';
+	import BatchRegistrationBar from './BatchRegistrationBar.svelte';
+	import type { ProcessedDecisionMaker, Template } from '$lib/types/template';
+	import { MapPin, ChevronRight } from '@lucide/svelte';
+	import { onMount } from 'svelte';
+
+	let {
+		template,
+		decisionMakers = [],
+		districtOfficials = [],
+		contactedRecipients = new Set(),
+		departingRecipients = new Set(),
+		onWriteTo,
+		onBatchRegister,
+		onVerifyAddress,
+		registrationState = 'idle'
+	}: {
+		template: Template;
+		decisionMakers?: ProcessedDecisionMaker[];
+		districtOfficials?: DistrictOfficialInput[];
+		contactedRecipients?: Set<string>;
+		departingRecipients?: Set<string>;
+		onWriteTo: (member: LandscapeMember) => void;
+		onBatchRegister: (memberIds: string[]) => void;
+		onVerifyAddress?: () => void;
+		registrationState?: 'idle' | 'registering' | 'complete';
+	} = $props();
+
+	const landscape = $derived(mergeLandscape(decisionMakers, districtOfficials));
+	const contactedCount = $derived(contactedRecipients.size);
+	const isCwc = $derived(template.deliveryMethod === 'cwc');
+
+	// Count email-bearing members not yet contacted (for batch mailto label)
+	const allMembers = $derived([
+		...landscape.roleGroups.flatMap(g => g.members),
+		...(landscape.districtGroup?.members ?? [])
+	]);
+	const emailRemainingCount = $derived(
+		allMembers.filter(m => m.email && m.deliveryRoute === 'email' && !contactedRecipients.has(m.id)).length
+	);
+
+	let revealed = $state(false);
+
+	onMount(() => {
+		requestAnimationFrame(() => {
+			revealed = true;
+		});
+	});
+
+	function handleBatchRegister() {
+		const allIds = [
+			...landscape.roleGroups.flatMap(g => g.members.map(m => m.id)),
+			...(landscape.districtGroup?.members.map(m => m.id) || [])
+		].filter(id => !contactedRecipients.has(id));
+		onBatchRegister(allIds);
+	}
+</script>
+
+<div class="landscape" class:revealed>
+	{#if landscape.totalCount === 0}
+		<!-- Empty state: contextual based on delivery method -->
+		{#if isCwc && onVerifyAddress}
+			<!-- CWC template without district — the user needs to verify address -->
+			<div class="rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-5">
+				<h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3">
+					Your representatives
+				</h2>
+				<p class="text-sm text-slate-600 leading-relaxed mb-4">
+					Congressional offices prioritize messages from their own constituents. Verify your address to see who represents you and send your position directly.
+				</p>
+				<button
+					type="button"
+					class="group flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white p-3.5 text-left transition-colors hover:border-participation-primary-300 hover:bg-participation-primary-50 cursor-pointer min-h-[44px]"
+					onclick={onVerifyAddress}
+				>
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-participation-primary-50 text-participation-primary-600 transition-colors group-hover:bg-participation-primary-100">
+						<MapPin class="h-4.5 w-4.5" />
+					</div>
+					<div class="flex-1 min-w-0">
+						<span class="text-sm font-medium text-slate-900">Verify your address</span>
+						<span class="block text-xs text-slate-500">Unlocks direct congressional delivery</span>
+					</div>
+					<ChevronRight class="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
+				</button>
+			</div>
+		{:else}
+			<!-- Non-CWC template or no verify handler — generic empty -->
+			<div class="rounded-xl border border-slate-200 bg-white p-5">
+				<h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">
+					Who decides
+				</h2>
+				<p class="text-sm text-slate-500">
+					Decision-makers for this issue will appear here as they're identified.
+				</p>
+			</div>
+		{/if}
+	{:else}
+		<!-- Populated landscape -->
+		<div class="space-y-5">
+			<!-- Role groups with staggered reveal -->
+			{#each landscape.roleGroups as group, i (group.category)}
+				<div
+					class="role-group"
+					class:revealed
+					style="animation-delay: {i * 100}ms"
+				>
+					<RoleGroup
+						{group}
+						{contactedRecipients}
+						{departingRecipients}
+						{onWriteTo}
+					/>
+				</div>
+			{/each}
+
+			<!-- District group (your representatives) -->
+			{#if landscape.districtGroup}
+				<div
+					class="role-group"
+					class:revealed
+					style="animation-delay: {landscape.roleGroups.length * 100}ms"
+				>
+					<RoleGroup
+						group={landscape.districtGroup}
+						{contactedRecipients}
+						{departingRecipients}
+						{onWriteTo}
+						isDistrictGroup={true}
+					/>
+				</div>
+			{/if}
+
+			<!-- Batch action -->
+			<BatchRegistrationBar
+				{emailRemainingCount}
+				{registrationState}
+				onBatchRegister={handleBatchRegister}
+			/>
+		</div>
+	{/if}
+</div>
+
+<style>
+	.landscape {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	.landscape.revealed {
+		animation: fadeIn 250ms ease-out forwards;
+	}
+	.role-group {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	.role-group.revealed {
+		animation: revealGroup 300ms ease-out forwards;
+	}
+	@keyframes fadeIn {
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	@keyframes revealGroup {
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.landscape,
+		.role-group {
+			opacity: 1;
+			transform: none;
+		}
+		.landscape.revealed,
+		.role-group.revealed {
+			animation: none;
+		}
+	}
+</style>
