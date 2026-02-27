@@ -374,6 +374,12 @@ export class SlidingWindowRateLimiter {
  * 6. /api/templates - 10 requests/day per user (template farming prevention)
  * 7. /api/moderation/* - 30 requests/minute per IP (moderation abuse prevention)
  * 8. /api/email/* - 10 requests/minute per user (email send throttle)
+ *
+ * Wallet infrastructure (Wave 7, F-11):
+ * 9. /api/wallet/nonce - 10 req/min per IP (nonce generation)
+ * 10. /api/wallet/connect - 5 req/min per user (wallet binding)
+ * 11. /api/wallet/near/sponsor - 10 req/min per user (meta-tx relay)
+ * 12. /api/wallet/balance - 30 req/min per IP (public balance reads)
  */
 export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 	{
@@ -467,6 +473,32 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		maxRequests: 20,
 		windowMs: 60 * 1000, // 20 req/min per user — browsing/reading + mutations
 		keyStrategy: 'user',
+		includeGet: true
+	},
+	// ── Wallet infrastructure rate limits (Wave 7 — F-11) ──
+	{
+		pattern: '/api/wallet/nonce',
+		maxRequests: 10,
+		windowMs: 60 * 1000, // 10 req/min per IP — nonce generation
+		keyStrategy: 'ip'
+	},
+	{
+		pattern: '/api/wallet/connect',
+		maxRequests: 5,
+		windowMs: 60 * 1000, // 5 req/min per user — wallet binding
+		keyStrategy: 'user'
+	},
+	{
+		pattern: '/api/wallet/near/sponsor',
+		maxRequests: 10,
+		windowMs: 60 * 1000, // 10 req/min per user — meta-tx relay (also has in-endpoint limiter)
+		keyStrategy: 'user'
+	},
+	{
+		pattern: '/api/wallet/balance',
+		maxRequests: 30,
+		windowMs: 60 * 1000, // 30 req/min per IP — public balance endpoint
+		keyStrategy: 'ip',
 		includeGet: true
 	}
 ];

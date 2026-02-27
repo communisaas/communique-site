@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
+import { verifyTransactionAsync } from '$lib/core/blockchain/tx-verifier';
 
 /** Returns true for a valid Ethereum address (0x-prefixed, 42 hex chars). */
 function isValidEthAddress(addr: unknown): addr is string {
@@ -69,6 +70,22 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		throw error(400, 'stakeAmount, proof data are required');
 	}
 
+	// Nullifier dedup — one co-sign per identity per debate.
+	// Checks the unified DebateNullifier table, so this also prevents
+	// co-signing if you already submitted an argument (and vice versa).
+	if (nullifierHex) {
+		const existingNullifier = await prisma.debateNullifier.findFirst({
+			where: {
+				debate_id: debateId,
+				nullifier_hash: nullifierHex
+			},
+			select: { id: true }
+		});
+		if (existingNullifier) {
+			throw error(409, 'You have already participated in this debate');
+		}
+	}
+
 	// Validate beneficiary wallet address when provided.
 	// walletAddress is optional — if absent or invalid we pass undefined and the
 	// client defaults to address(0), which the contract treats as "pay relayer".
@@ -94,34 +111,48 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	// ── On-chain co-sign via DebateMarket ──────────────────────────────
 	let txHash: string | undefined;
 
-	try {
-		const { coSignArgument } = await import('$lib/core/blockchain/debate-market-client');
-
-		const onchainResult = await coSignArgument({
-			debateId: debate.debate_id_onchain!,
-			argumentIndex,
-			stakeAmount: BigInt(stakeAmount),
-			proof: proofHex,
-			publicInputs,
-			verifierDepth: body.verifierDepth ?? 20,
-			deadline: body.deadline,
-			beneficiary  // user's wallet — receives settlement tokens directly (R-01)
+	// Accept client-submitted tx hash (from connected EVM wallet).
+	// If present and valid, skip the server-side on-chain submission.
+	const clientTxHash = body.txHash;
+	if (clientTxHash && typeof clientTxHash === 'string' && /^0x[0-9a-fA-F]{64}$/.test(clientTxHash)) {
+		// Client already submitted the transaction via their wallet.
+		// No server-side on-chain submission needed.
+		txHash = clientTxHash;
+		console.debug('[debates/cosign] Client-submitted tx:', {
+			txHash: txHash.slice(0, 12) + '...',
+			userId: session.userId
 		});
+	} else {
+		// Legacy path: server relayer submits on-chain
+		try {
+			const { coSignArgument } = await import('$lib/core/blockchain/debate-market-client');
 
-		if (onchainResult.success) {
-			txHash = onchainResult.txHash;
-		} else if (onchainResult.error?.includes('not configured')) {
-			console.warn('[debates/cosign] Blockchain not configured, updating off-chain only');
-		} else {
-			throw error(502, `On-chain co-sign failed: ${onchainResult.error}`);
+			const onchainResult = await coSignArgument({
+				debateId: debate.debate_id_onchain!,
+				argumentIndex,
+				stakeAmount: BigInt(stakeAmount),
+				proof: proofHex,
+				publicInputs,
+				verifierDepth: body.verifierDepth ?? 20,
+				deadline: body.deadline,
+				beneficiary  // user's wallet — receives settlement tokens directly (R-01)
+			});
+
+			if (onchainResult.success) {
+				txHash = onchainResult.txHash;
+			} else if (onchainResult.error?.includes('not configured')) {
+				console.warn('[debates/cosign] Blockchain not configured, updating off-chain only');
+			} else {
+				throw error(502, `On-chain co-sign failed: ${onchainResult.error}`);
+			}
+		} catch (err: unknown) {
+			// Re-throw SvelteKit HttpErrors (our own 502 above) as-is
+			if (err && typeof err === 'object' && 'status' in err) {
+				throw err;
+			}
+			// Unexpected import/runtime errors — treat as blockchain-not-configured
+			console.warn('[debates/cosign] Blockchain module unavailable, updating off-chain only:', err);
 		}
-	} catch (err: unknown) {
-		// Re-throw SvelteKit HttpErrors (our own 502 above) as-is
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
-		}
-		// Unexpected import/runtime errors — treat as blockchain-not-configured
-		console.warn('[debates/cosign] Blockchain module unavailable, updating off-chain only:', err);
 	}
 
 	// ── Prisma off-chain update ────────────────────────────────────────
@@ -148,26 +179,50 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		)
 	);
 
-	// Update argument with co-sign data and debate totals atomically
-	await prisma.$transaction([
-		prisma.debateArgument.update({
-			where: { id: argument.id },
-			data: {
-				co_sign_count: { increment: 1 },
-				total_stake: { increment: BigInt(stakeAmount) },
-				// Increment weighted_score by the co-signer's individual contribution
-				// Each co-signer contributes sqrt(their_stake) * 2^(their_tier)
-				weighted_score: { increment: coSignerWeight }
-			}
-		}),
-		prisma.debate.update({
-			where: { id: debateId },
-			data: {
-				unique_participants: { increment: 1 },
-				total_stake: { increment: BigInt(stakeAmount) }
-			}
-		})
-	]);
+	// Update argument with co-sign data, record nullifier, and update debate totals atomically.
+	// unique_participants only increments when a new nullifier is recorded
+	// (the dedup check above already threw 409 if the nullifier was seen before).
+	const updateArg = prisma.debateArgument.update({
+		where: { id: argument.id },
+		data: {
+			co_sign_count: { increment: 1 },
+			total_stake: { increment: BigInt(stakeAmount) },
+			// Increment weighted_score by the co-signer's individual contribution
+			// Each co-signer contributes sqrt(their_stake) * 2^(their_tier)
+			weighted_score: { increment: coSignerWeight }
+		}
+	});
+
+	const updateDebate = prisma.debate.update({
+		where: { id: debateId },
+		data: {
+			unique_participants: { increment: 1 },
+			total_stake: { increment: BigInt(stakeAmount) }
+		}
+	});
+
+	// Record the nullifier for cross-action dedup (arguments + co-signs).
+	// If nullifierHex is present, include it in the transaction.
+	if (nullifierHex) {
+		await prisma.$transaction([
+			updateArg,
+			updateDebate,
+			prisma.debateNullifier.create({
+				data: {
+					debate_id: debateId,
+					nullifier_hash: nullifierHex,
+					action_type: 'cosign'
+				}
+			})
+		]);
+	} else {
+		await prisma.$transaction([updateArg, updateDebate]);
+	}
+
+	// Fire-and-forget: verify client-submitted tx actually succeeded on-chain.
+	if (clientTxHash && txHash) {
+		verifyTransactionAsync(txHash, { debateId, type: 'cosign', userId: session.userId });
+	}
 
 	return json({ success: true, ...(txHash ? { txHash } : {}) });
 };

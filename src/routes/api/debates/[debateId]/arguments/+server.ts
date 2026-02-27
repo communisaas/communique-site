@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
 import { solidityPackedKeccak256 } from 'ethers';
+import { verifyTransactionAsync } from '$lib/core/blockchain/tx-verifier';
 
 /** Returns true for a valid Ethereum address (0x-prefixed, 42 hex chars). */
 function isValidEthAddress(addr: unknown): addr is string {
@@ -135,6 +136,20 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		throw error(400, 'ZK proof data is required');
 	}
 
+	// Check for nullifier dedup — same identity can't submit twice to the same debate
+	if (nullifierHex) {
+		const existingNullifier = await prisma.debateNullifier.findFirst({
+			where: {
+				debate_id: debateId,
+				nullifier_hash: nullifierHex
+			},
+			select: { id: true }
+		});
+		if (existingNullifier) {
+			throw error(409, 'You have already submitted an argument to this debate');
+		}
+	}
+
 	// Validate beneficiary wallet address when provided.
 	// walletAddress is optional — if absent or invalid we pass undefined and the
 	// client defaults to address(0), which the contract treats as "pay relayer".
@@ -169,63 +184,102 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const STANCE_MAP: Record<string, number> = { SUPPORT: 0, OPPOSE: 1, AMEND: 2 };
 	let txHash: string | undefined;
 
-	try {
-		const { submitArgument } = await import('$lib/core/blockchain/debate-market-client');
-
-		const onchainResult = await submitArgument({
-			debateId: debate.debate_id_onchain,
-			stance: STANCE_MAP[stance],
-			bodyHash,
-			amendmentHash: amendmentHash ?? '0x' + '0'.repeat(64),
-			stakeAmount: BigInt(stakeAmount),
-			proof: proofHex,
-			publicInputs,
-			verifierDepth: body.verifierDepth ?? 20,
-			beneficiary  // user's wallet — receives settlement tokens directly (R-01)
+	// Accept client-submitted tx hash (from connected EVM wallet).
+	// If present and valid, skip the server-side on-chain submission.
+	const clientTxHash = body.txHash;
+	if (clientTxHash && typeof clientTxHash === 'string' && /^0x[0-9a-fA-F]{64}$/.test(clientTxHash)) {
+		// Client already submitted the transaction via their wallet.
+		// No server-side on-chain submission needed.
+		txHash = clientTxHash;
+		console.debug('[debates/arguments] Client-submitted tx:', {
+			txHash: txHash.slice(0, 12) + '...',
+			userId: session.userId
 		});
+	} else {
+		// Legacy path: server relayer submits on-chain
+		try {
+			const { submitArgument } = await import('$lib/core/blockchain/debate-market-client');
 
-		if (onchainResult.success) {
-			txHash = onchainResult.txHash;
-		} else if (onchainResult.error?.includes('not configured')) {
-			console.warn('[debates/arguments] Blockchain not configured, creating off-chain only');
-		} else {
-			throw error(502, `On-chain argument submission failed: ${onchainResult.error}`);
+			const onchainResult = await submitArgument({
+				debateId: debate.debate_id_onchain,
+				stance: STANCE_MAP[stance],
+				bodyHash,
+				amendmentHash: amendmentHash ?? '0x' + '0'.repeat(64),
+				stakeAmount: BigInt(stakeAmount),
+				proof: proofHex,
+				publicInputs,
+				verifierDepth: body.verifierDepth ?? 20,
+				beneficiary  // user's wallet — receives settlement tokens directly (R-01)
+			});
+
+			if (onchainResult.success) {
+				txHash = onchainResult.txHash;
+			} else if (onchainResult.error?.includes('not configured')) {
+				console.warn('[debates/arguments] Blockchain not configured, creating off-chain only');
+			} else {
+				throw error(502, `On-chain argument submission failed: ${onchainResult.error}`);
+			}
+		} catch (err: unknown) {
+			// Re-throw SvelteKit errors (our own 502 above)
+			if (err && typeof err === 'object' && 'status' in err) {
+				throw err;
+			}
+			// Import failure or unexpected error — treat as blockchain not configured
+			console.warn('[debates/arguments] Blockchain not available, creating off-chain only:', err);
 		}
-	} catch (err: unknown) {
-		// Re-throw SvelteKit errors (our own 502 above)
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
-		}
-		// Import failure or unexpected error — treat as blockchain not configured
-		console.warn('[debates/arguments] Blockchain not available, creating off-chain only:', err);
 	}
 
-	// Create argument and update debate counts atomically
-	const [argument] = await prisma.$transaction([
-		prisma.debateArgument.create({
-			data: {
-				debate_id: debateId,
-				argument_index: argumentIndex,
-				stance,
-				body: argumentBody,
-				body_hash: bodyHash,
-				amendment_text: amendmentText || null,
-				amendment_hash: amendmentHash,
-				stake_amount: BigInt(stakeAmount),
-				engagement_tier: tier,
-				weighted_score: BigInt(weightedScore),
-				total_stake: BigInt(stakeAmount)
-			}
-		}),
-		prisma.debate.update({
-			where: { id: debateId },
-			data: {
-				argument_count: { increment: 1 },
-				unique_participants: { increment: 1 },
-				total_stake: { increment: BigInt(stakeAmount) }
-			}
-		})
-	]);
+	// Create argument, record nullifier, and update debate counts atomically.
+	// unique_participants only increments when a new nullifier is recorded
+	// (the dedup check above already threw 409 if the nullifier was seen before).
+	const createArg = prisma.debateArgument.create({
+		data: {
+			debate_id: debateId,
+			argument_index: argumentIndex,
+			stance,
+			body: argumentBody,
+			body_hash: bodyHash,
+			amendment_text: amendmentText || null,
+			amendment_hash: amendmentHash,
+			nullifier_hash: nullifierHex || null,
+			stake_amount: BigInt(stakeAmount),
+			engagement_tier: tier,
+			weighted_score: BigInt(weightedScore),
+			total_stake: BigInt(stakeAmount)
+		}
+	});
+
+	const updateDebate = prisma.debate.update({
+		where: { id: debateId },
+		data: {
+			argument_count: { increment: 1 },
+			unique_participants: { increment: 1 },
+			total_stake: { increment: BigInt(stakeAmount) }
+		}
+	});
+
+	// Record the nullifier for cross-action dedup (arguments + co-signs).
+	// If nullifierHex is present, include it in the transaction.
+	const txResult = nullifierHex
+		? await prisma.$transaction([
+				createArg,
+				updateDebate,
+				prisma.debateNullifier.create({
+					data: {
+						debate_id: debateId,
+						nullifier_hash: nullifierHex,
+						action_type: 'argument'
+					}
+				})
+			])
+		: await prisma.$transaction([createArg, updateDebate]);
+
+	const argument = txResult[0];
+
+	// Fire-and-forget: verify client-submitted tx actually succeeded on-chain.
+	if (clientTxHash && txHash) {
+		verifyTransactionAsync(txHash, { debateId, type: 'argument', userId: session.userId });
+	}
 
 	return json({
 		argumentId: argument.id,

@@ -12,9 +12,9 @@
  * - Token approval (ERC-20) is done before each staking call
  * - EIP-712 signatures target DistrictGate (proof verification delegation)
  *
- * DEPLOYED CONTRACTS:
- * - DebateMarket: 0x95F878b0c0AF38C445d0F776DF4f37d2660DaFF4 (Scroll Sepolia)
- * - Staking Token: 0x87848199926E9F77D5e8e3048bD319Db0af06B86 (MockERC20, 6 decimals)
+ * DEPLOYED CONTRACTS (v6.2):
+ * - DebateMarket: 0xAa1e5CcA6377c7c2E4dE2Df15dC87c51ccb9B751 (Scroll Sepolia)
+ * - Staking Token: 0x1B999C28130475d78Ae19778918C06F98209287B (MockERC20/tUSDC, 6 decimals)
  *
  * @see STAKED-DEBATE-PROTOCOL-SPEC.md
  * @see DebateMarket.sol

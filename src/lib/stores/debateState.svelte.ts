@@ -214,7 +214,13 @@ function createDebateState() {
 			sseConnection = source;
 
 			source.addEventListener('state', (e: MessageEvent) => {
-				const data = JSON.parse(e.data);
+				let data: any;
+				try {
+					data = JSON.parse(e.data);
+				} catch {
+					console.warn('[debate-sse] Failed to parse state event:', e.data?.slice(0, 100));
+					return;
+				}
 				if (data.prices) {
 					lmsrPrices = Object.fromEntries(
 						Object.entries(data.prices).map(([k, v]) => [Number(k), Number(v)])
@@ -225,7 +231,13 @@ function createDebateState() {
 			});
 
 			source.addEventListener('epoch_executed', (e: MessageEvent) => {
-				const data = JSON.parse(e.data);
+				let data: any;
+				try {
+					data = JSON.parse(e.data);
+				} catch {
+					console.warn('[debate-sse] Failed to parse epoch_executed event:', e.data?.slice(0, 100));
+					return;
+				}
 				if (data.prices) {
 					lmsrPrices = Object.fromEntries(
 						Object.entries(data.prices).map(([k, v]) => [Number(k), Number(v)])
@@ -238,10 +250,6 @@ function createDebateState() {
 				if (data.pricesStale && currentDebate) {
 					this.loadDebate(currentDebate.templateId);
 				}
-			});
-
-			source.addEventListener('trade_activity', (e: MessageEvent) => {
-				// Could update pending trade count UI
 			});
 
 			source.addEventListener('resolved', (e: MessageEvent) => {
@@ -262,7 +270,13 @@ function createDebateState() {
 			// path emits 'ai_scores_submitted'. Both carry the same payload shape and
 			// must update signatureCount identically. Extract to a shared handler.
 			const handleAIScoresSubmitted = (e: MessageEvent) => {
-				const data = JSON.parse(e.data);
+				let data: any;
+				try {
+					data = JSON.parse(e.data);
+				} catch {
+					console.warn('[debate-sse] Failed to parse ai_scores event:', e.data?.slice(0, 100));
+					return;
+				}
 				if (currentDebate && currentDebate.aiResolution) {
 					currentDebate = {
 						...currentDebate,
@@ -277,7 +291,13 @@ function createDebateState() {
 			source.addEventListener('ai_evaluation_submitted', handleAIScoresSubmitted);
 
 			source.addEventListener('resolved_with_ai', (e: MessageEvent) => {
-				const data = JSON.parse(e.data);
+				let data: any;
+				try {
+					data = JSON.parse(e.data);
+				} catch {
+					console.warn('[debate-sse] Failed to parse resolved_with_ai event:', e.data?.slice(0, 100));
+					return;
+				}
 				if (currentDebate) {
 					currentDebate = {
 						...currentDebate,
@@ -299,7 +319,13 @@ function createDebateState() {
 			});
 
 			source.addEventListener('appeal_started', (e: MessageEvent) => {
-				const data = JSON.parse(e.data);
+				let data: any;
+				try {
+					data = JSON.parse(e.data);
+				} catch {
+					console.warn('[debate-sse] Failed to parse appeal_started event:', e.data?.slice(0, 100));
+					return;
+				}
 				if (currentDebate) {
 					currentDebate = {
 						...currentDebate,
@@ -316,7 +342,13 @@ function createDebateState() {
 			});
 
 			source.addEventListener('resolution_finalized', (e: MessageEvent) => {
-				const data = JSON.parse(e.data);
+				let data: any;
+				try {
+					data = JSON.parse(e.data);
+				} catch {
+					console.warn('[debate-sse] Failed to parse resolution_finalized event:', e.data?.slice(0, 100));
+					return;
+				}
 				if (currentDebate) {
 					currentDebate = {
 						...currentDebate,
