@@ -29,6 +29,7 @@
 
 import { ThoughtEmitter } from '$lib/core/thoughts/emitter';
 import { decisionMakerRouter } from '../providers';
+import { generateAccountabilityOpeners } from './decision-maker-accountability';
 import {
 	documentToolDefinition,
 	executeDocumentTool,
@@ -642,6 +643,61 @@ export async function resolveDecisionMakers(
 		}
 
 		emitter.completePhase();
+
+		// ========================================================================
+		// Phase 4: Accountability & Classification (non-fatal)
+		// ========================================================================
+
+		if (result.decisionMakers.length > 0) {
+			emitter.startPhase('accountability');
+			emitter.think('Generating accountability context...');
+
+			try {
+				const accountabilityResult = await generateAccountabilityOpeners(
+					{
+						subjectLine: context.subjectLine || '',
+						coreMessage: context.coreMessage || '',
+						topics: context.topics || [],
+						decisionMakers: result.decisionMakers.map((dm) => ({
+							name: dm.name,
+							title: dm.title,
+							organization: dm.organization || '',
+							reasoning: dm.reasoning || ''
+						}))
+					},
+					emitter
+				);
+
+				// Merge accountability data back into decision makers
+				for (const dm of result.decisionMakers) {
+					const opener = accountabilityResult.openers.get(dm.name);
+					if (opener) {
+						dm.accountabilityOpener = opener.accountabilityOpener;
+						dm.roleCategory = opener.roleCategory;
+						dm.relevanceRank = opener.relevanceRank;
+						dm.publicActions = opener.publicActions;
+					}
+				}
+
+				// Store personalPrompt on first DM (extracted by UI for compose pane placeholder)
+				if (result.decisionMakers[0] && accountabilityResult.personalPrompt) {
+					result.decisionMakers[0].personalPrompt = accountabilityResult.personalPrompt;
+				}
+
+				emitter.insight(
+					`Generated accountability openers for ${accountabilityResult.openers.size} decision-makers.`,
+					{ icon: '🎯' }
+				);
+			} catch (error) {
+				console.error('[decision-maker] Phase 4 failed (non-fatal):', error);
+				emitter.think(
+					'Accountability generation unavailable — proceeding without openers.',
+					{ emphasis: 'muted' }
+				);
+			}
+
+			emitter.completePhase();
+		}
 
 		return result;
 	} catch (error) {
