@@ -107,6 +107,11 @@
 			stage = 'resolving';
 			console.log('[DecisionMakerResolver] Starting streaming resolution...');
 
+			// Seed thought stream with user's audience guidance (if provided)
+			if (formData.objective.audienceGuidance) {
+				thoughts = [`Starting from: ${formData.objective.audienceGuidance}`];
+			}
+
 			const topics = buildTopics();
 			const voiceSample = buildVoiceSample();
 
@@ -120,7 +125,8 @@
 					core_message: formData.objective.description,
 					topics,
 					voice_sample: voiceSample,
-					url_slug: formData.objective.slug
+					url_slug: formData.objective.slug,
+					audience_guidance: formData.objective.audienceGuidance
 				})
 			});
 
@@ -440,6 +446,7 @@
 			bind:decisionMakers={formData.audience.decisionMakers}
 			bind:customRecipients={formData.audience.customRecipients}
 			bind:includesCongress={formData.audience.includesCongress}
+			audienceGuidance={formData.objective.audienceGuidance}
 			onupdate={(data) => {
 				formData.audience = { ...formData.audience, ...data };
 			}}

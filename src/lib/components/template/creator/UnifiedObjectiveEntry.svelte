@@ -25,6 +25,7 @@
 			topics?: string[];
 			slug?: string;
 			voiceSample?: string;
+			audienceGuidance?: string;
 			aiGenerated?: boolean;
 		};
 		context: TemplateCreationContext;
@@ -116,6 +117,7 @@
 	let suggestionState = $state<SuggestionState>({ status: 'idle' });
 	let showAISuggest = $state(false);
 	let attemptCount = $state(0);
+	let audienceGuidance = $state(data.audienceGuidance || '');
 	let isGenerating = $state(false);
 	let userWantsAI = $state(true); // AI mode enabled - but explicit trigger required (Cmd/Ctrl+Enter)
 	let manualMode = $state(false); // User writing subject line manually
@@ -508,6 +510,7 @@
 			data.category =
 				primaryTopic.split('-')[0].charAt(0).toUpperCase() + primaryTopic.split('-')[0].slice(1);
 			data.aiGenerated = true;
+			data.audienceGuidance = audienceGuidance.trim() || undefined;
 			showAISuggest = false;
 
 			// Flow advancement: user accepted subject line, advance to decision-makers
@@ -1319,6 +1322,21 @@
 						{#each currentSuggestion.topics as topic}
 							<span class="rounded-full bg-participation-primary-100/70 px-2 py-0.5 text-xs text-participation-primary-800">{topic}</span>
 						{/each}
+					</div>
+					<!-- Audience guidance — optional steering for decision-maker agent -->
+					<div class="mt-3 border-t border-participation-primary-200/30 pt-2">
+						<textarea
+							bind:value={audienceGuidance}
+							placeholder="Who should hear this? e.g. &quot;EPA and state agencies&quot; or &quot;Portland city council housing committee&quot;"
+							rows="2"
+							class="w-full resize-none rounded-md border border-participation-primary-200/40 bg-white/50 px-3 py-2
+								text-sm text-slate-700 placeholder:text-slate-400/60
+								focus:border-participation-primary-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-participation-primary-400/30
+								transition-colors duration-150"
+						></textarea>
+						<p class="mt-0.5 text-[11px] text-participation-primary-600/40">
+							optional — we'll discover decision-makers either way
+						</p>
 					</div>
 				</div>
 			{/if}

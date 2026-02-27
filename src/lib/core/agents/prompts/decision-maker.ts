@@ -35,6 +35,12 @@ Identify 8-10 **positions** (NOT people) with direct power to act on the describ
 6. Be specific about jurisdiction: "Mayor of San Francisco" not just "Mayor". "CEO of Pacific Gas & Electric" not just "CEO".
 7. Order by power relevance: most direct authority first, then gatekeepers, then coalition partners, then amplifiers.
 8. Consider alternative jurisdiction paths: if direct paths may be blocked (e.g., unresponsive executive), identify who has legislative oversight. If federal action is gridlocked, what state or local positions have parallel authority? Include these alternative vectors when relevant.
+9. If AUDIENCE GUIDANCE is provided by the author:
+   a. Named individuals → identify their positions/organizations and include them as roles.
+   b. Organizational references (e.g., "EPA", "state agencies") → prioritize positions within those structures.
+   c. Vague guidance (e.g., "whoever handles enforcement") → weight your analysis toward those functions.
+   d. ALWAYS discover 3-4 additional positions beyond the guidance. The guidance augments your analysis, it does not replace it.
+   e. For guided roles, add "guided": true to the role object. For independently discovered roles, omit it or set false.
 
 ## Output
 
@@ -58,10 +64,15 @@ export function buildRoleDiscoveryPrompt(
 	subjectLine: string,
 	coreMessage: string,
 	topics: string[],
-	voiceSample?: string
+	voiceSample?: string,
+	audienceGuidance?: string
 ): string {
 	const voiceBlock = voiceSample
 		? `\n\nVoice Sample (the human stakes):\n"${voiceSample}"\n`
+		: '';
+
+	const guidanceBlock = audienceGuidance
+		? `\n\nAudience Guidance (from the author — incorporate and go beyond):\n"${audienceGuidance}"\n`
 		: '';
 
 	return `Identify the positions with power over this matter:
@@ -69,7 +80,7 @@ export function buildRoleDiscoveryPrompt(
 Subject: ${subjectLine}
 Core Message: ${coreMessage}
 Topics: ${topics.join(', ')}
-${voiceBlock}
+${voiceBlock}${guidanceBlock}
 Return 8-10 positions (NOT people) with direct authority, gatekeeping power, coalition leverage, or amplification reach over this matter.`;
 }
 

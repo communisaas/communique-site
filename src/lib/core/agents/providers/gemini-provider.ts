@@ -67,6 +67,7 @@ interface DiscoveredRole {
 	jurisdiction: string;
 	reasoning: string;
 	search_query: string;
+	guided?: boolean;
 }
 
 interface RoleDiscoveryResponse {
@@ -1203,7 +1204,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 	async resolve(context: ResolveContext): Promise<DecisionMakerResult> {
 		const startTime = Date.now();
-		const { subjectLine, coreMessage, topics, voiceSample, streaming } = context;
+		const { subjectLine, coreMessage, topics, voiceSample, streaming, audienceGuidance } = context;
 		const tokenUsages: (TokenUsage | undefined)[] = [];
 
 		console.debug('[gemini-provider] Starting parallel resolution...');
@@ -1215,7 +1216,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 			streaming?.onPhase?.('discover', 'Mapping institutional power structure...');
 
-			const rolePrompt = buildRoleDiscoveryPrompt(subjectLine, coreMessage, topics, voiceSample);
+			const rolePrompt = buildRoleDiscoveryPrompt(subjectLine, coreMessage, topics, voiceSample, audienceGuidance);
 
 			console.debug('[gemini-provider] Phase 1: Discovering roles with thoughts...');
 

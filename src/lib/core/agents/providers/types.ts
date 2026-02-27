@@ -126,6 +126,9 @@ export interface ResolveContext {
 	/** Voice sample (emotional peak from user input) */
 	voiceSample?: string;
 
+	/** Optional natural-language guidance about who to target */
+	audienceGuidance?: string;
+
 	/** Streaming callbacks for progress updates */
 	streaming?: StreamingCallbacks;
 

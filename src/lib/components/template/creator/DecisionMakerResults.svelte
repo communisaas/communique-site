@@ -10,6 +10,7 @@
 		decisionMakers: ProcessedDecisionMaker[];
 		customRecipients: CustomRecipient[];
 		includesCongress: boolean;
+		audienceGuidance?: string;
 		onupdate: (data: {
 			decisionMakers: ProcessedDecisionMaker[];
 			customRecipients: CustomRecipient[];
@@ -20,7 +21,8 @@
 	let {
 		decisionMakers = $bindable(),
 		customRecipients = $bindable(),
-		includesCongress = $bindable()
+		includesCongress = $bindable(),
+		audienceGuidance
 	}: Props = $props();
 
 	let showCustomForm = $state(false);
@@ -88,6 +90,11 @@
 		{:else if totalRecipients > 0}
 			<p class="mt-1 text-sm text-slate-600">
 				Total recipients: {totalRecipients}
+			</p>
+		{/if}
+		{#if audienceGuidance}
+			<p class="mt-1 text-xs italic text-slate-500">
+				Your guidance: "{audienceGuidance.length > 80 ? audienceGuidance.slice(0, 77) + '...' : audienceGuidance}"
 			</p>
 		{/if}
 	</div>

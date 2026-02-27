@@ -55,7 +55,7 @@ Apply to ALL output fields:
 2. NEVER cite specific financial figures — use relative contrasts
 3. ALWAYS name the specific ORGANIZATION from the input — never reduce to a generic term
 4. Focus on STRUCTURAL matters that persist regardless of who holds power
-5. NEVER sanitize visceral language into euphemisms — institutional polish makes a message easier to ignore, not more serious. If the reality is undignified, the language must make you feel it.
+5. NEVER sanitize visceral feeling into euphemisms — institutional polish makes a message easier to ignore, not more serious. Channel raw emotion through precise, dignified language that hits harder than profanity ever could. The test: a stranger would read this sentence aloud to a room.
 6. NEVER summarize the topic — channel the feeling
 7. NEVER use policy language, petition-speak, or institutional framing
 8. NEVER replace lived experience with abstract nouns or official terms`;
