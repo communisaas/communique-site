@@ -925,7 +925,11 @@ describe('Template Filter', () => {
 
 			const scored = scoreTemplatesByRelevance([template], location);
 
-			expect(scored).toHaveLength(0);
+			// Templates with no geo-targeting get a baseline score so they
+			// still appear (e.g., nationwide/global templates without jurisdictions)
+			expect(scored).toHaveLength(1);
+			expect(scored[0].score).toBeCloseTo(0.3, 1);
+			expect(scored[0].matchReason).toBe('Available everywhere (national)');
 		});
 
 		it('should handle location with null country_code', () => {

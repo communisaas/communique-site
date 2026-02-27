@@ -46,6 +46,21 @@ export interface TemplateScope {
 }
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Normalize state codes for comparison.
+ * Jurisdictions may use ISO 3166-2 format ("CA-ON", "US-OR") while
+ * inferred location uses short form ("ON", "OR"). Strip any country prefix.
+ */
+function normalizeStateCode(code: string): string {
+	// "CA-ON" → "ON", "US-OR" → "OR", "ON" → "ON"
+	const dashIndex = code.indexOf('-');
+	return dashIndex >= 0 ? code.slice(dashIndex + 1) : code;
+}
+
+// ============================================================================
 // Hierarchical Scope Matching
 // ============================================================================
 
@@ -262,6 +277,17 @@ export class ClientSideTemplateFilter {
 					}
 				}
 
+				// BASELINE: Templates with no jurisdictions AND no scopes get a
+				// nationwide fallback score so they still appear in the list.
+				// Templates that HAVE jurisdictions/scopes but don't match stay at 0.
+				const hasNoGeoTargeting =
+					(!template.scopes || template.scopes.length === 0) &&
+					(!template.jurisdictions || template.jurisdictions.length === 0);
+				if (bestScore === 0 && hasNoGeoTargeting) {
+					bestScore = 0.3;
+					matchReason = 'Available everywhere';
+				}
+
 				if (bestScore > 0) {
 					// Apply location confidence multiplier
 					// High confidence (verified=1.0) → full score
@@ -317,9 +343,11 @@ export class ClientSideTemplateFilter {
 		}
 
 		// State match (medium priority)
+		// Normalize: jurisdictions may use "CA-ON" while location uses "ON"
 		if (
 			this.inferredLocation.state_code &&
-			jurisdiction.state_code === this.inferredLocation.state_code
+			jurisdiction.state_code &&
+			normalizeStateCode(jurisdiction.state_code) === normalizeStateCode(this.inferredLocation.state_code)
 		) {
 			return true;
 		}
@@ -395,9 +423,12 @@ export class ClientSideTemplateFilter {
 			reason = `Your city: ${this.inferredLocation.city_name}`;
 		}
 		// State match (0.5 score)
+		// Normalize state codes: jurisdictions may use ISO 3166-2 format ("CA-ON", "US-OR")
+		// while inferred location uses short form ("ON", "OR"). Compare the suffix.
 		else if (
 			this.inferredLocation.state_code &&
-			jurisdiction.state_code === this.inferredLocation.state_code
+			jurisdiction.state_code &&
+			normalizeStateCode(jurisdiction.state_code) === normalizeStateCode(this.inferredLocation.state_code)
 		) {
 			score = 0.5;
 			matchLevel = 'state';
