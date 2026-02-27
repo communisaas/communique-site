@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { templateStore } from '$lib/stores/templates.svelte';
+
 	import { onMount as _onMount } from 'svelte';
 	import { page } from '$app/stores';
 	// Note: `browser` import removed - was causing CLS by gating route detection
@@ -10,10 +10,12 @@
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
 	import ModalRegistry from '$lib/components/modals/ModalRegistry.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
+	import { walletState } from '$lib/stores/walletState.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 	import { syncOAuthLocation } from '$lib/core/location/oauth-location-sync';
 	import type { HeaderUser, HeaderTemplate, TemplateUseEvent } from '$lib/types/any-replacements';
+	import type { PageUser } from '$lib/stores/walletState.svelte';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
 
@@ -39,10 +41,14 @@
 		data: LayoutData;
 	} = $props();
 
-	// Initialize app: fetch templates + sync OAuth location
-	_onMount(async () => {
-		templateStore.fetchTemplates();
+	// Hydrate wallet state from server-provided user data.
+	// Runs reactively so wallet state updates if the user changes (login/logout).
+	$effect(() => {
+		walletState.initFromPageData(data.user as PageUser | null);
+	});
 
+	// Initialize app: sync OAuth location (templates fetched by page components that need them)
+	_onMount(async () => {
 		// Sync OAuth location if cookie exists (from OAuth callback)
 		syncOAuthLocation().catch((error) => {
 			console.warn('[App] Failed to sync OAuth location:', error);
@@ -79,7 +85,7 @@
 <!-- HeaderTemplate is a structural subset of Template — handler only reads common fields at runtime -->
 <HeaderSystem user={data.user as HeaderUser | null} template={data.template as HeaderTemplate | null} onTemplateUse={handleTemplateUse} />
 
-{#if (data.user as Record<string, unknown> | null)?.id === 'user-demo-1'}
+{#if (data.user as Record<string, unknown> | null)?.id === 'user-seed-1'}
 	<div class="pointer-events-none fixed top-0 left-0 right-0 z-[9999] bg-amber-500/10 text-amber-200 text-center text-xs py-1 font-mono tracking-wide">
 		DEMO MODE — communi.email
 	</div>

@@ -11,6 +11,7 @@
 	import { ProgressiveFormContent } from '$lib/components/template/parts';
 	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
 	import DebateModal from '$lib/components/debate/DebateModal.svelte';
+	import WalletConnect from '$lib/components/wallet/WalletConnect.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import type { ComponentTemplate } from '$lib/types/component-props';
 	import type { DebateData } from '$lib/stores/debateState.svelte';
@@ -156,8 +157,27 @@
 				template={data.template as { id: string; title: string; slug: string; message_body?: string }}
 				user={data.user as { id: string; trust_tier?: number } | null}
 				debate={(data.debate as DebateData) ?? null}
-				mode={(data.mode as 'initiate' | 'participate') ?? 'participate'}
+				mode={(data.mode as 'initiate' | 'participate' | 'cosign') ?? 'participate'}
+				cosignArgumentIndex={data.cosignArgumentIndex as number | undefined}
 			/>
 		{/if}
+	{/snippet}
+</UnifiedModal>
+
+<!-- Wallet Connect Modal -->
+<UnifiedModal
+	id="wallet-connect-modal"
+	type="wallet-connect"
+	size="sm"
+	showCloseButton={true}
+	closeOnBackdrop={true}
+	closeOnEscape={true}
+>
+	{#snippet children(_data)}
+		<WalletConnect
+			onconnected={() => {
+				modalActions.closeModal('wallet-connect-modal');
+			}}
+		/>
 	{/snippet}
 </UnifiedModal>

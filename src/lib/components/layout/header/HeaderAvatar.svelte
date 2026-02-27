@@ -6,9 +6,11 @@
 	 * No verbose "Welcome back, X!" - the avatar speaks for itself.
 	 * Dropdown reveals secondary actions only on demand.
 	 */
-	import { User, LogOut, ChevronDown } from '@lucide/svelte';
+	import { User, LogOut, ChevronDown, Wallet } from '@lucide/svelte';
 	import type { HeaderUser } from '$lib/types/any-replacements';
 	import { performLogout } from '$lib/core/identity/cache-invalidation';
+	import { walletState } from '$lib/stores/walletState.svelte';
+	import { modalActions } from '$lib/stores/modalSystem.svelte';
 
 	let { user }: { user: HeaderUser } = $props();
 
@@ -17,6 +19,12 @@
 		event.preventDefault();
 		isOpen = false;
 		await performLogout();
+	}
+
+	// Open wallet connect modal
+	function handleConnectWallet(): void {
+		isOpen = false;
+		modalActions.openModal('wallet-connect-modal', 'wallet-connect', {});
 	}
 
 	let isOpen = $state(false);
@@ -92,6 +100,21 @@
 				<User class="header-dropdown-item-icon" />
 				<span>Profile</span>
 			</a>
+			<div class="header-dropdown-divider"></div>
+			{#if walletState.connected}
+				<div class="header-dropdown-item header-dropdown-item--info" role="menuitem">
+					<Wallet class="header-dropdown-item-icon" />
+					<div>
+						<span>Wallet</span>
+						<span class="header-dropdown-wallet-address">{walletState.displayAddress}</span>
+					</div>
+				</div>
+			{:else}
+				<button type="button" onclick={handleConnectWallet} class="header-dropdown-item" role="menuitem">
+					<Wallet class="header-dropdown-item-icon" />
+					<span>Connect Wallet</span>
+				</button>
+			{/if}
 			<div class="header-dropdown-divider"></div>
 			<button type="button" onclick={handleLogout} class="header-dropdown-item" role="menuitem">
 				<LogOut class="header-dropdown-item-icon" />
@@ -245,6 +268,22 @@
 		height: 1px;
 		margin: 6px 0;
 		background: var(--header-border);
+	}
+
+	.header-dropdown-item--info {
+		cursor: default;
+	}
+
+	.header-dropdown-item--info:hover {
+		background: transparent;
+		color: var(--header-text-secondary);
+	}
+
+	.header-dropdown-wallet-address {
+		display: block;
+		font-size: 0.75rem;
+		color: oklch(0.55 0.01 260);
+		font-family: 'Berkeley Mono', monospace;
 	}
 
 	/* Reduced motion */

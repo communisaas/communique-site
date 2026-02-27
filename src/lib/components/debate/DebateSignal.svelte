@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { ShieldCheck, AlertTriangle, PenLine, Loader2 } from '@lucide/svelte';
 	import type { DebateData } from '$lib/stores/debateState.svelte';
-	import { computeStanceCounts, computeStancePercentages, formatTimeRemaining } from '$lib/utils/debate-stats';
+	import {
+		computeStanceCounts,
+		computeStancePercentages,
+		computeLMSRPercentages,
+		getLeadingStance,
+		buildArgumentStanceMap,
+		formatTimeRemaining
+	} from '$lib/utils/debate-stats';
 
 	interface Props {
 		debate: DebateData | null;
@@ -20,14 +27,25 @@
 	);
 	const isResolved = $derived(debate?.status === 'resolved');
 
-	// ── Stance distribution ───────────────────────────────────────────────────
+	// ── Market awareness ──────────────────────────────────────────────────────
+	// Prefer LMSR prices when the market is active. Fall back to argument counts.
 
+	const hasMarketPrices = $derived(
+		debate?.currentPrices != null && Object.keys(debate.currentPrices).length > 0
+	);
+	const argumentStanceMap = $derived(buildArgumentStanceMap(debate?.arguments));
+
+	// Stance percentages: LMSR if available, argument counts otherwise
 	const stanceCounts = $derived(computeStanceCounts(debate?.arguments));
-	const totalArgs = $derived(stanceCounts.support + stanceCounts.oppose + stanceCounts.amend);
-	const pcts = $derived(computeStancePercentages(stanceCounts));
+	const pcts = $derived(
+		hasMarketPrices
+			? computeLMSRPercentages(debate!.currentPrices!, argumentStanceMap)
+			: computeStancePercentages(stanceCounts)
+	);
 	const supportPct = $derived(pcts.supportPct);
 	const opposePct = $derived(pcts.opposePct);
 	const amendPct = $derived(pcts.amendPct);
+	const leadingStance = $derived(hasMarketPrices ? getLeadingStance(pcts) : null);
 
 	// ── Time remaining ────────────────────────────────────────────────────────
 
@@ -93,31 +111,36 @@
 		{#if isGrowing}
 			<!--
 				Active + growing (5+ participants): show the stance distribution bar.
-				The three-segment bar gives the user a quick read on which direction
-				the deliberation is leaning without requiring them to open the full
-				debate surface. Widths use inline styles because Tailwind cannot
-				generate arbitrary percentage widths from runtime values.
+				When LMSR market is active, widths reflect market probabilities.
+				Otherwise, widths reflect argument counts.
+				Inline styles are necessary because Tailwind cannot generate
+				arbitrary percentage widths from runtime values.
 			-->
 			<div class="flex items-center gap-2.5 text-sm">
-				<span
-					class="debate-dot h-2 w-2 shrink-0 rounded-full bg-amber-500"
-				></span>
+				<span class="debate-dot h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
 				<div
 					class="flex h-1.5 w-16 overflow-hidden rounded-full"
 					role="img"
-					aria-label="Stance distribution: {stanceCounts.support} support, {stanceCounts.oppose} oppose, {stanceCounts.amend} amend"
+					aria-label={hasMarketPrices
+						? `Market signal: ${Math.round(supportPct)}% support, ${Math.round(opposePct)}% oppose, ${Math.round(amendPct)}% amend`
+						: `Stance distribution: ${stanceCounts.support} support, ${stanceCounts.oppose} oppose, ${stanceCounts.amend} amend`}
 				>
-					{#if stanceCounts.support > 0}
+					{#if supportPct > 0}
 						<div class="bg-indigo-500" style="width: {supportPct}%"></div>
 					{/if}
-					{#if stanceCounts.oppose > 0}
+					{#if opposePct > 0}
 						<div class="bg-red-500" style="width: {opposePct}%"></div>
 					{/if}
-					{#if stanceCounts.amend > 0}
+					{#if amendPct > 0}
 						<div class="bg-amber-500" style="width: {amendPct}%"></div>
 					{/if}
 				</div>
-				<span class="text-slate-600">{uniqueParticipants} debating</span>
+				{#if leadingStance}
+					<span class="font-medium text-slate-700">{leadingStance.label} {leadingStance.pct}%</span>
+					<span class="text-slate-400">· {uniqueParticipants} debating</span>
+				{:else}
+					<span class="text-slate-600">{uniqueParticipants} debating</span>
+				{/if}
 				<span class="text-slate-400">· {timeRemaining}</span>
 			</div>
 		{:else}
@@ -126,11 +149,14 @@
 				with so few data points. Show a simpler ambient signal instead.
 			-->
 			<div class="flex items-center gap-2 text-sm">
-				<span
-					class="debate-dot h-2 w-2 shrink-0 rounded-full bg-amber-500"
-				></span>
-				<span class="font-medium text-amber-700">Deliberation open</span>
-				<span class="text-slate-500">· {uniqueParticipants} arguing</span>
+				<span class="debate-dot h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
+				{#if leadingStance}
+					<span class="font-medium text-amber-700">{leadingStance.label} {leadingStance.pct}%</span>
+					<span class="text-slate-500">· {uniqueParticipants} arguing</span>
+				{:else}
+					<span class="font-medium text-amber-700">Deliberation open</span>
+					<span class="text-slate-500">· {uniqueParticipants} arguing</span>
+				{/if}
 			</div>
 		{/if}
 	{/if}

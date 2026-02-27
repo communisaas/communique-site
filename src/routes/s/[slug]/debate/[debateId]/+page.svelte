@@ -103,6 +103,15 @@
 				mode: 'participate'
 			});
 		}}
+		onCoSign={(argumentIndex) => {
+			modalActions.openModal('debate-modal', 'debate', {
+				template,
+				user: data.user,
+				debate,
+				mode: 'cosign',
+				cosignArgumentIndex: argumentIndex
+			});
+		}}
 		onVerifyIdentity={async () => {
 			if (data.user?.trust_tier != null && data.user.trust_tier < 2) {
 				modalActions.openModal('address-modal', 'address', {

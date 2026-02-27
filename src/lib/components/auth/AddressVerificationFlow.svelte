@@ -29,6 +29,11 @@
 	let stateCode: string = $state('');
 	let zipCode: string = $state('');
 
+	// Auto-detect country from postal code format
+	let detectedCountry: 'US' | 'CA' = $derived(
+		/^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/.test(zipCode.trim()) ? 'CA' : 'US'
+	);
+
 	// Flow state
 	let flowStep: FlowStep = $state('path-select');
 	let errorMessage: string = $state('');
@@ -55,7 +60,7 @@
 		street.trim().length > 0 &&
 		city.trim().length > 0 &&
 		stateCode.trim().length === 2 &&
-		/^\d{5}(-\d{4})?$/.test(zipCode.trim())
+		(/^\d{5}(-\d{4})?$/.test(zipCode.trim()) || /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/.test(zipCode.trim()))
 	);
 
 	/**
@@ -158,7 +163,8 @@
 					street: street.trim(),
 					city: city.trim(),
 					state: stateCode.trim().toUpperCase(),
-					zip: zipCode.trim()
+					zip: zipCode.trim(),
+					...(detectedCountry === 'CA' ? { country: 'CA' } : {})
 				})
 			});
 
@@ -445,24 +451,24 @@
 						/>
 					</div>
 					<div class="col-span-1">
-						<label for="avf-state" class="mb-1 block text-sm font-medium text-slate-700">State</label>
+						<label for="avf-state" class="mb-1 block text-sm font-medium text-slate-700">{detectedCountry === 'CA' ? 'Prov' : 'State'}</label>
 						<input
 							id="avf-state"
 							type="text"
 							bind:value={stateCode}
-							placeholder="CA"
+							placeholder={detectedCountry === 'CA' ? 'ON' : 'CA'}
 							maxlength={2}
 							class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-center text-sm uppercase transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
 							onkeydown={handleKeydown}
 						/>
 					</div>
 					<div class="col-span-2">
-						<label for="avf-zip" class="mb-1 block text-sm font-medium text-slate-700">ZIP</label>
+						<label for="avf-zip" class="mb-1 block text-sm font-medium text-slate-700">{detectedCountry === 'CA' ? 'Postal' : 'ZIP'}</label>
 						<input
 							id="avf-zip"
 							type="text"
 							bind:value={zipCode}
-							placeholder="94102"
+							placeholder={detectedCountry === 'CA' ? 'K1A 0B1' : '94102'}
 							maxlength={10}
 							class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
 							onkeydown={handleKeydown}
@@ -502,8 +508,8 @@
 					How is my address used?
 				</summary>
 				<p class="mt-2 text-xs leading-relaxed text-slate-500">
-					Your address is sent to our server, geocoded via the U.S. Census Bureau (public infrastructure),
-					and matched to your congressional district. After verification, the address is encrypted
+					Your address is sent to our server, geocoded via self-hosted infrastructure,
+					and matched to your {detectedCountry === 'CA' ? 'federal electoral district (riding)' : 'congressional district'}. After verification, the address is encrypted
 					locally. Only your district is sent to issue a verifiable credential.
 				</p>
 			</details>

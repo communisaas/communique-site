@@ -9,8 +9,8 @@
 	// import { extractRecipientEmails } from '$lib/types/templateConfig';
 	import { modalActions, modalSystem } from '$lib/stores/modalSystem.svelte';
 	import { guestState } from '$lib/stores/guestState.svelte';
-	import { analyzeEmailFlow } from '$lib/services/emailService';
-	import { trackTemplateView } from '$lib/core/analytics/client';
+	import { analyzeEmailFlow, generatePersonalizedMailto } from '$lib/services/emailService';
+	import { trackTemplateView, trackDeliveryAttempt } from '$lib/core/analytics/client';
 	import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import ActionBar from '$lib/components/template-browser/parts/ActionBar.svelte';
 	import TrustJourney from '$lib/components/trust/TrustJourney.svelte';
@@ -18,6 +18,11 @@
 	import DebateSignal from '$lib/components/debate/DebateSignal.svelte';
 	import MobileDebateBanner from '$lib/components/debate/MobileDebateBanner.svelte';
 	import type { DebateData } from '$lib/stores/debateState.svelte';
+	import StanceRegistration from '$lib/components/action/StanceRegistration.svelte';
+	import PowerLandscape from '$lib/components/action/PowerLandscape.svelte';
+	import { positionState } from '$lib/stores/positionState.svelte';
+	import { mergeLandscape, type LandscapeMember, type DistrictOfficialInput } from '$lib/utils/landscapeMerge';
+	import type { ProcessedDecisionMaker } from '$lib/types/template';
 
 	import { spring } from 'svelte/motion';
 	import { browser } from '$app/environment';
@@ -194,6 +199,225 @@
 		}
 	}
 
+	// === Power Landscape state ===
+
+	// Access server data with proper types (PageData doesn't include PL fields yet)
+	interface PowerLandscapeData {
+		positionCounts?: { support: number; oppose: number; districts: number };
+		existingPosition?: { stance: string; registrationId: string } | null;
+		deliveredRecipients?: string[];
+		districtOfficials?: DistrictOfficialInput[];
+		recipientConfig?: { decisionMakers?: ProcessedDecisionMaker[]; personalPrompt?: string };
+	}
+	const pl = $derived(data as unknown as PowerLandscapeData);
+
+	// Landscape computation
+	const landscape = $derived(
+		mergeLandscape(
+			pl.recipientConfig?.decisionMakers ?? [],
+			pl.districtOfficials ?? []
+		)
+	);
+
+	// Identity commitment for position registration
+	const identityCommitment = $derived(
+		data.user?.identity_commitment ?? (data.user ? `demo-${data.user.id}` : null)
+	);
+
+	// UI state
+	let landscapeRevealed = $state(false);
+	let contactedRecipients = $state(new Set<string>());
+	let departingRecipients = $state(new Set<string>());
+	let batchRegistrationState = $state<'idle' | 'registering' | 'complete'>('idle');
+
+	// Mail app handoff detection — settle departing cards when user returns
+	$effect(() => {
+		if (departingRecipients.size === 0 || !browser) return;
+
+		const settle = () => {
+			if (departingRecipients.size > 0) {
+				departingRecipients = new Set();
+			}
+		};
+
+		const onFocus = () => settle();
+		const onVisible = () => { if (!document.hidden) settle(); };
+
+		window.addEventListener('focus', onFocus);
+		document.addEventListener('visibilitychange', onVisible);
+		const timer = setTimeout(settle, 3000);
+
+		return () => {
+			window.removeEventListener('focus', onFocus);
+			document.removeEventListener('visibilitychange', onVisible);
+			clearTimeout(timer);
+		};
+	});
+
+	// Initialize positionState from server data on template change
+	$effect(() => {
+		const tmplId = template.id;
+		const existing = pl.existingPosition ?? null;
+		const counts = pl.positionCounts;
+
+		if (existing) {
+			// Returning user — restore registered state, skip stance buttons
+			positionState.restore(
+				tmplId,
+				existing.stance as 'support' | 'oppose',
+				existing.registrationId,
+				counts ?? { support: 0, oppose: 0, districts: 0 }
+			);
+			landscapeRevealed = true;
+		} else {
+			positionState.init(tmplId, counts);
+			landscapeRevealed = false;
+		}
+
+		// Restore sent recipients from delivery records
+		contactedRecipients = new Set(pl.deliveredRecipients ?? []);
+	});
+
+	function handleRegistered(_stance: 'support' | 'oppose') {
+		landscapeRevealed = true;
+	}
+
+	function handleWriteTo(member: LandscapeMember) {
+		if (member.deliveryRoute === 'cwc') {
+			// Congressional officials: route through existing CWC modal infrastructure
+			// TemplateModal handles tier-based routing (mailto for T1-2, ZKP for T3+)
+			modalActions.openModal('template-modal', 'template_modal', {
+				template,
+				user: data.user
+			});
+		} else if (member.deliveryRoute === 'email' && member.email) {
+			// Direct mailto — opener + template body, no intermediate compose view
+			const districtName = data.userDistrictCode ?? '';
+			const subject = template.subject
+				? `[${template.slug}] ${template.subject}`
+				: `[${template.slug}] ${template.title}`;
+
+			const trustTier = data.user?.trust_tier ?? 0;
+			const attestation = trustTier >= 2
+				? `Verified resident, ${districtName}\nCryptographic proof of residency`
+				: undefined;
+
+			const result = generatePersonalizedMailto({
+				recipient: {
+					name: member.name,
+					email: member.email,
+					title: member.title,
+					organization: member.organization
+				},
+				subject,
+				opener: member.accountabilityOpener ?? '',
+				templateBody: template.message_body.replace(/\[District\]/g, districtName),
+				attestation
+			});
+
+			if ('url' in result) {
+				// Measurement before action — the click is the outreach event
+				contactedRecipients = new Set([...contactedRecipients, member.id]);
+				departingRecipients = new Set([...departingRecipients, member.id]);
+				trackDeliveryAttempt(template.id, 'email');
+
+				// Persist outreach record (fire-and-forget)
+				if (positionState.registrationId) {
+					fetch('/api/positions/batch-register', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							registrationId: positionState.registrationId,
+							recipients: [{
+								name: member.name,
+								email: member.email,
+								deliveryMethod: 'email'
+							}]
+						}),
+						keepalive: true
+					}).catch(() => {}); // Fire-and-forget — UI already updated
+				}
+
+				window.location.href = result.url;
+			}
+		} else if (member.deliveryRoute === 'form' && member.contactFormUrl) {
+			// Web contact form: open in new tab
+			window.open(member.contactFormUrl, '_blank', 'noopener,noreferrer');
+		}
+	}
+
+	async function handleBatchRegister(memberIds: string[]) {
+		if (!positionState.registrationId || batchRegistrationState === 'registering') return;
+		batchRegistrationState = 'registering';
+
+		const allMembers = [
+			...landscape.roleGroups.flatMap((g) => g.members),
+			...(landscape.districtGroup?.members ?? [])
+		];
+
+		const members = memberIds
+			.map((id) => allMembers.find((m) => m.id === id))
+			.filter((m): m is LandscapeMember => m != null);
+
+		// Build single mailto with all email-bearing members in To:
+		const emailMembers = members.filter(m => m.email && m.deliveryRoute === 'email');
+		if (emailMembers.length > 0) {
+			const districtName = data.userDistrictCode ?? '';
+			const subject = template.subject
+				? `[${template.slug}] ${template.subject}`
+				: `[${template.slug}] ${template.title}`;
+
+			const trustTier = data.user?.trust_tier ?? 0;
+			const attestation = trustTier >= 2
+				? `Verified resident, ${districtName}\nCryptographic proof of residency`
+				: undefined;
+
+			const bodyParts: string[] = [];
+			const body = template.message_body.replace(/\[District\]/g, districtName).trim();
+			if (body) bodyParts.push(body);
+			if (attestation?.trim()) {
+				bodyParts.push('---');
+				bodyParts.push(attestation.trim());
+			}
+
+			const emails = emailMembers.map(m => m.email!).join(',');
+			const url = `mailto:${encodeURIComponent(emails)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyParts.join('\n\n'))}`;
+
+			if (url.length <= 8000) {
+				departingRecipients = new Set([...departingRecipients, ...emailMembers.map(m => m.id)]);
+				trackDeliveryAttempt(template.id, 'email');
+				window.location.href = url;
+			}
+		}
+
+		// Persist delivery records for ALL members (fire-and-forget for mailto, blocking for state)
+		const recipients = members.map((m) => ({
+			name: m.name,
+			email: m.email ?? undefined,
+			deliveryMethod: m.deliveryRoute === 'cwc' ? 'cwc' : m.deliveryRoute === 'email' ? 'email' : 'recorded'
+		}));
+
+		try {
+			const res = await fetch('/api/positions/batch-register', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					registrationId: positionState.registrationId,
+					recipients
+				})
+			});
+
+			if (res.ok) {
+				contactedRecipients = new Set([...contactedRecipients, ...memberIds]);
+				batchRegistrationState = 'complete';
+			} else {
+				batchRegistrationState = 'idle';
+			}
+		} catch {
+			batchRegistrationState = 'idle';
+		}
+	}
+
 	async function _handleAddressSubmit(address: string) {
 		try {
 			_isUpdatingAddress = true;
@@ -361,29 +585,37 @@
 			<!-- Debate signal — adjacent to send action for decision-critical visibility -->
 			<DebateSignal debate={(data.debate as DebateData) ?? null} variant="inline" />
 
-			<!-- ActionBar positioned in header -->
-			<div class="w-full sm:w-auto [&>div]:mt-0">
-				<ActionBar
-					{template}
-					user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
-					{personalConnectionValue}
-					onSendMessage={() => {
-						if (!data.user) {
-							// DEMO MODE: Skip auth wall on template landing, go straight to modal
-							// User is already on the template page, let them proceed
-							modalActions.openModal('template-modal', 'template_modal', { template, user: null });
-						} else {
-							// For authenticated users, use TemplateModal for the entire flow
-							handlePostAuthFlow();
-						}
-					}}
-					localShowEmailModal={false}
-					bind:actionProgress
-					onEmailModalClose={() => {
-						/* Intentionally empty - modal close handled elsewhere */
-					}}
-					componentId="template-page-action"
-				/>
+			<!-- Primary action: Stance registration (authenticated) or ActionBar (guest) -->
+			<div class="w-full sm:w-auto">
+				{#if data.user && identityCommitment}
+					<StanceRegistration
+						templateId={template.id}
+						{identityCommitment}
+						districtCode={data.userDistrictCode ?? undefined}
+						onRegistered={handleRegistered}
+					/>
+				{:else}
+					<div class="[&>div]:mt-0">
+						<ActionBar
+							{template}
+							user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
+							{personalConnectionValue}
+							onSendMessage={() => {
+								if (!data.user) {
+									modalActions.openModal('template-modal', 'template_modal', { template, user: null });
+								} else {
+									handlePostAuthFlow();
+								}
+							}}
+							localShowEmailModal={false}
+							bind:actionProgress
+							onEmailModalClose={() => {
+								/* Intentionally empty - modal close handled elsewhere */
+							}}
+							componentId="template-page-action"
+						/>
+					</div>
+				{/if}
 			</div>
 		</div>
 	</div>
@@ -393,7 +625,7 @@
 		<!-- LEFT: Message (sticky on desktop) -->
 		<div class="lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
 			<div class="rounded-xl border border-slate-200 bg-white shadow-sm">
-				{#if addressRequired}
+				{#if addressRequired && !landscapeRevealed}
 					<!-- Address Required Notice -->
 					<div class="border-b border-amber-200 bg-amber-50 px-6 py-4">
 						<div class="flex items-center gap-3">
@@ -465,8 +697,33 @@
 			</div>
 		</div>
 
-		<!-- RIGHT: Deliberation (scrollable, beside message on desktop) -->
-		<div class="mt-8 lg:mt-0">
+		<!-- RIGHT: Power Landscape + Deliberation (scrollable, beside message on desktop) -->
+		<div class="mt-8 lg:mt-0 space-y-8">
+			<!-- Power Landscape: visible after position registration -->
+			{#if landscapeRevealed}
+				<PowerLandscape
+					{template}
+					decisionMakers={pl.recipientConfig?.decisionMakers ?? []}
+					districtOfficials={pl.districtOfficials ?? []}
+					{contactedRecipients}
+					{departingRecipients}
+					onWriteTo={handleWriteTo}
+					onBatchRegister={handleBatchRegister}
+					onVerifyAddress={addressRequired ? () => {
+						modalActions.openModal('address-modal', 'address', {
+							template,
+							source,
+							mode: 'collection',
+							onComplete: async (detail: AddressModalDetail) => {
+								await _handleAddressSubmit(detail.address);
+							}
+						});
+					} : undefined}
+					registrationState={batchRegistrationState}
+				/>
+			{/if}
+
+			<!-- Debate surface -->
 			<DebateSurface
 				debate={(data.debate as DebateData) ?? null}
 				userTrustTier={data.user?.trust_tier ?? 0}
@@ -483,6 +740,15 @@
 						user: data.user,
 						debate: data.debate,
 						mode: 'participate'
+					});
+				}}
+				onCoSign={(argumentIndex) => {
+					modalActions.openModal('debate-modal', 'debate', {
+						template,
+						user: data.user,
+						debate: data.debate,
+						mode: 'cosign',
+						cosignArgumentIndex: argumentIndex
 					});
 				}}
 				onVerifyIdentity={async () => {

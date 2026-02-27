@@ -19,7 +19,8 @@ export type ModalType =
 	| 'onboarding'
 	| 'template_modal'
 	| 'sign-in'
-	| 'debate';
+	| 'debate'
+	| 'wallet-connect';
 
 // Modal State Interface
 interface ModalState {

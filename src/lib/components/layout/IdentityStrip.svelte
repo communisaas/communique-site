@@ -11,6 +11,9 @@
 	import HeaderBackButton from './header/HeaderBackButton.svelte';
 	import HeaderAvatar from './header/HeaderAvatar.svelte';
 	import HeaderSignIn from './header/HeaderSignIn.svelte';
+	import BalanceDisplay from '$lib/components/wallet/BalanceDisplay.svelte';
+	import WalletStatus from '$lib/components/wallet/WalletStatus.svelte';
+	import { walletState } from '$lib/stores/walletState.svelte';
 	import type { HeaderUser, HeaderTemplate, TemplateUseEvent } from '$lib/types/any-replacements';
 
 	let {
@@ -71,9 +74,34 @@
 		<!-- Center: Empty (flexible space) -->
 		<div class="identity-strip__center"></div>
 
-		<!-- Right: User identity -->
+		<!-- Right: User identity + wallet -->
 		<div class="identity-strip__right">
 			{#if user}
+				<div class="identity-strip__wallet-group">
+					{#if walletState.connected}
+						<span class="identity-strip__balance-wrap">
+							<BalanceDisplay address={walletState.address} compact={true} />
+						</span>
+						<WalletStatus
+							address={walletState.address}
+							chainId={walletState.chainId}
+							ondisconnect={() => walletState.disconnect()}
+						/>
+					{:else}
+						<button
+							type="button"
+							class="wallet-connect-pill"
+							onclick={() => walletState.connectEVM()}
+							disabled={walletState.connecting}
+						>
+							{#if walletState.connecting}
+								Connecting...
+							{:else}
+								Connect
+							{/if}
+						</button>
+					{/if}
+				</div>
 				<HeaderAvatar {user} />
 			{:else}
 				<HeaderSignIn />
@@ -140,6 +168,55 @@
 		display: flex;
 		align-items: center;
 		justify-content: flex-end;
+		gap: 8px;
+	}
+
+	/* ── Wallet group (balance + status or connect pill) ──────────────── */
+
+	.identity-strip__wallet-group {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	/* Hide BalanceDisplay below 640px to save header space on mobile */
+	.identity-strip__balance-wrap {
+		display: none;
+	}
+
+	@media (min-width: 640px) {
+		.identity-strip__balance-wrap {
+			display: contents;
+		}
+	}
+
+	/* ── Connect wallet pill button ──────────────────────────────────── */
+
+	.wallet-connect-pill {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 12px;
+		height: 28px;
+		border-radius: 14px;
+		font-size: 0.75rem;
+		font-weight: 500;
+		font-family: 'Satoshi', system-ui, sans-serif;
+		background: oklch(0.95 0.01 250);
+		color: oklch(0.45 0.02 260);
+		border: 1px solid oklch(0.88 0.01 250);
+		cursor: pointer;
+		transition: all 150ms ease-out;
+	}
+
+	.wallet-connect-pill:hover {
+		background: oklch(0.92 0.02 250);
+		border-color: oklch(0.82 0.02 250);
+	}
+
+	.wallet-connect-pill:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 
 	.identity-strip__brand {
@@ -164,6 +241,10 @@
 
 		.identity-strip--hidden {
 			visibility: hidden;
+		}
+
+		.wallet-connect-pill {
+			transition: none;
 		}
 	}
 </style>

@@ -157,21 +157,21 @@
 		<div class="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2">
 			{#if canCoSign && onCoSign}
 				<button
-					class="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium
+					class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 min-h-[44px] sm:min-h-0 sm:py-1 text-xs font-medium
 						   text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
 					onclick={() => onCoSign(argument.argumentIndex)}
 				>
-					<UserPlus class="h-3 w-3" />
+					<UserPlus class="h-3.5 w-3.5 sm:h-3 sm:w-3" />
 					Co-sign
 				</button>
 			{/if}
 			{#if canTrade && onTradeOn}
 				<button
-					class="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium
+					class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 min-h-[44px] sm:min-h-0 sm:py-1 text-xs font-medium
 						   text-indigo-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
 					onclick={() => onTradeOn(argument.argumentIndex)}
 				>
-					<TrendingUp class="h-3 w-3" />
+					<TrendingUp class="h-3.5 w-3.5 sm:h-3 sm:w-3" />
 					Stake on this
 				</button>
 			{/if}
