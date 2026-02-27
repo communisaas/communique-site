@@ -14,6 +14,15 @@
 		onWriteTo: (member: LandscapeMember) => void;
 	} = $props();
 
+	function extractDomain(url: string): string {
+		try {
+			const host = new URL(url).hostname;
+			return host.replace(/^www\./, '');
+		} catch {
+			return url;
+		}
+	}
+
 	const canAct = $derived(member.deliveryRoute !== 'recorded' && member.deliveryRoute !== 'phone_only');
 	const isActive = $derived(canAct && !contacted && !departing);
 
@@ -41,6 +50,20 @@
 			{member.title}{member.organization ? ` · ${member.organization}` : ''}
 		</p>
 	</div>
+
+	<!-- Email provenance (grounded source) -->
+	{#if member.emailGrounded && member.emailSource}
+		<a
+			href={member.emailSource}
+			target="_blank"
+			rel="noopener noreferrer"
+			class="mt-1 inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+			onclick={(e) => e.stopPropagation()}
+		>
+			<ExternalLink class="h-3 w-3" />
+			{extractDomain(member.emailSource)}
+		</a>
+	{/if}
 
 	<!-- Contact info for non-CWC officials -->
 	{#if member.deliveryRoute === 'phone_only' && member.phone}

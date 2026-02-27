@@ -41,6 +41,10 @@ export interface LandscapeMember {
   bioguideId: string | null;
   cwcCode: string | null;
   chamber: 'house' | 'senate' | null;
+  // Email provenance (from agent grounding pipeline)
+  emailGrounded: boolean;
+  emailSource: string | null;
+  emailSourceTitle: string | null;
 }
 
 export interface RoleGroupData {
@@ -161,7 +165,10 @@ export function mergeLandscape(
       phone: null,
       bioguideId: null,
       cwcCode: null,
-      chamber: null
+      chamber: null,
+      emailGrounded: dm.emailGrounded ?? false,
+      emailSource: dm.emailSource || null,
+      emailSourceTitle: dm.emailSourceTitle || null
     };
 
     if (!roleGroupMap.has(category)) {
@@ -201,7 +208,10 @@ export function mergeLandscape(
       phone: official.phone ?? null,
       bioguideId: official.bioguideId ?? null,
       cwcCode: official.cwcCode ?? null,
-      chamber: official.chamber ?? null
+      chamber: official.chamber ?? null,
+      emailGrounded: false,
+      emailSource: null,
+      emailSourceTitle: null
     });
   }
 

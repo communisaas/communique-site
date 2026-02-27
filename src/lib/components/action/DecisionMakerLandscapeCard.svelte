@@ -1,6 +1,15 @@
 <script lang="ts">
-	import { Check, ChevronRight } from '@lucide/svelte';
+	import { Check, ChevronRight, ExternalLink } from '@lucide/svelte';
 	import type { LandscapeMember } from '$lib/utils/landscapeMerge';
+
+	function extractDomain(url: string): string {
+		try {
+			const host = new URL(url).hostname;
+			return host.replace(/^www\./, '');
+		} catch {
+			return url;
+		}
+	}
 
 	let {
 		member,
@@ -32,6 +41,20 @@
 			{member.title}{member.organization ? `, ${member.organization}` : ''}
 		</p>
 	</div>
+
+	<!-- Email provenance (grounded source) -->
+	{#if member.emailGrounded && member.emailSource}
+		<a
+			href={member.emailSource}
+			target="_blank"
+			rel="noopener noreferrer"
+			class="mt-1 inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+			onclick={(e) => e.stopPropagation()}
+		>
+			<ExternalLink class="h-3 w-3" />
+			{extractDomain(member.emailSource)}
+		</a>
+	{/if}
 
 	<!-- Accountability opener (template DMs only) -->
 	{#if member.accountabilityOpener}
