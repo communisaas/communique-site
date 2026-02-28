@@ -5,9 +5,9 @@
  * resolution endpoint that replaces client-side Nominatim geocoding.
  *
  * Pipeline under test:
- *   1. Census Bureau Geocoder → standardized address + coords + district + cell_id
- *   2. Congress.gov Member API → federal representatives (cached)
- *   3. Shadow Atlas fire-and-forget (non-blocking, tested only for not crashing)
+ *   1. Shadow Atlas resolveAddress() (primary — returns 503 in test env, falls through)
+ *   2. Census Bureau Geocoder (fallback) → standardized address + coords + district + cell_id
+ *   3. Shadow Atlas getOfficials() → federal representatives (pre-ingested data)
  *
  * These tests import the POST handler directly and call it with mock
  * SvelteKit RequestEvents, using MSW to intercept external API calls.
@@ -127,9 +127,7 @@ function createResolveRequest(body: Record<string, unknown>, locals = authentica
 
 describe('POST /api/location/resolve-address', () => {
 	beforeEach(() => {
-		// Set Congress API key for addressLookupService
-		process.env.CONGRESS_API_KEY = 'test-key';
-		// Mock Shadow Atlas (fire-and-forget, must not crash)
+		// Mock Shadow Atlas fire-and-forget lookup (non-blocking warmup call)
 		mockShadowAtlas();
 	});
 
@@ -260,14 +258,14 @@ describe('POST /api/location/resolve-address', () => {
 			expect(data.county_fips).toBe('17001');
 		});
 
-		it('returns district_source as census', async () => {
+		it('returns district_source as census-fallback', async () => {
 			mockCensusBureau(censusBureauResponse());
 
 			const event = createResolveRequest(testAddress);
 			const response = await POST(event as any);
 			const data = await response.json();
 
-			expect(data.district_source).toBe('census');
+			expect(data.district_source).toBe('census-fallback');
 		});
 
 		it('returns officials array with house and senate members', async () => {
@@ -460,17 +458,20 @@ describe('POST /api/location/resolve-address', () => {
 	});
 
 	// ========================================================================
-	// Congress member lookup failure (graceful degradation)
+	// Shadow Atlas officials failure (graceful degradation)
 	// ========================================================================
 
-	describe('Congress API failure', () => {
-		it('still returns address and district when Congress lookup fails', async () => {
+	describe('Shadow Atlas officials failure', () => {
+		it('still returns address and district when officials lookup fails', async () => {
 			mockCensusBureau(censusBureauResponse());
 
-			// Override Congress API to fail
+			// Override Shadow Atlas officials to fail
 			server.use(
-				http.get('https://api.congress.gov/v3/member', () => {
-					return HttpResponse.json({ error: 'service unavailable' }, { status: 503 });
+				http.get('http://localhost:3000/v1/officials', () => {
+					return HttpResponse.json(
+						{ success: false, error: { code: 'INTERNAL_ERROR', message: 'service unavailable' } },
+						{ status: 503 }
+					);
 				})
 			);
 
@@ -482,7 +483,7 @@ describe('POST /api/location/resolve-address', () => {
 			expect(data.resolved).toBe(true);
 			expect(data.address.matched).toBeTruthy();
 			expect(data.district.code).toBeTruthy();
-			// Officials may be empty but shouldn't crash
+			// Officials empty when Shadow Atlas officials fails
 			expect(Array.isArray(data.officials)).toBe(true);
 		});
 	});

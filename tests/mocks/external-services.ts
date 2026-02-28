@@ -439,6 +439,143 @@ export const censusAndCongressHandlers = [
 ];
 
 // Shadow Atlas API Mocks (localhost:3000 default in test environment)
+
+const TERRITORY_STATES = ['PR', 'GU', 'VI', 'AS', 'MP'];
+
+/** Build Shadow Atlas officials response for a district code */
+function buildShadowAtlasOfficialsResponse(districtCode: string) {
+  const [state, districtNum] = districtCode.split('-');
+
+  // DC special status
+  if (state === 'DC') {
+    return {
+      success: true,
+      data: {
+        officials: [{
+          bioguide_id: 'DCH001',
+          name: 'DC Delegate',
+          party: 'Democratic',
+          chamber: 'house',
+          state: 'DC',
+          district: 'AL',
+          office: 'Delegate to the U.S. House',
+          phone: '202-555-0001',
+          contact_form_url: null,
+          website_url: null,
+          cwc_code: null,
+          is_voting: false,
+          delegate_type: 'delegate'
+        }],
+        district_code: districtCode,
+        state: 'DC',
+        special_status: {
+          type: 'dc',
+          message: 'DC residents have a non-voting delegate and no senators.',
+          has_senators: false,
+          has_voting_representative: false
+        },
+        source: 'congress-legislators',
+        cached: false
+      }
+    };
+  }
+
+  // Territory special status
+  if (TERRITORY_STATES.includes(state)) {
+    return {
+      success: true,
+      data: {
+        officials: [{
+          bioguide_id: `${state}H001`,
+          name: `${state} Resident Commissioner`,
+          party: 'Democratic',
+          chamber: 'house',
+          state,
+          district: 'AL',
+          office: state === 'PR' ? 'Resident Commissioner' : 'Delegate',
+          phone: null,
+          contact_form_url: null,
+          website_url: null,
+          cwc_code: null,
+          is_voting: false,
+          delegate_type: state === 'PR' ? 'resident_commissioner' : 'delegate'
+        }],
+        district_code: districtCode,
+        state,
+        special_status: {
+          type: 'territory',
+          message: `${state} is a U.S. territory with non-voting representation.`,
+          has_senators: false,
+          has_voting_representative: false
+        },
+        source: 'congress-legislators',
+        cached: false
+      }
+    };
+  }
+
+  // Regular state: 2 senators + 1 house rep
+  const officials = [
+    {
+      bioguide_id: `${state}S001`,
+      name: `Senator One (${state})`,
+      party: 'Democratic',
+      chamber: 'senate',
+      state,
+      district: null,
+      office: `U.S. Senator (${state})`,
+      phone: '202-555-0001',
+      contact_form_url: null,
+      website_url: null,
+      cwc_code: null,
+      is_voting: true,
+      delegate_type: null
+    },
+    {
+      bioguide_id: `${state}S002`,
+      name: `Senator Two (${state})`,
+      party: 'Republican',
+      chamber: 'senate',
+      state,
+      district: null,
+      office: `U.S. Senator (${state})`,
+      phone: '202-555-0002',
+      contact_form_url: null,
+      website_url: null,
+      cwc_code: null,
+      is_voting: true,
+      delegate_type: null
+    },
+    {
+      bioguide_id: `${state}H0${districtNum}`,
+      name: `Representative (${districtCode})`,
+      party: 'Democratic',
+      chamber: 'house',
+      state,
+      district: districtNum,
+      office: `U.S. Representative (${districtCode})`,
+      phone: '202-555-0003',
+      contact_form_url: null,
+      website_url: null,
+      cwc_code: districtCode,
+      is_voting: true,
+      delegate_type: null
+    }
+  ];
+
+  return {
+    success: true,
+    data: {
+      officials,
+      district_code: districtCode,
+      state,
+      special_status: null,
+      source: 'congress-legislators',
+      cached: false
+    }
+  };
+}
+
 export const shadowAtlasHandlers = [
   // District lookup (fire-and-forget from resolve-address endpoint)
   http.get('http://localhost:3000/v1/lookup', () => {
@@ -453,12 +590,22 @@ export const shadowAtlasHandlers = [
     return HttpResponse.json({ status: 'ok' });
   }),
 
-  // Officials lookup
-  http.get('http://localhost:3000/v1/officials', () => {
-    return HttpResponse.json({ officials: [], source: 'mock' }, { status: 501 });
+  // Officials lookup — returns officials based on district query param
+  http.get('http://localhost:3000/v1/officials', ({ request }) => {
+    const url = new URL(request.url);
+    const district = url.searchParams.get('district') || 'CA-11';
+    return HttpResponse.json(buildShadowAtlasOfficialsResponse(district));
   }),
 
-  // Location resolve
+  // Address resolution (Shadow Atlas primary path — not deployed in test env)
+  http.post('http://localhost:3000/v1/resolve-address', () => {
+    return HttpResponse.json(
+      { success: false, error: { code: 'SERVICE_UNAVAILABLE', message: 'Nominatim not deployed in test environment' } },
+      { status: 503 }
+    );
+  }),
+
+  // Location resolve (composite: district + officials)
   http.get('http://localhost:3000/v1/resolve', () => {
     return HttpResponse.json({ districts: [], cell_id: null });
   })
