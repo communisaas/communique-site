@@ -637,7 +637,7 @@ describe('Message Writer — generateMessage', () => {
 			expect(callConfig.tools).toBeUndefined();
 		});
 
-		it('uses temperature 0.7 for message generation (creative latitude)', async () => {
+		it('uses temperature 0.8 for message generation (creative latitude)', async () => {
 			mockGenerateContentStream.mockResolvedValueOnce(
 				makeStream([{ text: makeMessageResponse() }])
 			);
@@ -648,7 +648,7 @@ describe('Message Writer — generateMessage', () => {
 			});
 
 			const callConfig = mockGenerateContentStream.mock.calls[0][0].config;
-			expect(callConfig.temperature).toBe(0.7);
+			expect(callConfig.temperature).toBe(0.8);
 		});
 	});
 

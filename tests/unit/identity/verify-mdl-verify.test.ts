@@ -9,7 +9,8 @@
  *   - 403 for wrong user (session mismatch)
  *   - 422 for malformed credential (processCredentialResponse failure)
  *   - Auth guard (requires authenticated session)
- *   - Database updates: updateMany (conditional) + update (unconditional metadata)
+ *   - Identity binding: bindIdentityCommitment for Sybil detection + account merging
+ *   - Database updates: findUnique (read tier) + update (conditional tier upgrade + metadata)
  *
  * Security contract:
  *   - Ephemeral key is deleted immediately after retrieval (one-time use)
@@ -28,9 +29,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const mockProcessCredentialResponse = vi.hoisted(() => vi.fn());
 
 const mockPrismaUser = vi.hoisted(() => ({
-	updateMany: vi.fn(),
+	findUnique: vi.fn(),
 	update: vi.fn()
 }));
+
+const mockBindIdentityCommitment = vi.hoisted(() => vi.fn());
 
 const mockPrisma = vi.hoisted(() => ({
 	user: mockPrismaUser
@@ -49,6 +52,10 @@ vi.mock('$lib/core/db', () => ({
 
 vi.mock('$lib/core/identity/mdl-verification', () => ({
 	processCredentialResponse: mockProcessCredentialResponse
+}));
+
+vi.mock('$lib/core/identity/identity-binding', () => ({
+	bindIdentityCommitment: (...args: unknown[]) => mockBindIdentityCommitment(...args)
 }));
 
 // Mock the dev session store (dynamically imported by verify endpoint)
@@ -168,8 +175,15 @@ beforeEach(() => {
 	// Default: successful credential processing
 	mockProcessCredentialResponse.mockResolvedValue(MOCK_SUCCESS_RESULT);
 
+	// Default: identity binding succeeds (no merge)
+	mockBindIdentityCommitment.mockResolvedValue({
+		success: true,
+		userId: TEST_USER_ID,
+		linkedToExisting: false
+	});
+
 	// Default: DB operations succeed
-	mockPrismaUser.updateMany.mockResolvedValue({ count: 1 });
+	mockPrismaUser.findUnique.mockResolvedValue({ trust_tier: 1 });
 	mockPrismaUser.update.mockResolvedValue({});
 });
 
@@ -712,7 +726,9 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 	// ============================================================================
 
 	describe('trust tier conditional upgrade', () => {
-		it('should upgrade users with trust_tier < 5 using updateMany', async () => {
+		it('should upgrade users with trust_tier < 5 via findUnique + update', async () => {
+			mockPrismaUser.findUnique.mockResolvedValue({ trust_tier: 1 });
+
 			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
 			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
 			const event = makeRequestEvent({
@@ -725,20 +741,23 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 
 			await POST(event);
 
-			expect(mockPrismaUser.updateMany).toHaveBeenCalledWith({
-				where: { id: TEST_USER_ID, trust_tier: { lt: 5 } },
+			expect(mockPrismaUser.findUnique).toHaveBeenCalledWith({
+				where: { id: TEST_USER_ID },
+				select: { trust_tier: true }
+			});
+
+			expect(mockPrismaUser.update).toHaveBeenCalledWith({
+				where: { id: TEST_USER_ID },
 				data: expect.objectContaining({
 					trust_tier: 5,
 					document_type: 'mdl',
-					address_verification_method: 'mdl',
-					identity_commitment: MOCK_SUCCESS_RESULT.credentialHash
+					address_verification_method: 'mdl'
 				})
 			});
 		});
 
-		it('should NOT downgrade users already at tier 5 (lt condition)', async () => {
-			// updateMany with { trust_tier: { lt: 5 } } won't match a user at tier 5
-			mockPrismaUser.updateMany.mockResolvedValue({ count: 0 });
+		it('should NOT downgrade users already at tier 5', async () => {
+			mockPrismaUser.findUnique.mockResolvedValue({ trust_tier: 5 });
 
 			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
 			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
@@ -754,15 +773,12 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 
 			// Should still succeed -- the user was already at tier 5
 			expect(response.status).toBe(200);
-			// Verify the WHERE clause uses lt: 5
-			expect(mockPrismaUser.updateMany).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { id: TEST_USER_ID, trust_tier: { lt: 5 } }
-				})
-			);
+			// Update should NOT include trust_tier
+			const updateData = mockPrismaUser.update.mock.calls[0][0].data;
+			expect(updateData.trust_tier).toBeUndefined();
 		});
 
-		it('should set verified_at timestamp in updateMany', async () => {
+		it('should set verified_at timestamp in update', async () => {
 			const before = new Date();
 			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
 			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
@@ -777,76 +793,13 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 			await POST(event);
 			const after = new Date();
 
-			const updateManyData = mockPrismaUser.updateMany.mock.calls[0][0].data;
-			expect(updateManyData.verified_at).toBeInstanceOf(Date);
-			expect(updateManyData.verified_at.getTime()).toBeGreaterThanOrEqual(before.getTime());
-			expect(updateManyData.verified_at.getTime()).toBeLessThanOrEqual(after.getTime());
+			const updateData = mockPrismaUser.update.mock.calls[0][0].data;
+			expect(updateData.verified_at).toBeInstanceOf(Date);
+			expect(updateData.verified_at.getTime()).toBeGreaterThanOrEqual(before.getTime());
+			expect(updateData.verified_at.getTime()).toBeLessThanOrEqual(after.getTime());
 		});
 
-		it('should set address_verified_at in updateMany', async () => {
-			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
-			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
-			const event = makeRequestEvent({
-				platform: {
-					env: {
-						DC_SESSION_KV: { get: mockKvGet, delete: mockKvDelete, put: vi.fn() }
-					}
-				}
-			});
-
-			await POST(event);
-
-			const updateManyData = mockPrismaUser.updateMany.mock.calls[0][0].data;
-			expect(updateManyData.address_verified_at).toBeInstanceOf(Date);
-		});
-
-		it('should store credentialHash as identity_commitment', async () => {
-			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
-			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
-			const event = makeRequestEvent({
-				platform: {
-					env: {
-						DC_SESSION_KV: { get: mockKvGet, delete: mockKvDelete, put: vi.fn() }
-					}
-				}
-			});
-
-			await POST(event);
-
-			const updateManyData = mockPrismaUser.updateMany.mock.calls[0][0].data;
-			expect(updateManyData.identity_commitment).toBe(MOCK_SUCCESS_RESULT.credentialHash);
-		});
-	});
-
-	// ============================================================================
-	// Unconditional Metadata Update
-	// ============================================================================
-
-	describe('unconditional metadata update', () => {
-		it('should always update user metadata regardless of trust tier', async () => {
-			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
-			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
-			const event = makeRequestEvent({
-				platform: {
-					env: {
-						DC_SESSION_KV: { get: mockKvGet, delete: mockKvDelete, put: vi.fn() }
-					}
-				}
-			});
-
-			await POST(event);
-
-			expect(mockPrismaUser.update).toHaveBeenCalledWith({
-				where: { id: TEST_USER_ID },
-				data: expect.objectContaining({
-					address_verification_method: 'mdl',
-					document_type: 'mdl',
-					identity_commitment: MOCK_SUCCESS_RESULT.credentialHash
-				})
-			});
-		});
-
-		it('should set address_verified_at in the unconditional update', async () => {
+		it('should set address_verified_at in update', async () => {
 			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
 			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
 			const event = makeRequestEvent({
@@ -863,7 +816,9 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 			expect(updateData.address_verified_at).toBeInstanceOf(Date);
 		});
 
-		it('should call both updateMany and update (dual update pattern)', async () => {
+		it('should upgrade users with null trust_tier', async () => {
+			mockPrismaUser.findUnique.mockResolvedValue({ trust_tier: null });
+
 			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
 			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
 			const event = makeRequestEvent({
@@ -876,8 +831,107 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 
 			await POST(event);
 
-			expect(mockPrismaUser.updateMany).toHaveBeenCalledTimes(1);
+			const updateData = mockPrismaUser.update.mock.calls[0][0].data;
+			expect(updateData.trust_tier).toBe(5);
+		});
+	});
+
+	// ============================================================================
+	// Unconditional Metadata Update
+	// ============================================================================
+
+	describe('identity binding and metadata update', () => {
+		it('should call bindIdentityCommitment before DB update', async () => {
+			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
+			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
+			const event = makeRequestEvent({
+				platform: {
+					env: {
+						DC_SESSION_KV: { get: mockKvGet, delete: mockKvDelete, put: vi.fn() }
+					}
+				}
+			});
+
+			await POST(event);
+
+			expect(mockBindIdentityCommitment).toHaveBeenCalledWith(
+				TEST_USER_ID,
+				expect.any(String)
+			);
+		});
+
+		it('should always update metadata regardless of trust tier', async () => {
+			mockPrismaUser.findUnique.mockResolvedValue({ trust_tier: 5 });
+
+			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
+			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
+			const event = makeRequestEvent({
+				platform: {
+					env: {
+						DC_SESSION_KV: { get: mockKvGet, delete: mockKvDelete, put: vi.fn() }
+					}
+				}
+			});
+
+			await POST(event);
+
+			expect(mockPrismaUser.update).toHaveBeenCalledWith({
+				where: { id: TEST_USER_ID },
+				data: expect.objectContaining({
+					address_verification_method: 'mdl',
+					document_type: 'mdl'
+				})
+			});
+		});
+
+		it('should use single findUnique + update pattern (no updateMany)', async () => {
+			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
+			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
+			const event = makeRequestEvent({
+				platform: {
+					env: {
+						DC_SESSION_KV: { get: mockKvGet, delete: mockKvDelete, put: vi.fn() }
+					}
+				}
+			});
+
+			await POST(event);
+
+			expect(mockPrismaUser.findUnique).toHaveBeenCalledTimes(1);
 			expect(mockPrismaUser.update).toHaveBeenCalledTimes(1);
+		});
+
+		it('should use canonical userId from binding result for DB operations', async () => {
+			const mergedUserId = 'merged-user-id';
+			mockBindIdentityCommitment.mockResolvedValue({
+				success: true,
+				userId: mergedUserId,
+				linkedToExisting: true,
+				mergeDetails: { accountsMoved: 2, sourceEmail: 'a@b.com', targetEmail: 'c@d.com' }
+			});
+
+			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
+			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
+			const event = makeRequestEvent({
+				platform: {
+					env: {
+						DC_SESSION_KV: { get: mockKvGet, delete: mockKvDelete, put: vi.fn() }
+					}
+				}
+			});
+
+			await POST(event);
+
+			// Should use the merged userId, not the session userId
+			expect(mockPrismaUser.findUnique).toHaveBeenCalledWith({
+				where: { id: mergedUserId },
+				select: { trust_tier: true }
+			});
+			expect(mockPrismaUser.update).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { id: mergedUserId }
+				})
+			);
 		});
 	});
 
@@ -971,8 +1025,8 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 			}
 		});
 
-		it('should throw 500 when database updateMany fails', async () => {
-			mockPrismaUser.updateMany.mockRejectedValue(new Error('DB connection lost'));
+		it('should throw 500 when database findUnique fails', async () => {
+			mockPrismaUser.findUnique.mockRejectedValue(new Error('DB connection lost'));
 
 			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
 			const mockKvDelete = vi.fn().mockResolvedValue(undefined);

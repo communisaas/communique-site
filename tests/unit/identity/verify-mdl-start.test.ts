@@ -592,7 +592,7 @@ describe('POST /api/identity/verify-mdl/start', () => {
 			const data = await response.json();
 
 			const claims = data.requests[1].data.dcql_query.credentials[0].claims['org.iso.18013.5.1'];
-			expect(claims).toHaveLength(3);
+			expect(claims).toHaveLength(5);
 			for (const claim of claims) {
 				expect(claim.intent_to_retain).toBe(false);
 			}

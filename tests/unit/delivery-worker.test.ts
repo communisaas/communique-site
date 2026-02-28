@@ -30,9 +30,9 @@ vi.mock('$lib/server/witness-decryption', () => ({
 	decryptWitness: (...args: unknown[]) => mockDecryptWitness(...args)
 }));
 
-const mockGetRepresentatives = vi.fn();
-vi.mock('$lib/core/congress/address-lookup', () => ({
-	getRepresentativesForAddress: (...args: unknown[]) => mockGetRepresentatives(...args)
+const mockGetOfficials = vi.fn();
+vi.mock('$lib/core/shadow-atlas/client', () => ({
+	getOfficials: (...args: unknown[]) => mockGetOfficials(...args)
 }));
 
 const mockSubmitToSenate = vi.fn();
@@ -103,25 +103,50 @@ const DEFAULT_ADDRESS = {
 	congressional_district: 'CA-12'
 };
 
-const SENATE_REP = {
+// Shadow Atlas Official shape (matches src/lib/core/shadow-atlas/client.ts)
+const SENATE_OFFICIAL = {
 	bioguide_id: 'F000062',
 	name: 'Dianne Feinstein',
 	party: 'D',
 	state: 'CA',
-	district: '00',
+	district: null,
 	chamber: 'senate' as const,
-	office_code: 'F000062'
+	office: 'U.S. Senator',
+	phone: null,
+	contact_form_url: null,
+	website_url: null,
+	cwc_code: 'F000062',
+	is_voting: true,
+	delegate_type: null
 };
 
-const HOUSE_REP = {
+const HOUSE_OFFICIAL = {
 	bioguide_id: 'P000197',
 	name: 'Nancy Pelosi',
 	party: 'D',
 	state: 'CA',
 	district: '12',
 	chamber: 'house' as const,
-	office_code: 'CA12'
+	office: 'U.S. Representative',
+	phone: null,
+	contact_form_url: null,
+	website_url: null,
+	cwc_code: 'CA12',
+	is_voting: true,
+	delegate_type: null
 };
+
+/** Wrap officials in the OfficialsResponse shape that getOfficials returns */
+function makeOfficialsResponse(officials: typeof SENATE_OFFICIAL[]) {
+	return {
+		officials,
+		district_code: 'CA-12',
+		state: 'CA',
+		special_status: null,
+		source: 'congress-legislators' as const,
+		cached: false
+	};
+}
 
 describe('processSubmissionDelivery', () => {
 	beforeEach(() => {
@@ -135,7 +160,7 @@ describe('processSubmissionDelivery', () => {
 	describe('full pipeline', () => {
 		it('should decrypt -> lookup -> submit -> update status for each rep', async () => {
 			mockDecryptWitness.mockResolvedValue({ deliveryAddress: DEFAULT_ADDRESS });
-			mockGetRepresentatives.mockResolvedValue([SENATE_REP, HOUSE_REP]);
+			mockGetOfficials.mockResolvedValue(makeOfficialsResponse([SENATE_OFFICIAL, HOUSE_OFFICIAL]));
 			mockSubmitToSenate.mockResolvedValue({ status: 'submitted', messageId: 'msg-senate-1' });
 			mockSubmitToHouse.mockResolvedValue({ status: 'submitted', messageId: 'msg-house-1' });
 
@@ -163,7 +188,7 @@ describe('processSubmissionDelivery', () => {
 
 		it('should route senate reps to submitToSenate and house reps to submitToHouse', async () => {
 			mockDecryptWitness.mockResolvedValue({ deliveryAddress: DEFAULT_ADDRESS });
-			mockGetRepresentatives.mockResolvedValue([SENATE_REP, HOUSE_REP]);
+			mockGetOfficials.mockResolvedValue(makeOfficialsResponse([SENATE_OFFICIAL, HOUSE_OFFICIAL]));
 			mockSubmitToSenate.mockResolvedValue({ status: 'submitted', messageId: 'msg-s' });
 			mockSubmitToHouse.mockResolvedValue({ status: 'submitted', messageId: 'msg-h' });
 
@@ -262,7 +287,7 @@ describe('processSubmissionDelivery', () => {
 	describe('per-representative error isolation', () => {
 		it('should continue submitting to other reps when one fails', async () => {
 			mockDecryptWitness.mockResolvedValue({ deliveryAddress: DEFAULT_ADDRESS });
-			mockGetRepresentatives.mockResolvedValue([SENATE_REP, HOUSE_REP]);
+			mockGetOfficials.mockResolvedValue(makeOfficialsResponse([SENATE_OFFICIAL, HOUSE_OFFICIAL]));
 			// Senate fails, House succeeds
 			mockSubmitToSenate.mockRejectedValue(new Error('Senate API timeout'));
 			mockSubmitToHouse.mockResolvedValue({ status: 'submitted', messageId: 'msg-h' });
@@ -287,7 +312,7 @@ describe('processSubmissionDelivery', () => {
 
 		it('should mark as failed when all reps fail', async () => {
 			mockDecryptWitness.mockResolvedValue({ deliveryAddress: DEFAULT_ADDRESS });
-			mockGetRepresentatives.mockResolvedValue([SENATE_REP, HOUSE_REP]);
+			mockGetOfficials.mockResolvedValue(makeOfficialsResponse([SENATE_OFFICIAL, HOUSE_OFFICIAL]));
 			mockSubmitToSenate.mockRejectedValue(new Error('Senate down'));
 			mockSubmitToHouse.mockRejectedValue(new Error('House down'));
 
@@ -307,7 +332,7 @@ describe('processSubmissionDelivery', () => {
 
 		it('should treat CWC rejected status as failure', async () => {
 			mockDecryptWitness.mockResolvedValue({ deliveryAddress: DEFAULT_ADDRESS });
-			mockGetRepresentatives.mockResolvedValue([SENATE_REP]);
+			mockGetOfficials.mockResolvedValue(makeOfficialsResponse([SENATE_OFFICIAL]));
 			mockSubmitToSenate.mockResolvedValue({ status: 'rejected', error: 'Office not accepting' });
 
 			const { db, updateCalls } = createMockDb(DEFAULT_SUBMISSION, DEFAULT_TEMPLATE);
@@ -330,7 +355,7 @@ describe('processSubmissionDelivery', () => {
 	describe('template and representative lookup', () => {
 		it('should fail when template is not found', async () => {
 			mockDecryptWitness.mockResolvedValue({ deliveryAddress: DEFAULT_ADDRESS });
-			mockGetRepresentatives.mockResolvedValue([SENATE_REP]);
+			mockGetOfficials.mockResolvedValue(makeOfficialsResponse([SENATE_OFFICIAL]));
 
 			const { db } = createMockDb(DEFAULT_SUBMISSION, null);
 
@@ -342,7 +367,7 @@ describe('processSubmissionDelivery', () => {
 
 		it('should fail when no representatives found for address', async () => {
 			mockDecryptWitness.mockResolvedValue({ deliveryAddress: DEFAULT_ADDRESS });
-			mockGetRepresentatives.mockResolvedValue([]);
+			mockGetOfficials.mockResolvedValue(makeOfficialsResponse([]));
 
 			const { db } = createMockDb(DEFAULT_SUBMISSION, DEFAULT_TEMPLATE);
 
@@ -379,7 +404,7 @@ describe('processSubmissionDelivery', () => {
 
 		it('should record per-rep error summary on partial failure', async () => {
 			mockDecryptWitness.mockResolvedValue({ deliveryAddress: DEFAULT_ADDRESS });
-			mockGetRepresentatives.mockResolvedValue([SENATE_REP, HOUSE_REP]);
+			mockGetOfficials.mockResolvedValue(makeOfficialsResponse([SENATE_OFFICIAL, HOUSE_OFFICIAL]));
 			mockSubmitToSenate.mockRejectedValue(new Error('Connection refused'));
 			mockSubmitToHouse.mockResolvedValue({ status: 'submitted', messageId: 'msg-h' });
 
@@ -395,7 +420,7 @@ describe('processSubmissionDelivery', () => {
 
 		it('should store CWC message IDs on success', async () => {
 			mockDecryptWitness.mockResolvedValue({ deliveryAddress: DEFAULT_ADDRESS });
-			mockGetRepresentatives.mockResolvedValue([SENATE_REP, HOUSE_REP]);
+			mockGetOfficials.mockResolvedValue(makeOfficialsResponse([SENATE_OFFICIAL, HOUSE_OFFICIAL]));
 			mockSubmitToSenate.mockResolvedValue({ status: 'submitted', messageId: 'msg-s-123' });
 			mockSubmitToHouse.mockResolvedValue({ status: 'submitted', messageId: 'msg-h-456' });
 
