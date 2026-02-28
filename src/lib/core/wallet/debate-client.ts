@@ -13,7 +13,7 @@
  *   2. Read nonce from DistrictGate.nonces(wallet.address)
  *   3. Build EIP-712 typed data via buildProofAuthorizationData
  *   4. Sign with wallet.signTypedData (MetaMask popup)
- *   5. Ensure ERC-20 allowance for staking amount
+ *   5. Ensure ERC-20 token approval for stake amount
  *   6. Submit tx via Contract connected to user's Signer
  *   7. Wait for receipt, return { txHash }
  *
@@ -32,9 +32,9 @@ import {
 	publicInputsToBigInt
 } from './eip712';
 import {
-	ensureAllowance,
+	DEBATE_MARKET_ADDRESS,
 	STAKING_TOKEN_ADDRESS,
-	DEBATE_MARKET_ADDRESS
+	ensureTokenApproval
 } from './token';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -77,7 +77,7 @@ export interface ClientSubmitArgumentParams {
 	/** keccak256 of the amendment text, or 0x000...0 if no amendment (bytes32). */
 	amendmentHash: string;
 
-	/** Stake amount in token smallest unit (6 decimals for USDC). */
+	/** Stake amount in smallest token unit (e.g. 6 decimals for USDC). */
 	stakeAmount: bigint;
 
 	/** Hex-encoded ZK proof bytes. */
@@ -104,7 +104,7 @@ export interface ClientCoSignArgumentParams {
 	/** Index of the argument to co-sign (0-based). */
 	argumentIndex: number;
 
-	/** Stake amount in token smallest unit (6 decimals for USDC). */
+	/** Stake amount in smallest token unit (e.g. 6 decimals for USDC). */
 	stakeAmount: bigint;
 
 	/** Hex-encoded ZK proof bytes. */
@@ -205,8 +205,8 @@ export async function readNonce(
  *   2. Read nonce from DistrictGate.nonces(wallet.address)
  *   3. Build EIP-712 typed data for proof authorization
  *   4. Sign with wallet.signTypedData (triggers MetaMask popup)
- *   5. Ensure ERC-20 allowance for the stake amount
- *   6. Call DebateMarket.submitArgument with all 12 parameters
+ *   5. Send ETH with the transaction
+ *   6. Call DebateMarket.submitArgument with all parameters
  *   7. Wait for on-chain confirmation
  *   8. Return the transaction hash
  *
@@ -248,15 +248,11 @@ export async function clientSubmitArgument(
 	// 4. Sign with wallet (MetaMask popup)
 	const signature = await wallet.signTypedData(domain, types, value);
 
-	// 5. Ensure token allowance
+	// 5. Get signer for tx submission
 	const signer = await provider.getSigner(wallet.address);
-	await ensureAllowance(
-		signer,
-		STAKING_TOKEN_ADDRESS,
-		wallet.address,
-		DEBATE_MARKET_ADDRESS,
-		params.stakeAmount
-	);
+
+	// 5b. Ensure ERC-20 token approval for stake amount
+	await ensureTokenApproval(signer, STAKING_TOKEN_ADDRESS, DEBATE_MARKET_ADDRESS, params.stakeAmount);
 
 	// 6. Build contract call
 	const debateMarket = new Contract(DEBATE_MARKET_ADDRESS, DEBATE_MARKET_ABI, signer);
@@ -264,20 +260,20 @@ export async function clientSubmitArgument(
 	const proofBytes = params.proof.startsWith('0x') ? params.proof : '0x' + params.proof;
 	const publicInputsAsBigInt = publicInputsToBigInt(params.publicInputs);
 
-	// 7. Submit transaction — all 12 params in Solidity order
+	// 7. Submit transaction
 	const tx = await debateMarket.submitArgument(
 		params.debateId,           // bytes32 debateId
 		params.stance,             // uint8 stance
 		params.bodyHash,           // bytes32 bodyHash
 		params.amendmentHash,      // bytes32 amendmentHash
 		params.stakeAmount,        // uint256 stakeAmount
-		wallet.address,            // address signer (EIP-712 authorizer)
+		wallet.address,            // address signer
 		proofBytes,                // bytes proof
 		publicInputsAsBigInt,      // uint256[31] publicInputs
 		params.verifierDepth,      // uint8 verifierDepth
 		deadline,                  // uint256 deadline
 		signature,                 // bytes signature
-		wallet.address             // address beneficiary (settlement recipient = signer)
+		wallet.address             // address beneficiary
 	);
 
 	// 8. Wait for receipt
@@ -330,15 +326,11 @@ export async function clientCoSignArgument(
 	// 4. Sign with wallet (MetaMask popup)
 	const signature = await wallet.signTypedData(domain, types, value);
 
-	// 5. Ensure token allowance
+	// 5. Get signer for tx submission
 	const signer = await provider.getSigner(wallet.address);
-	await ensureAllowance(
-		signer,
-		STAKING_TOKEN_ADDRESS,
-		wallet.address,
-		DEBATE_MARKET_ADDRESS,
-		params.stakeAmount
-	);
+
+	// 5b. Ensure ERC-20 token approval for stake amount
+	await ensureTokenApproval(signer, STAKING_TOKEN_ADDRESS, DEBATE_MARKET_ADDRESS, params.stakeAmount);
 
 	// 6. Build contract call
 	const debateMarket = new Contract(DEBATE_MARKET_ADDRESS, DEBATE_MARKET_ABI, signer);
@@ -346,18 +338,18 @@ export async function clientCoSignArgument(
 	const proofBytes = params.proof.startsWith('0x') ? params.proof : '0x' + params.proof;
 	const publicInputsAsBigInt = publicInputsToBigInt(params.publicInputs);
 
-	// 7. Submit transaction — all 10 params in Solidity order
+	// 7. Submit transaction
 	const tx = await debateMarket.coSignArgument(
 		params.debateId,           // bytes32 debateId
 		params.argumentIndex,      // uint256 argumentIndex
 		params.stakeAmount,        // uint256 stakeAmount
-		wallet.address,            // address signer (EIP-712 authorizer)
+		wallet.address,            // address signer
 		proofBytes,                // bytes proof
 		publicInputsAsBigInt,      // uint256[31] publicInputs
 		params.verifierDepth,      // uint8 verifierDepth
 		deadline,                  // uint256 deadline
 		signature,                 // bytes signature
-		wallet.address             // address beneficiary (settlement recipient = signer)
+		wallet.address             // address beneficiary
 	);
 
 	// 8. Wait for receipt

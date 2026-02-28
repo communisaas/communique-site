@@ -8,8 +8,8 @@
  *
  * Override env vars (set in wrangler.toml [vars] or Cloudflare dashboard):
  *   PUBLIC_DEBATE_MARKET_ADDRESS   — DebateMarket contract address
- *   PUBLIC_STAKING_TOKEN_ADDRESS   — ERC-20 staking token address
  *   PUBLIC_DISTRICT_GATE_ADDRESS   — DistrictGate verifier contract address
+ *   PUBLIC_STAKING_TOKEN_ADDRESS   — ERC-20 staking token (USDC) address
  *   PUBLIC_SCROLL_CHAIN_ID         — Target chain ID (534351 = Sepolia, 534352 = mainnet)
  *
  * Other modules should import from this file rather than declaring their own
@@ -23,22 +23,22 @@
 
 import { env } from '$env/dynamic/public';
 
-/** DebateMarket contract (Scroll Sepolia v6.2 default). */
+/** DebateMarket contract (Scroll Sepolia v8 default — needs update after deploy). */
 export const DEBATE_MARKET_ADDRESS =
 	env.PUBLIC_DEBATE_MARKET_ADDRESS ?? '0xAa1e5CcA6377c7c2E4dE2Df15dC87c51ccb9B751';
-
-/** MockERC20 (USDC-compatible) staking token (Scroll Sepolia v6.2 default). */
-export const STAKING_TOKEN_ADDRESS =
-	env.PUBLIC_STAKING_TOKEN_ADDRESS ?? '0x1B999C28130475d78Ae19778918C06F98209287B';
 
 /** DistrictGate verifier contract (Scroll Sepolia default). */
 export const DISTRICT_GATE_ADDRESS =
 	env.PUBLIC_DISTRICT_GATE_ADDRESS ?? '0xC5efdBE8A11d3EA1dD326360f43F159D9dfF684f';
 
+/** ERC-20 staking token address (USDC on Scroll Sepolia — needs update after deploy). */
+export const STAKING_TOKEN_ADDRESS =
+	env.PUBLIC_STAKING_TOKEN_ADDRESS ?? '0x0000000000000000000000000000000000000000';
+
 /** Target chain ID (Scroll Sepolia = 534351, Scroll mainnet = 534352). */
 export const SCROLL_CHAIN_ID = Number(env.PUBLIC_SCROLL_CHAIN_ID ?? '534351');
 
-/** Token decimals for the staking token (USDC uses 6). */
+/** Token decimals for USDC (6). */
 export const TOKEN_DECIMALS = 6;
 
 /** Token symbol for display purposes. */

@@ -1,11 +1,11 @@
 <!--
 	OnrampWidget.svelte
 
-	Fiat-to-USDC onramp via Transak's hosted widget (iframe embed).
-	Configured for USDC on Scroll Sepolia (testnet) or Scroll (production).
+	Fiat-to-ETH onramp via Transak's hosted widget (iframe embed).
+	Configured for ETH on Scroll Sepolia (testnet) or Scroll (production).
 
 	The iframe communicates back via window.postMessage. We listen for:
-	  TRANSAK_ORDER_SUCCESSFUL — order completed, USDC on the way
+	  TRANSAK_ORDER_SUCCESSFUL — order completed, ETH on the way
 	  TRANSAK_WIDGET_CLOSE    — user dismissed the widget
 
 	The Transak API key is a public key (safe to expose in browser).

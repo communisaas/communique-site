@@ -9,12 +9,10 @@
  * ARCHITECTURE:
  * - Server-side only (imports $env/dynamic/private for relayer key)
  * - Reuses the DistrictGate circuit breaker and balance monitoring (same RPC)
- * - Token approval (ERC-20) is done before each staking call
  * - EIP-712 signatures target DistrictGate (proof verification delegation)
  *
  * DEPLOYED CONTRACTS (v6.2):
  * - DebateMarket: 0xAa1e5CcA6377c7c2E4dE2Df15dC87c51ccb9B751 (Scroll Sepolia)
- * - Staking Token: 0x1B999C28130475d78Ae19778918C06F98209287B (MockERC20/tUSDC, 6 decimals)
  *
  * @see STAKED-DEBATE-PROTOCOL-SPEC.md
  * @see DebateMarket.sol
@@ -31,6 +29,7 @@ import {
 	type TransactionReceipt
 } from 'ethers';
 import { BN254_MODULUS } from '$lib/core/crypto/bn254';
+import { STAKING_TOKEN_ADDRESS } from '$lib/core/contracts';
 import { isCircuitOpen, getConfig, recordRpcFailure, recordRpcSuccess } from './district-gate-client';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -69,12 +68,6 @@ const DEBATE_MARKET_ABI = [
 	'event DebateResolvedWithAI(bytes32 indexed debateId, uint256 winningArgumentIndex, uint256 aiScore, uint256 communityScore, uint256 finalScore, uint8 resolutionMethod)'
 ];
 
-/** Minimal ERC-20 ABI for token approvals */
-const ERC20_ABI = [
-	'function approve(address spender, uint256 amount) returns (bool)',
-	'function allowance(address owner, address spender) view returns (uint256)'
-];
-
 /** Minimal DistrictGate ABI for nonce lookups */
 const DISTRICT_GATE_NONCES_ABI = [
 	'function nonces(address) view returns (uint256)'
@@ -102,6 +95,38 @@ const DEFAULT_DEADLINE_SECONDS = 3600;
 
 /** Ethereum zero address — used as beneficiary sentinel for backward compatibility */
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
+
+/** ERC-20 ABI for token approval (server-side relayer). */
+const ERC20_APPROVE_ABI = [
+	'function allowance(address owner, address spender) view returns (uint256)',
+	'function approve(address spender, uint256 amount) returns (bool)'
+];
+
+/**
+ * Ensure the DebateMarket contract has sufficient ERC-20 allowance from the
+ * relayer wallet. If current allowance is below `amount`, approves max uint256.
+ * Idempotent: no-op if already approved.
+ *
+ * @param signer - NonceManager-wrapped relayer wallet
+ * @param tokenAddress - ERC-20 token contract address (STAKING_TOKEN_ADDRESS)
+ * @param spender - Contract address to approve (DebateMarket)
+ * @param amount - Minimum required allowance
+ */
+async function approveStakingToken(
+	signer: NonceManager,
+	tokenAddress: string,
+	spender: string,
+	amount: bigint
+): Promise<void> {
+	const signerAddress = await signer.getAddress();
+	const token = new Contract(tokenAddress, ERC20_APPROVE_ABI, signer);
+	const currentAllowance: bigint = await token.allowance(signerAddress, spender);
+	if (currentAllowance >= amount) return;
+
+	const maxUint256 = (1n << 256n) - 1n;
+	const tx = await token.approve(spender, maxUint256);
+	await tx.wait();
+}
 
 /**
  * Returns true for a valid Ethereum address (0x-prefixed, 42 chars, hex).
@@ -240,12 +265,10 @@ let _provider: JsonRpcProvider | null = null;
 let _wallet: Wallet | null = null;
 let _nonceManager: NonceManager | null = null;
 let _debateMarket: Contract | null = null;
-let _stakingToken: Contract | null = null;
 let _districtGateForNonces: Contract | null = null;
 
 interface DebateMarketInstance {
 	debateMarket: Contract;
-	stakingToken: Contract;
 	districtGateForNonces: Contract;
 	wallet: Wallet;
 	nonceManager: NonceManager;
@@ -254,12 +277,10 @@ interface DebateMarketInstance {
 function getDebateMarketInstance(): DebateMarketInstance | null {
 	const config = getConfig();
 	const debateMarketAddress = env.DEBATE_MARKET_ADDRESS || '';
-	const stakingTokenAddress = env.STAKING_TOKEN_ADDRESS || '';
 	const districtGateAddress = config.contractAddress;
 
 	if (
 		!debateMarketAddress ||
-		!stakingTokenAddress ||
 		!districtGateAddress ||
 		!config.rpcUrl ||
 		!config.privateKey
@@ -267,10 +288,9 @@ function getDebateMarketInstance(): DebateMarketInstance | null {
 		return null;
 	}
 
-	if (_debateMarket && _stakingToken && _districtGateForNonces && _wallet && _nonceManager) {
+	if (_debateMarket && _districtGateForNonces && _wallet && _nonceManager) {
 		return {
 			debateMarket: _debateMarket,
-			stakingToken: _stakingToken,
 			districtGateForNonces: _districtGateForNonces,
 			wallet: _wallet,
 			nonceManager: _nonceManager
@@ -281,12 +301,10 @@ function getDebateMarketInstance(): DebateMarketInstance | null {
 	_wallet = new Wallet(config.privateKey, _provider);
 	_nonceManager = new NonceManager(_wallet);
 	_debateMarket = new Contract(debateMarketAddress, DEBATE_MARKET_ABI, _nonceManager);
-	_stakingToken = new Contract(stakingTokenAddress, ERC20_ABI, _nonceManager);
 	_districtGateForNonces = new Contract(districtGateAddress, DISTRICT_GATE_NONCES_ABI, _nonceManager);
 
 	return {
 		debateMarket: _debateMarket,
-		stakingToken: _stakingToken,
 		districtGateForNonces: _districtGateForNonces,
 		wallet: _wallet,
 		nonceManager: _nonceManager
@@ -296,20 +314,6 @@ function getDebateMarketInstance(): DebateMarketInstance | null {
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
-
-/** Approve the DebateMarket contract to spend staking tokens */
-async function approveStakingToken(
-	stakingToken: Contract,
-	debateMarketAddress: string,
-	amount: bigint
-): Promise<void> {
-	const tx = await stakingToken.approve(debateMarketAddress, amount);
-	await tx.wait();
-	console.debug('[DebateMarketClient] Token approval confirmed:', {
-		spender: debateMarketAddress.slice(0, 10) + '...',
-		amount: amount.toString()
-	});
-}
 
 /** Build EIP-712 signature for DistrictGate proof verification */
 async function buildEIP712Signature(
@@ -396,7 +400,6 @@ function preflight(): { instance: DebateMarketInstance } | { error: string } {
 		const config = getConfig();
 		const missing = [];
 		if (!env.DEBATE_MARKET_ADDRESS) missing.push('DEBATE_MARKET_ADDRESS');
-		if (!env.STAKING_TOKEN_ADDRESS) missing.push('STAKING_TOKEN_ADDRESS');
 		if (!config.contractAddress) missing.push('DISTRICT_GATE_ADDRESS');
 		if (!config.rpcUrl) missing.push('SCROLL_RPC_URL');
 		if (!config.privateKey) missing.push('SCROLL_PRIVATE_KEY');
@@ -436,7 +439,7 @@ function extractRevertReason(msg: string): string {
 export async function proposeDebate(params: ProposeDebateParams): Promise<DebateResult> {
 	const check = preflight();
 	if ('error' in check) return { success: false, error: check.error };
-	const { debateMarket, stakingToken, wallet } = check.instance;
+	const { debateMarket, wallet, nonceManager } = check.instance;
 
 	console.debug('[DebateMarketClient] Proposing debate:', {
 		propositionHash: params.propositionHash.slice(0, 12) + '...',
@@ -445,8 +448,9 @@ export async function proposeDebate(params: ProposeDebateParams): Promise<Debate
 	});
 
 	try {
+		// Ensure ERC-20 token approval for bond amount
 		const debateMarketAddress = await debateMarket.getAddress();
-		await approveStakingToken(stakingToken, debateMarketAddress, params.bondAmount);
+		await approveStakingToken(nonceManager, STAKING_TOKEN_ADDRESS, debateMarketAddress, params.bondAmount);
 
 		const tx = await debateMarket.proposeDebate(
 			params.propositionHash,
@@ -517,7 +521,7 @@ export async function proposeDebate(params: ProposeDebateParams): Promise<Debate
 export async function submitArgument(params: SubmitArgumentParams): Promise<TxResult> {
 	const check = preflight();
 	if ('error' in check) return { success: false, error: check.error };
-	const { debateMarket, stakingToken, districtGateForNonces, wallet } = check.instance;
+	const { debateMarket, districtGateForNonces, wallet, nonceManager } = check.instance;
 
 	const validationError = validateProofInputs(params.proof, params.publicInputs, params.verifierDepth);
 	if (validationError) return { success: false, error: validationError };
@@ -553,22 +557,23 @@ export async function submitArgument(params: SubmitArgumentParams): Promise<TxRe
 			return { success: false, error: `EIP-712 signing failed: ${msg}` };
 		}
 
+		// Ensure ERC-20 token approval for stake amount
 		const debateMarketAddress = await debateMarket.getAddress();
-		await approveStakingToken(stakingToken, debateMarketAddress, params.stakeAmount);
+		await approveStakingToken(nonceManager, STAKING_TOKEN_ADDRESS, debateMarketAddress, params.stakeAmount);
 
 		const tx = await debateMarket.submitArgument(
 			params.debateId,
 			params.stance,
 			params.bodyHash,
 			params.amendmentHash,
-			params.stakeAmount,
+			params.stakeAmount,  // uint256 stakeAmount
 			wallet.address,  // signer — authorizes the EIP-712 proof delegation
 			proofBytes,
 			publicInputsAsBigInt,
 			params.verifierDepth,
 			deadline,
 			signature,
-			beneficiary      // settlement recipient (may differ from signer) — last param per Solidity
+			beneficiary      // settlement recipient (may differ from signer)
 		);
 
 		const receipt: TransactionReceipt = await tx.wait();
@@ -610,7 +615,7 @@ export async function submitArgument(params: SubmitArgumentParams): Promise<TxRe
 export async function coSignArgument(params: CoSignArgumentParams): Promise<TxResult> {
 	const check = preflight();
 	if ('error' in check) return { success: false, error: check.error };
-	const { debateMarket, stakingToken, districtGateForNonces, wallet } = check.instance;
+	const { debateMarket, districtGateForNonces, wallet, nonceManager } = check.instance;
 
 	const validationError = validateProofInputs(params.proof, params.publicInputs, params.verifierDepth);
 	if (validationError) return { success: false, error: validationError };
@@ -646,20 +651,21 @@ export async function coSignArgument(params: CoSignArgumentParams): Promise<TxRe
 			return { success: false, error: `EIP-712 signing failed: ${msg}` };
 		}
 
+		// Ensure ERC-20 token approval for stake amount
 		const debateMarketAddress = await debateMarket.getAddress();
-		await approveStakingToken(stakingToken, debateMarketAddress, params.stakeAmount);
+		await approveStakingToken(nonceManager, STAKING_TOKEN_ADDRESS, debateMarketAddress, params.stakeAmount);
 
 		const tx = await debateMarket.coSignArgument(
 			params.debateId,
 			params.argumentIndex,
-			params.stakeAmount,
+			params.stakeAmount,  // uint256 stakeAmount
 			wallet.address,  // signer — authorizes the EIP-712 proof delegation
 			proofBytes,
 			publicInputsAsBigInt,
 			params.verifierDepth,
 			deadline,
 			signature,
-			beneficiary      // settlement recipient (may differ from signer) — last param per Solidity
+			beneficiary      // settlement recipient (may differ from signer)
 		);
 
 		const receipt: TransactionReceipt = await tx.wait();

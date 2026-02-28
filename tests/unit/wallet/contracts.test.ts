@@ -21,8 +21,8 @@ vi.mock('$env/dynamic/public', () => ({
 // No PUBLIC_* env vars are set, so all values should be defaults.
 import {
 	DEBATE_MARKET_ADDRESS,
-	STAKING_TOKEN_ADDRESS,
 	DISTRICT_GATE_ADDRESS,
+	STAKING_TOKEN_ADDRESS,
 	SCROLL_CHAIN_ID,
 	TOKEN_DECIMALS,
 	TOKEN_SYMBOL
@@ -34,10 +34,6 @@ describe('contracts constants', () => {
 	describe('default values', () => {
 		it('DEBATE_MARKET_ADDRESS defaults to Scroll Sepolia v6.2 deployment', () => {
 			expect(DEBATE_MARKET_ADDRESS).toBe('0xAa1e5CcA6377c7c2E4dE2Df15dC87c51ccb9B751');
-		});
-
-		it('STAKING_TOKEN_ADDRESS defaults to Scroll Sepolia v6.2 deployment', () => {
-			expect(STAKING_TOKEN_ADDRESS).toBe('0x1B999C28130475d78Ae19778918C06F98209287B');
 		});
 
 		it('DISTRICT_GATE_ADDRESS defaults to Scroll Sepolia deployment', () => {
@@ -55,6 +51,10 @@ describe('contracts constants', () => {
 		it('TOKEN_SYMBOL is USDC', () => {
 			expect(TOKEN_SYMBOL).toBe('USDC');
 		});
+
+		it('STAKING_TOKEN_ADDRESS defaults to zero address (placeholder)', () => {
+			expect(STAKING_TOKEN_ADDRESS).toBe('0x0000000000000000000000000000000000000000');
+		});
 	});
 
 	// ── Type correctness ───────────────────────────────────────────────
@@ -62,7 +62,6 @@ describe('contracts constants', () => {
 	describe('type correctness', () => {
 		it('all addresses are strings', () => {
 			expect(typeof DEBATE_MARKET_ADDRESS).toBe('string');
-			expect(typeof STAKING_TOKEN_ADDRESS).toBe('string');
 			expect(typeof DISTRICT_GATE_ADDRESS).toBe('string');
 		});
 
@@ -80,7 +79,6 @@ describe('contracts constants', () => {
 	describe('address format', () => {
 		it.each([
 			['DEBATE_MARKET_ADDRESS', DEBATE_MARKET_ADDRESS],
-			['STAKING_TOKEN_ADDRESS', STAKING_TOKEN_ADDRESS],
 			['DISTRICT_GATE_ADDRESS', DISTRICT_GATE_ADDRESS]
 		])('%s starts with 0x', (_name, address) => {
 			expect(address).toMatch(/^0x/);
@@ -88,7 +86,6 @@ describe('contracts constants', () => {
 
 		it.each([
 			['DEBATE_MARKET_ADDRESS', DEBATE_MARKET_ADDRESS],
-			['STAKING_TOKEN_ADDRESS', STAKING_TOKEN_ADDRESS],
 			['DISTRICT_GATE_ADDRESS', DISTRICT_GATE_ADDRESS]
 		])('%s is 42 characters (20-byte hex)', (_name, address) => {
 			expect(address).toHaveLength(42);
@@ -100,7 +97,6 @@ describe('contracts constants', () => {
 	describe('env var overrides', () => {
 		const ENV_KEYS = [
 			'PUBLIC_DEBATE_MARKET_ADDRESS',
-			'PUBLIC_STAKING_TOKEN_ADDRESS',
 			'PUBLIC_DISTRICT_GATE_ADDRESS',
 			'PUBLIC_SCROLL_CHAIN_ID'
 		];
@@ -116,13 +112,6 @@ describe('contracts constants', () => {
 			process.env.PUBLIC_DEBATE_MARKET_ADDRESS = '0x' + 'a'.repeat(40);
 			const { DEBATE_MARKET_ADDRESS: addr } = await import('$lib/core/contracts');
 			expect(addr).toBe('0x' + 'a'.repeat(40));
-		});
-
-		it('respects env override for STAKING_TOKEN_ADDRESS', async () => {
-			vi.resetModules();
-			process.env.PUBLIC_STAKING_TOKEN_ADDRESS = '0x' + 'b'.repeat(40);
-			const { STAKING_TOKEN_ADDRESS: addr } = await import('$lib/core/contracts');
-			expect(addr).toBe('0x' + 'b'.repeat(40));
 		});
 
 		it('respects env override for DISTRICT_GATE_ADDRESS', async () => {

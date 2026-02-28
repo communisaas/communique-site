@@ -3,12 +3,12 @@
  *
  * GET /api/wallet/balance?address=0x...
  *
- * Returns the USDC balance for an address on Scroll (reads the staking token contract).
+ * Returns the USDC (ERC-20) staking token balance for an address on Scroll.
  * Public endpoint (no auth required) — balances are public on-chain data.
  *
  * Response: {
- *   balance: string,     // Raw amount (e.g., "20000000")
- *   formatted: string,   // Human-readable (e.g., "20.00")
+ *   balance: string,     // Raw amount in smallest unit (e.g., "5000000")
+ *   formatted: string,   // Human-readable (e.g., "5.0000")
  *   symbol: "USDC",
  *   decimals: 6
  * }
@@ -18,9 +18,9 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { JsonRpcProvider, Contract, isAddress, getAddress } from 'ethers';
 import { env } from '$env/dynamic/public';
-import { STAKING_TOKEN_ADDRESS, TOKEN_DECIMALS, TOKEN_SYMBOL } from '$lib/core/contracts';
+import { TOKEN_DECIMALS, TOKEN_SYMBOL, STAKING_TOKEN_ADDRESS } from '$lib/core/contracts';
 
-const ERC20_ABI = ['function balanceOf(address) view returns (uint256)'];
+const ERC20_ABI = ['function balanceOf(address owner) view returns (uint256)'];
 
 // Lazily initialized provider — survives across requests within the same
 // Worker isolate but is cheap to recreate if the isolate is recycled.
@@ -35,17 +35,17 @@ function getProvider(): JsonRpcProvider {
 }
 
 /**
- * Format a raw token amount (bigint) to a human-readable decimal string.
- * e.g., 20000000n with 6 decimals => "20.00"
+ * Format a raw token amount to a human-readable decimal string.
+ * e.g., 5000000n with 6 decimals => "5.0000"
  */
-function formatTokenAmount(raw: bigint, decimals: number): string {
+function formatBalance(raw: bigint, decimals: number): string {
 	const divisor = 10n ** BigInt(decimals);
 	const whole = raw / divisor;
 	const remainder = raw % divisor;
 
-	// Pad the fractional part to exactly `decimals` digits, then take first 2
+	// Pad the fractional part to exactly `decimals` digits, then take first 4
 	const fractionalFull = remainder.toString().padStart(decimals, '0');
-	const fractionalDisplay = fractionalFull.slice(0, 2);
+	const fractionalDisplay = fractionalFull.slice(0, 4);
 
 	return `${whole}.${fractionalDisplay}`;
 }
@@ -66,10 +66,10 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	try {
 		const provider = getProvider();
-		const contract = new Contract(STAKING_TOKEN_ADDRESS, ERC20_ABI, provider);
-		const rawBalance: bigint = await contract.balanceOf(checksummedAddress);
+		const token = new Contract(STAKING_TOKEN_ADDRESS, ERC20_ABI, provider);
+		const rawBalance: bigint = await token.balanceOf(checksummedAddress);
 
-		const formatted = formatTokenAmount(rawBalance, TOKEN_DECIMALS);
+		const formatted = formatBalance(rawBalance, TOKEN_DECIMALS);
 
 		return json(
 			{

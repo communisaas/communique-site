@@ -14,10 +14,10 @@
 
 import { Interface } from 'ethers';
 import type { UserOperation } from './types';
-import { DEBATE_MARKET_ADDRESS, STAKING_TOKEN_ADDRESS } from '$lib/core/contracts';
+import { DEBATE_MARKET_ADDRESS } from '$lib/core/contracts';
 
 // Re-export so any downstream code importing from here doesn't break.
-export { DEBATE_MARKET_ADDRESS, STAKING_TOKEN_ADDRESS };
+export { DEBATE_MARKET_ADDRESS };
 
 // =============================================================================
 // ABIs
@@ -103,7 +103,7 @@ export interface SubmitArgumentParams {
 	bodyHash: string;
 	/** keccak256 of the amendment text, or bytes32(0) if no amendment. */
 	amendmentHash: string;
-	/** Stake amount in token smallest unit (6 decimals). */
+	/** Stake amount in ERC-20 token smallest unit (e.g. 6 decimals for USDC). */
 	stakeAmount: bigint;
 	/** Address of the EIP-712 proof signer. */
 	signerAddress: string;
@@ -124,8 +124,12 @@ export interface SubmitArgumentParams {
 /**
  * Build a UserOp for DebateMarket.submitArgument().
  *
- * Encodes the 12-parameter submitArgument call and wraps it in the
+ * Encodes the submitArgument call and wraps it in the
  * smart account's execute() format.
+ *
+ * NOTE: ERC-20 token approval must be handled separately before
+ * submitting this UserOp (the smart account must have approved
+ * the DebateMarket to spend stakeAmount of the staking token).
  *
  * @param params - All parameters for the submitArgument call
  * @returns Partial UserOperation ready for gas estimation
@@ -171,7 +175,7 @@ export interface CoSignArgumentParams {
 	debateId: string;
 	/** Index of the argument to co-sign (0-based). */
 	argumentIndex: number;
-	/** Stake amount in token smallest unit (6 decimals). */
+	/** Stake amount in ERC-20 token smallest unit (e.g. 6 decimals for USDC). */
 	stakeAmount: bigint;
 	/** Address of the EIP-712 proof signer. */
 	signerAddress: string;
@@ -192,8 +196,12 @@ export interface CoSignArgumentParams {
 /**
  * Build a UserOp for DebateMarket.coSignArgument().
  *
- * Encodes the 10-parameter coSignArgument call and wraps it in the
+ * Encodes the coSignArgument call and wraps it in the
  * smart account's execute() format.
+ *
+ * NOTE: ERC-20 token approval must be handled separately before
+ * submitting this UserOp (the smart account must have approved
+ * the DebateMarket to spend stakeAmount of the staking token).
  *
  * @param params - All parameters for the coSignArgument call
  * @returns Partial UserOperation ready for gas estimation

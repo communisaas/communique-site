@@ -2,7 +2,7 @@
  * Unit tests for wallet API endpoints:
  *   GET  /api/wallet/nonce    — nonce generation
  *   POST /api/wallet/connect  — EIP-191 signature verification + wallet binding
- *   GET  /api/wallet/balance  — on-chain ERC-20 balance read
+ *   GET  /api/wallet/balance  — on-chain USDC (ERC-20) balance read
  *
  * These test the SvelteKit route handler functions directly, passing mock
  * RequestEvent-shaped objects. External dependencies (ethers, DB, nonce store)
@@ -16,16 +16,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // factories, which are hoisted above all other code.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const { mockVerifyMessage, mockBalanceOf, mockFindUnique, mockUpdate, mockContractInstance } =
+const { mockVerifyMessage, mockBalanceOf, mockFindUnique, mockUpdate } =
 	vi.hoisted(() => {
-		const balanceOf = vi.fn();
 		return {
 			mockVerifyMessage: vi.fn(),
-			mockBalanceOf: balanceOf,
+			mockBalanceOf: vi.fn(),
 			mockFindUnique: vi.fn(),
-			mockUpdate: vi.fn(),
-			// Stable object reference — Contract constructor always returns this
-			mockContractInstance: { balanceOf }
+			mockUpdate: vi.fn()
 		};
 	});
 
@@ -40,14 +37,13 @@ vi.mock('$env/dynamic/public', () => ({
 
 // Mock $lib/core/contracts (used by balance endpoint)
 vi.mock('$lib/core/contracts', () => ({
-	STAKING_TOKEN_ADDRESS: '0x' + 'a'.repeat(40),
 	TOKEN_DECIMALS: 6,
-	TOKEN_SYMBOL: 'USDC'
+	TOKEN_SYMBOL: 'USDC',
+	STAKING_TOKEN_ADDRESS: '0x1B999C28130475d78Ae19778918C06F98209287B'
 }));
 
 // Mock ethers — provide real isAddress/getAddress for validation, mock the rest.
-// Contract constructor returns a stable mockContractInstance so that
-// restoreMocks: true (in vitest.config) doesn't clear the implementation.
+// The balance endpoint uses Contract.balanceOf() for ERC-20 balance reads.
 vi.mock('ethers', async () => {
 	const actual = await vi.importActual<typeof import('ethers')>('ethers');
 	return {
@@ -55,9 +51,7 @@ vi.mock('ethers', async () => {
 		verifyMessage: mockVerifyMessage,
 		JsonRpcProvider: class FakeProvider {},
 		Contract: class FakeContract {
-			constructor() {
-				return mockContractInstance;
-			}
+			balanceOf = mockBalanceOf;
 		}
 	};
 });
@@ -351,25 +345,25 @@ describe('GET /api/wallet/balance', () => {
 	});
 
 	it('returns 200 with correct { balance, formatted, symbol, decimals }', async () => {
-		// 20_000_000 raw units with 6 decimals = 20.00 USDC
-		mockBalanceOf.mockResolvedValue(20_000_000n);
+		// 5_000_000n = 5 USDC (6 decimals)
+		mockBalanceOf.mockResolvedValue(5_000_000n);
 
 		const response = await balanceGET(makeBalanceEvent(VALID_ADDRESS));
 		expect(response.status).toBe(200);
 
 		const data = await response.json();
-		expect(data.balance).toBe('20000000');
+		expect(data.balance).toBe('5000000');
 		expect(data.symbol).toBe('USDC');
 		expect(data.decimals).toBe(6);
 	});
 
-	it('formatted is correctly computed (20000000 with 6 decimals = "20.00")', async () => {
-		mockBalanceOf.mockResolvedValue(20_000_000n);
+	it('formatted is correctly computed (5.0000 USDC)', async () => {
+		mockBalanceOf.mockResolvedValue(5_000_000n);
 
 		const response = await balanceGET(makeBalanceEvent(VALID_ADDRESS));
 		const data = await response.json();
 
-		expect(data.formatted).toBe('20.00');
+		expect(data.formatted).toBe('5.0000');
 	});
 
 	it('returns 502 when RPC call fails', async () => {
