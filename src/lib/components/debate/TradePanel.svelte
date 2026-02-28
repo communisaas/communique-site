@@ -106,8 +106,8 @@
     if (proofStatus === 'generating') return 'Generating privacy proof...';
     if (selectedArgumentIndex === null) return 'Select an argument';
     if (direction === null) return 'Choose BUY or SELL';
-    if (dollarAmount < 1) return 'Minimum stake is $1';
-    if (dollarAmount > 100) return 'Maximum stake is $100';
+    if (dollarAmount < 1) return 'Minimum $1';
+    if (dollarAmount > 100) return 'Maximum $100';
     return null;
   });
 
@@ -134,7 +134,7 @@
   }
 
   function setPreset(dollars: number) {
-    stakeAmount = dollars * 1e6;
+    stakeAmount = Math.round(dollars * 1e6);
   }
 
   // ---------------------------------------------------------------------------
@@ -160,7 +160,7 @@
    * SharedArrayBuffer: if COOP/COEP headers are absent the prover falls back
    * to single-threaded mode transparently — no action required here.
    *
-   * @param stakeUsdc6 - Stake in USDC with 6 decimals (e.g., 25_000_000n = $25)
+   * @param stakeUsdc6 - Stake in USDC smallest unit (e.g., 25_000_000n = $25 USDC)
    * @param tier       - Engagement tier 1-4 (tier 0 rejected by DebateMarket)
    * @param debateId   - Debate ID for sessionStorage keying of randomness
    */
@@ -238,7 +238,7 @@
     // Capture values before async gap (user could change inputs mid-proving)
     const tradeArgumentIndex = selectedArgumentIndex;
     const tradeDirection = direction;
-    const tradeStakeAmount = stakeAmount; // 6-decimal USDC integer
+    const tradeStakeAmount = stakeAmount; // USDC smallest unit
     const tradeTier = Math.max(1, Math.min(4, engagementTier)) as 1 | 2 | 3 | 4;
     const tradeDebateId = debate.id;
 
@@ -251,7 +251,7 @@
 
     try {
       const result = await generatePrivacyProof(
-        BigInt(tradeStakeAmount), // 6-decimal USDC → bigint (matches circuit u64)
+        BigInt(tradeStakeAmount), // USDC smallest unit → bigint
         tradeTier,
         tradeDebateId,
       );
@@ -385,7 +385,7 @@
   <!-- Token amount -->
   {#if stakeAmount > 0}
     <p class="mb-4 text-xs text-slate-400">
-      <span class="font-mono">{stakeAmount.toLocaleString()}</span> tokens (6-decimal)
+      <span class="font-mono">{(stakeAmount / 1e6).toFixed(2)}</span> USDC
     </p>
   {/if}
 
@@ -396,7 +396,7 @@
     <div class="mb-4 rounded-lg border border-slate-100 bg-slate-50 p-3">
       <p class="mb-1 text-xs font-medium text-slate-500">Weighted Influence</p>
       <p class="text-sm text-slate-700">
-        <span class="font-mono">√(${dollarAmount.toFixed(0)})</span>
+        <span class="font-mono">√(${dollarAmount.toFixed(2)})</span>
         <span class="mx-1 text-slate-400">&times;</span>
         <span class="font-mono">2<sup>{engagementTier}</sup></span>
         <span class="mx-1 text-slate-400">=</span>

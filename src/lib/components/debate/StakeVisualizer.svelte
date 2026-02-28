@@ -2,7 +2,7 @@
 	import { spring } from 'svelte/motion';
 
 	interface Props {
-		stakeAmount: number; // In 6-decimal token units (1_000_000 = $1)
+		stakeAmount: number; // In USDC smallest unit (1e6 = $1)
 		engagementTier: number;
 		minStake?: number;
 		maxStake?: number;
@@ -12,8 +12,8 @@
 	let {
 		stakeAmount,
 		engagementTier,
-		minStake = 1_000_000, // $1
-		maxStake = 100_000_000, // $100
+		minStake = 1_000_000, // $1 USDC
+		maxStake = 100_000_000, // $100 USDC
 		onchange
 	}: Props = $props();
 
@@ -41,13 +41,12 @@
 	function handleSlider(e: Event) {
 		const target = e.target as HTMLInputElement;
 		const ratio = Number(target.value) / 100;
-		const dollar = minDollar + ratio * (maxDollar - minDollar);
-		// Round to nearest dollar
-		const rounded = Math.round(dollar);
-		onchange(rounded * 1_000_000);
+		const val = minDollar + ratio * (maxDollar - minDollar);
+		const rounded = Math.round(val * 100) / 100;
+		onchange(Math.round(rounded * 1e6));
 	}
 
-	// Preset amounts
+	// Preset amounts (dollars)
 	const presets = [1, 5, 10, 25, 50, 100];
 </script>
 
@@ -58,7 +57,7 @@
 	<div class="rounded-lg bg-slate-50 border border-slate-200 p-4">
 		<div class="flex items-center justify-center gap-2 text-lg">
 			<span class="font-mono text-slate-800">
-				√(<span class="text-indigo-600 font-semibold">${dollarAmount.toFixed(0)}</span>)
+				√(<span class="text-indigo-600 font-semibold">${dollarAmount.toFixed(2)}</span>)
 			</span>
 			<span class="text-slate-400">×</span>
 			<span class="font-mono text-slate-800">
@@ -103,7 +102,7 @@
 					{dollarAmount === preset
 					? 'bg-indigo-50 border-indigo-300 text-indigo-700'
 					: 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}"
-				onclick={() => onchange(preset * 1_000_000)}
+				onclick={() => onchange(Math.round(preset * 1e6))}
 			>
 				${preset}
 			</button>
@@ -115,7 +114,7 @@
 		{#if engagementTier >= 3}
 			Your Tier {engagementTier} verification gives your argument
 			<span class="font-medium text-slate-700">{tierMultiplier}x</span> the weight.
-			A $5 stake from you carries the same weight as ${Math.round(5 * tierMultiplier * tierMultiplier)} at Tier 1.
+			A $5 stake from you carries the same weight as ${(5 * tierMultiplier * tierMultiplier).toFixed(0)} at Tier 1.
 		{:else}
 			Higher verification tiers increase your argument's weight through the trust multiplier.
 		{/if}

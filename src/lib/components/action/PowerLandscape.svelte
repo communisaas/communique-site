@@ -15,7 +15,8 @@
 		onWriteTo,
 		onBatchRegister,
 		onVerifyAddress,
-		registrationState = 'idle'
+		registrationState = 'idle',
+		isCongressional = false
 	}: {
 		template: Template;
 		decisionMakers?: ProcessedDecisionMaker[];
@@ -26,11 +27,12 @@
 		onBatchRegister: (memberIds: string[]) => void;
 		onVerifyAddress?: () => void;
 		registrationState?: 'idle' | 'registering' | 'complete';
+		isCongressional?: boolean;
 	} = $props();
 
 	const landscape = $derived(mergeLandscape(decisionMakers, districtOfficials));
 	const contactedCount = $derived(contactedRecipients.size);
-	const isCwc = $derived(template.deliveryMethod === 'cwc');
+	const isCwc = $derived(template.deliveryMethod === 'cwc' || isCongressional);
 
 	// Count email-bearing members not yet contacted (for batch mailto label)
 	const allMembers = $derived([
@@ -85,8 +87,18 @@
 					<ChevronRight class="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
 				</button>
 			</div>
+		{:else if isCwc}
+			<!-- Congressional template without verify handler (guest/unauthenticated) -->
+			<div class="rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-5">
+				<h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3">
+					Your representatives
+				</h2>
+				<p class="text-sm text-slate-600 leading-relaxed">
+					Sign in and verify your address to see who represents you and send your message directly.
+				</p>
+			</div>
 		{:else}
-			<!-- Non-CWC template or no verify handler — generic empty -->
+			<!-- Non-CWC template — generic empty -->
 			<div class="rounded-xl border border-slate-200 bg-white p-5">
 				<h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">
 					Who decides
@@ -138,6 +150,19 @@
 				{registrationState}
 				onBatchRegister={handleBatchRegister}
 			/>
+
+			<!-- Hybrid: DMs visible but congress requires address verification -->
+			{#if isCwc && !landscape.districtGroup && onVerifyAddress}
+				<button
+					type="button"
+					class="group flex w-full items-center gap-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-left transition-colors hover:border-participation-primary-300 hover:bg-participation-primary-50 cursor-pointer"
+					onclick={onVerifyAddress}
+				>
+					<MapPin class="h-4 w-4 text-slate-400 transition-colors group-hover:text-participation-primary-600" />
+					<span class="flex-1 text-sm text-slate-600 group-hover:text-slate-700">Verify your address to also contact your representatives</span>
+					<ChevronRight class="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
+				</button>
+			{/if}
 		</div>
 	{/if}
 </div>

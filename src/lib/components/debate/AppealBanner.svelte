@@ -18,7 +18,7 @@
 		status: 'under_appeal' | 'awaiting_governance';
 		appealDeadline?: string;
 		hasAppeal: boolean;
-		appealBondAmount?: string; // formatted, e.g. "2.00 USDC"
+		appealBondAmount?: string; // formatted, e.g. "$2.00"
 		onAppeal?: () => void;
 		onEscalate?: () => void;
 	}

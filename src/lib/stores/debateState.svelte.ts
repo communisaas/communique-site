@@ -101,7 +101,7 @@ export interface AIResolutionData {
 // STORE
 // ═══════════════════════════════════════════════════════════════════════════
 
-const DEFAULT_STAKE = 1_000_000; // 1 USDC in 6-decimal
+const DEFAULT_STAKE = 1_000_000; // $1 USDC (6 decimals)
 
 function createDebateState() {
 	// Current debate for the viewed template

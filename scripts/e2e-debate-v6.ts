@@ -1,19 +1,19 @@
 /**
- * E2E Debate Flow — Full Lifecycle Smoke Test (v6)
+ * E2E Debate Flow — Full Lifecycle Smoke Test (V8 — USDC staking with protocol fee)
  *
- * Exercises the complete DebateMarket lifecycle against a V5 Scroll Sepolia deployment:
+ * Exercises the complete DebateMarket lifecycle against a V8 Scroll Sepolia deployment:
  *   proposeDebate → submitArgument (x2) → commitTrade → revealTrade →
  *   executeEpoch → [wait for deadline] → resolveDebate → claimSettlement
  *
  * CONTRACT REQUIREMENTS:
- *   - V5 deployment (DeploySepoliaV5.s.sol): DebateMarket + MockERC20 staking token
+ *   - V8 deployment: DebateMarket with ERC-20 USDC staking (6 decimals) + protocol fee
  *   - DistrictGate with mock-registry roots registered (UserRoot, CellMapRoot, EngagementRoot)
  *   - MockDebateWeightVerifier and MockPositionNoteVerifier (always return true)
  *   - DebateMarket authorized as derived-domain deriver on DistrictGate
  *
  * PROOF STRATEGY (mock verifiers):
  *   - The three-tree DistrictGate verifier calls the on-chain HonkVerifier.
- *     With a V5 mock setup the HonkVerifier is also a mock (always-pass).
+ *     With a mock setup the HonkVerifier is also a mock (always-pass).
  *   - debateWeightVerifier.verify() is MockDebateWeightVerifier — always returns true.
  *   - We still need a valid EIP-712 signature because DistrictGate checks ECDSA recovery.
  *   - Public inputs must pass all registry checks (userRoot, cellMapRoot, engagementRoot,
@@ -30,8 +30,8 @@
  *   cd communique
  *   SCROLL_PRIVATE_KEY=0x... \
  *   DEBATE_MARKET_ADDRESS=0x... \
- *   STAKING_TOKEN_ADDRESS=0x... \
  *   DISTRICT_GATE_ADDRESS=0x... \
+ *   STAKING_TOKEN_ADDRESS=0x... \
  *   USER_ROOT_REGISTRY_ADDRESS=0x... \
  *   CELL_MAP_REGISTRY_ADDRESS=0x... \
  *   ENGAGEMENT_ROOT_REGISTRY_ADDRESS=0x... \
@@ -61,11 +61,11 @@ import {
 const RPC_URL = process.env.SCROLL_RPC_URL || 'https://sepolia-rpc.scroll.io';
 const PRIVATE_KEY = process.env.SCROLL_PRIVATE_KEY;
 const DEBATE_MARKET_ADDRESS = process.env.DEBATE_MARKET_ADDRESS || '';
-const STAKING_TOKEN_ADDRESS = process.env.STAKING_TOKEN_ADDRESS || '';
 const DISTRICT_GATE_ADDRESS = process.env.DISTRICT_GATE_ADDRESS || '';
 const USER_ROOT_REGISTRY_ADDRESS = process.env.USER_ROOT_REGISTRY_ADDRESS || '';
 const CELL_MAP_REGISTRY_ADDRESS = process.env.CELL_MAP_REGISTRY_ADDRESS || '';
 const ENGAGEMENT_ROOT_REGISTRY_ADDRESS = process.env.ENGAGEMENT_ROOT_REGISTRY_ADDRESS || '';
+const STAKING_TOKEN_ADDRESS = process.env.STAKING_TOKEN_ADDRESS || '';
 const VERIFIER_DEPTH = parseInt(process.env.VERIFIER_DEPTH || '20', 10) as 20;
 const SKIP_WAIT = process.env.SKIP_WAIT === '1';
 const EXISTING_DEBATE_ID = process.env.DEBATE_ID || '';
@@ -78,8 +78,8 @@ if (!PRIVATE_KEY) {
 }
 for (const [name, val] of [
 	['DEBATE_MARKET_ADDRESS', DEBATE_MARKET_ADDRESS],
-	['STAKING_TOKEN_ADDRESS', STAKING_TOKEN_ADDRESS],
 	['DISTRICT_GATE_ADDRESS', DISTRICT_GATE_ADDRESS],
+	['STAKING_TOKEN_ADDRESS', STAKING_TOKEN_ADDRESS],
 	['USER_ROOT_REGISTRY_ADDRESS', USER_ROOT_REGISTRY_ADDRESS],
 	['CELL_MAP_REGISTRY_ADDRESS', CELL_MAP_REGISTRY_ADDRESS],
 	['ENGAGEMENT_ROOT_REGISTRY_ADDRESS', ENGAGEMENT_ROOT_REGISTRY_ADDRESS]
@@ -129,13 +129,6 @@ const DEBATE_MARKET_ABI = [
 	'event SettlementClaimed(bytes32 indexed debateId, bytes32 nullifier, uint256 payout, address indexed recipient)'
 ];
 
-const ERC20_ABI = [
-	'function approve(address spender, uint256 amount) returns (bool)',
-	'function allowance(address owner, address spender) view returns (uint256)',
-	'function balanceOf(address account) view returns (uint256)',
-	'function mint(address to, uint256 amount)'
-];
-
 const DISTRICT_GATE_ABI = [
 	'function nonces(address) view returns (uint256)',
 	'function allowedActionDomains(bytes32) view returns (bool)',
@@ -156,6 +149,13 @@ const REGISTRY_ABI = [
 	'function registerUserRoot(bytes32 root, bytes3 country, uint8 depth)',
 	'function registerCellMapRoot(bytes32 root, bytes3 country, uint8 depth)',
 	'function registerEngagementRoot(bytes32 root, uint8 depth)'
+];
+
+const ERC20_ABI = [
+	'function balanceOf(address) view returns (uint256)',
+	'function approve(address spender, uint256 amount) returns (bool)',
+	'function allowance(address owner, address spender) view returns (uint256)',
+	'function mint(address to, uint256 amount)' // MockERC20 only
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -258,8 +258,8 @@ const provider = new JsonRpcProvider(RPC_URL);
 const wallet = new Wallet(PRIVATE_KEY!, provider);
 
 const debateMarket = new Contract(DEBATE_MARKET_ADDRESS, DEBATE_MARKET_ABI, wallet);
-const stakingToken = new Contract(STAKING_TOKEN_ADDRESS, ERC20_ABI, wallet);
 const districtGate = new Contract(DISTRICT_GATE_ADDRESS, DISTRICT_GATE_ABI, wallet);
+const stakingToken = new Contract(STAKING_TOKEN_ADDRESS, ERC20_ABI, wallet);
 const userRootRegistry = new Contract(USER_ROOT_REGISTRY_ADDRESS, REGISTRY_ABI, wallet);
 const cellMapRegistry = new Contract(CELL_MAP_REGISTRY_ADDRESS, REGISTRY_ABI, wallet);
 const engagementRootRegistry = new Contract(ENGAGEMENT_ROOT_REGISTRY_ADDRESS, REGISTRY_ABI, wallet);
@@ -352,15 +352,6 @@ function toBytes32(val: bigint): string {
 	return '0x' + val.toString(16).padStart(64, '0');
 }
 
-/** Approve the DebateMarket to spend staking tokens */
-async function approveTokens(amount: bigint): Promise<void> {
-	const current = await stakingToken.allowance(wallet.address, DEBATE_MARKET_ADDRESS);
-	if (current >= amount) return;
-	const tx = await stakingToken.approve(DEBATE_MARKET_ADDRESS, amount);
-	await tx.wait();
-	ok(`Token allowance set: ${Number(amount) / 1e6} tUSDC`);
-}
-
 /** Sleep for n milliseconds */
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -398,13 +389,13 @@ async function waitForTimestamp(targetTimestamp: number, label: string): Promise
 
 async function main() {
 	console.log('═══════════════════════════════════════════════════════════════════');
-	console.log(' E2E Debate Market — Full Lifecycle Smoke Test (v6)');
+	console.log(' E2E Debate Market — Full Lifecycle Smoke Test (V8 USDC)');
 	console.log(' Scroll Sepolia Testnet');
 	console.log('═══════════════════════════════════════════════════════════════════');
 	console.log(`  Wallet:        ${wallet.address}`);
 	console.log(`  DebateMarket:  ${DEBATE_MARKET_ADDRESS}`);
-	console.log(`  StakingToken:  ${STAKING_TOKEN_ADDRESS}`);
 	console.log(`  DistrictGate:  ${DISTRICT_GATE_ADDRESS}`);
+	console.log(`  StakingToken:  ${STAKING_TOKEN_ADDRESS}`);
 	console.log(`  RPC:           ${RPC_URL}`);
 	console.log(`  Verifier depth: ${VERIFIER_DEPTH}`);
 	console.log(`  Skip deadline wait: ${SKIP_WAIT}`);
@@ -414,14 +405,27 @@ async function main() {
 	// ─────────────────────────────────────────────────────────────────
 
 	const ethBalance = await provider.getBalance(wallet.address);
-	ok(`ETH balance: ${Number(ethBalance) / 1e18} ETH`);
-	if (ethBalance < 5_000_000_000_000_000n) {
-		throw new Error('ETH balance too low (< 0.005 ETH). Fund wallet and retry.');
+	ok(`ETH balance: ${Number(ethBalance) / 1e18} ETH (for gas)`);
+
+	const usdcBalance = await stakingToken.balanceOf(wallet.address) as bigint;
+	ok(`USDC balance: ${Number(usdcBalance) / 1e6} USDC`);
+
+	// Mint USDC if balance is low (MockERC20 only — will fail on real USDC)
+	if (usdcBalance < 100_000_000n) { // < 100 USDC
+		console.log('  USDC balance low — attempting MockERC20 mint...');
+		try {
+			const mintTx = await stakingToken.mint(wallet.address, 10_000_000_000n); // 10,000 USDC
+			await mintTx.wait();
+			const newBalance = await stakingToken.balanceOf(wallet.address) as bigint;
+			ok(`Minted 10,000 USDC. New balance: ${Number(newBalance) / 1e6} USDC`);
+		} catch {
+			throw new Error('USDC balance too low (< 100 USDC) and MockERC20 mint failed.');
+		}
 	}
 
 	const isDeriver = await districtGate.authorizedDerivers(DEBATE_MARKET_ADDRESS);
 	if (!isDeriver) {
-		throw new Error('DebateMarket is NOT an authorized deriver on DistrictGate. Run V5 genesis setup.');
+		throw new Error('DebateMarket is NOT an authorized deriver on DistrictGate. Run V8 genesis setup.');
 	}
 	ok('DebateMarket is authorized deriver on DistrictGate');
 
@@ -431,33 +435,19 @@ async function main() {
 		debateMarket.MIN_ARGUMENT_STAKE()
 	]);
 	ok(`MIN_DURATION: ${Number(minDuration)}s (${Number(minDuration) / 3600}h)`);
-	ok(`MIN_PROPOSER_BOND: ${Number(minBond) / 1e6} tUSDC`);
-	ok(`MIN_ARGUMENT_STAKE: ${Number(minArgStake) / 1e6} tUSDC`);
+	ok(`MIN_PROPOSER_BOND: ${Number(minBond) / 1e6} USDC`);
+	ok(`MIN_ARGUMENT_STAKE: ${Number(minArgStake) / 1e6} USDC`);
 
 	// ─────────────────────────────────────────────────────────────────
-	step(1, 'Mint test tokens (MockERC20.mint — unrestricted on testnet)');
+	step(1, 'Check USDC balance');
 	// ─────────────────────────────────────────────────────────────────
 
-	const mintAmount = 1_000n * 1_000_000n; // 1,000 tUSDC (6 decimals)
-	const balanceBefore = await stakingToken.balanceOf(wallet.address);
-	ok(`tUSDC balance before: ${Number(balanceBefore) / 1e6} tUSDC`);
-
-	if (balanceBefore < 50_000_000n) {
-		// Under 50 tUSDC — mint
-		try {
-			const mintTx = await stakingToken.mint(wallet.address, mintAmount, { gasLimit: 100_000 });
-			const mintReceipt: TransactionReceipt = await mintTx.wait();
-			recordGas('mint', mintReceipt);
-			ok(`Minted ${Number(mintAmount) / 1e6} tUSDC — TX: ${mintReceipt.hash}`);
-		} catch (err) {
-			warn(`mint() failed: ${extractRevertReason(err)} — continuing with existing balance`);
-		}
-	} else {
-		ok('Sufficient balance, skipping mint');
+	const usdcBalanceStep1 = await stakingToken.balanceOf(wallet.address) as bigint;
+	ok(`USDC balance: ${Number(usdcBalanceStep1) / 1e6} USDC`);
+	if (usdcBalanceStep1 < 1_000_000n) { // < 1 USDC
+		console.error('ERROR: Wallet USDC balance too low. Mint or transfer USDC.');
+		process.exit(1);
 	}
-
-	const balanceAfterMint = await stakingToken.balanceOf(wallet.address);
-	ok(`tUSDC balance: ${Number(balanceAfterMint) / 1e6} tUSDC`);
 
 	// ─────────────────────────────────────────────────────────────────
 	step(2, 'Set up synthetic roots on registries (required by DistrictGate validation)');
@@ -554,25 +544,27 @@ async function main() {
 			await debateMarket.getDebateState(debateId);
 		ok(`Status: ${STATUS_NAMES[Number(status)] ?? status} (${status})`);
 		ok(`Deadline: ${new Date(Number(deadline) * 1000).toISOString()}`);
-		ok(`Arguments: ${argCount}, TotalStake: ${Number(totalStake) / 1e6} tUSDC, Participants: ${participants}`);
+		ok(`Arguments: ${argCount}, TotalStake: ${Number(totalStake) / 1e6} USDC, Participants: ${participants}`);
 		debateDeadline = Number(deadline);
 	} else {
 		const propositionText = `E2E v6 smoke test — ${testRunId}`;
 		const propositionHash = keccak256(solidityPacked(['string'], [propositionText]));
 		const baseDomain = zeroPadValue('0x64', 32); // bytes32(uint256(100)) — registered in V5 genesis
-		const bondAmount = minBond as bigint;
 		const duration = minDuration as bigint; // 72 hours (MIN_DURATION)
 		const jurisdictionSizeHint = 100n;
 
 		ok(`Proposition: "${propositionText}"`);
 		ok(`Hash: ${propositionHash.slice(0, 18)}...`);
-		ok(`Bond: ${Number(bondAmount) / 1e6} tUSDC | Duration: ${Number(duration)}s | JSHint: ${jurisdictionSizeHint}`);
+		ok(`Bond: ${Number(minBond as bigint) / 1e6} USDC | Duration: ${Number(duration)}s | JSHint: ${jurisdictionSizeHint}`);
 
 		// Derive expected action domain for verification
 		const derivedDomain = await debateMarket.deriveDomain(baseDomain, propositionHash);
 		ok(`Derived action domain: ${derivedDomain.slice(0, 18)}...`);
 
-		await approveTokens(bondAmount);
+		// Approve DebateMarket to spend USDC for the bond
+		const approveTx = await stakingToken.approve(DEBATE_MARKET_ADDRESS, minBond as bigint);
+		await approveTx.wait();
+		ok('ERC-20 approve for bond confirmed');
 
 		try {
 			const tx = await debateMarket.proposeDebate(
@@ -580,8 +572,8 @@ async function main() {
 				duration,
 				jurisdictionSizeHint,
 				baseDomain,
-				bondAmount,
-				{ gasLimit: 600_000 }
+				minBond, // bondAmount (ERC-20, no msg.value)
+				{ gasLimit: 500_000 }
 			);
 			const receipt: TransactionReceipt = await tx.wait();
 			recordGas('proposeDebate', receipt);
@@ -625,7 +617,7 @@ async function main() {
 	ok(`Status:        ${STATUS_NAMES[Number(status0)] ?? status0} (expected ACTIVE=0)`);
 	ok(`Deadline:      ${new Date(Number(deadline0) * 1000).toISOString()}`);
 	ok(`ArgumentCount: ${argCount0} (expected 0 for fresh debate)`);
-	ok(`TotalStake:    ${Number(totalStake0) / 1e6} tUSDC`);
+	ok(`TotalStake:    ${Number(totalStake0) / 1e6} USDC`);
 	ok(`Participants:  ${participants0}`);
 
 	if (Number(status0) !== 0) {
@@ -641,10 +633,10 @@ async function main() {
 	}
 
 	// ─────────────────────────────────────────────────────────────────
-	step(5, 'submitArgument #1 — SUPPORT, tier=2, stake=5 tUSDC');
+	step(5, 'submitArgument #1 — SUPPORT, tier=2, stake=5 USDC');
 	// ─────────────────────────────────────────────────────────────────
 
-	const STAKE_ARG1 = 5_000_000n; // 5 tUSDC
+	const STAKE_ARG1 = 5_000_000n; // 5 USDC (6 decimals)
 	const ENGAGEMENT_TIER_1 = 2;
 	const AUTHORITY_LEVEL = 2;
 
@@ -675,7 +667,10 @@ async function main() {
 		throw new Error(`EIP-712 signing failed: ${extractRevertReason(err)}`);
 	}
 
-	await approveTokens(STAKE_ARG1);
+	// Approve DebateMarket to spend USDC for argument stake
+	const approveArg1Tx = await stakingToken.approve(DEBATE_MARKET_ADDRESS, STAKE_ARG1);
+	await approveArg1Tx.wait();
+	ok('ERC-20 approve for argument #1 stake confirmed');
 
 	let argumentIndex1 = 0n;
 	try {
@@ -684,7 +679,7 @@ async function main() {
 			0, // Stance.SUPPORT
 			bodyHash1,
 			'0x' + '00'.repeat(32), // amendmentHash = bytes32(0) for non-AMEND
-			STAKE_ARG1,
+			STAKE_ARG1, // stakeAmount (ERC-20, no msg.value)
 			wallet.address, // signer = relayer wallet
 			dummyProof,
 			publicInputs1,
@@ -721,10 +716,10 @@ async function main() {
 	}
 
 	// ─────────────────────────────────────────────────────────────────
-	step(6, 'submitArgument #2 — OPPOSE, tier=1, stake=3 tUSDC');
+	step(6, 'submitArgument #2 — OPPOSE, tier=1, stake=3 USDC');
 	// ─────────────────────────────────────────────────────────────────
 
-	const STAKE_ARG2 = 3_000_000n; // 3 tUSDC
+	const STAKE_ARG2 = 3_000_000n; // 3 USDC (6 decimals)
 	const ENGAGEMENT_TIER_2 = 1;
 
 	const nullifier2 = fieldElement(`${wallet.address}-oppose-${testRunId}-2`);
@@ -749,7 +744,10 @@ async function main() {
 		throw new Error(`EIP-712 signing #2 failed: ${extractRevertReason(err)}`);
 	}
 
-	await approveTokens(STAKE_ARG2);
+	// Approve DebateMarket to spend USDC for argument stake
+	const approveArg2Tx = await stakingToken.approve(DEBATE_MARKET_ADDRESS, STAKE_ARG2);
+	await approveArg2Tx.wait();
+	ok('ERC-20 approve for argument #2 stake confirmed');
 
 	let argumentIndex2 = 1n;
 	try {
@@ -758,7 +756,7 @@ async function main() {
 			1, // Stance.OPPOSE
 			bodyHash2,
 			'0x' + '00'.repeat(32),
-			STAKE_ARG2,
+			STAKE_ARG2, // stakeAmount (ERC-20, no msg.value)
 			wallet.address,
 			dummyProof,
 			publicInputs2,
@@ -795,7 +793,7 @@ async function main() {
 	// Verify state updated
 	const [, , argCountAfter, totalStakeAfter] = await debateMarket.getDebateState(debateId!);
 	ok(`ArgumentCount now: ${argCountAfter} (expected 2)`);
-	ok(`TotalStake now: ${Number(totalStakeAfter) / 1e6} tUSDC`);
+	ok(`TotalStake now: ${Number(totalStakeAfter) / 1e6} USDC`);
 
 	// ─────────────────────────────────────────────────────────────────
 	step(7, 'commitTrade — BUY on argument 0 (SUPPORT side)');
@@ -1109,7 +1107,7 @@ async function runResolveAndClaim(
 	// Verify resolved status
 	const [statusFinal, , , totalStakeFinal] = await debateMarket.getDebateState(debateId);
 	ok(`Debate status after resolve: ${STATUS_NAMES[Number(statusFinal)] ?? statusFinal}`);
-	ok(`Total stake in contract: ${Number(totalStakeFinal) / 1e6} tUSDC`);
+	ok(`Total stake in contract: ${Number(totalStakeFinal) / 1e6} USDC`);
 
 	if (Number(statusFinal) !== 1) {
 		warn('Debate not RESOLVED — skipping claimSettlement.');
@@ -1126,8 +1124,8 @@ async function runResolveAndClaim(
 	const nullifierBytes32 = toBytes32(winnerNullifier);
 	ok(`Nullifier: ${nullifierBytes32.slice(0, 18)}...`);
 
-	const balanceBefore = await stakingToken.balanceOf(wallet.address);
-	ok(`Wallet tUSDC before claim: ${Number(balanceBefore) / 1e6} tUSDC`);
+	const balanceBefore = await stakingToken.balanceOf(wallet.address) as bigint;
+	ok(`Wallet USDC before claim: ${Number(balanceBefore) / 1e6} USDC`);
 
 	try {
 		const tx = await debateMarket.claimSettlement(debateId, nullifierBytes32, { gasLimit: 300_000 });
@@ -1144,7 +1142,7 @@ async function runResolveAndClaim(
 				if (parsed?.name === 'SettlementClaimed') {
 					const payout = parsed.args[2] as bigint;
 					const recipient = parsed.args[3] as string;
-					ok(`payout:    ${Number(payout) / 1e6} tUSDC`);
+					ok(`payout:    ${Number(payout) / 1e6} USDC`);
 					ok(`recipient: ${recipient}`);
 					if (recipient.toLowerCase() !== wallet.address.toLowerCase()) {
 						warn(`Recipient mismatch! Expected ${wallet.address}, got ${recipient}`);
@@ -1153,13 +1151,13 @@ async function runResolveAndClaim(
 			} catch { /* skip */ }
 		}
 
-		const balanceAfter = await stakingToken.balanceOf(wallet.address);
-		const received = BigInt(balanceAfter) - BigInt(balanceBefore);
-		ok(`Wallet tUSDC after claim: ${Number(balanceAfter) / 1e6} tUSDC`);
-		ok(`Net received: ${Number(received) / 1e6} tUSDC`);
+		const balanceAfter = await stakingToken.balanceOf(wallet.address) as bigint;
+		const received = balanceAfter - balanceBefore;
+		ok(`Wallet USDC after claim: ${Number(balanceAfter) / 1e6} USDC`);
+		ok(`Net received: ${Number(received) / 1e6} USDC`);
 
 		if (received === 0n) {
-			warn('Received 0 tUSDC — argument may have been on the losing side, or stake record key mismatch.');
+			warn('Received 0 USDC — argument may have been on the losing side, or stake record key mismatch.');
 		} else if (received >= winnerStake) {
 			ok(`Payout >= stake (${Number(received) / 1e6} >= ${Number(winnerStake) / 1e6}) — winning payout confirmed`);
 		}

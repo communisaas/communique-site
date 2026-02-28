@@ -61,7 +61,7 @@
 	let stance = $state<Stance | null>(null);
 	let body = $state('');
 	let amendmentText = $state('');
-	let stakeAmount = $state(1_000_000); // $1
+	let stakeAmount = $state(1_000_000); // $1 USDC
 
 	// Proof result (from DebateProofGenerator)
 	let proofResult = $state<{

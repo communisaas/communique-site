@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Check, Loader2 } from '@lucide/svelte';
+	import { Check, Loader2, ArrowRight } from '@lucide/svelte';
 	import { positionState } from '$lib/stores/positionState.svelte';
 	import PositionCount from './PositionCount.svelte';
 
@@ -7,13 +7,27 @@
 		templateId,
 		identityCommitment,
 		districtCode = undefined,
-		onRegistered = undefined
+		onRegistered = undefined,
+		recipientCount = 0,
+		isCongressional = false
 	}: {
 		templateId: string;
 		identityCommitment: string;
 		districtCode?: string;
 		onRegistered?: (stance: 'support' | 'oppose') => void;
+		recipientCount?: number;
+		isCongressional?: boolean;
 	} = $props();
+
+	const recipientLabel = $derived(
+		recipientCount > 0
+			? isCongressional
+				? `${recipientCount} representative${recipientCount !== 1 ? 's' : ''}`
+				: `${recipientCount} decision-maker${recipientCount !== 1 ? 's' : ''}`
+			: isCongressional
+				? 'your congressional representatives'
+				: 'decision-makers'
+	);
 
 	async function handleRegister(selectedStance: 'support' | 'oppose') {
 		if (positionState.registrationState !== 'idle') return;
@@ -30,26 +44,31 @@
 	}
 </script>
 
-<div class="w-full">
+<div>
 	{#if positionState.isRegistered}
-		<!-- Registered state -->
-		<div role="status" aria-live="polite">
-			<div class="flex items-center gap-2 py-3">
-				{#if positionState.stance === 'support'}
-					<Check class="h-4 w-4 text-channel-verified-600" />
-					<span class="text-sm font-medium text-channel-verified-600">You support this</span>
-				{:else}
-					<Check class="h-4 w-4 text-slate-600" />
-					<span class="text-sm font-medium text-slate-600">You oppose this</span>
-				{/if}
-			</div>
+		<!-- Registered state — horizontal inline -->
+		<div class="flex flex-wrap items-center gap-x-2 gap-y-1" role="status" aria-live="polite">
+			{#if positionState.stance === 'support'}
+				<Check class="h-4 w-4 text-channel-verified-600" />
+				<span class="text-sm font-medium text-channel-verified-600">You support this</span>
+			{:else}
+				<Check class="h-4 w-4 text-slate-600" />
+				<span class="text-sm font-medium text-slate-600">You oppose this</span>
+			{/if}
+			{#if positionState.totalCount > 0}
+				<span class="text-slate-300">&middot;</span>
+				<PositionCount count={positionState.count} />
+			{/if}
 		</div>
-
-		<PositionCount count={positionState.count} />
 	{:else}
-		<!-- Pre-registration: stance buttons -->
-		<div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
-			<div class="flex w-full gap-3 sm:w-auto">
+		<!-- Pre-registration: framing context + stance buttons -->
+		<div class="space-y-3">
+			<p class="flex items-center gap-1.5 text-sm text-slate-600">
+				<span>Contact {recipientLabel}</span>
+				<ArrowRight class="h-3.5 w-3.5 text-slate-400" />
+				<span class="text-slate-500">first, where do you stand?</span>
+			</p>
+			<div class="flex flex-wrap items-center gap-3">
 				<button
 					class="flex min-h-[44px] flex-1 items-center justify-center rounded-lg bg-participation-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-participation-primary-700 disabled:opacity-50 sm:flex-none"
 					disabled={positionState.registrationState === 'registering'}
@@ -73,13 +92,11 @@
 						I oppose this
 					{/if}
 				</button>
+
+				{#if positionState.totalCount > 0}
+					<PositionCount count={positionState.count} />
+				{/if}
 			</div>
 		</div>
-
-		{#if positionState.totalCount > 0}
-			<div class="mt-3">
-				<PositionCount count={positionState.count} />
-			</div>
-		{/if}
 	{/if}
 </div>

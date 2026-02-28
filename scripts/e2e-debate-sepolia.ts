@@ -1,18 +1,18 @@
 /**
- * E2E Debate Flow Test — Scroll Sepolia
+ * E2E Debate Flow Test — Scroll Sepolia (V8 — USDC staking with protocol fee)
  *
  * Tests the full DebateMarket lifecycle directly against on-chain contracts:
- * 1. proposeDebate (with token approval)
+ * 1. proposeDebate (with ERC-20 USDC bond)
  * 2. Verify debate state
  * 3. resolveDebate (after mocking past-deadline)
  *
  * NOTE: submitArgument and coSignArgument require valid ZK proofs
  * (EIP-712 signature + DistrictGate verification). We test those separately.
- * This script validates the contract wiring, token flows, and event parsing.
+ * This script validates the contract wiring, USDC flows, and event parsing.
  *
  * Usage:
  *   cd communique
- *   SCROLL_PRIVATE_KEY=0x... npx tsx scripts/e2e-debate-sepolia.ts
+ *   SCROLL_PRIVATE_KEY=0x... STAKING_TOKEN_ADDRESS=0x... npx tsx scripts/e2e-debate-sepolia.ts
  */
 
 import {
@@ -33,11 +33,15 @@ const RPC_URL = process.env.SCROLL_RPC_URL || 'https://sepolia-rpc.scroll.io';
 const PRIVATE_KEY = process.env.SCROLL_PRIVATE_KEY;
 
 const DEBATE_MARKET_ADDRESS = '0x95F878b0c0AF38C445d0F776DF4f37d2660DaFF4';
-const STAKING_TOKEN_ADDRESS = '0x87848199926E9F77D5e8e3048bD319Db0af06B86';
 const DISTRICT_GATE_ADDRESS = '0x653c9fE1a97f931800C456202d540bbF58F61507';
+const STAKING_TOKEN_ADDRESS = process.env.STAKING_TOKEN_ADDRESS || '';
 
 if (!PRIVATE_KEY) {
 	console.error('Set SCROLL_PRIVATE_KEY env var');
+	process.exit(1);
+}
+if (!STAKING_TOKEN_ADDRESS) {
+	console.error('Set STAKING_TOKEN_ADDRESS env var (MockERC20 / USDC address)');
 	process.exit(1);
 }
 
@@ -58,9 +62,10 @@ const DEBATE_MARKET_ABI = [
 ];
 
 const ERC20_ABI = [
+	'function balanceOf(address) view returns (uint256)',
 	'function approve(address spender, uint256 amount) returns (bool)',
 	'function allowance(address owner, address spender) view returns (uint256)',
-	'function balanceOf(address account) view returns (uint256)'
+	'function mint(address to, uint256 amount)' // MockERC20 only
 ];
 
 const DISTRICT_GATE_ABI = [
@@ -75,8 +80,8 @@ const DISTRICT_GATE_ABI = [
 const provider = new JsonRpcProvider(RPC_URL);
 const wallet = new Wallet(PRIVATE_KEY, provider);
 const debateMarket = new Contract(DEBATE_MARKET_ADDRESS, DEBATE_MARKET_ABI, wallet);
-const stakingToken = new Contract(STAKING_TOKEN_ADDRESS, ERC20_ABI, wallet);
 const districtGate = new Contract(DISTRICT_GATE_ADDRESS, DISTRICT_GATE_ABI, wallet);
+const stakingToken = new Contract(STAKING_TOKEN_ADDRESS, ERC20_ABI, wallet);
 
 function ok(msg: string) { console.log(`  ✓ ${msg}`); }
 function fail(msg: string) { console.error(`  ✗ ${msg}`); process.exit(1); }
@@ -92,6 +97,7 @@ async function main() {
 	console.log(`  Wallet:  ${wallet.address}`);
 	console.log(`  RPC:     ${RPC_URL}`);
 	console.log(`  DebateMarket: ${DEBATE_MARKET_ADDRESS}`);
+	console.log(`  StakingToken: ${STAKING_TOKEN_ADDRESS}`);
 	console.log('');
 
 	// ─── Step 0: Pre-flight checks ──────────────────────────────────────
@@ -99,12 +105,23 @@ async function main() {
 	console.log('[0] Pre-flight checks...');
 
 	const ethBalance = await provider.getBalance(wallet.address);
-	ok(`ETH balance: ${Number(ethBalance) / 1e18} ETH`);
-	if (ethBalance < 5000000000000000n) fail('ETH balance too low (< 0.005 ETH)');
+	ok(`ETH balance: ${Number(ethBalance) / 1e18} ETH (for gas)`);
 
-	const tokenBalance = await stakingToken.balanceOf(wallet.address);
-	ok(`tUSDC balance: ${Number(tokenBalance) / 1e6} tUSDC`);
-	if (tokenBalance < 1000000n) fail('tUSDC balance too low (< 1 tUSDC)');
+	const usdcBalance = await stakingToken.balanceOf(wallet.address) as bigint;
+	ok(`USDC balance: ${Number(usdcBalance) / 1e6} USDC`);
+
+	// Mint USDC if balance is low (MockERC20 only — will fail on real USDC)
+	if (usdcBalance < 10_000_000n) { // < 10 USDC
+		console.log('  USDC balance low — attempting MockERC20 mint...');
+		try {
+			const mintTx = await stakingToken.mint(wallet.address, 1_000_000_000n); // 1000 USDC
+			await mintTx.wait();
+			const newBalance = await stakingToken.balanceOf(wallet.address) as bigint;
+			ok(`Minted 1000 USDC. New balance: ${Number(newBalance) / 1e6} USDC`);
+		} catch {
+			fail('USDC balance too low (< 10 USDC) and mint failed (not a MockERC20?)');
+		}
+	}
 
 	const isDeriver = await districtGate.authorizedDerivers(DEBATE_MARKET_ADDRESS);
 	if (!isDeriver) fail('DebateMarket not authorized as deriver on DistrictGate');
@@ -118,7 +135,7 @@ async function main() {
 	const minBond = await debateMarket.MIN_PROPOSER_BOND();
 	const minDuration = await debateMarket.MIN_DURATION();
 	const maxDuration = await debateMarket.MAX_DURATION();
-	ok(`Bond constraints: min=${Number(minBond) / 1e6} tUSDC`);
+	ok(`Bond constraints: min=${Number(minBond) / 1e6} USDC`);
 	ok(`Duration constraints: min=${Number(minDuration)}s, max=${Number(maxDuration)}s`);
 	console.log('');
 
@@ -134,18 +151,18 @@ async function main() {
 	const expectedDomain = await debateMarket.deriveDomain(baseDomain, propositionHash);
 	ok(`Derived action domain: ${expectedDomain.slice(0, 16)}...`);
 
-	// Approve staking token
-	const bondAmount = minBond > 0n ? minBond : 1000000n; // 1 tUSDC fallback
+	const bondAmount = minBond > 0n ? minBond : 1_000_000n; // 1 USDC fallback
 	const duration = Number(minDuration) > 0 ? Number(minDuration) : 86400; // 1 day fallback
 	const jurisdictionSizeHint = 100; // Estimated participants for LMSR liquidity (must be > 0)
 
-	console.log(`  Approving ${Number(bondAmount) / 1e6} tUSDC for bond...`);
+	// Approve DebateMarket to spend USDC for the bond
+	console.log(`  Approving DebateMarket to spend ${Number(bondAmount) / 1e6} USDC...`);
 	const approveTx = await stakingToken.approve(DEBATE_MARKET_ADDRESS, bondAmount);
 	await approveTx.wait();
-	ok('Token approval confirmed');
+	ok('ERC-20 approve confirmed');
 
-	// Call proposeDebate
-	console.log(`  Calling proposeDebate (duration=${duration}s, bond=${Number(bondAmount) / 1e6} tUSDC, jurisdiction=${jurisdictionSizeHint})...`);
+	// Call proposeDebate with ERC-20 USDC bond
+	console.log(`  Calling proposeDebate (duration=${duration}s, bond=${Number(bondAmount) / 1e6} USDC, jurisdiction=${jurisdictionSizeHint})...`);
 
 	let debateId: string;
 	let proposeTxHash: string;
@@ -209,20 +226,16 @@ async function main() {
 
 	ok(`Deadline: ${new Date(Number(deadline) * 1000).toISOString()}`);
 	ok(`Argument count: ${argCount} (expected 0)`);
-	ok(`Total stake: ${Number(totalStake) / 1e6} tUSDC`);
+	ok(`Total stake: ${Number(totalStake) / 1e6} USDC`);
 	ok(`Unique participants: ${uniqueParticipants}`);
 	console.log('');
 
-	// ─── Step 3: Verify token flow ──────────────────────────────────────
+	// ─── Step 3: Verify USDC flow ──────────────────────────────────────
 
-	console.log('[3] Verifying token flow...');
+	console.log('[3] Verifying USDC flow...');
 
-	const postBalance = await stakingToken.balanceOf(wallet.address);
-	const spent = tokenBalance - postBalance;
-	ok(`Token spent: ${Number(spent) / 1e6} tUSDC (bond locked in contract)`);
-
-	const contractBalance = await stakingToken.balanceOf(DEBATE_MARKET_ADDRESS);
-	ok(`DebateMarket token balance: ${Number(contractBalance) / 1e6} tUSDC`);
+	const contractUsdcBalance = await stakingToken.balanceOf(DEBATE_MARKET_ADDRESS) as bigint;
+	ok(`DebateMarket USDC balance: ${Number(contractUsdcBalance) / 1e6} USDC`);
 	console.log('');
 
 	// ─── Step 4: Attempt resolve (should fail — deadline not passed) ────

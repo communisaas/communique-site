@@ -1,7 +1,6 @@
 <script lang="ts">
 	import PropositionDisplay from './PropositionDisplay.svelte';
 	import ArgumentCard from './ArgumentCard.svelte';
-	import DebateMetrics from './DebateMetrics.svelte';
 	import MarketPriceBar from './MarketPriceBar.svelte';
 	import EpochPhaseIndicator from './EpochPhaseIndicator.svelte';
 	import TradePanel from './TradePanel.svelte';
@@ -36,11 +35,10 @@
 		debate.marketStatus === 'active' && Object.keys(debateState.lmsrPrices).length > 0
 	);
 
-	// Filter state
+	// Stance filter (driven by stance bar labels)
 	type StanceFilter = 'all' | 'SUPPORT' | 'OPPOSE' | 'AMEND';
 	let stanceFilter = $state<StanceFilter>('all');
 
-	// Pre-select argument in TradePanel when user clicks "Stake on this" on an ArgumentCard
 	let preselectedTradeArgument = $state<number | null>(null);
 
 	const filteredArguments = $derived(
@@ -49,30 +47,71 @@
 			: debate.arguments.filter((a) => a.stance === stanceFilter)
 	);
 
+	// Stance distribution for the visual bar
 	const _counts = $derived(computeStanceCounts(debate.arguments));
-	const stanceCounts = $derived({
-		all: debate.arguments.length,
-		SUPPORT: _counts.support,
-		OPPOSE: _counts.oppose,
-		AMEND: _counts.amend
+
+	type Stance = 'SUPPORT' | 'OPPOSE' | 'AMEND';
+	const STANCE_ORDER: Stance[] = ['SUPPORT', 'OPPOSE', 'AMEND'];
+
+	const stanceBarConfig: Record<Stance, { color: string; dotColor: string; label: string }> = {
+		SUPPORT: { color: 'bg-indigo-500', dotColor: 'bg-indigo-500', label: 'Support' },
+		OPPOSE: { color: 'bg-red-500', dotColor: 'bg-red-500', label: 'Oppose' },
+		AMEND: { color: 'bg-amber-500', dotColor: 'bg-amber-500', label: 'Amend' }
+	};
+
+	const visibleStances = $derived.by(() => {
+		const countMap: Record<Stance, number> = {
+			SUPPORT: _counts.support,
+			OPPOSE: _counts.oppose,
+			AMEND: _counts.amend
+		};
+		const total = debate.arguments.length;
+		if (total === 0) return [];
+
+		return STANCE_ORDER
+			.filter((s) => countMap[s] > 0)
+			.map((s) => ({
+				stance: s,
+				...stanceBarConfig[s],
+				pct: Math.round((countMap[s] / total) * 100),
+				count: countMap[s]
+			}));
 	});
+
+	// Normalized weight for argument bars
+	const maxWeight = $derived(
+		Math.max(...debate.arguments.map((a) => Number(BigInt(a.weightedScore))), 1)
+	);
 
 	const canParticipate = $derived(userTrustTier >= 3 && debate.status === 'active');
 
-	const filterButtons: { label: string; value: StanceFilter; color: string }[] = [
-		{ label: 'All', value: 'all', color: 'text-slate-700' },
-		{ label: 'Support', value: 'SUPPORT', color: 'text-indigo-700' },
-		{ label: 'Oppose', value: 'OPPOSE', color: 'text-red-700' },
-		{ label: 'Amend', value: 'AMEND', color: 'text-amber-700' }
-	];
+	// Inlined metrics
+	const formattedStake = $derived.by(() => {
+		const amount = Number(BigInt(debate.totalStake)) / 1e6;
+		if (amount >= 1000) return `$${(amount / 1000).toFixed(1)}k`;
+		return `$${amount.toFixed(2)}`;
+	});
+
+	const timeRemaining = $derived.by(() => {
+		if (debate.status !== 'active') return debate.status === 'resolved' ? 'Resolved' : 'Deadline passed';
+		const now = Date.now();
+		const end = new Date(debate.deadline).getTime();
+		const diff = end - now;
+		if (diff <= 0) return 'Ended';
+		const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+		const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+		if (days > 0) return `${days}d ${hours}h left`;
+		const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+		if (hours > 0) return `${hours}h ${minutes}m left`;
+		return `${minutes}m left`;
+	});
 </script>
 
 <div class="space-y-4">
-	<!-- Resolution panel (replaces simple banner when AI resolution data exists) -->
+	<!-- Resolution panel -->
 	{#if debate.status !== 'active' && debate.aiResolution}
 		<ResolutionPanel {debate} {onAppeal} {onEscalate} />
 	{:else if debate.status === 'resolved' && debate.winningStance}
-		<!-- Fallback: community-only resolution (no AI data) -->
 		{@const stanceColors: Record<string, string> = {
 			SUPPORT: 'bg-indigo-50 border-indigo-200 text-indigo-800',
 			OPPOSE: 'bg-red-50 border-red-200 text-red-800',
@@ -94,18 +133,40 @@
 	<PropositionDisplay
 		propositionText={debate.propositionText}
 		propositionHash={debate.propositionHash}
-		status={debate.status}
 	/>
 
-	<!-- Metrics -->
-	<DebateMetrics
-		argumentCount={debate.argumentCount}
-		uniqueParticipants={debate.uniqueParticipants}
-		totalStake={debate.totalStake}
-		deadline={debate.deadline}
-		jurisdictionSize={debate.jurisdictionSize}
-		status={debate.status}
-	/>
+	<!-- Stance bar + interactive labels + metrics -->
+	{#if visibleStances.length > 0}
+		<div class="space-y-1.5">
+			<!-- Visual bar -->
+			<div class="flex w-full h-1.5 rounded-full overflow-hidden" role="img" aria-label="Stance distribution">
+				{#each visibleStances as s}
+					<div class="{s.color}" style="width: {s.pct}%"></div>
+				{/each}
+			</div>
+			<!-- Labels (filter toggles) + metrics in one row -->
+			<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+				{#each visibleStances as s}
+					<button
+						class="font-medium transition-opacity cursor-pointer text-slate-600
+							{stanceFilter !== 'all' && stanceFilter !== s.stance ? 'opacity-40' : 'opacity-100'}"
+						onclick={() => (stanceFilter = stanceFilter === s.stance ? 'all' : s.stance)}
+					>
+						{s.label} <span class="font-mono text-slate-400">{s.pct}%</span>
+					</button>
+				{/each}
+				<span class="text-slate-300">&middot;</span>
+				<span class="text-slate-400">
+					{debate.uniqueParticipants} voice{debate.uniqueParticipants === 1 ? '' : 's'}
+					&middot; {formattedStake}
+					&middot; <span
+						class:text-amber-600={debate.status === 'active'}
+						class:text-slate-400={debate.status !== 'active'}
+					>{timeRemaining}</span>
+				</span>
+			</div>
+		</div>
+	{/if}
 
 	<!-- LMSR Market -->
 	{#if hasMarket}
@@ -124,34 +185,12 @@
 		</div>
 	{/if}
 
-	<!-- Stance filter tabs -->
-	{#if debate.arguments.length > 0}
-		<div class="flex items-center gap-1 border-b border-slate-200 pb-1">
-			{#each filterButtons as btn}
-				{@const count = stanceCounts[btn.value]}
-				{#if btn.value === 'all' || count > 0}
-					<button
-						class="px-3 py-1.5 text-sm font-medium rounded-t transition-colors
-							{stanceFilter === btn.value
-							? `${btn.color} bg-white border border-b-white border-slate-200 -mb-px`
-							: 'text-slate-500 hover:text-slate-700'}"
-						onclick={() => (stanceFilter = btn.value)}
-					>
-						{btn.label}
-						{#if count > 0}
-							<span class="ml-1 text-xs text-slate-400">({count})</span>
-						{/if}
-					</button>
-				{/if}
-			{/each}
-		</div>
-	{/if}
-
-	<!-- Arguments stack -->
-	<div class="space-y-3">
+	<!-- Argument stack (collapsed handles) -->
+	<div class="divide-y divide-slate-100">
 		{#each filteredArguments as argument, i (argument.id)}
 			<ArgumentCard
 				{argument}
+				normalizedWeight={Math.round((Number(BigInt(argument.weightedScore)) / maxWeight) * 100)}
 				isWinner={debate.status === 'resolved' &&
 					argument.argumentIndex === debate.winningArgumentIndex}
 				rank={i + 1}
@@ -163,21 +202,19 @@
 					const tradePanel = document.querySelector('[data-trade-panel]');
 					if (tradePanel) {
 						tradePanel.scrollIntoView({ behavior: 'smooth' });
-					} else {
-						console.warn('[ActiveDebatePanel] Trade panel not available for scroll target');
 					}
 				}}
 			/>
 		{/each}
 
 		{#if filteredArguments.length === 0 && debate.arguments.length > 0}
-			<p class="text-sm text-slate-500 py-4 text-center">
+			<p class="text-sm text-slate-500 py-4">
 				No {stanceFilter.toLowerCase()} arguments yet.
 			</p>
 		{:else if debate.arguments.length === 0}
-			<div class="text-center py-8">
-				<p class="text-slate-500 text-sm">No arguments submitted yet. Be the first to weigh in.</p>
-			</div>
+			<p class="text-sm text-slate-500 py-4">
+				No arguments submitted yet. Be the first to weigh in.
+			</p>
 		{/if}
 	</div>
 
@@ -203,18 +240,18 @@
 			</Button>
 		</div>
 	{:else if debate.status === 'active' && userTrustTier < 3}
-		<div class="pt-3 mt-1 border-t border-amber-200/30">
-			<p class="text-sm text-slate-600">
+		<div class="pt-2 space-y-2">
+			<p class="text-sm text-slate-500">
 				Verified participants can add arguments and stake their credibility.
 			</p>
 			{#if onVerifyIdentity}
 				<button
-					class="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-amber-700
-						hover:text-amber-800 transition-colors"
+					class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500
+						hover:text-slate-700 transition-colors"
 					onclick={onVerifyIdentity}
 				>
-					<ShieldCheck class="h-4 w-4" />
-					Verify your identity to join this deliberation
+					<ShieldCheck class="h-3.5 w-3.5" />
+					Verify your identity to join
 				</button>
 			{/if}
 		</div>

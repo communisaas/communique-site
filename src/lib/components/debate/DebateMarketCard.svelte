@@ -46,11 +46,10 @@
 		propositionText.length > 120 ? propositionText.slice(0, 120).trimEnd() + '...' : propositionText
 	);
 
-	/** Format total stake from 6-decimal BigInt string to human-readable dollars. */
+	/** Format total stake from USDC smallest-unit BigInt string to human-readable dollars. */
 	const formattedStake = $derived.by(() => {
 		const raw = Number(totalStake) / 1e6;
 		if (raw >= 1000) return '$' + (raw / 1000).toFixed(1) + 'k';
-		if (raw >= 1) return '$' + raw.toFixed(0);
 		return '$' + raw.toFixed(2);
 	});
 
