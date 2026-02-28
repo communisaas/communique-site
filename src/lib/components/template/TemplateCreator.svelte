@@ -307,7 +307,11 @@
 			description: formData.objective.description || formData.content.preview.substring(0, 160),
 			category: formData.objective.category || 'General',
 			type: context.channelId === 'certified' ? 'certified' : 'direct',
-			deliveryMethod: context.channelId === 'certified' ? 'certified' : 'email',
+			deliveryMethod: context.channelId === 'certified'
+				? 'certified'
+				: formData.audience.includesCongress
+					? 'cwc'
+					: 'email',
 			subject: formData.objective.title || `Regarding: ${formData.objective.title}`,
 			message_body: messageWithReferences, // Message with References appended
 			sources: formData.content.sources || [], // Persist sources for provenance
@@ -317,7 +321,7 @@
 			recipient_config: {
 				reach: formData.audience.includesCongress ? 'district-based' : 'location-specific',
 				emails: formData.audience.recipientEmails,
-				decisionMakers: formData.audience.decisionMakers.filter((dm) => dm.email),
+				decisionMakers: formData.audience.decisionMakers,
 				cwcRouting: formData.audience.includesCongress || undefined
 			},
 			metrics: {

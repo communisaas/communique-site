@@ -14,9 +14,15 @@ import type { UnknownRecord } from '$lib/types/any-replacements';
 import { moderateTemplate } from '$lib/core/server/moderation';
 import { generateBatchEmbeddings } from '$lib/core/search/gemini-embeddings';
 import { z } from 'zod';
+import { createHash } from 'crypto';
 
 // Import GeoScope for agent-extracted geographic scope
 import type { GeoScope } from '$lib/core/agents/types';
+
+/** Content-addressable fingerprint: same title + body = same template */
+function contentHash(title: string, body: string): string {
+	return createHash('sha256').update(`${title}\0${body}`).digest('hex').slice(0, 40);
+}
 
 /** Sanitize slug: lowercase, alphanumeric + hyphens only, max 100 chars */
 function sanitizeSlug(slug: string | undefined): string | undefined {
@@ -556,6 +562,70 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			// Authenticated user - save to database
 			try {
+				// Content-addressable identity: same author + same content = same template
+				const hash = contentHash(validData.title, validData.message_body);
+
+				const existingByContent = await db.template.findFirst({
+					where: { userId: user.id, content_hash: hash }
+				});
+
+				if (existingByContent) {
+					// Idempotent: return the existing template as a success.
+					// The user's intent was to publish, and it's published.
+					const jsonMetrics =
+						typeof existingByContent.metrics === 'object' && existingByContent.metrics !== null
+							? (existingByContent.metrics as Record<string, number>)
+							: ({} as Record<string, number>);
+
+					const response: StructuredApiResponse = {
+						success: true,
+						data: { template: {
+							id: existingByContent.id,
+							slug: existingByContent.slug,
+							title: existingByContent.title,
+							description: existingByContent.description,
+							category: existingByContent.category,
+							topics: (existingByContent.topics as string[]) || [],
+							type: existingByContent.type,
+							deliveryMethod: existingByContent.deliveryMethod,
+							subject: existingByContent.title,
+							message_body: existingByContent.message_body,
+							preview: existingByContent.preview,
+							coordinationScale: 0,
+							isNew: false,
+							verified_sends: existingByContent.verified_sends,
+							unique_districts: existingByContent.unique_districts,
+							send_count: jsonMetrics.sent || 0,
+							metrics: {
+								sent: jsonMetrics.sent || 0,
+								districts_covered: jsonMetrics.districts_covered || 0,
+								opened: jsonMetrics.opened || 0,
+								clicked: jsonMetrics.clicked || 0,
+								responded: jsonMetrics.responded || 0,
+								views: jsonMetrics.views || 0,
+								total_districts: jsonMetrics.total_districts || 435,
+								district_coverage_percent: jsonMetrics.district_coverage_percent || 0,
+								personalization_rate: 0
+							},
+							delivery_config: existingByContent.delivery_config,
+							cwc_config: existingByContent.cwc_config,
+							recipient_config: existingByContent.recipient_config,
+							campaign_id: existingByContent.campaign_id,
+							status: existingByContent.status,
+							is_public: existingByContent.is_public,
+							jurisdiction_level: null,
+							applicable_countries: null,
+							specific_locations: null,
+							jurisdictions: [],
+							scope: null,
+							createdAt: existingByContent.createdAt,
+							updatedAt: existingByContent.updatedAt
+						} }
+					};
+
+					return json(response);
+				}
+
 				// Use pre-sanitized slug if provided, otherwise generate from title
 				const slug = validData.slug?.trim()
 					? validData.slug.trim()
@@ -604,6 +674,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							status: consensusResult?.approved ? 'published' : 'draft',
 							is_public: consensusResult?.approved ?? false,
 							slug,
+							content_hash: hash,
 							// Use Prisma relation connect syntax instead of scalar userId
 							user: { connect: { id: user.id } },
 							// Consolidated verification fields with defaults

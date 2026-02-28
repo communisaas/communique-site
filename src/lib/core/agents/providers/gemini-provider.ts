@@ -423,7 +423,7 @@ async function resolveIdentitiesFromSearch(
 	// 2. Parallel Exa searches — rate limiter handles throttling
 	const searchResults = await Promise.allSettled(
 		queries.map((q, i) =>
-			searchWeb(q, { maxResults: 10 }).then(hits => ({
+			searchWeb(q, { maxResults: 20 }).then(hits => ({
 				role: roles[i],
 				hits
 			}))
@@ -728,7 +728,7 @@ async function huntContactsFanOutSynthesize(
 	});
 
 	const searchResults = await Promise.allSettled(
-		searchQueries.map(q => searchWeb(q, { maxResults: 15 }))
+		searchQueries.map(q => searchWeb(q, { maxResults: 25 }))
 	);
 
 	// Pair search results with identity info, classify URLs
@@ -768,7 +768,7 @@ async function huntContactsFanOutSynthesize(
 		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
 	}
 
-	const MAX_PAGES_TOTAL = Math.min(uncached.length * 2, 15);
+	const MAX_PAGES_TOTAL = Math.min(uncached.length * 3, 20);
 
 	const pageSelectionSystem = PAGE_SELECTION_PROMPT
 		.replace(/{CURRENT_DATE}/g, currentDate)
@@ -1224,7 +1224,10 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				rolePrompt,
 				{
 					systemInstruction: ROLE_DISCOVERY_PROMPT,
-					temperature: 0.1,
+					// 0.7: Role discovery is creative-analytical — finding non-obvious power brokers
+					// requires exploring the model's full understanding of institutional structure.
+					// Factual grounding comes from Phase 2 search, not token suppression here.
+					temperature: 0.7,
 					thinkingLevel: 'medium',
 					maxOutputTokens: 65536
 				},

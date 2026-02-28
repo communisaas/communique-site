@@ -245,12 +245,13 @@ The stranger who shares this link should think "I need to send that too." Every 
 
 	// Generate WITHOUT grounding — we already have verified sources
 	// This prevents the model from hallucinating additional URLs
-	// Temperature 0.7: creative latitude for emotional resonance (matches subject-line)
+	// Temperature 0.8: let the model's full linguistic range serve the writing.
+	// Factual grounding comes from pre-verified sources, not token suppression.
 	const result = await generateWithThoughts<MessageResponse>(
 		prompt,
 		{
 			systemInstruction: systemPrompt,
-			temperature: 0.7,
+			temperature: 0.8,
 			thinkingLevel: 'high',
 			enableGrounding: false, // Disabled — using pre-verified sources
 			maxOutputTokens: 65536 // Maximum for Gemini 2.5+ to prevent truncation
