@@ -1,9 +1,9 @@
 /**
- * Type definitions for semantic search system with OpenAI embeddings
+ * Type definitions for semantic search system with Gemini embeddings
  *
  * Phase 4: Semantic Search Integration
  * - Privacy-preserving client-side search
- * - OpenAI text-embedding-3-large (3072 dimensions)
+ * - Gemini gemini-embedding-001 (768 dimensions)
  * - Contextual boosting (geographic, temporal, network, impact)
  */
 
@@ -62,7 +62,7 @@ export interface CachedSearchResult {
 export interface CachedEmbedding {
 	text: string;
 	embedding: number[];
-	model: string; // 'text-embedding-3-large'
+	model: string; // 'gemini-embedding-001'
 	timestamp: string;
 	expires_at: string;
 }
@@ -82,44 +82,6 @@ export interface InferredLocation {
 	longitude?: number;
 	confidence: number; // 0-1
 	source: 'ip' | 'browser' | 'oauth' | 'behavioral' | 'verified'; // Signal source
-}
-
-/**
- * OpenAI embedding API request
- */
-export interface EmbeddingRequest {
-	input: string | string[];
-	model: 'text-embedding-3-large' | 'text-embedding-3-small';
-	encoding_format?: 'float' | 'base64';
-	dimensions?: number; // Optional dimensionality reduction
-	user?: string; // User identifier for monitoring
-}
-
-/**
- * OpenAI embedding API response
- */
-export interface EmbeddingResponse {
-	object: 'list';
-	data: Array<{
-		object: 'embedding';
-		embedding: number[];
-		index: number;
-	}>;
-	model: string;
-	usage: {
-		prompt_tokens: number;
-		total_tokens: number;
-	};
-}
-
-/**
- * Batch embedding generation result
- */
-export interface BatchEmbeddingResult {
-	embeddings: number[][];
-	model: string;
-	total_tokens: number;
-	cost_usd: number;
 }
 
 /**
@@ -162,12 +124,3 @@ export interface RankingExplanation {
 	explanation: string; // Human-readable explanation
 }
 
-/**
- * Cost estimation for embedding generation
- */
-export interface CostEstimate {
-	text_length: number;
-	estimated_tokens: number;
-	cost_usd: number;
-	model: string;
-}

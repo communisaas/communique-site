@@ -39,6 +39,7 @@
 			theme('colors.slate.100') 50%,
 			theme('colors.slate.200') 100%
 		);
+		background-size: 200% 100%;
 	}
 
 	.skeleton-line.animate-pulse {

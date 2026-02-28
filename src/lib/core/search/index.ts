@@ -1,13 +1,13 @@
 /**
  * Semantic Search Module
  *
- * Privacy-preserving semantic template discovery with OpenAI embeddings.
+ * Privacy-preserving semantic template discovery with Gemini embeddings.
  *
  * Features:
  * - Client-side semantic search (server never sees queries)
  * - Contextual boosting (geographic, temporal, network, impact)
  * - IndexedDB caching for performance
- * - OpenAI text-embedding-3-large (3072 dimensions)
+ * - Gemini gemini-embedding-001 (768 dimensions)
  *
  * Usage:
  * ```typescript
@@ -35,11 +35,7 @@ export type {
 	InferredLocation,
 	SearchQuery,
 	SearchResult,
-	RankingExplanation,
-	CostEstimate,
-	EmbeddingRequest,
-	EmbeddingResponse,
-	BatchEmbeddingResult
+	RankingExplanation
 } from './types';
 
 // Core classes
@@ -47,8 +43,6 @@ export { EmbeddingSearch, createEmbeddingSearch } from './embedding-search';
 export { ContextualBooster, createContextualBooster } from './contextual-boosting';
 export { TemplateRanker, createTemplateRanker } from './ranking';
 export { SearchCache, createSearchCache } from './cache';
-export { OpenAIEmbeddingGenerator, createEmbeddingGenerator } from './openai-embeddings';
-
 // Convenience function to create full search system
 import type { TemplateWithEmbedding, InferredLocation } from './types';
 import { EmbeddingSearch } from './embedding-search';

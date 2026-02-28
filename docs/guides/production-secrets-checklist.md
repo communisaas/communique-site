@@ -8,7 +8,7 @@ This document provides a comprehensive checklist of all environment variables re
 |----------|----------|-----------|
 | **CRITICAL** | Database | `DATABASE_URL` |
 | **CRITICAL** | Security Salts | `IDENTITY_HASH_SALT`, `IP_HASH_SALT` |
-| **CRITICAL** | AI Moderation | `OPENAI_API_KEY`, `GEMINI_API_KEY` |
+| **CRITICAL** | AI Services | `GEMINI_API_KEY` |
 | **CRITICAL** | Congressional API | `CWC_API_KEY` |
 | **CRITICAL** | Authentication | `JWT_SECRET`, `EMAIL_VERIFICATION_SECRET` |
 | ~~**HIGH**~~ | ~~Identity Verification~~ | ~~`DIDIT_API_KEY`, `DIDIT_WORKFLOW_ID`, `DIDIT_WEBHOOK_SECRET`~~ (Didit.me removed in Cycle 15; mDL via Digital Credentials API requires no API keys) |
@@ -156,15 +156,6 @@ CWC_DELIVERY_AGENT_ACK=Y
 ---
 
 ## 6. AI Moderation APIs (CRITICAL)
-
-### OPENAI_API_KEY
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | Content moderation (Layer 1 - safety filter) |
-| **Used In** | `src/lib/core/server/content-moderation.ts` |
-| **Obtain** | https://platform.openai.com/api-keys |
-| **Tier** | Free moderation tier (20 req/min) |
 
 ### GEMINI_API_KEY
 
@@ -364,7 +355,6 @@ wrangler pages secret put CWC_API_KEY
 wrangler pages secret put CONGRESS_API_KEY
 
 # AI Moderation
-wrangler pages secret put OPENAI_API_KEY
 wrangler pages secret put GEMINI_API_KEY
 wrangler pages secret put ANTHROPIC_API_KEY
 
@@ -412,8 +402,7 @@ wrangler pages secret put VOTER_API_KEY
 - [ ] `IDENTITY_HASH_SALT` - Generated with `openssl rand -hex 32`
 - [ ] `IP_HASH_SALT` - Generated with `openssl rand -hex 32`
 - [ ] `JWT_SECRET` - Generated with `openssl rand -base64 32`
-- [ ] `OPENAI_API_KEY` - For content moderation
-- [ ] `GEMINI_API_KEY` - For quality assessment + embeddings
+- [ ] `GEMINI_API_KEY` - For agents, quality assessment + embeddings
 - [ ] `CWC_API_KEY` - For Senate submissions
 
 ### High Priority

@@ -45,7 +45,7 @@
 </script>
 
 <!-- Template layout - header handled by parent layout -->
-<main class="mx-auto max-w-4xl px-4 sm:px-6">
+<main>
 	<ErrorBoundary fallback="detailed" showRetry={true}>
 		{@render children()}
 	</ErrorBoundary>

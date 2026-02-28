@@ -8,7 +8,7 @@
  *
  * Benefits:
  * - Instant repeat searches (no API call needed)
- * - Reduced OpenAI API costs
+ * - Reduced embedding API costs
  * - Offline search capability
  *
  * Expiration:

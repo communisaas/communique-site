@@ -2,7 +2,7 @@
 
 **Purpose:** Find what you need, fast. Every piece of information has ONE home.
 
-**Total Active Docs:** 83 files across organized folders (76 active + 7 archived)
+**Total Active Docs:** 84 files across organized folders (77 active + 7 archived)
 
 ---
 
@@ -12,6 +12,7 @@
 **"How does Communiqué work?"** → `architecture.md`
 **"How does identity/trust work?"** → `architecture/graduated-trust.md` **(north star for identity architecture)**
 **"How do I integrate with voter-protocol?"** → `integration.md`
+**"How does wallet / chain abstraction work?"** → `specs/chain-abstraction-architecture.md`
 **"What's the remediation plan?"** → `specs/INTEGRATION-REMEDIATION-PLAN.md`
 **"How do I build frontend features?"** → `frontend.md`
 **"How do I test?"** → `development/testing.md`
@@ -45,10 +46,11 @@ Feature-specific documentation.
 - `jurisdiction.md` - Jurisdiction system (TemplateJurisdiction model)
 - `identity-verification.md` - mDL via Digital Credentials API flows (self.xyz and Didit.me removed in Cycle 15)
 
-### `specs/` (16 files)
+### `specs/` (17 files)
 Technical specifications and design docs.
 
 **Core specs:**
+- `chain-abstraction-architecture.md` - **Wallet, signing, gas, funding layers** (5-layer stack, 3 entry paths, security model)
 - `zk-proof-integration.md` - ZK proof integration (5 phases, 45K)
 - `portable-identity.md` - IPFS + on-chain pointer (Phase 2)
 - `universal-credibility.md` - Credential verification system
@@ -143,6 +145,7 @@ Contains archived docs from past migrations, refactors, and design iterations. R
 | Architecture | `architecture.md` |
 | **Identity & Trust Tiers** | `architecture/graduated-trust.md` |
 | Integration | `integration.md` |
+| **Chain Abstraction** | `specs/chain-abstraction-architecture.md` |
 | **Integration Remediation** | `specs/INTEGRATION-REMEDIATION-PLAN.md` |
 | Frontend | `frontend.md` |
 | Features | `features/*.md` |

@@ -9,7 +9,6 @@ PUBLIC_SCROLL_RPC_URL = "https://rpc.scroll.io"
 
 # Contract addresses (override for mainnet deployment):
 # PUBLIC_DEBATE_MARKET_ADDRESS = "0x..."
-# PUBLIC_STAKING_TOKEN_ADDRESS = "0x..."
 # PUBLIC_DISTRICT_GATE_ADDRESS = "0x..."
 # PUBLIC_SCROLL_CHAIN_ID = "534352"
 
@@ -27,8 +26,7 @@ PUBLIC_SCROLL_RPC_URL = "https://rpc.scroll.io"
 #   IDENTITY_HASH_SALT       - Sybil-resistant identity hashing
 #
 # AI Services:
-#   GEMINI_API_KEY           - Gemini API for agents
-#   OPENAI_API_KEY           - Embeddings and scope extraction
+#   GEMINI_API_KEY           - Gemini API for agents + embeddings
 #   GROQ_API_KEY             - Llama Guard safety moderation
 
 [[hyperdrive]]

@@ -182,6 +182,9 @@ model Template {
   reputation_delta   Float   @default(0) @map("reputation_delta")
   reputation_applied Boolean @default(false) @map("reputation_applied")
 
+  // Content-addressable identity: SHA-256(title + body), prevents duplicate publishing
+  content_hash String? @map("content_hash")
+
   // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -208,6 +211,7 @@ model Template {
   // Staked deliberation (DebateMarket.sol off-chain content storage)
   debates Debate[]
 
+  @@unique([userId, content_hash], name: "template_author_content")
   @@index([verification_status])
   @@index([country_code])
   @@index([userId])
