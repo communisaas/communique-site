@@ -15,6 +15,7 @@
 	import WalletStatus from '$lib/components/wallet/WalletStatus.svelte';
 	import { walletState } from '$lib/stores/walletState.svelte';
 	import type { HeaderUser, HeaderTemplate, TemplateUseEvent } from '$lib/types/any-replacements';
+	import { FEATURES } from '$lib/config/features';
 
 	let {
 		user = null,
@@ -77,31 +78,33 @@
 		<!-- Right: User identity + wallet -->
 		<div class="identity-strip__right">
 			{#if user}
-				<div class="identity-strip__wallet-group">
-					{#if walletState.connected}
-						<span class="identity-strip__balance-wrap">
-							<BalanceDisplay address={walletState.address} compact={true} />
-						</span>
-						<WalletStatus
-							address={walletState.address}
-							chainId={walletState.chainId}
-							ondisconnect={() => walletState.disconnect()}
-						/>
-					{:else}
-						<button
-							type="button"
-							class="wallet-connect-pill"
-							onclick={() => walletState.connectEVM()}
-							disabled={walletState.connecting}
-						>
-							{#if walletState.connecting}
-								Connecting...
-							{:else}
-								Connect
-							{/if}
-						</button>
-					{/if}
-				</div>
+				{#if FEATURES.WALLET}
+					<div class="identity-strip__wallet-group">
+						{#if walletState.connected}
+							<span class="identity-strip__balance-wrap">
+								<BalanceDisplay address={walletState.address} compact={true} />
+							</span>
+							<WalletStatus
+								address={walletState.address}
+								chainId={walletState.chainId}
+								ondisconnect={() => walletState.disconnect()}
+							/>
+						{:else}
+							<button
+								type="button"
+								class="wallet-connect-pill"
+								onclick={() => walletState.connectEVM()}
+								disabled={walletState.connecting}
+							>
+								{#if walletState.connecting}
+									Connecting...
+								{:else}
+									Connect
+								{/if}
+							</button>
+						{/if}
+					</div>
+				{/if}
 				<HeaderAvatar {user} />
 			{:else}
 				<HeaderSignIn />

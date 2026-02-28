@@ -11,6 +11,7 @@
 	import { performLogout } from '$lib/core/identity/cache-invalidation';
 	import { walletState } from '$lib/stores/walletState.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
+	import { FEATURES } from '$lib/config/features';
 
 	let { user }: { user: HeaderUser } = $props();
 
@@ -100,20 +101,22 @@
 				<User class="header-dropdown-item-icon" />
 				<span>Profile</span>
 			</a>
-			<div class="header-dropdown-divider"></div>
-			{#if walletState.connected}
-				<div class="header-dropdown-item header-dropdown-item--info" role="menuitem">
-					<Wallet class="header-dropdown-item-icon" />
-					<div>
-						<span>Wallet</span>
-						<span class="header-dropdown-wallet-address">{walletState.displayAddress}</span>
+			{#if FEATURES.WALLET}
+				<div class="header-dropdown-divider"></div>
+				{#if walletState.connected}
+					<div class="header-dropdown-item header-dropdown-item--info" role="menuitem">
+						<Wallet class="header-dropdown-item-icon" />
+						<div>
+							<span>Wallet</span>
+							<span class="header-dropdown-wallet-address">{walletState.displayAddress}</span>
+						</div>
 					</div>
-				</div>
-			{:else}
-				<button type="button" onclick={handleConnectWallet} class="header-dropdown-item" role="menuitem">
-					<Wallet class="header-dropdown-item-icon" />
-					<span>Connect Wallet</span>
-				</button>
+				{:else}
+					<button type="button" onclick={handleConnectWallet} class="header-dropdown-item" role="menuitem">
+						<Wallet class="header-dropdown-item-icon" />
+						<span>Connect Wallet</span>
+					</button>
+				{/if}
 			{/if}
 			<div class="header-dropdown-divider"></div>
 			<button type="button" onclick={handleLogout} class="header-dropdown-item" role="menuitem">

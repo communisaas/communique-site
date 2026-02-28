@@ -12,6 +12,7 @@
 	import { templateStore } from '$lib/stores/templates.svelte';
 	import TemplatePreview from '$lib/components/template-browser/TemplatePreview.svelte';
 	import LocationFilter from '$lib/components/template-browser/LocationFilter.svelte';
+	import { FEATURES } from '$lib/config/features';
 	import TemplateList from '$lib/components/template-browser/TemplateList.svelte';
 	import TouchModal from '$lib/components/ui/TouchModal.svelte';
 	import SimpleModal from '$lib/components/modals/SimpleModal.svelte';
@@ -349,12 +350,14 @@
 			</div>
 
 			<!-- Location Filter -->
-			<div class="stream-header">
-				<LocationFilter
-					templates={allTemplates}
-					onFilterChange={handleLocationFilterChange}
-				/>
-			</div>
+			{#if FEATURES.ADDRESS_VERIFICATION}
+				<div class="stream-header">
+					<LocationFilter
+						templates={allTemplates}
+						onFilterChange={handleLocationFilterChange}
+					/>
+				</div>
+			{/if}
 
 			<!-- Template Browser: List + Preview Grid -->
 			<div class="template-browser" id="template-browser">

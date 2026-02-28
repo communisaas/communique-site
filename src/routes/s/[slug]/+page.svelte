@@ -30,6 +30,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { Template as TemplateType } from '$lib/types/template';
+	import { FEATURES } from '$lib/config/features';
 
 	let { data }: { data: PageData } = $props();
 
@@ -71,12 +72,19 @@
 	const hasCompleteAddress = $derived(
 		guestState.state?.address
 	);
-	const isCongressional = $derived(template.deliveryMethod === 'cwc');
-	const addressRequired = $derived(isCongressional && !hasCompleteAddress && (data.user?.trust_tier ?? 0) < 2);
+	const isCongressional = $derived(
+		FEATURES.CONGRESSIONAL && (
+			template.deliveryMethod === 'cwc' ||
+			!!(data as unknown as PowerLandscapeData).recipientConfig?.cwcRouting
+		)
+	);
+	const addressRequired = $derived(
+		FEATURES.ADDRESS_VERIFICATION && isCongressional && !hasCompleteAddress && (data.user?.trust_tier ?? 0) < 2
+	);
 
 	// Debate resolution signal for message preview banner
 	const debateResolution = $derived(
-		data.debate && (data.debate as DebateData).status === 'resolved' && (data.debate as DebateData).winningStance
+		FEATURES.DEBATE && data.debate && (data.debate as DebateData).status === 'resolved' && (data.debate as DebateData).winningStance
 			? {
 					winningStance: (data.debate as DebateData).winningStance as string,
 					participants: (data.debate as DebateData).uniqueParticipants
@@ -170,7 +178,7 @@
 		// CWC templates: TemplateModal handles tier-based routing in onMount
 		// (trust-upgrade for Tier 1-2, ZKP flow for Tier 3+)
 		// Skip address gate — it shows the old NFC/Gov ID modal which is wrong here
-		if (template.deliveryMethod === 'cwc' && data.user) {
+		if (FEATURES.CONGRESSIONAL && template.deliveryMethod === 'cwc' && data.user) {
 			modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
 			return;
 		}
@@ -208,7 +216,7 @@
 		existingPosition?: { stance: string; registrationId: string } | null;
 		deliveredRecipients?: string[];
 		districtOfficials?: DistrictOfficialInput[];
-		recipientConfig?: { decisionMakers?: ProcessedDecisionMaker[]; personalPrompt?: string };
+		recipientConfig?: { decisionMakers?: ProcessedDecisionMaker[]; personalPrompt?: string; cwcRouting?: boolean };
 	}
 	const pl = $derived(data as unknown as PowerLandscapeData);
 
@@ -261,7 +269,10 @@
 		const existing = pl.existingPosition ?? null;
 		const counts = pl.positionCounts;
 
-		if (existing) {
+		if (!FEATURES.STANCE_POSITIONS) {
+			// No stance gate — show decision-makers immediately
+			landscapeRevealed = true;
+		} else if (existing) {
 			// Returning user — restore registered state, skip stance buttons
 			positionState.restore(
 				tmplId,
@@ -488,150 +499,111 @@
 	<meta property="twitter:image:alt" content="{template.title} - Join the movement on Communiqué" />
 </svelte:head>
 
-<!-- Template content with integrated header -->
-<div class="py-6">
-	<!-- Template Header with Action -->
-	<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-		<div class="min-w-0 flex-1">
-			<!-- Template title as primary header -->
-			<h1 class="mb-3 text-3xl font-bold text-slate-900 sm:text-4xl">
-				{template.title}
-			</h1>
-			<p class="mb-4 text-lg text-slate-600">{template.description}</p>
+<!-- Template content with zoned layout: Orient → Commit → Act -->
+<div class="py-6 overflow-x-hidden">
+	<!-- ORIENT: Template header (single column, clean context) -->
+	<div class="mb-2">
+		<h1 class="mb-3 text-3xl font-bold text-slate-900 sm:text-4xl">
+			{template.title}
+		</h1>
+		<p class="mb-4 text-lg text-slate-600">{template.description}</p>
 
-			<!-- Template metadata -->
-			<div class="flex flex-wrap items-center gap-3">
-				<Badge variant={template.deliveryMethod === 'cwc' ? 'congressional' : 'direct'}>
-					{template.deliveryMethod === 'cwc' ? 'Congressional Delivery' : 'Direct Outreach'}
-				</Badge>
-				<span class="rounded bg-slate-100 px-2 py-1 text-sm text-slate-600">
-					{template.category}
-				</span>
-				{#if (data.user?.trust_tier ?? 0) >= 2 && template.deliveryMethod === 'cwc'}
-					<div class="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-sm text-green-700">
-						<VerificationBadge showText={false} />
-						<span>Enhanced Credibility</span>
-					</div>
-				{/if}
-				<div class="flex items-center gap-6 text-sm text-slate-500">
-					<div class="flex items-center gap-1.5">
-						<Users class="h-4 w-4" />
-						<span
-							>{(template.metrics?.sent || 0).toLocaleString()} sent this</span
-						>
-					</div>
-					<div class="flex items-center gap-1.5">
-						<Eye class="h-4 w-4" />
-						<span>{(template.metrics?.views || 0).toLocaleString()} views</span>
-					</div>
-					<ShareButton url={shareUrl} _title={template.title} variant="secondary" size="sm" />
-				</div>
-			</div>
-
-		</div>
-
-		<!-- User greeting, Trust Journey, and Action Button -->
-		<div class="flex flex-col items-start gap-3 sm:items-end">
-			{#if data.user}
-				<!-- Trust Journey — signal strength your voice carries -->
-				<div class="w-full sm:w-72">
-					<TrustJourney
-						trustTier={data.user.trust_tier ?? 1}
-						onVerifyAddress={() => {
-							modalActions.openModal('address-modal', 'address', {
-								template,
-								source,
-								mode: 'collection',
-								onComplete: async (detail: AddressModalDetail) => {
-									// Cache address locally
-									guestState.setAddress(detail.address);
-									// Bump trust_tier to 2 (Constituent) on the server
-									// Production: mDL Digital Credentials API does this via callback
-									// Demo: explicit endpoint
-									await fetch('/demo/verify-address', {
-										method: 'POST',
-										headers: { 'Content-Type': 'application/json' },
-										body: JSON.stringify({ address: detail.address })
-									});
-									// Close address modal — let user see tier upgrade, then send
-									modalActions.closeModal('address-modal');
-									// Refresh page data so TrustJourney animates to new tier
-									await invalidateAll();
-								}
-							});
-						}}
-						onVerifyIdentity={async () => {
-							// Tier 3: Identity verification
-							// Demo mode: simulate via /demo/verify-identity + bootstrap ZK credential
-							// Production: mDL Digital Credentials API flow → Shadow Atlas registration
-							const res = await fetch('/demo/verify-identity', { method: 'POST' });
-							const result = await res.json();
-
-							// Bootstrap session credential for real ZK proof generation
-							if (result.identity_commitment && data.user?.id) {
-								try {
-									const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
-									await bootstrapDemoCredential(data.user.id, result.identity_commitment);
-								} catch (e) {
-									console.error('[Demo] Credential bootstrap failed:', e);
-								}
-							}
-							await invalidateAll();
-						}}
-						onGenerateProof={() => {
-							// Tier 4: ZK proof generation — opens template modal directly in proof state
-							modalActions.openModal('template-modal', 'template_modal', {
-								template,
-								user: data.user,
-								initialState: 'cwc-submission'
-							});
-						}}
-					/>
+		<!-- Template metadata -->
+		<div class="flex flex-wrap items-center gap-3">
+			<Badge variant={isCongressional ? 'congressional' : 'direct'}>
+				{isCongressional ? 'Congressional Delivery' : 'Direct Outreach'}
+			</Badge>
+			<span class="rounded bg-slate-100 px-2 py-1 text-sm text-slate-600">
+				{template.category}
+			</span>
+			{#if FEATURES.CONGRESSIONAL && (data.user?.trust_tier ?? 0) >= 2 && template.deliveryMethod === 'cwc'}
+				<div class="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-sm text-green-700">
+					<VerificationBadge showText={false} />
+					<span>Enhanced Credibility</span>
 				</div>
 			{/if}
+			<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
+				<div class="flex items-center gap-1.5">
+					<Users class="h-4 w-4" />
+					<span>{(template.metrics?.sent || 0).toLocaleString()} sent this</span>
+				</div>
+				<div class="flex items-center gap-1.5">
+					<Eye class="h-4 w-4" />
+					<span>{(template.metrics?.views || 0).toLocaleString()} views</span>
+				</div>
+				<ShareButton url={shareUrl} _title={template.title} variant="secondary" size="sm" />
+			</div>
+		</div>
+	</div>
 
-			<!-- Debate signal — adjacent to send action for decision-critical visibility -->
-			<DebateSignal debate={(data.debate as DebateData) ?? null} variant="inline" />
+	<!-- COMMIT: Stance registration / action — the page's experiential pivot -->
+	{#if FEATURES.STANCE_POSITIONS}
+		<div class="border-y border-slate-200/80 py-4 my-6">
+			<!-- Debate signal — contextualizes the support/oppose decision -->
+			{#if FEATURES.DEBATE}
+				<DebateSignal debate={(data.debate as DebateData) ?? null} variant="inline" />
+			{/if}
 
-			<!-- Primary action: Stance registration (authenticated) or ActionBar (guest) -->
-			<div class="w-full sm:w-auto">
-				{#if data.user && identityCommitment}
-					<StanceRegistration
-						templateId={template.id}
-						{identityCommitment}
-						districtCode={data.userDistrictCode ?? undefined}
-						onRegistered={handleRegistered}
-					/>
-				{:else}
-					<div class="[&>div]:mt-0">
-						<ActionBar
-							{template}
-							user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
-							{personalConnectionValue}
-							onSendMessage={() => {
+			{#if data.user && identityCommitment}
+				<!-- Authenticated: real stance registration -->
+				<StanceRegistration
+					templateId={template.id}
+					{identityCommitment}
+					districtCode={data.userDistrictCode ?? undefined}
+					onRegistered={handleRegistered}
+					recipientCount={landscape.totalCount}
+					{isCongressional}
+				/>
+			{:else}
+				<!-- Guest / no identity: stance-first framing that routes to auth -->
+				{@const rcLabel = landscape.totalCount > 0
+					? isCongressional
+						? landscape.totalCount === 1 ? '1 representative' : `${landscape.totalCount} representatives`
+						: landscape.totalCount === 1 ? '1 decision-maker' : `${landscape.totalCount} decision-makers`
+					: isCongressional
+						? 'your representatives'
+						: 'decision-makers'}
+				<div class="space-y-3">
+					<p class="flex items-center gap-1.5 text-sm text-slate-600">
+						<span>Contact {rcLabel}</span>
+						<span class="text-slate-400">&rarr;</span>
+						<span class="text-slate-500">first, where do you stand?</span>
+					</p>
+					<div class="flex flex-wrap items-center gap-3">
+						<button
+							class="flex min-h-[44px] flex-1 items-center justify-center rounded-lg bg-participation-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-participation-primary-700 sm:flex-none"
+							onclick={() => {
 								if (!data.user) {
 									modalActions.openModal('template-modal', 'template_modal', { template, user: null });
 								} else {
 									handlePostAuthFlow();
 								}
 							}}
-							localShowEmailModal={false}
-							bind:actionProgress
-							onEmailModalClose={() => {
-								/* Intentionally empty - modal close handled elsewhere */
+						>
+							I support this
+						</button>
+						<button
+							class="flex min-h-[44px] flex-1 items-center justify-center rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 sm:flex-none"
+							onclick={() => {
+								if (!data.user) {
+									modalActions.openModal('template-modal', 'template_modal', { template, user: null });
+								} else {
+									handlePostAuthFlow();
+								}
 							}}
-							componentId="template-page-action"
-						/>
+						>
+							I oppose this
+						</button>
 					</div>
-				{/if}
-			</div>
+				</div>
+			{/if}
 		</div>
-	</div>
+	{/if}
 
-	<!-- Two-column field: message left, deliberation right -->
-	<div class="lg:grid lg:grid-cols-[minmax(0,65ch)_minmax(340px,1fr)] lg:gap-8 lg:items-start">
-		<!-- LEFT: Message (sticky on desktop) -->
-		<div class="lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
+	<!-- ACT: Two-column field — message left, action space right -->
+	<div class="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8 lg:items-start overflow-hidden">
+		<!-- LEFT: Message preview — flows naturally with page scroll -->
+		<div class="min-w-0">
 			<div class="rounded-xl border border-slate-200 bg-white shadow-sm">
 				{#if addressRequired && !landscapeRevealed}
 					<!-- Address Required Notice -->
@@ -705,8 +677,52 @@
 			</div>
 		</div>
 
-		<!-- RIGHT: Power Landscape + Deliberation (scrollable, beside message on desktop) -->
-		<div class="mt-8 lg:mt-0 space-y-8">
+		<!-- RIGHT: Signal strength + Power Landscape + Deliberation -->
+		<div class="mt-8 lg:mt-0 space-y-8 min-w-0">
+			<!-- Trust Journey — signal strength contextualizes the action space below -->
+			{#if FEATURES.STANCE_POSITIONS && data.user}
+				<TrustJourney
+					trustTier={data.user.trust_tier ?? 1}
+					onVerifyAddress={FEATURES.ADDRESS_VERIFICATION ? () => {
+						modalActions.openModal('address-modal', 'address', {
+							template,
+							source,
+							mode: 'collection',
+							onComplete: async (detail: AddressModalDetail) => {
+								guestState.setAddress(detail.address);
+								await fetch('/demo/verify-address', {
+									method: 'POST',
+									headers: { 'Content-Type': 'application/json' },
+									body: JSON.stringify({ address: detail.address })
+								});
+								modalActions.closeModal('address-modal');
+								await invalidateAll();
+							}
+						});
+					} : undefined}
+					onVerifyIdentity={async () => {
+						const res = await fetch('/demo/verify-identity', { method: 'POST' });
+						const result = await res.json();
+						if (result.identity_commitment && data.user?.id) {
+							try {
+								const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
+								await bootstrapDemoCredential(data.user.id, result.identity_commitment);
+							} catch (e) {
+								console.error('[Demo] Credential bootstrap failed:', e);
+							}
+						}
+						await invalidateAll();
+					}}
+					onGenerateProof={FEATURES.CONGRESSIONAL ? () => {
+						modalActions.openModal('template-modal', 'template_modal', {
+							template,
+							user: data.user,
+							initialState: 'cwc-submission'
+						});
+					} : undefined}
+				/>
+			{/if}
+
 			<!-- Power Landscape: visible after position registration -->
 			{#if landscapeRevealed}
 				<PowerLandscape
@@ -717,6 +733,7 @@
 					{departingRecipients}
 					onWriteTo={handleWriteTo}
 					onBatchRegister={handleBatchRegister}
+					{isCongressional}
 					onVerifyAddress={addressRequired ? () => {
 						modalActions.openModal('address-modal', 'address', {
 							template,
@@ -732,60 +749,64 @@
 			{/if}
 
 			<!-- Debate surface -->
-			<DebateSurface
-				debate={(data.debate as DebateData) ?? null}
-				userTrustTier={data.user?.trust_tier ?? 0}
-				onInitiateDebate={() => {
-					modalActions.openModal('debate-modal', 'debate', {
-						template,
-						user: data.user,
-						mode: 'initiate'
-					});
-				}}
-				onParticipate={() => {
-					modalActions.openModal('debate-modal', 'debate', {
-						template,
-						user: data.user,
-						debate: data.debate,
-						mode: 'participate'
-					});
-				}}
-				onCoSign={(argumentIndex) => {
-					modalActions.openModal('debate-modal', 'debate', {
-						template,
-						user: data.user,
-						debate: data.debate,
-						mode: 'cosign',
-						cosignArgumentIndex: argumentIndex
-					});
-				}}
-				onVerifyIdentity={async () => {
-					if (data.user?.trust_tier != null && data.user.trust_tier < 2) {
-						// Tier 0-1: need address first
-						modalActions.openModal('address-modal', 'address', {
+			{#if FEATURES.DEBATE}
+				<DebateSurface
+					debate={(data.debate as DebateData) ?? null}
+					userTrustTier={data.user?.trust_tier ?? 0}
+					onInitiateDebate={() => {
+						modalActions.openModal('debate-modal', 'debate', {
 							template,
 							user: data.user,
-							context: 'debate'
+							mode: 'initiate'
 						});
-					} else {
-						// Tier 2: identity verification
-						const res = await fetch('/demo/verify-identity', { method: 'POST' });
-						const result = await res.json();
-						if (result.identity_commitment && data.user?.id) {
-							try {
-								const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
-								await bootstrapDemoCredential(data.user.id, result.identity_commitment);
-							} catch (e) {
-								console.error('[Demo] Credential bootstrap failed:', e);
+					}}
+					onParticipate={() => {
+						modalActions.openModal('debate-modal', 'debate', {
+							template,
+							user: data.user,
+							debate: data.debate,
+							mode: 'participate'
+						});
+					}}
+					onCoSign={(argumentIndex) => {
+						modalActions.openModal('debate-modal', 'debate', {
+							template,
+							user: data.user,
+							debate: data.debate,
+							mode: 'cosign',
+							cosignArgumentIndex: argumentIndex
+						});
+					}}
+					onVerifyIdentity={async () => {
+						if (data.user?.trust_tier != null && data.user.trust_tier < 2) {
+							// Tier 0-1: need address first
+							modalActions.openModal('address-modal', 'address', {
+								template,
+								user: data.user,
+								context: 'debate'
+							});
+						} else {
+							// Tier 2: identity verification
+							const res = await fetch('/demo/verify-identity', { method: 'POST' });
+							const result = await res.json();
+							if (result.identity_commitment && data.user?.id) {
+								try {
+									const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
+									await bootstrapDemoCredential(data.user.id, result.identity_commitment);
+								} catch (e) {
+									console.error('[Demo] Credential bootstrap failed:', e);
+								}
 							}
+							await invalidateAll();
 						}
-						await invalidateAll();
-					}
-				}}
-			/>
+					}}
+				/>
+			{/if}
 		</div>
 	</div>
 </div>
 
 <!-- Mobile debate awareness — sticky banner below lg: breakpoint -->
-<MobileDebateBanner debate={(data.debate as DebateData) ?? null} />
+{#if FEATURES.DEBATE}
+	<MobileDebateBanner debate={(data.debate as DebateData) ?? null} />
+{/if}

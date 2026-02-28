@@ -4,13 +4,21 @@
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { debateState } from '$lib/stores/debateState.svelte';
 	import type { DebateData } from '$lib/stores/debateState.svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, goto } from '$app/navigation';
 	import { ArrowLeft } from '@lucide/svelte';
+	import { FEATURES } from '$lib/config/features';
 
 	let appealPending = $state(false);
 	let appealError = $state<string | null>(null);
 
 	let { data }: { data: PageData } = $props();
+
+	// Redirect to template page when debate feature is hidden
+	$effect(() => {
+		if (!FEATURES.DEBATE) {
+			goto(`/s/${data.template?.slug ?? ''}`, { replaceState: true });
+		}
+	});
 
 	const debate = $derived(data.debate as DebateData);
 	const template = $derived(data.template);

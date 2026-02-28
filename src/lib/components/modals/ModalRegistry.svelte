@@ -15,6 +15,7 @@
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import type { ComponentTemplate } from '$lib/types/component-props';
 	import type { DebateData } from '$lib/stores/debateState.svelte';
+	import { FEATURES } from '$lib/config/features';
 
 	/** Type-safe accessors for modal data fields */
 	type ModalData = Record<string, unknown>;
@@ -71,6 +72,7 @@
 	{/snippet}
 </UnifiedModal>
 
+{#if FEATURES.ADDRESS_VERIFICATION}
 <!-- Address Modal (for Congressional templates) -->
 <UnifiedModal
 	id="address-modal"
@@ -92,6 +94,7 @@
 		</div>
 	{/snippet}
 </UnifiedModal>
+{/if}
 
 <!-- Template Modal -->
 <UnifiedModal
@@ -142,6 +145,7 @@
 	{/snippet}
 </UnifiedModal>
 
+{#if FEATURES.DEBATE}
 <!-- Debate Modal (staked deliberation) -->
 <UnifiedModal
 	id="debate-modal"
@@ -163,7 +167,9 @@
 		{/if}
 	{/snippet}
 </UnifiedModal>
+{/if}
 
+{#if FEATURES.WALLET}
 <!-- Wallet Connect Modal -->
 <UnifiedModal
 	id="wallet-connect-modal"
@@ -181,3 +187,4 @@
 		/>
 	{/snippet}
 </UnifiedModal>
+{/if}
