@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
+import { TEMPLATE_LIST_SELECT } from '$lib/core/db/template-select';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import {
 	createApiError,
@@ -176,58 +177,43 @@ function validateTemplateData(data: unknown): {
 export const GET: RequestHandler = async () => {
 	try {
 		const dbTemplates = await db.template.findMany({
-			where: {
-				is_public: true
-			},
-			orderBy: {
-				createdAt: 'desc'
-			},
-			include: {
-				jurisdictions: true // Include jurisdictions for location filtering
-			}
+			where: { is_public: true },
+			orderBy: { createdAt: 'desc' },
+			select: TEMPLATE_LIST_SELECT,
 		});
 
-		// Batch query: which templates have active debates? (one query, Set lookup)
-		let activeDebateTemplateIds = new Set<string>();
-		try {
-			if ('debate' in db) {
-				const activeDebates = await (
-					db as unknown as {
-						debate: {
-							findMany: (params: unknown) => Promise<{ template_id: string }[]>;
-						};
-					}
-				).debate.findMany({
-					where: { status: 'active' },
-					select: { template_id: true },
-					distinct: ['template_id']
-				});
-				activeDebateTemplateIds = new Set(activeDebates.map((d) => d.template_id));
-			}
-		} catch {
-			// debate table may not exist yet — continue without debate indicators
-		}
+		const templateIds = dbTemplates.map((t) => t.id);
 
-		// Include template scopes - handle if table doesn't exist
-		let scopes: UnknownRecord[] = [];
-		try {
-			// Check if template_scope table exists in the db schema
-			// Runtime feature check: cast justified because table may not exist in all schema versions
-			if ('template_scope' in db) {
-				scopes = await (
-					db as unknown as {
-						template_scope: { findMany: (params: unknown) => Promise<UnknownRecord[]> };
-					}
-				).template_scope.findMany({
-					where: { template_id: { in: dbTemplates.map((t) => t.id) } }
-				});
-			}
-		} catch (error) {
-			// template_scope table might not exist, continue without scopes
-			console.warn('template_scope table not found, continuing without scopes');
-		}
+		// Parallelize independent queries
+		const [activeDebates, rawScopes] = await Promise.all([
+			(db as unknown as {
+				debate: { findMany: (params: unknown) => Promise<{ template_id: string }[]> };
+			}).debate.findMany({
+				where: { status: 'active' },
+				select: { template_id: true },
+				distinct: ['template_id']
+			}).catch(() => [] as { template_id: string }[]),
 
-		const idToScope = new Map(scopes.map((s) => [s.template_id, s]));
+			(db as unknown as {
+				templateScope: { findMany: (params: unknown) => Promise<UnknownRecord[]> };
+			}).templateScope.findMany({
+				where: { template_id: { in: templateIds } }
+			}).catch(() => [] as UnknownRecord[]),
+		]);
+
+		const activeDebateTemplateIds = new Set(activeDebates.map((d) => d.template_id));
+
+		// Group by template_id (a template may have multiple scopes)
+		const scopesByTemplateId = new Map<string, UnknownRecord[]>();
+		for (const s of rawScopes) {
+			const tid = s.template_id as string;
+			const arr = scopesByTemplateId.get(tid);
+			if (arr) {
+				arr.push(s);
+			} else {
+				scopesByTemplateId.set(tid, [s]);
+			}
+		}
 
 		// Zod schema for metrics validation
 		const MetricsSchema = z
@@ -361,8 +347,10 @@ export const GET: RequestHandler = async () => {
 				// Jurisdictions for location filtering (Phase 3)
 				jurisdictions: template.jurisdictions || [],
 
-				// Optional scope from separate table
-				scope: idToScope.get(template.id) || null,
+				// Scope from TemplateScope table (singular — first scope for backward compat)
+				scope: (scopesByTemplateId.get(template.id) ?? [])[0] || null,
+				// Scopes array for ClientSideTemplateFilter hierarchical matching
+				scopes: scopesByTemplateId.get(template.id) ?? [],
 
 				recipientEmails: (() => {
 					let recipientConfig: unknown = template.recipient_config;
@@ -450,16 +438,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		try {
 			const moderationResult = await moderateTemplate({
 				title: validData.title,
-				message_body: validData.message_body,
-				category: validData.category
+				message_body: validData.message_body
 			});
 
 			if (!moderationResult.approved) {
-				// Determine error type based on which layer rejected
-				const isSafetyRejection = !moderationResult.safety?.safe;
-				const errorCode = isSafetyRejection ? 'CONTENT_FLAGGED' : 'QUALITY_REJECTED';
-
-				console.log(`Moderation REJECTED template (${isSafetyRejection ? 'safety' : 'quality'}):`, {
+				console.log('Moderation REJECTED template:', {
+					rejection_reason: moderationResult.rejection_reason,
 					hazards: moderationResult.safety?.hazards,
 					summary: moderationResult.summary,
 					latencyMs: moderationResult.latency_ms
@@ -467,13 +451,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				const response: StructuredApiResponse = {
 					success: false,
-					error: createValidationError('message_body', errorCode, moderationResult.summary)
+					error: createValidationError('message_body', 'CONTENT_FLAGGED', moderationResult.summary)
 				};
 				return json(response, { status: 400 });
 			}
 
 			// Convert to legacy format for backward compatibility with DB storage
-			// Inline conversion (deprecated function removed)
 			const votes = [];
 			if (moderationResult.prompt_guard) {
 				votes.push({
@@ -495,15 +478,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					timestamp: moderationResult.safety.timestamp
 				});
 			}
-			if (moderationResult.quality) {
-				votes.push({
-					agent: 'gemini',
-					approved: moderationResult.quality.approved,
-					confidence: moderationResult.quality.confidence,
-					reasoning: moderationResult.quality.reasoning,
-					timestamp: moderationResult.quality.timestamp
-				});
-			}
 			const approvedCount = votes.filter((v) => v.approved).length;
 			const consensusType =
 				approvedCount === votes.length ? 'unanimous' : approvedCount === 0 ? 'unanimous' : 'split';
@@ -512,16 +486,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				approved: moderationResult.approved,
 				consensus_type: consensusType,
 				votes,
-				final_confidence:
-					moderationResult.quality?.confidence ?? (moderationResult.safety?.safe ? 1.0 : 0.0),
+				final_confidence: moderationResult.safety?.safe ? 1.0 : 0.0,
 				reasoning_summary: moderationResult.summary,
 				timestamp: new Date().toISOString()
 			};
 
 			console.log('Moderation APPROVED template:', {
 				safetyModel: moderationResult.safety?.model,
-				qualityModel: moderationResult.quality?.model,
-				confidence: moderationResult.quality?.confidence,
 				latencyMs: moderationResult.latency_ms
 			});
 		} catch (moderationError) {
@@ -618,6 +589,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							specific_locations: null,
 							jurisdictions: [],
 							scope: null,
+							scopes: [],
 							createdAt: existingByContent.createdAt,
 							updatedAt: existingByContent.updatedAt
 						} }
@@ -836,6 +808,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						specific_locations: null,
 						jurisdictions: [],
 						scope: null,
+						scopes: [],
 						createdAt: newTemplate.createdAt,
 						updatedAt: newTemplate.updatedAt
 					};

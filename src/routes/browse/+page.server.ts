@@ -1,25 +1,15 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/core/db';
+import { TEMPLATE_LIST_SELECT } from '$lib/core/db/template-select';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import { z } from 'zod';
 
 export const load: PageServerLoad = async () => {
 	try {
 		const dbTemplates = await db.template.findMany({
-			where: {
-				is_public: true
-			},
-			orderBy: {
-				createdAt: 'desc'
-			},
-			include: {
-				user: {
-					select: {
-						name: true,
-						avatar: true
-					}
-				}
-			}
+			where: { is_public: true },
+			orderBy: { createdAt: 'desc' },
+			select: TEMPLATE_LIST_SELECT,
 		});
 
 		// Batch query: debate summaries for all templates

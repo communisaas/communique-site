@@ -27,23 +27,24 @@ export const load: LayoutServerLoad = async ({ params, locals: _locals, request 
 		throw error(404, 'Template not found');
 	}
 
-	// Track template view (increment metrics)
-	await db.template.update({
+	// Fire-and-forget: view tracking should not block SSR response
+	const currentMetrics = extractTemplateMetrics(template.metrics);
+	db.template.update({
 		where: { id: template.id },
 		data: {
 			metrics: {
-				...extractTemplateMetrics(template.metrics),
-				views: (extractTemplateMetrics(template.metrics).views || 0) + 1
+				...currentMetrics,
+				views: (currentMetrics.views || 0) + 1
 			}
 		}
-	});
+	}).catch((err) => console.warn('[slug layout] View tracking failed:', err));
 
 	// Detect country and resolve channel
 	const detectedCountry = detectCountryFromHeaders(request.headers) || 'US';
 	const channelInfo = await resolveChannel(detectedCountry);
 
-	// Extract metrics from JSON field
-	const jsonMetrics = extractTemplateMetrics(template.metrics);
+	// Reuse currentMetrics (already extracted above for view tracking)
+	const jsonMetrics = currentMetrics;
 
 	// Format template for client
 	const formattedTemplate = {

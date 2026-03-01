@@ -254,6 +254,23 @@ function createTemplateStore() {
 			}
 		},
 
+		/**
+		 * Hydrate store from SSR page data (no network fetch needed).
+		 * Accepts a wider type than Template[] because SSR responses exclude
+		 * expensive columns (updatedAt) and use raw DB shapes for scope/scopes.
+		 */
+		hydrateFromSSR(templates: Record<string, unknown>[]): void {
+			if (state.initialized && state.templates.length > 0) return; // Already hydrated
+			state.templates = templates as unknown as Template[];
+			state.loading = false;
+			state.error = null;
+			state.lastUpdated = new Date();
+			state.initialized = true;
+			if (!state.selectedId && templates.length > 0) {
+				state.selectedId = (templates[0] as { id: string }).id;
+			}
+		},
+
 		// API Integration with progressive enhancement
 		async fetchTemplates(): Promise<void> {
 			state.loading = true;

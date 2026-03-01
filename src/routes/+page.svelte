@@ -101,8 +101,13 @@
 			}
 		}
 
-		// Initialize template store
-		templateStore.fetchTemplates();
+		// Hydrate template store from SSR data (no client-side fetch needed)
+		if (data.templates && data.templates.length > 0) {
+			templateStore.hydrateFromSSR(data.templates);
+		} else {
+			// Fallback: SSR returned empty, try client-side fetch
+			templateStore.fetchTemplates();
+		}
 
 		// Check for template creation parameter (including auth return with draft)
 		const createTemplate = $page.url.searchParams.get('create');
@@ -349,8 +354,8 @@
 				<CoordinationExplainer />
 			</div>
 
-			<!-- Location Filter -->
-			{#if FEATURES.ADDRESS_VERIFICATION}
+			<!-- Location Filter — available at region+ specificity -->
+			{#if FEATURES.ADDRESS_SPECIFICITY !== 'off'}
 				<div class="stream-header">
 					<LocationFilter
 						templates={allTemplates}
