@@ -96,9 +96,17 @@ export function getRequestClient(): PrismaClient {
 // Proxy so existing `db.user.findMany()` imports keep working.
 // In production, reads from AsyncLocalStorage (per-request).
 // In dev, falls back to global singleton.
+//
+// IMPORTANT: Both `get` and `has` traps delegate to the real PrismaClient.
+// Without `has`, the `in` operator checks the empty target ({}) and always
+// returns false — which silently broke `'templateScope' in db` and caused
+// a 5-layer cascade failure where template scopes were never loaded.
 export const db: PrismaClient = new Proxy({} as PrismaClient, {
 	get(_target, prop) {
 		return (getInstance() as unknown as Record<string | symbol, unknown>)[prop];
+	},
+	has(_target, prop) {
+		return prop in (getInstance() as unknown as Record<string | symbol, unknown>);
 	}
 });
 
