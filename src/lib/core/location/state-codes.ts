@@ -103,3 +103,36 @@ export function getStateCode(stateName: string | undefined, countryCode: string)
 	if (upperCountry === 'AU') return AU_STATES[stateName] || null;
 	return null;
 }
+
+// ---------------------------------------------------------------------------
+// Reverse maps: code → full name (built once, cached)
+// ---------------------------------------------------------------------------
+
+function buildReverseMap(map: Record<string, string>): Record<string, string> {
+	const reverse: Record<string, string> = {};
+	for (const [name, code] of Object.entries(map)) {
+		reverse[code] = name;
+	}
+	return reverse;
+}
+
+const US_STATE_NAMES = buildReverseMap(US_STATES);
+const CA_PROVINCE_NAMES = buildReverseMap(CA_PROVINCES);
+const AU_STATE_NAMES = buildReverseMap(AU_STATES);
+
+// Manual overrides where the reverse map yields awkward display names
+US_STATE_NAMES['DC'] = 'Washington DC';
+US_STATE_NAMES['VI'] = 'US Virgin Islands';
+
+/**
+ * Get the full state/province name from a short code.
+ * Searches US → CA → AU. Returns the code itself as fallback.
+ */
+export function getStateName(stateCode: string): string {
+	return (
+		US_STATE_NAMES[stateCode] ||
+		CA_PROVINCE_NAMES[stateCode] ||
+		AU_STATE_NAMES[stateCode] ||
+		stateCode
+	);
+}

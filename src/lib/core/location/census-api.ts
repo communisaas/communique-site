@@ -319,94 +319,89 @@ export async function getBrowserGeolocation(): Promise<LocationSignal | null> {
 }
 
 /**
- * Get timezone-based location inference (weak signal)
+ * Get timezone-based location inference (country-level only).
+ *
+ * Design principle: timezone → country is reliable (IANA zone names are
+ * geographically scoped). Timezone → state is NOT (US Eastern covers 20+
+ * states, Canada and US share America/* prefix). We intentionally do NOT
+ * infer state/province from timezone — that's what IP lookup and user
+ * selection are for.
+ *
+ * The map below covers IANA reference cities for countries we actively
+ * support. Unknown zones return null. This scales globally by adding
+ * one line per IANA city, not per state×timezone.
  */
 export function getTimezoneLocation(): LocationSignal | null {
 	try {
 		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 		console.debug(`[Location] Detected timezone: ${timezone}`);
 
-		// Comprehensive timezone to state mapping
-		const timezoneToState: Record<string, string> = {
-			// Eastern Time
-			'America/New_York': 'NY',
-			'America/Detroit': 'MI',
-			'America/Toronto': 'NY', // Maps to Eastern timezone
-			'America/Montreal': 'NY',
-			'America/Nassau': 'NY',
-			'America/Panama': 'NY',
-			'America/Iqaluit': 'NY',
-
-			// Central Time
-			'America/Chicago': 'IL',
-			'America/Indiana/Tell_City': 'IN',
-			'America/Indiana/Knox': 'IN',
-			'America/Menominee': 'MI',
-			'America/North_Dakota/Center': 'ND',
-			'America/North_Dakota/New_Salem': 'ND',
-			'America/North_Dakota/Beulah': 'ND',
-			'America/Winnipeg': 'IL',
-			'America/Matamoros': 'TX',
-
-			// Mountain Time
-			'America/Denver': 'CO',
-			'America/Boise': 'ID',
-			'America/Phoenix': 'AZ',
-			'America/Edmonton': 'CO',
-			'America/Hermosillo': 'AZ',
-			'America/Mazatlan': 'AZ',
-			'America/Ojinaga': 'TX',
-
-			// Pacific Time
-			'America/Los_Angeles': 'CA',
-			'America/Tijuana': 'CA',
-			'America/Vancouver': 'WA',
-			'America/Whitehorse': 'WA',
-			'America/Dawson': 'WA',
-
-			// Alaska Time
-			'America/Anchorage': 'AK',
-			'America/Juneau': 'AK',
-			'America/Metlakatla': 'AK',
-			'America/Nome': 'AK',
-			'America/Sitka': 'AK',
-			'America/Yakutat': 'AK',
-
-			// Hawaii-Aleutian Time
-			'Pacific/Honolulu': 'HI',
-			'America/Adak': 'AK',
-
-			// State-specific zones
-			'America/Indiana/Indianapolis': 'IN',
-			'America/Indiana/Marengo': 'IN',
-			'America/Indiana/Petersburg': 'IN',
-			'America/Indiana/Vevay': 'IN',
-			'America/Indiana/Vincennes': 'IN',
-			'America/Indiana/Winamac': 'IN',
-			'America/Kentucky/Louisville': 'KY',
-			'America/Kentucky/Monticello': 'KY',
-
-			// Territories
-			'Pacific/Guam': 'GU',
-			'Pacific/Saipan': 'MP',
-			'America/Puerto_Rico': 'PR',
-			'America/Virgin': 'VI'
+		// IANA reference city → ISO 3166-1 alpha-2 country code
+		// One entry per city. No state inference — country only.
+		const tzToCountry: Record<string, string> = {
+			// North America
+			'America/New_York': 'US', 'America/Chicago': 'US', 'America/Denver': 'US',
+			'America/Los_Angeles': 'US', 'America/Phoenix': 'US', 'America/Anchorage': 'US',
+			'America/Boise': 'US', 'America/Detroit': 'US', 'America/Juneau': 'US',
+			'America/Nome': 'US', 'America/Sitka': 'US', 'America/Yakutat': 'US',
+			'America/Metlakatla': 'US', 'America/Adak': 'US', 'America/Menominee': 'US',
+			'America/Indiana/Indianapolis': 'US', 'America/Indiana/Knox': 'US',
+			'America/Indiana/Marengo': 'US', 'America/Indiana/Petersburg': 'US',
+			'America/Indiana/Tell_City': 'US', 'America/Indiana/Vevay': 'US',
+			'America/Indiana/Vincennes': 'US', 'America/Indiana/Winamac': 'US',
+			'America/Kentucky/Louisville': 'US', 'America/Kentucky/Monticello': 'US',
+			'America/North_Dakota/Beulah': 'US', 'America/North_Dakota/Center': 'US',
+			'America/North_Dakota/New_Salem': 'US',
+			'Pacific/Honolulu': 'US', 'America/Puerto_Rico': 'US', 'America/Virgin': 'US',
+			'Pacific/Guam': 'US', 'Pacific/Saipan': 'US',
+			'America/Toronto': 'CA', 'America/Montreal': 'CA', 'America/Vancouver': 'CA',
+			'America/Winnipeg': 'CA', 'America/Edmonton': 'CA', 'America/Halifax': 'CA',
+			'America/St_Johns': 'CA', 'America/Regina': 'CA', 'America/Iqaluit': 'CA',
+			'America/Whitehorse': 'CA', 'America/Dawson': 'CA', 'America/Moncton': 'CA',
+			'America/Yellowknife': 'CA',
+			'America/Mexico_City': 'MX', 'America/Tijuana': 'MX', 'America/Hermosillo': 'MX',
+			'America/Mazatlan': 'MX', 'America/Matamoros': 'MX', 'America/Ojinaga': 'MX',
+			// Caribbean & Central America
+			'America/Nassau': 'BS', 'America/Panama': 'PA',
+			'America/Jamaica': 'JM', 'America/Barbados': 'BB',
+			// Oceania
+			'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU', 'Australia/Brisbane': 'AU',
+			'Australia/Adelaide': 'AU', 'Australia/Perth': 'AU', 'Australia/Hobart': 'AU',
+			'Australia/Darwin': 'AU', 'Australia/Canberra': 'AU',
+			'Pacific/Auckland': 'NZ', 'Pacific/Chatham': 'NZ',
+			// Europe
+			'Europe/London': 'GB', 'Europe/Dublin': 'IE', 'Europe/Paris': 'FR',
+			'Europe/Berlin': 'DE', 'Europe/Madrid': 'ES', 'Europe/Rome': 'IT',
+			'Europe/Amsterdam': 'NL', 'Europe/Brussels': 'BE', 'Europe/Zurich': 'CH',
+			'Europe/Vienna': 'AT', 'Europe/Stockholm': 'SE', 'Europe/Oslo': 'NO',
+			'Europe/Copenhagen': 'DK', 'Europe/Helsinki': 'FI', 'Europe/Warsaw': 'PL',
+			'Europe/Prague': 'CZ', 'Europe/Lisbon': 'PT', 'Europe/Athens': 'GR',
+			'Europe/Bucharest': 'RO', 'Europe/Budapest': 'HU',
+			// Asia
+			'Asia/Tokyo': 'JP', 'Asia/Seoul': 'KR', 'Asia/Shanghai': 'CN',
+			'Asia/Hong_Kong': 'HK', 'Asia/Singapore': 'SG', 'Asia/Kolkata': 'IN',
+			'Asia/Dubai': 'AE', 'Asia/Jerusalem': 'IL', 'Asia/Bangkok': 'TH',
+			'Asia/Jakarta': 'ID', 'Asia/Taipei': 'TW', 'Asia/Manila': 'PH',
+			// South America
+			'America/Sao_Paulo': 'BR', 'America/Buenos_Aires': 'AR',
+			'America/Santiago': 'CL', 'America/Bogota': 'CO', 'America/Lima': 'PE',
+			// Africa
+			'Africa/Lagos': 'NG', 'Africa/Cairo': 'EG', 'Africa/Johannesburg': 'ZA',
+			'Africa/Nairobi': 'KE', 'Africa/Casablanca': 'MA'
 		};
 
-		const stateCode = timezoneToState[timezone] || null;
+		const countryCode = tzToCountry[timezone];
 
-		if (!stateCode) {
-			// Fallback: try to extract state from timezone string
-			// e.g., "America/New_York" → check if "New_York" contains a state code
-			console.warn(`[Location] Unknown timezone: ${timezone}`);
+		if (!countryCode) {
+			console.debug(`[Location] No country mapping for timezone: ${timezone}`);
 			return null;
 		}
 
 		return {
 			signal_type: 'ip',
-			confidence: 0.2, // Low confidence - timezone is a weak signal
-			country_code: 'US', // Timezone mapping assumes US
-			state_code: stateCode,
+			confidence: 0.15, // Very low — country-level hint only
+			country_code: countryCode,
+			state_code: null, // Intentionally null: timezone cannot reliably infer state
 			city_name: null,
 			congressional_district: null,
 			county_fips: null,

@@ -472,6 +472,7 @@ export class LocationStorage {
 				const serializedSignals = location.signals.map((signal) => ({
 					signal_type: signal.signal_type,
 					confidence: signal.confidence,
+					country_code: signal.country_code || null,
 					congressional_district: signal.congressional_district || null,
 					state_code: signal.state_code || null,
 					city_name: signal.city_name || null,
@@ -486,9 +487,11 @@ export class LocationStorage {
 
 				const record = {
 					id: 'current',
+					country_code: location.country_code || null,
 					congressional_district: location.congressional_district,
 					state_code: location.state_code,
 					city_name: location.city_name || null,
+					county_name: location.county_name || null,
 					county_fips: location.county_fips || null,
 					confidence: location.confidence,
 					signals: serializedSignals,

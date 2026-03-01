@@ -84,7 +84,7 @@ function inferredLocationToScope(location: InferredLocation): ScopeMapping {
 	}
 
 	return {
-		country_code: location.country_code || 'US',
+		country_code: location.country_code || '',
 		scope_level: scopeLevel,
 		display_text: displayText,
 		region_code: location.state_code || undefined,
@@ -131,10 +131,10 @@ function getHierarchicalMatch(
 			return 'locality';
 		}
 
-		// Region-level exact match
+		// Region-level exact match (normalize: DB stores "CA-ON", inferred has "ON")
 		if (
 			templateScope.scope_level === 'region' &&
-			templateScope.region_code === userLocation.region_code
+			normalizeStateCode(templateScope.region_code || '') === normalizeStateCode(userLocation.region_code || '')
 		) {
 			return 'region';
 		}
@@ -151,7 +151,7 @@ function getHierarchicalMatch(
 		// District user sees region templates in same region
 		if (
 			templateScope.scope_level === 'region' &&
-			templateScope.region_code === userLocation.region_code
+			normalizeStateCode(templateScope.region_code || '') === normalizeStateCode(userLocation.region_code || '')
 		) {
 			return 'region';
 		}
@@ -167,7 +167,7 @@ function getHierarchicalMatch(
 		// Locality user sees region templates in same region
 		if (
 			templateScope.scope_level === 'region' &&
-			templateScope.region_code === userLocation.region_code
+			normalizeStateCode(templateScope.region_code || '') === normalizeStateCode(userLocation.region_code || '')
 		) {
 			return 'region';
 		}
@@ -292,9 +292,19 @@ export class ClientSideTemplateFilter {
 					// Apply location confidence multiplier
 					// High confidence (verified=1.0) → full score
 					// Low confidence (IP=0.2) → reduced score certainty
-					// EXCEPTION: Country-level templates always get full score (relevant to everyone)
+					// EXCEPTION 1: Country-level templates always get full score
+					// EXCEPTION 2: User-selected/verified locations use primary signal
+					//   confidence, not the weighted average (which gets diluted by
+					//   weak IP/timezone signals — e.g., 0.51 * 0.7 = 0.357 < 0.45)
 					const isCountryLevel = bestScore === 0.3; // Country-level baseline score
-					const confidenceMultiplier = isCountryLevel ? 1.0 : this.inferredLocation.confidence;
+					const hasExplicitLocation = this.inferredLocation.signals?.some(
+						(s) => s.signal_type === 'user_selected' || s.signal_type === 'verified'
+					);
+					const confidenceMultiplier = isCountryLevel
+						? 1.0
+						: hasExplicitLocation
+							? Math.max(this.inferredLocation.confidence, 0.9)
+							: this.inferredLocation.confidence;
 					const finalScore = bestScore * confidenceMultiplier;
 
 					// Add confidence indicator to match reason
@@ -334,6 +344,18 @@ export class ClientSideTemplateFilter {
 	 * Check if jurisdiction matches user location
 	 */
 	private matchesJurisdiction(jurisdiction: TemplateJurisdiction): boolean {
+		// Country guard: infer country from state_code prefix and reject mismatches
+		const jurisdictionCountry = jurisdiction.state_code?.includes('-')
+			? jurisdiction.state_code.slice(0, jurisdiction.state_code.indexOf('-'))
+			: null;
+		if (
+			jurisdictionCountry &&
+			this.inferredLocation.country_code &&
+			jurisdictionCountry !== this.inferredLocation.country_code
+		) {
+			return false;
+		}
+
 		// Exact congressional district match (highest priority)
 		if (
 			this.inferredLocation.congressional_district &&
@@ -378,7 +400,7 @@ export class ClientSideTemplateFilter {
 	 * 1.0 = District match (most specific)
 	 * 0.8 = County match
 	 * 0.7 = City match
-	 * 0.5 = State match
+	 * 0.51 = State match (margin above 0.45 state threshold)
 	 * 0.3 = Federal/national (baseline - always relevant within country)
 	 * 0.0 = No match
 	 *
@@ -394,6 +416,20 @@ export class ClientSideTemplateFilter {
 		let score = 0;
 		let reason = '';
 		let matchLevel: GeographicScope = null;
+
+		// Infer jurisdiction country from state_code prefix ("CA-ON" → "CA", "US-UT" → "US")
+		const jurisdictionCountry = jurisdiction.state_code?.includes('-')
+			? jurisdiction.state_code.slice(0, jurisdiction.state_code.indexOf('-'))
+			: null;
+
+		// Country mismatch → skip (if both have country info and they differ)
+		if (
+			jurisdictionCountry &&
+			this.inferredLocation.country_code &&
+			jurisdictionCountry !== this.inferredLocation.country_code
+		) {
+			return { score: 0, reason: 'Country mismatch' };
+		}
 
 		// Exact congressional district match (1.0 score)
 		if (
@@ -422,7 +458,7 @@ export class ClientSideTemplateFilter {
 			matchLevel = 'city';
 			reason = `Your city: ${this.inferredLocation.city_name}`;
 		}
-		// State match (0.5 score)
+		// State match (0.51 score — margin above 0.45 state threshold)
 		// Normalize state codes: jurisdictions may use ISO 3166-2 format ("CA-ON", "US-OR")
 		// while inferred location uses short form ("ON", "OR"). Compare the suffix.
 		else if (
@@ -430,16 +466,18 @@ export class ClientSideTemplateFilter {
 			jurisdiction.state_code &&
 			normalizeStateCode(jurisdiction.state_code) === normalizeStateCode(this.inferredLocation.state_code)
 		) {
-			score = 0.5;
+			score = 0.51;
 			matchLevel = 'state';
 			reason = `Your state: ${this.inferredLocation.state_code}`;
 		}
-		// Federal/national templates (0.3 baseline - always relevant within country)
-		// Country boundaries enforced by scope-filtering.ts
+		// Federal/national templates (0.3 baseline - only if same country or no country info)
 		else if (jurisdiction.jurisdiction_type === 'federal') {
-			score = 0.3;
-			matchLevel = 'nationwide';
-			reason = `National issue (${this.inferredLocation.country_code || 'country-wide'})`;
+			// Only show federal templates if country matches or is ambiguous
+			if (!jurisdictionCountry || !this.inferredLocation.country_code || jurisdictionCountry === this.inferredLocation.country_code) {
+				score = 0.3;
+				matchLevel = 'nationwide';
+				reason = `National issue (${this.inferredLocation.country_code || 'country-wide'})`;
+			}
 		}
 
 		const baseScore = score;
@@ -470,7 +508,7 @@ export class ClientSideTemplateFilter {
 	 * Score hierarchy:
 	 * 1.0 = Exact district match
 	 * 0.7 = Exact locality match
-	 * 0.5 = Exact region match
+	 * 0.51 = Exact region match (0.51 not 0.5 — provides margin above 0.45 state threshold)
 	 * 0.3 = Country match (baseline)
 	 * 0.0 = No match
 	 */
@@ -499,7 +537,7 @@ export class ClientSideTemplateFilter {
 				reason = `Your city: ${templateScope.display_text}`;
 				break;
 			case 'region':
-				score = 0.5;
+				score = 0.51;
 				reason = `Your state: ${templateScope.display_text}`;
 				break;
 			case 'country':
