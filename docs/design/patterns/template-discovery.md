@@ -542,7 +542,7 @@ async function shareTemplateWithExternalUsers(template: Template): Promise<Share
   });
 
   return {
-    url: `https://communi.email/t/${shareLink}`,
+    url: `https://commons.email/t/${shareLink}`,
     message: `Check out this template: ${template.title}`
   };
 }
@@ -553,7 +553,7 @@ async function shareTemplateWithExternalUsers(template: Template): Promise<Share
 [Share modal]
 Share "SF Rent Control Expansion" with friends in San Francisco:
 
-[Copy link] https://communi.email/t/abc123
+[Copy link] https://commons.email/t/abc123
 [Share via] Email · SMS · WhatsApp · Twitter
 
 Note: Only San Francisco constituents can send this template.

@@ -453,12 +453,12 @@ if (result.corrections) {
 **Shareable URL structure:**
 
 ```
-https://communi.email/s/[slug]
+https://commons.email/s/[slug]
 ```
 
 **Example:**
 ```
-https://communi.email/s/support-healthcare-reform
+https://commons.email/s/support-healthcare-reform
 ```
 
 **Slug generation:**
@@ -490,7 +490,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
       title: `Take Action: ${template.title}`,
       description: template.description,
       image: `/og-images/template-${template.id}.png`,
-      url: `https://communi.email/s/${template.slug}`
+      url: `https://commons.email/s/${template.slug}`
     }
   };
 };
@@ -516,7 +516,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 <script lang="ts">
   let { template }: { template: Template } = $props();
 
-  const shareUrl = `https://communi.email/s/${template.slug}`;
+  const shareUrl = `https://commons.email/s/${template.slug}`;
   const shareText = `Take action: ${template.title}`;
 
   function shareTwitter() {

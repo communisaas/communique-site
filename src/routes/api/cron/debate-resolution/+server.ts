@@ -13,7 +13,7 @@
  *
  * USAGE:
  * ```bash
- * curl -X GET https://communi.email/api/cron/debate-resolution \
+ * curl -X GET https://commons.email/api/cron/debate-resolution \
  *   -H "Authorization: Bearer $CRON_SECRET"
  * ```
  */

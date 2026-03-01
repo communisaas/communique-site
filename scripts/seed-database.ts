@@ -216,7 +216,7 @@ async function teardownDatabase() {
 const USERS = [
 	{
 		id: "user-seed-1",
-		email: "seed-1@communi.email",
+		email: "seed-1@commons.email",
 		name: "Alex Rivera",
 		avatar: null,
 		createdAt: "2026-03-01T00:54:55.527Z",
@@ -264,7 +264,7 @@ const USERS = [
 	},
 	{
 		id: "user-seed-2",
-		email: "seed-2@communi.email",
+		email: "seed-2@commons.email",
 		name: "Jordan Chen",
 		avatar: null,
 		createdAt: "2026-03-01T00:54:56.219Z",
@@ -312,7 +312,7 @@ const USERS = [
 	},
 	{
 		id: "user-seed-3",
-		email: "seed-3@communi.email",
+		email: "seed-3@commons.email",
 		name: "Morgan Tremblay",
 		avatar: null,
 		createdAt: "2026-03-01T00:54:56.977Z",

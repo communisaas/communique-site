@@ -534,8 +534,8 @@
 						<li>• Check your internet connection</li>
 						<li>• Try refreshing the page</li>
 						<li>
-							• Contact support at <a href="mailto:support@communi.email" class="underline"
-								>support@communi.email</a
+							• Contact support at <a href="mailto:support@commons.email" class="underline"
+								>support@commons.email</a
 							>
 						</li>
 					</ul>

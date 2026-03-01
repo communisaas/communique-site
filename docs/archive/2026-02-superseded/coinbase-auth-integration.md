@@ -530,7 +530,7 @@ describe('Coinbase OAuth Flow', () => {
 1. Register OAuth app at [Coinbase Developer Platform](https://www.coinbase.com/developer-platform)
 2. Configure redirect URIs:
    - `http://localhost:5173/auth/coinbase/callback` (dev)
-   - `https://communi.email/auth/coinbase/callback` (prod)
+   - `https://commons.email/auth/coinbase/callback` (prod)
 3. Request scopes: `wallet:user:read`, `wallet:user:email`, `offline_access`
 4. Note Client ID and Client Secret
 

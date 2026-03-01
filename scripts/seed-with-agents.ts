@@ -173,7 +173,7 @@ const VIBES: Vibe[] = [
 const seedUserData = [
 	{
 		id: 'user-seed-1',
-		email: 'seed-1@communi.email',
+		email: 'seed-1@commons.email',
 		name: 'Alex Rivera',
 		is_verified: true,
 		verification_method: 'mdl',
@@ -193,7 +193,7 @@ const seedUserData = [
 	},
 	{
 		id: 'user-seed-2',
-		email: 'seed-2@communi.email',
+		email: 'seed-2@commons.email',
 		name: 'Jordan Chen',
 		is_verified: true,
 		verification_method: 'mdl',
@@ -213,7 +213,7 @@ const seedUserData = [
 	},
 	{
 		id: 'user-seed-3',
-		email: 'seed-3@communi.email',
+		email: 'seed-3@commons.email',
 		name: 'Morgan Tremblay',
 		is_verified: false,
 		trust_score: 0,

@@ -109,7 +109,7 @@ export function extractRecipientEmails(
 
 	// Congressional routing — use real relay address (not a sentinel token)
 	if (includesCongress) {
-		emails.push('congress@communi.email');
+		emails.push('congress@commons.email');
 	}
 
 	return emails;

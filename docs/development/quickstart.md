@@ -532,11 +532,11 @@ Total VOTER Tokens Earned: 156.80 VOTER
 
 🌐 Available Templates:
 =====================
-📍 https://communi.email/the-math-doesnt-work-climate-edition
+📍 https://commons.email/the-math-doesnt-work-climate-edition
    "The Math Doesn't Work: Climate Edition" (Environment → federal)
    Created by: Sarah Martinez (established)
 
-📍 https://communi.email/housing-2400-rent-400k-starter-home
+📍 https://commons.email/housing-2400-rent-400k-starter-home
    "Housing: $2,400 Rent, $400k Starter Home" (Housing → federal)
    Created by: Anna Rodriguez (trusted)
 ```
@@ -718,7 +718,7 @@ npm run test:run
 NODE_ENV=production
 DATABASE_URL=postgresql://...
 CWC_API_KEY=...
-OAUTH_REDIRECT_BASE_URL=https://communi.email
+OAUTH_REDIRECT_BASE_URL=https://commons.email
 
 # OAuth providers
 GOOGLE_CLIENT_ID=...

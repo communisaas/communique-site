@@ -557,7 +557,7 @@ dnf install -y nginx certbot python3-certbot-nginx
 cat > /etc/nginx/conf.d/tee-proxy.conf <<'NGINX'
 server {
     listen 80;
-    server_name tee.communi.email;
+    server_name tee.commons.email;
 
     location / {
         proxy_pass http://127.0.0.1:8080;
@@ -572,7 +572,7 @@ NGINX
 systemctl enable --now nginx
 
 # Obtain Let's Encrypt certificate (manual verification required first time)
-# certbot --nginx -d tee.communi.email --non-interactive --agree-tos -m contact@communi.email
+# certbot --nginx -d tee.commons.email --non-interactive --agree-tos -m contact@commons.email
 
 echo "Nitro Enclave deployment complete!"
 EOF
@@ -744,21 +744,21 @@ fi
 ### 1. Configure DNS
 
 ```bash
-# Add A record for tee.communi.email
+# Add A record for tee.commons.email
 # Point to: $PUBLIC_IP (or Elastic IP for production)
 
 # Verify DNS propagation
-dig tee.communi.email +short
+dig tee.commons.email +short
 ```
 
 ### 2. Obtain SSL Certificate
 
 ```bash
 # On EC2 instance
-sudo certbot --nginx -d tee.communi.email \
+sudo certbot --nginx -d tee.commons.email \
     --non-interactive \
     --agree-tos \
-    -m contact@communi.email
+    -m contact@commons.email
 
 # Test certificate renewal
 sudo certbot renew --dry-run
@@ -775,7 +775,7 @@ Update `.env.production` in Communiqué repository:
 # TEE Configuration
 TEE_PROVIDER=aws
 AWS_REGION=us-east-1
-TEE_ENDPOINT=https://tee.communi.email
+TEE_ENDPOINT=https://tee.commons.email
 TEE_EXPECTED_CODE_HASH=sha256:1a1b1c1d1e1f...  # From PCR2
 ```
 
@@ -786,7 +786,7 @@ TEE_EXPECTED_CODE_HASH=sha256:1a1b1c1d1e1f...  # From PCR2
 # Deploy via Cloudflare Pages CI/CD pipeline
 
 # Verify TEE integration
-curl https://communi.email/api/health/tee
+curl https://commons.email/api/health/tee
 ```
 
 ---

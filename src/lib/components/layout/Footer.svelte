@@ -16,7 +16,7 @@
 		<p class="footer-coda__brand">communiqué</p>
 
 		<!-- Contact: single recognizable element -->
-		<a href="mailto:hello@communi.email" class="footer-coda__contact"> hello@communi.email </a>
+		<a href="mailto:hello@commons.email" class="footer-coda__contact"> hello@commons.email </a>
 
 		<!-- Legal minimum -->
 		<p class="footer-coda__legal">© {new Date().getFullYear()} Communiqué PBC</p>

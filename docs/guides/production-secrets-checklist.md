@@ -134,8 +134,8 @@ openssl rand -base64 32
 CWC_CAMPAIGN_ID=communique-2025
 CWC_DELIVERY_AGENT_ID=COMMUNIQUE_PBC
 CWC_DELIVERY_AGENT_NAME="Communique PBC"
-CWC_DELIVERY_AGENT_CONTACT=hello@communi.email
-CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL=noreply@communi.email
+CWC_DELIVERY_AGENT_CONTACT=hello@commons.email
+CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL=noreply@commons.email
 CWC_DELIVERY_AGENT_ACK=Y
 ```
 
@@ -198,7 +198,7 @@ All OAuth providers follow the same pattern. Each requires `CLIENT_ID` and `CLIE
 ### Required Base Configuration
 
 ```bash
-OAUTH_REDIRECT_BASE_URL=https://communi.email
+OAUTH_REDIRECT_BASE_URL=https://commons.email
 ```
 
 ### Google OAuth
@@ -469,4 +469,4 @@ Didit.me was removed in Cycle 15. If you see this error, the codebase still cont
 
 ### OAuth login fails
 
-Ensure `OAUTH_REDIRECT_BASE_URL` matches your production domain exactly (e.g., `https://communi.email`).
+Ensure `OAUTH_REDIRECT_BASE_URL` matches your production domain exactly (e.g., `https://commons.email`).

@@ -185,7 +185,7 @@ CWC_API_KEY=your-cwc-api-key
 CWC_CAMPAIGN_ID=communique-2025
 CWC_DELIVERY_AGENT_ID=COMMUNIQUE_PBC
 CWC_DELIVERY_AGENT_NAME="Communiqué PBC"
-CWC_DELIVERY_AGENT_CONTACT=contact@communi.email
+CWC_DELIVERY_AGENT_CONTACT=contact@commons.email
 ```
 
 ### Delivery Flow (Inside TEE)
@@ -266,7 +266,7 @@ async function submitToCWC(submission: CWCSubmission): Promise<{ success: boolea
 
 ```bash
 # .env
-OAUTH_REDIRECT_BASE_URL=https://communi.email  # Production
+OAUTH_REDIRECT_BASE_URL=https://commons.email  # Production
 # or http://localhost:5173 for development
 
 GOOGLE_CLIENT_ID=...
@@ -657,7 +657,7 @@ CWC_CAMPAIGN_ID=communique-2025
 CWC_DELIVERY_AGENT_ID=COMMUNIQUE_PBC
 
 # OAuth
-OAUTH_REDIRECT_BASE_URL=https://communi.email
+OAUTH_REDIRECT_BASE_URL=https://commons.email
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 # ... other OAuth providers

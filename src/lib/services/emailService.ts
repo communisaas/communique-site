@@ -156,7 +156,7 @@ export function analyzeEmailFlow(
 		const isCongressional = template.deliveryMethod === 'cwc';
 		if (!user) {
 			// Guests proceed to mailto generation for all templates.
-			// Congressional templates use congress@communi.email relay.
+			// Congressional templates use congress@commons.email relay.
 		}
 
 		// Enforce address gating for authenticated users on congressional delivery
@@ -315,8 +315,8 @@ export function generateMailtoUrl(
 
 			const encodedBody = encodeURIComponent(enhancedBody);
 
-			// Use congress@communi.email for certified delivery
-			const recipientEmail = 'congress@communi.email';
+			// Use congress@commons.email for certified delivery
+			const recipientEmail = 'congress@commons.email';
 			const url = `mailto:${recipientEmail}?subject=${encodedSubject}&body=${encodedBody}`;
 
 			// Validate URL length (mailto URLs have practical limits)

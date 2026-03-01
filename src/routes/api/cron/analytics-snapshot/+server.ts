@@ -15,7 +15,7 @@
  *
  * USAGE:
  * ```bash
- * curl -X GET https://communi.email/api/cron/analytics-snapshot \
+ * curl -X GET https://commons.email/api/cron/analytics-snapshot \
  *   -H "Authorization: Bearer $CRON_SECRET"
  * ```
  */

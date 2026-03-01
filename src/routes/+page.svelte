@@ -327,8 +327,8 @@
 			<CreationSpark onactivate={handleSparkActivate}>
 				{#snippet context()}
 					<footer class="creation-footer">
-						<a href="mailto:hello@communi.email" class="contact-link">
-							<span class="link-text">hello@communi.email</span>
+						<a href="mailto:hello@commons.email" class="contact-link">
+							<span class="link-text">hello@commons.email</span>
 							<svg
 								class="link-arrow"
 								viewBox="0 0 24 24"

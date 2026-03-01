@@ -141,14 +141,14 @@ describe('Congressional Smoke Tests (Real APIs)', () => {
 			title: 'Smoke Test - Please Ignore',
 			message_body:
 				'This is an automated smoke test message. Please disregard. ' +
-				'If you receive this in error, contact support@communi.email',
+				'If you receive this in error, contact support@commons.email',
 			slug: 'smoke-test'
 		};
 
 		const testUser = {
 			id: 'smoke-test-user',
 			name: 'Smoke Test User',
-			email: 'smoke-test@communi.email',
+			email: 'smoke-test@commons.email',
 			street: DEFAULT_TEST_ADDRESS.street,
 			city: DEFAULT_TEST_ADDRESS.city,
 			state: DEFAULT_TEST_ADDRESS.state,
