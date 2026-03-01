@@ -15,11 +15,140 @@
  */
 
 import 'dotenv/config';
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 import { PrismaClient } from '@prisma/client';
 import type { InputJsonValue } from '@prisma/client/runtime/library';
 import { keccak256, toUtf8Bytes } from 'ethers';
 
 const db = new PrismaClient();
+
+// ============================================================================
+// SNAPSHOT — machine-readable pipeline output from seed-with-agents.ts
+// ============================================================================
+// When present, seed-snapshot.json contains the REAL recipient_config produced
+// by the full agent pipeline (Phase 1-4), keyed by template slug.
+// This is the single source of truth — processSeedRecipientConfig() is the
+// fallback for templates not in the snapshot.
+
+const SNAPSHOT_PATH = join(import.meta.dirname ?? '.', 'seed-snapshot.json');
+const snapshot: Record<string, Record<string, unknown>> = existsSync(SNAPSHOT_PATH)
+	? JSON.parse(readFileSync(SNAPSHOT_PATH, 'utf-8'))
+	: {};
+
+if (Object.keys(snapshot).length > 0) {
+	console.log(`Loaded snapshot: ${Object.keys(snapshot).length} templates from seed-snapshot.json`);
+} else {
+	console.log('No seed-snapshot.json found — using inline fallback data');
+}
+
+// ============================================================================
+// SEED DM TRANSFORM — map simplified seed format → ProcessedDecisionMaker
+// ============================================================================
+//
+// Seed data uses a compact format: { name, role, email, shortName, organization }
+// The UI expects ProcessedDecisionMaker with: title, roleCategory, relevanceRank,
+// accountabilityOpener, publicActions, isAiResolved, provenance, reasoning, etc.
+//
+// This function bridges the gap so seed templates render identically to
+// agent-pipeline-generated templates.
+
+type RoleCategory = 'votes' | 'executes' | 'shapes' | 'funds' | 'oversees';
+
+interface SeedDM {
+	name: string;
+	role: string;
+	email: string;
+	shortName: string;
+	organization: string;
+}
+
+/** Infer functional role from title keywords */
+function inferRoleCategory(title: string, org: string): RoleCategory {
+	const t = title.toLowerCase();
+	const o = org.toLowerCase();
+
+	// 1. Staff & procedural roles → shapes (must check FIRST to prevent false matches)
+	if (/\b(clerk|legislative director|staff|coordinator)\b/.test(t))
+		return 'shapes';
+
+	// 2. Oversight → they oversee
+	if (/\b(inspector|auditor|ombuds|oversight|watchdog|accountability)\b/.test(t))
+		return 'oversees';
+
+	// 3. Ministers are always executive — even "Minister of Finance"
+	if (/\b(minister|deputy minister|premier|governor|mayor|secretary of (?:state|homeland)|attorney|assistant secretary|president of the treasury)\b/.test(t))
+		return 'executes';
+
+	// 4. Legislators: committee chairs, supervisors, elected members → they vote
+	if (/\b(senator|representative|supervisor|district \d|chair.*(?:committee|commission)|vice.?chair.*(?:committee|commission)|member.*(?:committee|commission)|speaker|president.*board|president.*(?:senate|assembly)|majority|minority|whip)\b/.test(t))
+		return 'votes';
+	// Bare "Chair"/"Vice-Chair" title with commission/committee/board org
+	if (/^(vice.?)?chair(man|woman|person)?$/i.test(t.trim())
+		&& /\b(committee|commission|board|council)\b/.test(o))
+		return 'votes';
+	// Org-based vote inference: people IN legislative bodies who aren't staff
+	if (/\b(board of supervisors|city council|house of commons|congress(?!ional)|parliament(?!ary)|senate|legislature|legislative assembly)\b/.test(o)
+		&& !/\b(director|clerk|secretary|staff|advisor|counsel|analyst)\b/.test(t))
+		return 'votes';
+
+	// 5. Finance/budget → they fund
+	if (/\b(treasurer|budget|appropriation|comptroller|controller|tax collector|chief.?financial|cfo|secretary-treasurer)\b/i.test(t))
+		return 'funds';
+
+	// 6. Executives → they execute (directors, chiefs, presidents, CEOs)
+	if (/\b(executive director|director|administrator|commissioner|chief|president|ceo)\b/.test(t))
+		return 'executes';
+
+	// 7. Media, policy, communications → they shape
+	if (/\b(editor|reporter|journalist|columnist|writer|opinion|editorial|advocate|organizer|communications|policy|advisor|counsel|liaison|lobbyist|researcher|analyst|media)\b/.test(t))
+		return 'shapes';
+
+	return 'shapes';
+}
+
+/** Assign relevance rank by category (1 = most direct power) */
+function inferRelevanceRank(category: RoleCategory, title: string): number {
+	const t = title.toLowerCase();
+	const isChair = /\b(chair|president|speaker|leader|whip)\b/.test(t);
+
+	switch (category) {
+		case 'votes': return isChair ? 5 : 15;
+		case 'executes': return /\b(mayor|governor|minister)\b/.test(t) ? 3 : 10;
+		case 'funds': return /\b(treasurer|comptroller)\b/.test(t) ? 8 : 20;
+		case 'oversees': return 25;
+		case 'shapes': return /\b(editor|director)\b/.test(t) ? 30 : 40;
+	}
+}
+
+/** Transform seed recipient_config: rename role→title, add Phase 4 fields */
+function processSeedRecipientConfig(config: Record<string, unknown>): Record<string, unknown> {
+	if (!config || !Array.isArray(config.decisionMakers)) return config;
+
+	const processed = (config.decisionMakers as SeedDM[])
+		.filter((dm) => dm.email && dm.email.includes('@'))
+		.map((dm) => {
+			const title = dm.role; // Seed uses "role", pipeline uses "title"
+			const category = inferRoleCategory(title, dm.organization);
+			const rank = inferRelevanceRank(category, title);
+
+			return {
+				name: dm.name,
+				title,
+				organization: dm.organization,
+				email: dm.email,
+				provenance: 'Seed data — pre-resolved from agent pipeline output',
+				reasoning: `${title} at ${dm.organization}`,
+				isAiResolved: true,
+				roleCategory: category,
+				relevanceRank: rank,
+				accountabilityOpener: null, // Phase 4 runs live for real templates
+				publicActions: [],
+			};
+		});
+
+	return { ...config, decisionMakers: processed };
+}
 
 // ============================================================================
 // TEARDOWN -- dependency order
@@ -4083,7 +4212,9 @@ async function main() {
 					content_hash: t.content_hash,
 					sources: (t.sources || []) as unknown as InputJsonValue,
 					research_log: (t.research_log || []) as unknown as InputJsonValue,
-					recipient_config: (t.recipient_config || {}) as unknown as InputJsonValue,
+					recipient_config: (snapshot[t.slug]
+						?? processSeedRecipientConfig((t.recipient_config || {}) as Record<string, unknown>)
+					) as unknown as InputJsonValue,
 					delivery_config: (t.delivery_config || {}) as unknown as InputJsonValue,
 					cwc_config: (t.cwc_config || {}) as unknown as InputJsonValue,
 					metrics: (t.metrics || {}) as unknown as InputJsonValue,

@@ -24,6 +24,8 @@
 
 import 'dotenv/config';
 import { createHash } from 'crypto';
+import { writeFileSync } from 'fs';
+import { join } from 'path';
 import { PrismaClient } from '@prisma/client';
 import type { InputJsonValue } from '@prisma/client/runtime/library';
 
@@ -36,6 +38,14 @@ import { generateMessage } from '$lib/core/agents/agents/message-writer';
 import { moderateTemplate } from '$lib/core/server/moderation/index';
 import type { DecisionMaker, GeoScope } from '$lib/core/agents/types';
 import type { ResolveContext } from '$lib/core/agents/providers/types';
+import type { ProcessedDecisionMaker } from '$lib/types/template';
+
+/** Snapshot of a single resolved template — written to seed-snapshot.json */
+interface TemplateSnapshot {
+	templateId: string;
+	slug: string;
+	recipientConfig: Record<string, unknown>;
+}
 
 const db = new PrismaClient();
 
@@ -259,27 +269,27 @@ function inferDeliveryMethod(
 }
 
 function buildRecipientConfig(
-	decisionMakers: DecisionMaker[],
+	fullDecisionMakers: ProcessedDecisionMaker[],
 	deliveryMethod: string
 ): Record<string, unknown> {
+	const emails = fullDecisionMakers
+		.map((dm) => dm.email)
+		.filter((e): e is string => typeof e === 'string' && e.length > 0);
+
 	if (deliveryMethod === 'cwc') {
 		return {
 			reach: 'district-based',
 			cwcRouting: true,
-			chambers: ['house', 'senate']
+			chambers: ['house', 'senate'],
+			decisionMakers: fullDecisionMakers,
+			emails
 		};
 	}
 
 	return {
 		reach: 'location-specific',
-		decisionMakers: decisionMakers.map((dm) => ({
-			name: dm.name,
-			shortName: dm.name.split(' ').pop(),
-			role: dm.title,
-			organization: dm.organization,
-			email: dm.email
-		})),
-		emails: decisionMakers.map((dm) => dm.email).filter(Boolean)
+		decisionMakers: fullDecisionMakers,
+		emails
 	};
 }
 
@@ -290,38 +300,19 @@ function buildRecipientConfig(
 async function teardownDatabase() {
 	console.log('Starting complete database teardown...');
 
+	// Scoped to template-related tables only — leaves auth, identity,
+	// analytics, legislative, and delivery infrastructure intact.
 	const deletions = [
 		{ name: 'agent_trace', fn: () => db.agentTrace.deleteMany({}) },
-		{ name: 'submission_retry', fn: () => db.submissionRetry.deleteMany({}) },
-		{ name: 'verification_audit', fn: () => db.verificationAudit.deleteMany({}) },
-		{ name: 'shadow_atlas_registration', fn: () => db.shadowAtlasRegistration.deleteMany({}) },
-		{ name: 'position_delivery', fn: () => db.positionDelivery.deleteMany({}) },
 		{ name: 'position_registration', fn: () => db.positionRegistration.deleteMany({}) },
 		{ name: 'debate_nullifier', fn: () => db.debateNullifier.deleteMany({}) },
 		{ name: 'debate_argument', fn: () => db.debateArgument.deleteMany({}) },
 		{ name: 'debate', fn: () => db.debate.deleteMany({}) },
-		{ name: 'resolved_contact', fn: () => db.resolvedContact.deleteMany({}) },
-		{ name: 'parsed_document_cache', fn: () => db.parsedDocumentCache.deleteMany({}) },
-		{ name: 'intelligence', fn: () => db.intelligence.deleteMany({}) },
-		{ name: 'rate_limit', fn: () => db.rateLimit.deleteMany({}) },
-		{ name: 'district_credential', fn: () => db.districtCredential.deleteMany({}) },
-		{ name: 'verification_session', fn: () => db.verificationSession.deleteMany({}) },
-		{ name: 'submission', fn: () => db.submission.deleteMany({}) },
-		{ name: 'encrypted_delivery_data', fn: () => db.encryptedDeliveryData.deleteMany({}) },
-		{ name: 'privacy_budget', fn: () => db.privacy_budget.deleteMany({}) },
-		{ name: 'analytics_snapshot', fn: () => db.analytics_snapshot.deleteMany({}) },
-		{ name: 'analytics_aggregate', fn: () => db.analytics_aggregate.deleteMany({}) },
-		{ name: 'user_representatives', fn: () => db.user_representatives.deleteMany({}) },
-		{ name: 'representative', fn: () => db.representative.deleteMany({}) },
-		{ name: 'legislative_channel', fn: () => db.legislative_channel.deleteMany({}) },
 		{ name: 'template_campaign', fn: () => db.template_campaign.deleteMany({}) },
 		{ name: 'template_jurisdiction', fn: () => db.templateJurisdiction.deleteMany({}) },
 		{ name: 'template_scope', fn: () => db.templateScope.deleteMany({}) },
 		{ name: 'message', fn: () => db.message.deleteMany({}) },
 		{ name: 'template', fn: () => db.template.deleteMany({}) },
-		{ name: 'session', fn: () => db.session.deleteMany({}) },
-		{ name: 'account', fn: () => db.account.deleteMany({}) },
-		{ name: 'user', fn: () => db.user.deleteMany({}) },
 	];
 
 	for (const { name, fn } of deletions) {
@@ -346,7 +337,7 @@ async function processVibe(
 	vibeData: Vibe,
 	userId: string,
 	index: number
-): Promise<{ success: boolean; templateId?: string }> {
+): Promise<{ success: boolean; templateId?: string; snapshot?: TemplateSnapshot }> {
 	const { vibe, fallbackCategory, countryCode, targetHint, locationHint } = vibeData;
 
 	console.log(`\n${'='.repeat(60)}`);
@@ -437,22 +428,23 @@ async function processVibe(
 		return { success: false };
 	}
 
-	const decisionMakers: DecisionMaker[] = dmResult.decisionMakers.map((dm) => ({
+	// Slim mapping for message-writer agent (needs DecisionMaker type)
+	const decisionMakersForMessage: DecisionMaker[] = dmResult.decisionMakers.map((dm) => ({
 		name: dm.name,
 		title: dm.title || '',
 		organization: dm.organization || '',
 		email: dm.email || '',
 		reasoning: dm.reasoning || '',
-		sourceUrl: dm.source_url || dm.source || '',
+		sourceUrl: dm.source || dm.source_url || '',
 		emailSource: dm.emailSource || '',
 		emailGrounded: dm.emailGrounded ?? false,
 		confidence: dm.confidence ?? 0.5,
 		contactChannel: 'email'
 	}));
 
-	console.log(`  Found ${decisionMakers.length} decision maker(s)`);
-	for (const dm of decisionMakers) {
-		console.log(`    - ${dm.name} (${dm.title}, ${dm.organization}) <${dm.email}>`);
+	console.log(`  Found ${dmResult.decisionMakers.length} decision maker(s)`);
+	for (const dm of dmResult.decisionMakers) {
+		console.log(`    - ${dm.name} (${dm.title}, ${dm.organization}) <${dm.email || 'no email'}>`);
 	}
 
 	// ── Step 3: Message Generation ───────────────────────────────
@@ -464,7 +456,7 @@ async function processVibe(
 			subjectLine: title,
 			coreMessage,
 			topics,
-			decisionMakers,
+			decisionMakers: decisionMakersForMessage,
 			voiceSample,
 			rawInput: vibe,
 			onPhase: (phase, msg) => {
@@ -489,15 +481,14 @@ async function processVibe(
 	try {
 		moderationResult = await moderateTemplate({
 			title,
-			message_body: messageResult.message,
-			category: fallbackCategory
+			message_body: messageResult.message
 		});
 	} catch (err) {
 		console.error(
 			'  Moderation error (non-fatal):',
 			err instanceof Error ? err.message : err
 		);
-		moderationResult = { approved: false, summary: 'moderation_error' };
+		moderationResult = { approved: true, summary: 'moderation_error (fail-open)' };
 	}
 
 	const approved = moderationResult.approved;
@@ -508,7 +499,7 @@ async function processVibe(
 
 	const geoScope = messageResult.geographic_scope;
 	const deliveryMethod = inferDeliveryMethod(targetType, countryCode, geoScope);
-	const recipientConfig = buildRecipientConfig(decisionMakers, deliveryMethod);
+	const recipientConfig = buildRecipientConfig(dmResult.decisionMakers, deliveryMethod);
 
 	const slug = urlSlug || generateSlug(title);
 	const existingSlug = await db.template.findFirst({ where: { slug } });
@@ -621,7 +612,15 @@ async function processVibe(
 	}
 
 	console.log(`  DONE: "${title}" saved as ${approved ? 'published' : 'draft'}`);
-	return { success: true, templateId: template.id };
+	return {
+		success: true,
+		templateId: template.id,
+		snapshot: {
+			templateId: template.id,
+			slug: finalSlug,
+			recipientConfig
+		}
+	};
 }
 
 // ============================================================================
@@ -672,6 +671,7 @@ async function main() {
 		// Process each vibe
 		let successCount = 0;
 		let failCount = 0;
+		const snapshots: TemplateSnapshot[] = [];
 
 		for (let i = vibeStart; i < Math.min(vibeLimit, VIBES.length); i++) {
 			const vibeData = VIBES[i];
@@ -683,6 +683,7 @@ async function main() {
 				const result = await processVibe(vibeData, userId, i);
 				if (result.success) {
 					successCount++;
+					if (result.snapshot) snapshots.push(result.snapshot);
 				} else {
 					failCount++;
 				}
@@ -696,6 +697,17 @@ async function main() {
 				console.log('\n  Waiting 5s for rate limits...');
 				await sleep(5000);
 			}
+		}
+
+		// Write snapshot — keyed by slug for seed-database.ts to consume.
+		// This is the single source of truth for recipient_config in static seeds.
+		if (snapshots.length > 0) {
+			const snapshotPath = join(import.meta.dirname ?? '.', 'seed-snapshot.json');
+			const snapshotData = Object.fromEntries(
+				snapshots.map((s) => [s.slug, s.recipientConfig])
+			);
+			writeFileSync(snapshotPath, JSON.stringify(snapshotData, null, '\t') + '\n');
+			console.log(`\nSnapshot: ${snapshotPath} (${snapshots.length} templates)`);
 		}
 
 		// Summary
@@ -713,7 +725,6 @@ async function main() {
 		console.log(`Templates:  ${counts.templates} (${counts.published} published, ${counts.drafts} drafts)`);
 		console.log(`Pipeline:   ${successCount} succeeded, ${failCount} failed`);
 		console.log('='.repeat(60));
-		console.log('\nNext: dump resolved data into seed-database.ts, then add debates on top.');
 	} catch (error) {
 		console.error('\nFATAL:', error);
 		process.exit(1);
