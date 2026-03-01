@@ -42,6 +42,14 @@ import type { DocumentType } from '$lib/server/reducto/types';
 import type { ResolveContext, DecisionMakerResult } from '../providers/types';
 import type { ThoughtSegment, Citation } from '$lib/core/thoughts/types';
 import { cleanThoughtForDisplay } from '../utils/thought-filter';
+import type { ProcessedDecisionMaker } from '$lib/types/template';
+
+/** Decision-maker has a verified, contactable email address. */
+function hasVerifiedEmail(
+	dm: ProcessedDecisionMaker
+): dm is ProcessedDecisionMaker & { email: string } {
+	return typeof dm.email === 'string' && dm.email.includes('@');
+}
 
 /**
  * Progressive reveal events emitted alongside ThoughtSegments.
@@ -591,28 +599,51 @@ export async function resolveDecisionMakers(
 		const result = await decisionMakerRouter.resolve(enhancedContext);
 
 		// ========================================================================
+		// Filter — Only contactable decision-makers proceed
+		// ========================================================================
+
+		const totalResolved = result.decisionMakers.length;
+		result.decisionMakers = result.decisionMakers.filter(hasVerifiedEmail);
+		const droppedCount = totalResolved - result.decisionMakers.length;
+
+		if (droppedCount > 0) {
+			console.debug(
+				`[decision-maker] Filtered ${droppedCount} decision-maker(s) without verified email`
+			);
+		}
+
+		// ========================================================================
 		// Recommendation — Present findings
 		// ========================================================================
 
 		emitter.startPhase('recommendation');
 
 		if (result.decisionMakers.length === 0) {
-			emitter.think(
-				'No decision-makers could be identified. ' +
-					'Try refining your search or providing more specific organizational details.',
-				{ emphasis: 'highlight' }
-			);
+			if (droppedCount > 0) {
+				emitter.think(
+					`Identified ${droppedCount} decision-maker${droppedCount > 1 ? 's' : ''}, ` +
+						'but none had publicly available email addresses. ' +
+						'You can add contacts manually on the next screen.',
+					{ emphasis: 'highlight' }
+				);
+			} else {
+				emitter.think(
+					'No decision-makers could be identified. ' +
+						'Try refining your search or providing more specific organizational details.',
+					{ emphasis: 'highlight' }
+				);
+			}
 		} else {
-			const withEmail = result.decisionMakers.filter(dm => dm.email);
-			if (withEmail.length > 0) {
+			const countLabel = `${result.decisionMakers.length} decision-maker${result.decisionMakers.length > 1 ? 's' : ''}`;
+			if (droppedCount > 0) {
 				emitter.insight(
-					`Found ${result.decisionMakers.length} decision-maker${result.decisionMakers.length > 1 ? 's' : ''} (${withEmail.length} with verified contact info).`,
+					`Found ${countLabel} with verified contact info. ${droppedCount} more identified but excluded (no public email).`,
 					{ icon: '✅' }
 				);
 			} else {
 				emitter.insight(
-					`Identified ${result.decisionMakers.length} relevant decision-maker${result.decisionMakers.length > 1 ? 's' : ''}. Email addresses weren't found in public sources — you can add them manually.`,
-					{ icon: '👤' }
+					`Found ${countLabel} with verified contact info.`,
+					{ icon: '✅' }
 				);
 			}
 
@@ -697,6 +728,11 @@ export async function resolveDecisionMakers(
 			}
 
 			emitter.completePhase();
+		}
+
+		// Stash drop count for pipeline_stats observability
+		if (droppedCount > 0) {
+			result.metadata = { ...result.metadata, droppedEmailless: droppedCount };
 		}
 
 		return result;

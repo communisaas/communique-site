@@ -211,8 +211,9 @@ export const POST: RequestHandler = async (event) => {
 				})),
 				research_summary: result.researchSummary || 'Decision-makers resolved successfully.',
 				pipeline_stats: {
+					total_resolved: result.decisionMakers.length + ((result.metadata?.droppedEmailless as number) || 0),
 					candidates_found: result.decisionMakers.length,
-					verified_emails: result.decisionMakers.filter((dm) => dm.email).length,
+					verified_emails: result.decisionMakers.length,
 					total_latency_ms: result.latencyMs
 				}
 			};
@@ -222,8 +223,8 @@ export const POST: RequestHandler = async (event) => {
 
 			console.log('[stream-decision-makers] Resolution complete:', {
 				userId,
-				count: result.decisionMakers.length,
-				withEmail: result.decisionMakers.filter((dm) => dm.email).length,
+				contactable: result.decisionMakers.length,
+				droppedEmailless: (result.metadata?.droppedEmailless as number) || 0,
 				latencyMs: Date.now() - startTime
 			});
 		} catch (error) {
