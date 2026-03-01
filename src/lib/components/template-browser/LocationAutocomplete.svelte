@@ -20,6 +20,7 @@
 	interface LocationAutocompleteProps {
 		label: string; // Display label (e.g., "California", "San Francisco")
 		level: 'country' | 'state' | 'city' | 'district'; // Geographic level
+		mode?: 'omnibar' | 'scoped'; // omnibar: search any place; scoped: constrained to level
 		currentCountry?: string; // Filter results to country
 		currentState?: string; // Filter results to state
 		isSelected?: boolean; // Whether this breadcrumb is currently filtering
@@ -31,6 +32,7 @@
 	let {
 		label,
 		level,
+		mode = 'scoped',
 		currentCountry,
 		currentState,
 		isSelected = false,
@@ -63,8 +65,10 @@
 		isLoading = true;
 
 		try {
-			// Map level to search scope
-			const scope = level === 'country' ? 'country' : level === 'state' ? 'state' : 'city';
+			// Omnibar: no scope constraint. Scoped: map level to search scope.
+			const scope = mode === 'omnibar'
+				? 'any'
+				: level === 'country' ? 'country' : level === 'state' ? 'state' : 'city';
 
 			const searchResults = await searchLocations(query, scope, currentCountry, currentState);
 
@@ -258,11 +262,9 @@
 					value={searchQuery}
 					oninput={onInput}
 					onkeydown={handleKeydown}
-					placeholder="Search {level === 'country'
-						? 'countries'
-						: level === 'state'
-							? 'states'
-							: 'cities'}..."
+					placeholder={mode === 'omnibar'
+						? 'Search any place...'
+						: `Search ${level === 'country' ? 'countries' : level === 'state' ? 'states' : 'cities'}...`}
 					class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
 					autocomplete="off"
 					spellcheck="false"
@@ -351,14 +353,13 @@
 					<!-- Results -->
 					{#each ['city', 'state', 'country'] as groupLevel}
 						{@const groupResults = results.filter((r) => {
-							if (level === 'country') return true; // No grouping needed for country level
 							if (groupLevel === 'city') return r.city;
 							if (groupLevel === 'state') return !r.city && r.state;
 							if (groupLevel === 'country') return !r.city && !r.state && r.country;
 							return false;
 						})}
 
-						{#if groupResults.length > 0 && level !== 'country'}
+						{#if groupResults.length > 0}
 							<li
 								class="sticky top-0 bg-slate-50/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400"
 							>
@@ -389,7 +390,9 @@
 								class:hover:bg-slate-50={originalIndex !== selectedIndex}
 							>
 								<div class="font-medium text-slate-900">
-									{#if level === 'country'}
+									{#if mode === 'omnibar'}
+										{result.city?.name || result.state?.name || result.country.name}
+									{:else if level === 'country'}
 										{result.country.name}
 									{:else if level === 'state'}
 										{result.state?.name || result.display_name}

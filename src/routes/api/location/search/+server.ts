@@ -54,6 +54,9 @@ interface NominatimResult {
 		country?: string;
 		country_code?: string;
 		state?: string;
+		province?: string; // Canadian provinces use this field, not 'state'
+		state_district?: string;
+		'ISO3166-2-lvl4'?: string; // e.g., "CA-ON", "US-CA" — reliable state/province code
 		city?: string;
 		town?: string;
 		county?: string;
@@ -68,8 +71,19 @@ interface NominatimResult {
 
 function transformResult(r: NominatimResult): LocationHierarchy {
 	const countryCode = r.address.country_code?.toUpperCase() || '';
-	const stateName = r.address.state;
+	// Nominatim uses 'state' for US/AU but 'province' for Canada
+	const stateName = r.address.state || r.address.province;
 	const cityName = r.address.city || r.address.town || r.address.municipality || r.address.village;
+
+	// State code resolution: try getStateCode first, then parse ISO3166-2-lvl4
+	let stateCode = getStateCode(stateName, countryCode);
+	if (!stateCode && r.address['ISO3166-2-lvl4']) {
+		// "CA-ON" → "ON", "US-CA" → "CA"
+		const parts = r.address['ISO3166-2-lvl4'].split('-');
+		if (parts.length === 2) {
+			stateCode = parts[1];
+		}
+	}
 
 	return {
 		country: {
@@ -78,7 +92,7 @@ function transformResult(r: NominatimResult): LocationHierarchy {
 		},
 		state: stateName
 			? {
-					code: getStateCode(stateName, countryCode) || stateName,
+					code: stateCode || stateName,
 					name: stateName,
 					country_code: countryCode
 				}
@@ -86,7 +100,7 @@ function transformResult(r: NominatimResult): LocationHierarchy {
 		city: cityName
 			? {
 					name: cityName,
-					state_code: getStateCode(stateName, countryCode),
+					state_code: stateCode,
 					country_code: countryCode,
 					lat: parseFloat(r.lat),
 					lon: parseFloat(r.lon)
@@ -98,12 +112,14 @@ function transformResult(r: NominatimResult): LocationHierarchy {
 
 function filterByScope(
 	results: LocationHierarchy[],
-	scope: 'country' | 'state' | 'city'
+	scope: 'country' | 'state' | 'city' | 'any'
 ): LocationHierarchy[] {
+	if (scope === 'any') return results;
+
 	return results.filter((loc) => {
-		if (scope === 'country' && !loc.country.code) return false;
-		if (scope === 'state' && !loc.state) return false;
-		if (scope === 'city' && !loc.city) return false;
+		if (scope === 'country') return loc.country.code && !loc.state && !loc.city;
+		if (scope === 'state') return !!loc.state && !loc.city;
+		if (scope === 'city') return !!loc.city;
 		return true;
 	});
 }
@@ -116,7 +132,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	// -- Parse & validate query params ----------------------------------------
 
 	const q = url.searchParams.get('q')?.trim() ?? '';
-	const scope = (url.searchParams.get('scope') ?? 'city') as 'country' | 'state' | 'city';
+	const scope = (url.searchParams.get('scope') ?? 'city') as 'country' | 'state' | 'city' | 'any';
 	const country = url.searchParams.get('country') ?? undefined;
 	const state = url.searchParams.get('state') ?? undefined;
 	const rawLimit = parseInt(url.searchParams.get('limit') ?? '5', 10);
@@ -128,9 +144,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		);
 	}
 
-	if (!['country', 'state', 'city'].includes(scope)) {
+	if (!['country', 'state', 'city', 'any'].includes(scope)) {
 		return json(
-			{ error: 'Invalid scope. Must be one of: country, state, city' },
+			{ error: 'Invalid scope. Must be one of: country, state, city, any' },
 			{ status: 400 }
 		);
 	}
@@ -193,6 +209,22 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	const transformed = nominatimResults.map(transformResult);
 	const filtered = filterByScope(transformed, scope);
+
+	// Deduplicate country-scope results by country code (Nominatim can return
+	// multiple entries for the same country with different bounding boxes)
+	if (scope === 'country') {
+		const seen = new Set<string>();
+		const deduped: typeof filtered = [];
+		for (const loc of filtered) {
+			if (!seen.has(loc.country.code)) {
+				seen.add(loc.country.code);
+				deduped.push(loc);
+			}
+		}
+		return json(deduped, {
+			headers: { 'Cache-Control': 'public, max-age=3600' }
+		});
+	}
 
 	return json(filtered, {
 		headers: {

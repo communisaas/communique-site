@@ -41,10 +41,9 @@
 	import type { Template, TemplateGroup } from '$lib/types/template';
 	import PrivacyIndicator from './PrivacyBadge.svelte';
 	import LocationAutocomplete from './LocationAutocomplete.svelte';
-	import DistrictBreadcrumb from './DistrictBreadcrumb.svelte';
 	import type { LocationHierarchy } from '$lib/core/location/location-search';
 	import { locationInferenceEngine } from '$lib/core/location/inference-engine';
-	import { getDistrictConfig, type DistrictConfig } from '$lib/core/location/district-config';
+	import { getStateName } from '$lib/core/location/state-codes';
 
 	interface LocationFilterProps {
 		templates: Template[];
@@ -71,8 +70,6 @@
 	let isLoadingLocation = $state(true);
 	let locationError = $state<string | null>(null);
 	let isDetectingLocation = $state(false);
-	let isResolvingDistrict = $state(false);
-	let districtResolveError = $state<string | null>(null);
 
 	// Geographic scope filter (null = show all, or specific level to filter to)
 	// Type is imported from template-filter.ts
@@ -103,98 +100,35 @@
 			return countryNames[inferredLocation.country_code] || inferredLocation.country_code;
 		}
 
-		// Strategy 2: Inferred country from state code (deterministic - state codes are unambiguous)
-		// Design Pattern: "Inferrable Defaults with Explicit Overrides"
-		// State codes have 1:1 country mapping, so we can deterministically infer country
+		// Strategy 2: Inferred country from state code (deterministic for unambiguous codes)
+		// Note: 'NT' is ambiguous (CA Northwest Territories vs AU Northern Territory)
+		// — excluded from inference; requires explicit country_code.
 		if (inferredLocation?.state_code) {
 			const stateCode = inferredLocation.state_code;
 
-			// US states and territories (unambiguous mapping)
-			const usStates = [
-				'AL',
-				'AK',
-				'AZ',
-				'AR',
-				'CA',
-				'CO',
-				'CT',
-				'DE',
-				'DC',
-				'FL',
-				'GA',
-				'HI',
-				'ID',
-				'IL',
-				'IN',
-				'IA',
-				'KS',
-				'KY',
-				'LA',
-				'ME',
-				'MD',
-				'MA',
-				'MI',
-				'MN',
-				'MS',
-				'MO',
-				'MT',
-				'NE',
-				'NV',
-				'NH',
-				'NJ',
-				'NM',
-				'NY',
-				'NC',
-				'ND',
-				'OH',
-				'OK',
-				'OR',
-				'PA',
-				'RI',
-				'SC',
-				'SD',
-				'TN',
-				'TX',
-				'UT',
-				'VT',
-				'VA',
-				'WA',
-				'WV',
-				'WI',
-				'WY',
-				'PR',
-				'GU',
-				'VI',
-				'AS',
-				'MP'
-			];
-			if (usStates.includes(stateCode)) {
+			const usStates = new Set([
+				'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL',
+				'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
+				'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH',
+				'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI',
+				'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI',
+				'WY', 'PR', 'GU', 'VI', 'AS', 'MP'
+			]);
+			if (usStates.has(stateCode)) {
 				return 'United States';
 			}
 
-			// Canadian provinces and territories (unambiguous mapping)
-			const caProvinces = [
-				'AB',
-				'BC',
-				'MB',
-				'NB',
-				'NL',
-				'NT',
-				'NS',
-				'NU',
-				'ON',
-				'PE',
-				'QC',
-				'SK',
-				'YT'
-			];
-			if (caProvinces.includes(stateCode)) {
+			// Canadian provinces (NT excluded — ambiguous with Australia)
+			const caProvinces = new Set([
+				'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'
+			]);
+			if (caProvinces.has(stateCode)) {
 				return 'Canada';
 			}
 
-			// Australian states and territories (unambiguous mapping)
-			const auStates = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'];
-			if (auStates.includes(stateCode)) {
+			// Australian states (NT excluded — ambiguous with Canada)
+			const auStates = new Set(['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'ACT']);
+			if (auStates.has(stateCode)) {
 				return 'Australia';
 			}
 		}
@@ -205,67 +139,7 @@
 
 	const breadcrumbState = $derived.by(() => {
 		if (!inferredLocation?.state_code) return null;
-
-		const stateNames: Record<string, string> = {
-			AL: 'Alabama',
-			AK: 'Alaska',
-			AZ: 'Arizona',
-			AR: 'Arkansas',
-			CA: 'California',
-			CO: 'Colorado',
-			CT: 'Connecticut',
-			DE: 'Delaware',
-			DC: 'Washington DC',
-			FL: 'Florida',
-			GA: 'Georgia',
-			HI: 'Hawaii',
-			ID: 'Idaho',
-			IL: 'Illinois',
-			IN: 'Indiana',
-			IA: 'Iowa',
-			KS: 'Kansas',
-			KY: 'Kentucky',
-			LA: 'Louisiana',
-			ME: 'Maine',
-			MD: 'Maryland',
-			MA: 'Massachusetts',
-			MI: 'Michigan',
-			MN: 'Minnesota',
-			MS: 'Mississippi',
-			MO: 'Missouri',
-			MT: 'Montana',
-			NE: 'Nebraska',
-			NV: 'Nevada',
-			NH: 'New Hampshire',
-			NJ: 'New Jersey',
-			NM: 'New Mexico',
-			NY: 'New York',
-			NC: 'North Carolina',
-			ND: 'North Dakota',
-			OH: 'Ohio',
-			OK: 'Oklahoma',
-			OR: 'Oregon',
-			PA: 'Pennsylvania',
-			RI: 'Rhode Island',
-			SC: 'South Carolina',
-			SD: 'South Dakota',
-			TN: 'Tennessee',
-			TX: 'Texas',
-			UT: 'Utah',
-			VT: 'Vermont',
-			VA: 'Virginia',
-			WA: 'Washington',
-			WV: 'West Virginia',
-			WI: 'Wisconsin',
-			WY: 'Wyoming',
-			PR: 'Puerto Rico',
-			GU: 'Guam',
-			VI: 'US Virgin Islands',
-			AS: 'American Samoa',
-			MP: 'Northern Mariana Islands'
-		};
-
-		return stateNames[inferredLocation.state_code] || inferredLocation.state_code;
+		return getStateName(inferredLocation.state_code);
 	});
 
 	const breadcrumbCity = $derived.by(() => {
@@ -287,59 +161,6 @@
 		return countyName ? toTitleCase(countyName) : null;
 	});
 
-	const breadcrumbDistrict = $derived.by(() => {
-		if (!inferredLocation?.congressional_district) return null;
-
-		// Parse district code (e.g., "CA-16" → "CA-16")
-		return inferredLocation.congressional_district;
-	});
-
-	// Infer country CODE (ISO 3166-1 alpha-2) from state code when not explicitly set
-	// This mirrors breadcrumbCountry logic but returns the code, not display name
-	const inferredCountryCode = $derived.by(() => {
-		// Strategy 1: Explicit country code
-		if (inferredLocation?.country_code) {
-			return inferredLocation.country_code;
-		}
-
-		// Strategy 2: Infer from state code
-		if (inferredLocation?.state_code) {
-			const stateCode = inferredLocation.state_code;
-
-			// US states and territories
-			const usStates = [
-				'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL',
-				'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
-				'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH',
-				'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI',
-				'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI',
-				'WY', 'PR', 'GU', 'VI', 'AS', 'MP'
-			];
-			if (usStates.includes(stateCode)) {
-				return 'US';
-			}
-
-			// Canadian provinces
-			const caProvinces = ['AB', 'BC', 'MB', 'NB', 'NL', 'NT', 'NS', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'];
-			if (caProvinces.includes(stateCode)) {
-				return 'CA';
-			}
-
-			// Australian states
-			const auStates = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'];
-			if (auStates.includes(stateCode)) {
-				return 'AU';
-			}
-		}
-
-		return null;
-	});
-
-	// District configuration based on user's country (uses inferred country code)
-	const districtConfig = $derived.by(() => {
-		return getDistrictConfig(inferredCountryCode);
-	});
-
 	const locationLabel = $derived.by(() => {
 		if (!inferredLocation) return null;
 
@@ -358,188 +179,32 @@
 
 		// Strategy 3: State full name (expand abbreviation as fallback)
 		if (inferredLocation.state_code) {
-			const stateNames: Record<string, string> = {
-				AL: 'Alabama',
-				AK: 'Alaska',
-				AZ: 'Arizona',
-				AR: 'Arkansas',
-				CA: 'California',
-				CO: 'Colorado',
-				CT: 'Connecticut',
-				DE: 'Delaware',
-				DC: 'Washington DC',
-				FL: 'Florida',
-				GA: 'Georgia',
-				HI: 'Hawaii',
-				ID: 'Idaho',
-				IL: 'Illinois',
-				IN: 'Indiana',
-				IA: 'Iowa',
-				KS: 'Kansas',
-				KY: 'Kentucky',
-				LA: 'Louisiana',
-				ME: 'Maine',
-				MD: 'Maryland',
-				MA: 'Massachusetts',
-				MI: 'Michigan',
-				MN: 'Minnesota',
-				MS: 'Mississippi',
-				MO: 'Missouri',
-				MT: 'Montana',
-				NE: 'Nebraska',
-				NV: 'Nevada',
-				NH: 'New Hampshire',
-				NJ: 'New Jersey',
-				NM: 'New Mexico',
-				NY: 'New York',
-				NC: 'North Carolina',
-				ND: 'North Dakota',
-				OH: 'Ohio',
-				OK: 'Oklahoma',
-				OR: 'Oregon',
-				PA: 'Pennsylvania',
-				RI: 'Rhode Island',
-				SC: 'South Carolina',
-				SD: 'South Dakota',
-				TN: 'Tennessee',
-				TX: 'Texas',
-				UT: 'Utah',
-				VT: 'Vermont',
-				VA: 'Virginia',
-				WA: 'Washington',
-				WV: 'West Virginia',
-				WI: 'Wisconsin',
-				WY: 'Wyoming',
-				PR: 'Puerto Rico',
-				GU: 'Guam',
-				VI: 'US Virgin Islands',
-				AS: 'American Samoa',
-				MP: 'Northern Mariana Islands'
-			};
-			return stateNames[inferredLocation.state_code] || inferredLocation.state_code;
+			return getStateName(inferredLocation.state_code);
 		}
 
 		return null;
 	});
 
-	const districtLabel = $derived.by(() => {
-		if (!inferredLocation?.congressional_district) return null;
-
-		// Expand state code to full name
-		const stateNames: Record<string, string> = {
-			AL: 'Alabama',
-			AK: 'Alaska',
-			AZ: 'Arizona',
-			AR: 'Arkansas',
-			CA: 'California',
-			CO: 'Colorado',
-			CT: 'Connecticut',
-			DE: 'Delaware',
-			DC: 'Washington DC',
-			FL: 'Florida',
-			GA: 'Georgia',
-			HI: 'Hawaii',
-			ID: 'Idaho',
-			IL: 'Illinois',
-			IN: 'Indiana',
-			IA: 'Iowa',
-			KS: 'Kansas',
-			KY: 'Kentucky',
-			LA: 'Louisiana',
-			ME: 'Maine',
-			MD: 'Maryland',
-			MA: 'Massachusetts',
-			MI: 'Michigan',
-			MN: 'Minnesota',
-			MS: 'Mississippi',
-			MO: 'Missouri',
-			MT: 'Montana',
-			NE: 'Nebraska',
-			NV: 'Nevada',
-			NH: 'New Hampshire',
-			NJ: 'New Jersey',
-			NM: 'New Mexico',
-			NY: 'New York',
-			NC: 'North Carolina',
-			ND: 'North Dakota',
-			OH: 'Ohio',
-			OK: 'Oklahoma',
-			OR: 'Oregon',
-			PA: 'Pennsylvania',
-			RI: 'Rhode Island',
-			SC: 'South Carolina',
-			SD: 'South Dakota',
-			TN: 'Tennessee',
-			TX: 'Texas',
-			UT: 'Utah',
-			VT: 'Vermont',
-			VA: 'Virginia',
-			WA: 'Washington',
-			WV: 'West Virginia',
-			WI: 'Wisconsin',
-			WY: 'Wyoming',
-			PR: 'Puerto Rico',
-			GU: 'Guam',
-			VI: 'US Virgin Islands',
-			AS: 'American Samoa',
-			MP: 'Northern Mariana Islands'
-		};
-
-		// Parse district code (e.g., "CA-16" → "California's 16th Congressional District")
-		const match = inferredLocation.congressional_district.match(/^([A-Z]{2})-(\d+)$/);
-		if (match) {
-			const [, stateCode, districtNum] = match;
-			const stateName = stateNames[stateCode] || stateCode;
-
-			// Ordinal suffix (1st, 2nd, 3rd, 4th, etc.)
-			const num = parseInt(districtNum);
-			let suffix = 'th';
-			if (num % 10 === 1 && num !== 11) suffix = 'st';
-			else if (num % 10 === 2 && num !== 12) suffix = 'nd';
-			else if (num % 10 === 3 && num !== 13) suffix = 'rd';
-
-			return `${stateName}'s ${num}${suffix} Congressional District`;
-		}
-
-		// Fallback if format doesn't match
-		return inferredLocation.congressional_district;
-	});
-
 	// Load inferred location using the inference engine
 	onMount(async () => {
 		try {
-			// PRIVACY: Only persist verified signals (user-entered addresses) across sessions.
-			// Clear any cached IP, GPS, OAuth, behavioral, or user_selected signals
-			// so they must be re-acquired each session.
+			// PRIVACY: Clear non-verified signals once per session, not every mount.
+			// First mount in session: wipe stale signals from previous session.
+			// Subsequent mounts: skip wipe, use current-session signals from IDB.
+			// (sessionStorage is session-scoped — dies when tab closes, preserving privacy)
 			if (browser) {
-				const deletedCount = await locationStorage.clearNonVerifiedSignals();
-				if (deletedCount > 0) {
-					// Also clear cached inferred location to force re-inference
-					await locationStorage.clearInferredLocation();
+				const SESSION_CLEARED_KEY = 'location_signals_cleared';
+				if (!sessionStorage.getItem(SESSION_CLEARED_KEY)) {
+					const deletedCount = await locationStorage.clearNonVerifiedSignals();
+					if (deletedCount > 0) {
+						await locationStorage.clearInferredLocation();
+					}
+					sessionStorage.setItem(SESSION_CLEARED_KEY, '1');
 				}
 			}
 
 			// Get user location from inference engine (uses cached if available)
 			let location = await getUserLocation();
-
-			// MIGRATION FIX: If we have a GPS signal but no city_name, request fresh geolocation
-			// This handles the transition period where old cached locations don't have city_name
-			if (location && location.confidence > 0 && browser) {
-				const signals = await locationStorage.getSignals();
-				const oldGPSSignal = signals.find(
-					(s) => (s.source === 'census.browser' || s.source === 'nominatim.browser') && !s.city_name
-				);
-
-				if (oldGPSSignal) {
-					// Request fresh geolocation which will now include Nominatim city lookup
-					const freshSignal = await addBrowserGeolocationSignal();
-
-					if (freshSignal) {
-						// Re-infer location with new signal
-						location = await getUserLocation(true);
-					}
-				}
-			}
 
 			if (location && location.confidence > 0) {
 				inferredLocation = location;
@@ -733,15 +398,37 @@
 		}
 
 		// Country boundary enforcement (for legislative adapter separation)
+		const userCountry = inferredLocation?.country_code;
 		const countryFiltered = templates.filter((template) => {
-			// If template specifies countries, enforce country match
+			if (!userCountry) return true; // No location → show everything
+
+			// Check applicable_countries array (explicit country targeting)
 			if (template.applicable_countries && template.applicable_countries.length > 0) {
-				return (
-					inferredLocation?.country_code &&
-					template.applicable_countries.includes(inferredLocation.country_code)
-				);
+				return template.applicable_countries.includes(userCountry);
 			}
-			// Otherwise show (international/no country specified)
+
+			// Check scope.country_code from TemplateScope table
+			const scope = (template as unknown as Record<string, unknown>).scope as { country_code?: string } | null;
+			if (scope?.country_code) {
+				return scope.country_code === userCountry;
+			}
+
+			// Check jurisdiction state_code prefixes for country inference
+			// ISO 3166-2 format: "CA-ON" (Canada), "US-UT" (US), "GB-ENG" (UK)
+			const jurisdictions = (template as unknown as Record<string, unknown>).jurisdictions as Array<{ state_code?: string | null }> | undefined;
+			if (jurisdictions && jurisdictions.length > 0) {
+				const hasCountryPrefix = jurisdictions.some((j) => {
+					if (!j.state_code) return false;
+					const dashIdx = j.state_code.indexOf('-');
+					if (dashIdx < 0) return true; // No prefix → ambiguous, allow
+					return j.state_code.slice(0, dashIdx) === userCountry;
+				});
+				// If ALL jurisdictions have a country prefix and NONE match, exclude
+				const allPrefixed = jurisdictions.every((j) => j.state_code && j.state_code.includes('-'));
+				if (allPrefixed && !hasCountryPrefix) return false;
+			}
+
+			// No country signal → show (international/untagged)
 			return true;
 		});
 
@@ -895,6 +582,9 @@
 			const location = await getUserLocation(true);
 			inferredLocation = location;
 
+			// Reset scope filter so all groups (state, nationwide, etc.) render
+			selectedScope = null;
+
 			// Reload signals for display
 			if (browser) {
 				const signals = await locationStorage.getSignals();
@@ -913,110 +603,6 @@
 		selectedScope = selectedScope === scope ? null : scope;
 	}
 
-	/**
-	 * Handle district resolution from inline breadcrumb
-	 * Called when user submits address in the terminal breadcrumb extension
-	 *
-	 * ADAPTER PATTERN: Routes to country-specific resolver based on districtConfig.
-	 * Currently only US (census-bureau) is implemented. Other countries will
-	 * need their own API adapters (uk-postcodes, france-geo, etc.)
-	 */
-	async function handleDistrictResolve(data: {
-		street?: string;
-		city?: string;
-		state?: string;
-		postalCode: string;
-	}) {
-		const { street, city, state, postalCode } = data;
-		isResolvingDistrict = true;
-		districtResolveError = null;
-
-		// Get current country context from config
-		const countryCode = inferredCountryCode;
-		const config = districtConfig;
-
-		if (!config) {
-			districtResolveError = 'District lookup not available for this location';
-			isResolvingDistrict = false;
-			return;
-		}
-
-		try {
-			// Route to appropriate resolver based on country
-			// Currently only census-bureau (US) is implemented
-			if (config.resolver !== 'census-bureau') {
-				throw new Error(`District lookup for ${config.label} is not yet available. Only US Congressional Districts are currently supported.`);
-			}
-
-			// US: Call Census geocoding API
-			const response = await fetch('/api/location/geocode', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					street: street || '',
-					city: city || inferredLocation?.city_name || '',
-					state: state || inferredLocation?.state_code || '',
-					zipCode: postalCode
-				})
-			});
-
-			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.error || 'Failed to verify address');
-			}
-
-			interface VerifiedAddress {
-				street: string;
-				city: string;
-				state: string;
-				zipCode: string;
-				congressional_district: string;
-				county_name?: string;
-			}
-
-			const verified = (await response.json()) as VerifiedAddress;
-
-			// Create verified location signal with highest confidence
-			const signal: LocationSignal = {
-				signal_type: 'verified',
-				confidence: 1.0,
-				congressional_district: verified.congressional_district,
-				state_code: verified.state,
-				city_name: verified.city,
-				country_code: countryCode || 'US', // From inference, fallback to US for census-bureau
-				county_fips: null,
-				latitude: null,
-				longitude: null,
-				source: 'user.verified',
-				timestamp: new Date().toISOString(),
-				metadata: {
-					address: `${verified.street}, ${verified.city}, ${verified.state} ${verified.zipCode}`,
-					county_name: verified.county_name,
-					resolver: config.resolver
-				}
-			};
-
-			// Store signal
-			await locationInferenceEngine.addSignal(signal);
-
-			// Refresh inferred location
-			const location = await getUserLocation(true);
-			inferredLocation = location;
-
-			// Reload signals for display
-			if (browser) {
-				const signals = await locationStorage.getSignals();
-				locationSignals = signals;
-			}
-		} catch (error) {
-			console.error('[LocationFilter] Error resolving district:', error);
-			districtResolveError = error instanceof Error ? error.message : 'Failed to find district';
-		} finally {
-			isResolvingDistrict = false;
-		}
-	}
 </script>
 
 <!--
@@ -1158,33 +744,6 @@
 					/>
 				{/if}
 
-				<!-- TERMINAL SEGMENT: District or Extension Point -->
-				{#if districtConfig}
-					<svg
-						class="h-4 w-4 flex-shrink-0 text-slate-400"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M9 5l7 7-7 7"
-						/>
-					</svg>
-					<DistrictBreadcrumb
-						district={breadcrumbDistrict}
-						config={districtConfig}
-						currentLocality={inferredLocation?.city_name}
-						currentState={inferredLocation?.state_code}
-						isSelected={selectedScope === 'district'}
-						parentIsResolving={isResolvingDistrict}
-						parentError={districtResolveError}
-						onfilter={() => handleScopeFilter('district')}
-						onresolve={handleDistrictResolve}
-					/>
-				{/if}
 			</nav>
 
 			<!-- Privacy indicator + technical details (progressive disclosure) -->
@@ -1217,7 +776,7 @@
 							<div class="text-xs text-slate-600">
 								{#if locationSignals.some((s) => s.signal_type === 'verified')}
 									From verified address
-								{:else if locationSignals.some((s) => s.source === 'census.browser' || s.source === 'nominatim.browser')}
+								{:else if locationSignals.some((s) => s.source === 'browser.geolocation')}
 									From GPS (browser location)
 								{:else if locationSignals.some((s) => s.source === 'ip.geolocation')}
 									From IP address
@@ -1246,6 +805,7 @@
 				<LocationAutocomplete
 					label="Set your location"
 					level="country"
+					mode="omnibar"
 					isSelected={false}
 					onselect={handleLocationSelect}
 					onfilter={() => {}}
@@ -1264,8 +824,6 @@
 		</div>
 	{/if}
 </div>
-
-<!-- Address resolution is now inline in the breadcrumb (DistrictBreadcrumb component) -->
 
 <style>
 	/*

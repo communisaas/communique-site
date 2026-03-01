@@ -92,7 +92,7 @@ function evictIfNeeded(): void {
  */
 export async function searchLocations(
 	query: string,
-	scope: 'country' | 'state' | 'city' = 'city',
+	scope: 'country' | 'state' | 'city' | 'any' = 'city',
 	countryCode?: string,
 	stateCode?: string
 ): Promise<LocationHierarchy[]> {
