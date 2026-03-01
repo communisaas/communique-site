@@ -72,7 +72,7 @@
 	{/snippet}
 </UnifiedModal>
 
-{#if FEATURES.ADDRESS_VERIFICATION}
+{#if FEATURES.ADDRESS_SPECIFICITY === 'district'}
 <!-- Address Modal (for Congressional templates) -->
 <UnifiedModal
 	id="address-modal"
