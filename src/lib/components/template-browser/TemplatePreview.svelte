@@ -115,7 +115,8 @@
 		// Restore personalization data if returning from OAuth
 		if (browser) {
 			const savedData = sessionStorage.getItem(`template_${template.id}_personalization`);
-			const pendingSend = sessionStorage.getItem(`template_${template.id}_pending_send`);
+			// Clean up any stale pending_send flag (auto-send removed — users pick decision-makers individually)
+			sessionStorage.removeItem(`template_${template.id}_pending_send`);
 
 			if (savedData) {
 				try {
@@ -123,37 +124,7 @@
 					// Only restore if data is less than 30 minutes old
 					if (parsed.timestamp && Date.now() - parsed.timestamp < 30 * 60 * 1000) {
 						personalConnectionValue = parsed.personalConnection || '';
-
-						// Check if we should auto-trigger send flow
-						if (pendingSend === 'true' && user) {
-							// Clear the pending flag
-							sessionStorage.removeItem(`template_${template.id}_pending_send`);
-							// Auto-trigger send flow after a brief delay
-							coordinated.setTimeout(
-								() => {
-									// Apply Personal Connection to template if available
-									const pc = personalConnectionValue?.trim();
-									if (pc && pc.length > 0 && typeof template?.message_body === 'string') {
-										template.message_body = template.message_body.replace(
-											/\[Personal Connection\]/g,
-											pc
-										);
-									}
-
-									// Let parent handle the full flow (modal + email launch)
-									if (onSendMessage) {
-										onSendMessage();
-									} else {
-										console.error('❌ No onSendMessage callback available');
-									}
-								},
-								500,
-								'auto-send',
-								componentId
-							);
-						}
 					} else {
-						// Data is too old, clean it up
 						sessionStorage.removeItem(`template_${template.id}_personalization`);
 					}
 				} catch (error) {

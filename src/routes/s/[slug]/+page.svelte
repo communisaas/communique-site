@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount as _onMount } from 'svelte';
+	import { onMount as _onMount, tick } from 'svelte';
 	import { Users, Eye } from '@lucide/svelte';
 	import TemplatePreview from '$lib/components/template-browser/TemplatePreview.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -79,7 +79,7 @@
 		)
 	);
 	const addressRequired = $derived(
-		FEATURES.ADDRESS_VERIFICATION && isCongressional && !hasCompleteAddress && (data.user?.trust_tier ?? 0) < 2
+		FEATURES.ADDRESS_SPECIFICITY === 'district' && isCongressional && !hasCompleteAddress && (data.user?.trust_tier ?? 0) < 2
 	);
 
 	// Debate resolution signal for message preview banner
@@ -327,6 +327,7 @@
 				},
 				subject,
 				opener: member.accountabilityOpener ?? '',
+				personalInput: personalConnectionValue?.trim() || undefined,
 				templateBody: resolvedBody,
 				attestation
 			});
@@ -393,6 +394,8 @@
 			const resolvedBody = resolved.body.replace(/\[District\]/g, districtName).trim();
 
 			const bodyParts: string[] = [];
+			const pc = personalConnectionValue?.trim();
+			if (pc) bodyParts.push(pc);
 			if (resolvedBody) bodyParts.push(resolvedBody);
 			if (attestation?.trim()) {
 				bodyParts.push('---');
@@ -663,15 +666,10 @@
 						}
 					}}
 					onSendMessage={async () => {
-						if (!data.user) {
-							// Guest: straight to template modal (mailto relay)
-							modalActions.openModal('template-modal', 'template_modal', { template, user: null });
-							return;
-						}
-
-						// Authenticated user: use unified post-auth flow
-						// (checks trust_tier/guestState before address gate)
-						handlePostAuthFlow();
+						// Reveal the Power Landscape and scroll to it — no batch mailto
+						landscapeRevealed = true;
+						await tick();
+						document.getElementById('power-landscape')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 					}}
 				/>
 			</div>
@@ -683,7 +681,7 @@
 			{#if FEATURES.STANCE_POSITIONS && data.user}
 				<TrustJourney
 					trustTier={data.user.trust_tier ?? 1}
-					onVerifyAddress={FEATURES.ADDRESS_VERIFICATION ? () => {
+					onVerifyAddress={FEATURES.ADDRESS_SPECIFICITY === 'district' ? () => {
 						modalActions.openModal('address-modal', 'address', {
 							template,
 							source,
@@ -725,6 +723,7 @@
 
 			<!-- Power Landscape: visible after position registration -->
 			{#if landscapeRevealed}
+				<div id="power-landscape"></div>
 				<PowerLandscape
 					{template}
 					decisionMakers={pl.recipientConfig?.decisionMakers ?? []}
