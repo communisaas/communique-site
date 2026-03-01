@@ -1,10 +1,9 @@
 /**
  * Moderation Pipeline E2E Tests
  *
- * Tests the 3-layer moderation architecture via API:
+ * Tests the 2-layer moderation architecture via API:
  * - Layer 0: Prompt Guard 2 (injection detection)
  * - Layer 1: Llama Guard 4 (S1/S4 blocking, permissive otherwise)
- * - Layer 2: Gemini quality (optional)
  *
  * RED-TEAM SCENARIOS INCLUDED:
  * - Prompt injection bypasses (Unicode, encoding, jailbreaks)
@@ -23,7 +22,7 @@ interface ModerationTestCase {
 	title: string;
 	message_body: string;
 	expectApproved: boolean;
-	expectReason?: 'prompt_injection' | 'safety_violation' | 'quality_failure';
+	expectReason?: 'prompt_injection' | 'safety_violation';
 	category: 'injection' | 'injection-bypass' | 'safety-block' | 'safety-allow' | 'civic' | 'edge';
 }
 

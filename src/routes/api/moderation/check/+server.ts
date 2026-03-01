@@ -18,7 +18,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
 
-		const { title, message_body, category } = body;
+		const { title, message_body } = body;
 
 		if (typeof title !== 'string' || typeof message_body !== 'string') {
 			return json(
@@ -31,11 +31,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		const result = await moderateTemplate({
-			title,
-			message_body,
-			category: category || 'General'
-		});
+		const result = await moderateTemplate({ title, message_body });
 
 		return json(result, { status: result.approved ? 200 : 400 });
 	} catch (error) {

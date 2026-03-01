@@ -30,7 +30,6 @@ export const ERROR_CODES = {
 	VALIDATION_DUPLICATE: 'VALIDATION_DUPLICATE',
 	VALIDATION_MISSING_DATA: 'VALIDATION_MISSING_DATA',
 	CONTENT_FLAGGED: 'CONTENT_FLAGGED',
-	QUALITY_REJECTED: 'QUALITY_REJECTED',
 
 	// Network errors
 	NETWORK_TIMEOUT: 'NETWORK_TIMEOUT',
@@ -60,7 +59,6 @@ export const ERROR_MESSAGES = {
 	[ERROR_CODES.VALIDATION_DUPLICATE]: 'This value already exists',
 	[ERROR_CODES.VALIDATION_MISSING_DATA]: 'Validation passed but data is missing',
 	[ERROR_CODES.CONTENT_FLAGGED]: 'Content flagged by moderation',
-	[ERROR_CODES.QUALITY_REJECTED]: 'Content quality rejected',
 
 	[ERROR_CODES.NETWORK_TIMEOUT]: 'Request timed out. Please try again.',
 	[ERROR_CODES.NETWORK_OFFLINE]: 'You appear to be offline. Please check your connection.',

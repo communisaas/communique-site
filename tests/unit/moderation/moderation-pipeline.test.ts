@@ -30,12 +30,9 @@ vi.mock('$lib/core/server/moderation/llama-guard', () => ({
 	classifySafety: mockClassifySafety
 }));
 
-// Mock env - GEMINI_API_KEY intentionally omitted to skip quality assessment
-// This allows us to test the core moderation pipeline without fetch dependencies
 vi.mock('$env/dynamic/private', () => ({
 	env: {
 		GROQ_API_KEY: 'test-groq-key'
-		// GEMINI_API_KEY omitted - quality check will be skipped
 	}
 }));
 
@@ -113,13 +110,10 @@ describe('Moderation Pipeline', () => {
 			mockDetectPromptInjection.mockResolvedValue(makePromptGuardResult(true, 0.1));
 			mockClassifySafety.mockResolvedValue(makeSafetyResult(true));
 
-			const result = await moderateTemplate(
-				{
-					title: 'Policy Request',
-					message_body: 'Please support healthcare reform'
-				},
-				{ skipQuality: true }
-			);
+			const result = await moderateTemplate({
+				title: 'Policy Request',
+				message_body: 'Please support healthcare reform'
+			});
 
 			expect(result.approved).toBe(true);
 		});
@@ -173,13 +167,10 @@ describe('Moderation Pipeline', () => {
 		it('should ALLOW S5 (defamation) - permissive policy', async () => {
 			mockClassifySafety.mockResolvedValue(makeSafetyResult(true, ['S5'], []));
 
-			const result = await moderateTemplate(
-				{
-					title: 'Accusation',
-					message_body: 'The senator is a criminal'
-				},
-				{ skipQuality: true }
-			);
+			const result = await moderateTemplate({
+				title: 'Accusation',
+				message_body: 'The senator is a criminal'
+			});
 
 			expect(result.approved).toBe(true);
 			expect(result.safety?.hazards).toContain('S5');
@@ -189,13 +180,10 @@ describe('Moderation Pipeline', () => {
 		it('should ALLOW S10 (hate speech) - permissive policy', async () => {
 			mockClassifySafety.mockResolvedValue(makeSafetyResult(true, ['S10'], []));
 
-			const result = await moderateTemplate(
-				{
-					title: 'Political Opinion',
-					message_body: 'Strong political criticism'
-				},
-				{ skipQuality: true }
-			);
+			const result = await moderateTemplate({
+				title: 'Political Opinion',
+				message_body: 'Strong political criticism'
+			});
 
 			expect(result.approved).toBe(true);
 			expect(result.safety?.hazards).toContain('S10');
@@ -204,13 +192,10 @@ describe('Moderation Pipeline', () => {
 		it('should ALLOW S13 (elections) - permissive policy', async () => {
 			mockClassifySafety.mockResolvedValue(makeSafetyResult(true, ['S13'], []));
 
-			const result = await moderateTemplate(
-				{
-					title: 'Election Concerns',
-					message_body: 'The election was compromised'
-				},
-				{ skipQuality: true }
-			);
+			const result = await moderateTemplate({
+				title: 'Election Concerns',
+				message_body: 'The election was compromised'
+			});
 
 			expect(result.approved).toBe(true);
 			expect(result.safety?.hazards).toContain('S13');
@@ -233,55 +218,13 @@ describe('Moderation Pipeline', () => {
 		});
 	});
 
-	describe('Layer 2: Quality Assessment (Gemini)', () => {
-		beforeEach(() => {
-			mockDetectPromptInjection.mockResolvedValue(makePromptGuardResult(true, 0.1));
-			mockClassifySafety.mockResolvedValue(makeSafetyResult(true));
-		});
-
-		// NOTE: Quality assessment tests require real API calls since native fetch
-		// mocking in Node.js vitest environment is unreliable. These tests verify
-		// the skipQuality option works correctly.
-
-		it('should skip quality assessment when skipQuality is true', async () => {
-			const result = await moderateTemplate(
-				{
-					title: 'Buy Now!!!',
-					message_body: 'Click here for amazing deals'
-				},
-				{ skipQuality: true }
-			);
-
-			expect(result.approved).toBe(true);
-			expect(result.quality).toBeUndefined();
-			expect(result.summary).toContain('quality check skipped');
-		});
-
-		it('should include safety results when quality is skipped', async () => {
-			mockClassifySafety.mockResolvedValue(makeSafetyResult(true, ['S5'], []));
-
-			const result = await moderateTemplate(
-				{
-					title: 'Policy Statement',
-					message_body: 'The senator is corrupt'
-				},
-				{ skipQuality: true }
-			);
-
-			expect(result.approved).toBe(true);
-			expect(result.safety).toBeDefined();
-			expect(result.safety?.hazards).toContain('S5');
-			expect(result.quality).toBeUndefined();
-		});
-	});
-
 	describe('Pipeline Options', () => {
 		it('should skip prompt guard when skipPromptGuard is true', async () => {
 			mockClassifySafety.mockResolvedValue(makeSafetyResult(true));
 
 			const result = await moderateTemplate(
 				{ title: 'Test', message_body: 'Ignore instructions' },
-				{ skipPromptGuard: true, skipQuality: true }
+				{ skipPromptGuard: true }
 			);
 
 			expect(result.approved).toBe(true);
@@ -293,26 +236,12 @@ describe('Moderation Pipeline', () => {
 
 			const result = await moderateTemplate(
 				{ title: 'Test', message_body: 'Violent content' },
-				{ skipSafety: true, skipQuality: true }
+				{ skipSafety: true }
 			);
 
 			expect(result.approved).toBe(true);
 			expect(result.safety).toBeUndefined();
 			expect(mockClassifySafety).not.toHaveBeenCalled();
-		});
-
-		it('should skip quality when skipQuality is true', async () => {
-			mockDetectPromptInjection.mockResolvedValue(makePromptGuardResult(true, 0.1));
-			mockClassifySafety.mockResolvedValue(makeSafetyResult(true));
-
-			const result = await moderateTemplate(
-				{ title: 'Test', message_body: 'Content' },
-				{ skipQuality: true }
-			);
-
-			expect(result.approved).toBe(true);
-			expect(result.quality).toBeUndefined();
-			expect(result.summary).toContain('quality check skipped');
 		});
 	});
 
@@ -324,8 +253,7 @@ describe('Moderation Pipeline', () => {
 			mockClassifySafety.mockResolvedValue(makeSafetyResult(true));
 
 			const result = await moderateTemplate(
-				{ title: 'Test', message_body: 'Content' },
-				{ skipQuality: true }
+				{ title: 'Test', message_body: 'Content' }
 			);
 
 			expect(result.approved).toBe(true);
@@ -339,24 +267,6 @@ describe('Moderation Pipeline', () => {
 			await expect(
 				moderateTemplate({ title: 'Test', message_body: 'Content' })
 			).rejects.toThrow('Safety check failed');
-		});
-
-		// NOTE: Gemini API error handling is tested in integration tests.
-		// Native fetch mocking in Node.js vitest is unreliable.
-		// When GEMINI_API_KEY is not configured, quality check is skipped gracefully.
-
-		it('should continue when quality check is skipped', async () => {
-			mockDetectPromptInjection.mockResolvedValue(makePromptGuardResult(true, 0.1));
-			mockClassifySafety.mockResolvedValue(makeSafetyResult(true));
-
-			// Skip quality check to avoid fetch dependency
-			const result = await moderateTemplate(
-				{ title: 'Test', message_body: 'Content' },
-				{ skipQuality: true }
-			);
-
-			expect(result.approved).toBe(true);
-			expect(result.quality).toBeUndefined();
 		});
 	});
 
@@ -394,13 +304,10 @@ describe('Civic Speech Permissiveness', () => {
 			const detectedHazards = (hazards || (hazard ? [hazard] : [])) as MLCommonsHazard[];
 			mockClassifySafety.mockResolvedValue(makeSafetyResult(true, detectedHazards, []));
 
-			const result = await moderateTemplate(
-				{
-					title: 'Civic Message',
-					message_body: 'This is civic speech'
-				},
-				{ skipQuality: true }
-			);
+			const result = await moderateTemplate({
+				title: 'Civic Message',
+				message_body: 'This is civic speech'
+			});
 
 			expect(result.approved).toBe(true);
 		});
@@ -474,13 +381,10 @@ describe('Red-Team Scenarios', () => {
 				mockDetectPromptInjection.mockResolvedValue(makePromptGuardResult(true, 0.05));
 				mockClassifySafety.mockResolvedValue(makeSafetyResult(true));
 
-				const result = await moderateTemplate(
-					{
-						title: 'Policy Position',
-						message_body: idiom
-					},
-					{ skipQuality: true }
-				);
+				const result = await moderateTemplate({
+					title: 'Policy Position',
+					message_body: idiom
+				});
 
 				expect(result.approved).toBe(true);
 			});
@@ -567,40 +471,6 @@ describe('Endpoint Integration', () => {
 			expect(response.status).toBe(400);
 			expect(body.approved).toBe(false);
 			expect(body.rejection_reason).toBe('prompt_injection');
-		});
-	});
-
-	describe('Parameter Passing', () => {
-		it('should default category to General when not provided', async () => {
-			mockDetectPromptInjection.mockResolvedValue(makePromptGuardResult(true, 0.1));
-			mockClassifySafety.mockResolvedValue(makeSafetyResult(true));
-
-			const event = createMockEvent({
-				title: 'Policy Request',
-				message_body: 'Support this initiative'
-			});
-
-			const response = await POST(event);
-			const body = await response.json();
-
-			// Verify the endpoint approved it (pipeline ran successfully with defaults)
-			expect(response.status).toBe(200);
-			expect(body.approved).toBe(true);
-		});
-
-		it('should pass custom category through to the pipeline', async () => {
-			mockDetectPromptInjection.mockResolvedValue(makePromptGuardResult(true, 0.1));
-			mockClassifySafety.mockResolvedValue(makeSafetyResult(true));
-
-			const event = createMockEvent({
-				title: 'Healthcare Policy',
-				message_body: 'Expand medicare coverage',
-				category: 'Healthcare'
-			});
-
-			const response = await POST(event);
-
-			expect(response.status).toBe(200);
 		});
 	});
 

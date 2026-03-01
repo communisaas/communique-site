@@ -1,7 +1,7 @@
 /**
  * Moderation Types - Permissive Civic Platform Architecture
  *
- * This module defines types for a TWO-LAYER moderation system:
+ * Two-layer moderation system:
  *
  * 1. Prompt Injection Protection (REQUIRED)
  *    - Llama Prompt Guard 2 via GROQ
@@ -144,35 +144,17 @@ export interface SafetyResult {
 }
 
 /**
- * Quality assessment from Gemini
- */
-export interface QualityResult {
-	/** Content approved for quality */
-	approved: boolean;
-	/** Confidence score (0-1) */
-	confidence: number;
-	/** Assessment reasoning */
-	reasoning: string;
-	/** Processing timestamp */
-	timestamp: string;
-	/** Model used for assessment */
-	model: 'gemini-3-flash-preview';
-}
-
-/**
  * Combined moderation result
  */
 export interface ModerationResult {
 	/** Final approval decision */
 	approved: boolean;
 	/** Rejection reason (if not approved) */
-	rejection_reason?: 'prompt_injection' | 'safety_violation' | 'quality_failure';
+	rejection_reason?: 'prompt_injection' | 'safety_violation';
 	/** Prompt injection check result (Layer 0 - REQUIRED) */
 	prompt_guard?: PromptGuardResult;
 	/** Safety check result (Layer 1 - OPTIONAL) */
 	safety?: SafetyResult;
-	/** Quality assessment result (Layer 2 - only if earlier layers passed) */
-	quality?: QualityResult;
 	/** Human-readable summary */
 	summary: string;
 	/** Total processing time in ms */
@@ -185,5 +167,4 @@ export interface ModerationResult {
 export interface TemplateModerationInput {
 	title: string;
 	message_body: string;
-	category?: string;
 }
