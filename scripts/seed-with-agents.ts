@@ -23,6 +23,7 @@
  */
 
 import 'dotenv/config';
+import { createHash } from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import type { InputJsonValue } from '@prisma/client/runtime/library';
 
@@ -132,6 +133,26 @@ const VIBES: Vibe[] = [
 		fallbackCategory: 'Labor Rights',
 		countryCode: 'US',
 		targetHint: 'corporate'
+	},
+
+	// ── San Francisco ───────────────────────────────────────────
+	{
+		vibe: "San Francisco has 7,754 people sleeping outside while 40,458 housing units sit empty. The city's vacancy rate is 6.2% — twice the national average. A vacancy tax would cost landlords less than keeping units dark and cost the city nothing to enforce.",
+		fallbackCategory: 'Housing',
+		countryCode: 'US',
+		locationHint: { city: 'San Francisco', state: 'CA', displayName: 'San Francisco, CA' }
+	},
+	{
+		vibe: "SFMTA spent $300 million on the Central Subway that moves 3,600 riders per day — $83,000 per rider per year. Muni bus routes that serve 700,000 daily riders got a 4% budget cut. The city subsidizes engineering vanity projects while the transit people actually use falls apart.",
+		fallbackCategory: 'Transportation',
+		countryCode: 'US',
+		locationHint: { city: 'San Francisco', state: 'CA', displayName: 'San Francisco, CA' }
+	},
+	{
+		vibe: "Fentanyl killed 810 people in San Francisco last year. The city has 3,500 shelter beds and 1,000 SIP hotel rooms. Every supervised consumption site study shows 85% reduction in overdose deaths and zero fatalities on-site. Vancouver's Insite has operated for 20 years without a single death. The Tenderloin needs sites, not sweeps.",
+		fallbackCategory: 'Public Health',
+		countryCode: 'US',
+		locationHint: { city: 'San Francisco', state: 'CA', displayName: 'San Francisco, CA' }
 	}
 ];
 
@@ -197,6 +218,11 @@ const seedUserData = [
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+/** Content-addressable fingerprint: same title + body = same template */
+function contentHash(title: string, body: string): string {
+	return createHash('sha256').update(`${title}\0${body}`).digest('hex').slice(0, 40);
+}
 
 function generateSlug(title: string): string {
 	return title
@@ -269,6 +295,9 @@ async function teardownDatabase() {
 		{ name: 'submission_retry', fn: () => db.submissionRetry.deleteMany({}) },
 		{ name: 'verification_audit', fn: () => db.verificationAudit.deleteMany({}) },
 		{ name: 'shadow_atlas_registration', fn: () => db.shadowAtlasRegistration.deleteMany({}) },
+		{ name: 'position_delivery', fn: () => db.positionDelivery.deleteMany({}) },
+		{ name: 'position_registration', fn: () => db.positionRegistration.deleteMany({}) },
+		{ name: 'debate_nullifier', fn: () => db.debateNullifier.deleteMany({}) },
 		{ name: 'debate_argument', fn: () => db.debateArgument.deleteMany({}) },
 		{ name: 'debate', fn: () => db.debate.deleteMany({}) },
 		{ name: 'resolved_contact', fn: () => db.resolvedContact.deleteMany({}) },
@@ -523,6 +552,7 @@ async function processVibe(
 			verification_status: approved ? 'approved' : 'pending',
 			consensus_approved: approved,
 			country_code: countryCode,
+			content_hash: contentHash(title, messageResult.message),
 			reputation_applied: false,
 			verified_sends: 0,
 			unique_districts: 0,
@@ -599,9 +629,13 @@ async function processVibe(
 // ============================================================================
 
 async function main() {
+	const vibeStart = parseInt(process.env.VIBE_START || '0');
+	const vibeLimit = parseInt(process.env.VIBE_LIMIT || '0') || VIBES.length;
+	const retryMode = vibeStart > 0;
+
 	console.log('\n' + '='.repeat(60));
-	console.log('AGENT-POWERED SEED v2');
-	console.log(`Processing ${VIBES.length} vibes (US + Canada) through the agent pipeline`);
+	console.log(`AGENT-POWERED SEED v2${retryMode ? ' (RETRY MODE)' : ''}`);
+	console.log(`Processing vibes ${vibeStart + 1}–${Math.min(vibeLimit, VIBES.length)} of ${VIBES.length}`);
 	console.log('='.repeat(60));
 
 	if (!process.env.GEMINI_API_KEY) {
@@ -616,23 +650,30 @@ async function main() {
 	}
 
 	try {
-		await teardownDatabase();
+		if (retryMode) {
+			console.log('Retry mode: skipping teardown, upserting users...');
+		} else {
+			await teardownDatabase();
+		}
 
-		// Create seed users
+		// Create seed users (upsert to handle retry mode)
 		console.log('Seeding users...');
 		const createdUsers = [];
 		for (const userData of seedUserData) {
-			const user = await db.user.create({ data: userData });
+			const user = await db.user.upsert({
+				where: { id: userData.id },
+				update: {},
+				create: userData
+			});
 			createdUsers.push(user);
-			console.log(`  Created: "${userData.name}" (${userData.email})`);
+			console.log(`  ${retryMode ? 'Ensured' : 'Created'}: "${userData.name}" (${userData.email})`);
 		}
 
 		// Process each vibe
 		let successCount = 0;
 		let failCount = 0;
-		const vibeLimit = parseInt(process.env.VIBE_LIMIT || '0') || VIBES.length;
 
-		for (let i = 0; i < Math.min(vibeLimit, VIBES.length); i++) {
+		for (let i = vibeStart; i < Math.min(vibeLimit, VIBES.length); i++) {
 			const vibeData = VIBES[i];
 			// Assign US vibes to user 1, CA vibes to user 2, overflow to user 3
 			const userIndex = vibeData.countryCode === 'US' ? 0 : vibeData.countryCode === 'CA' ? 1 : 2;
