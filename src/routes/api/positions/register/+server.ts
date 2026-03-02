@@ -46,12 +46,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Template not found' }, { status: 404 });
 		}
 
+		// Auto-fill district_code from ShadowAtlasRegistration if not provided
+		let resolvedDistrictCode = districtCode;
+		if (!resolvedDistrictCode) {
+			const atlas = await prisma.shadowAtlasRegistration
+				.findFirst({
+					where: { identity_commitment: identityCommitment },
+					select: { congressional_district: true }
+				})
+				.catch(() => null);
+			if (atlas?.congressional_district) {
+				resolvedDistrictCode = atlas.congressional_district;
+			}
+		}
+
 		// Register position (upsert — duplicates return existing)
 		const registration = await registerPosition({
 			templateId,
 			identityCommitment,
 			stance,
-			districtCode
+			districtCode: resolvedDistrictCode
 		});
 
 		// Always return fresh counts

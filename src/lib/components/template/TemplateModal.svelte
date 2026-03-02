@@ -788,8 +788,14 @@
 					await handleUnifiedEmailFlow();
 				}
 			} else {
-				// Phase 1: Non-Congressional messages use mailto, no verification yet
-				// Phase 2: Will add OAuth verification for all message types
+				// Non-Congressional messages use mailto — track the confirmed send
+				// Fire-and-forget: don't block celebration on API response
+				fetch('/api/positions/confirm-send', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ templateId: template.id })
+				}).catch((err) => console.warn('[Template Modal] Confirm send tracking failed:', err));
+
 				modalActions.confirmSend();
 
 				// Navigate to template page after brief celebration

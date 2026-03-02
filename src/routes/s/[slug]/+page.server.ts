@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import type { AIResolutionData, ArgumentAIScore } from '$lib/stores/debateState.svelte';
 import { prisma } from '$lib/core/db';
-import { getPositionCounts } from '$lib/services/positionService';
+import { getPositionCounts, getEngagementByDistrict } from '$lib/services/positionService';
 import { parseRecipientConfig } from '$lib/types/template';
 import { getOfficials } from '$lib/core/shadow-atlas/client';
 import type { DistrictOfficialInput } from '$lib/utils/landscapeMerge';
@@ -81,7 +81,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		debateResult,
 		positionCountsResult,
 		existingPositionResult,
-		userRepResult
+		userRepResult,
+		engagementByDistrictResult
 	] = await Promise.all([
 		// District message aggregates
 		templateId
@@ -149,7 +150,18 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 						return rep?.state && rep?.district ? `${rep.state}-${rep.district}` : null;
 					})
 					.catch(() => null)
-			: Promise.resolve(null)
+			: Promise.resolve(null),
+
+		// Community field: per-district engagement breakdown
+		templateId
+			? getEngagementByDistrict(templateId).catch(() => ({
+					districts: [],
+					aggregate: { total_districts: 0, total_positions: 0, total_support: 0, total_oppose: 0 }
+				}))
+			: Promise.resolve({
+					districts: [],
+					aggregate: { total_districts: 0, total_positions: 0, total_support: 0, total_oppose: 0 }
+				})
 	]);
 
 	// Process Batch 1 results
@@ -260,6 +272,15 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		? parseRecipientConfig(parentData.template.recipient_config)
 		: {};
 
+	// Tag user's district in engagement data
+	const engagementByDistrict = {
+		...engagementByDistrictResult,
+		districts: engagementByDistrictResult.districts.map((d) => ({
+			...d,
+			is_user_district: userDistrictCode ? d.district_code === userDistrictCode : false
+		}))
+	};
+
 	return {
 		user: locals.user,
 		template: parentData.template,
@@ -274,6 +295,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		existingPosition,
 		deliveredRecipients,
 		districtOfficials: districtOfficials as DistrictOfficialInput[],
-		recipientConfig
+		recipientConfig,
+		// Community field
+		engagementByDistrict
 	};
 };
