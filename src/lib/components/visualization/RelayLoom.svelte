@@ -446,7 +446,7 @@
 
 	const narrativeContent: Record<string, NarrativeContent> = {
 		you: {
-			headline: 'Your voice. Amplified.',
+			headline: 'Write once. Sent by many.',
 			body: [
 				'You\'ve sent emails that vanished into the void. Called offices that promised to "pass along your concerns." Nothing changed.',
 				'This time is different. You write once — your authentic grievance, your specific problem. Then you share a link. And everyone who shares your problem can send it too.'
@@ -481,14 +481,14 @@
 				'The same policies. The same frustrations. The same fear of speaking up alone.',
 				'When one person complains, they\'re a "problem employee." When dozens coordinate, they\'re a constituency.'
 			],
-			insight: 'Individual complaints are noise. Collective voice is power.',
+			insight: 'Individual complaints are noise. Coordinated messages are power.',
 			cta: 'Browse Templates',
 			ctaAction: 'browse'
 		},
 		rep: {
 			headline: 'They count every constituent.',
 			body: [
-				'Congressional offices tally every email, every call, every contact. Staff report engagement numbers to the member.',
+				'Congressional offices tally every email, every call, every contact. Staff report contact volume to the member.',
 				"One email from their district? Filed. Fifty from the same zip code on the same issue? That's a crisis meeting."
 			],
 			insight: 'They work for you. Remind them.',

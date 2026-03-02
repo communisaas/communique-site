@@ -81,8 +81,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		debateResult,
 		positionCountsResult,
 		existingPositionResult,
-		userRepResult,
-		engagementByDistrictResult
+		userRepResult
 	] = await Promise.all([
 		// District message aggregates
 		templateId
@@ -150,18 +149,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 						return rep?.state && rep?.district ? `${rep.state}-${rep.district}` : null;
 					})
 					.catch(() => null)
-			: Promise.resolve(null),
-
-		// Community field: per-district engagement breakdown
-		templateId
-			? getEngagementByDistrict(templateId).catch(() => ({
-					districts: [],
-					aggregate: { total_districts: 0, total_positions: 0, total_support: 0, total_oppose: 0 }
-				}))
-			: Promise.resolve({
-					districts: [],
-					aggregate: { total_districts: 0, total_positions: 0, total_support: 0, total_oppose: 0 }
-				})
+			: Promise.resolve(null)
 	]);
 
 	// Process Batch 1 results
@@ -234,7 +222,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	}
 
 	// Batch 2: Queries depending on Batch 1 results
-	const [deliveredRecipients, districtOfficials] = await Promise.all([
+	const [deliveredRecipients, districtOfficials, engagementByDistrict] = await Promise.all([
 		existingPosition
 			? prisma.positionDelivery
 					.findMany({
@@ -264,22 +252,18 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 						}))
 					)
 					.catch(() => [])
-			: Promise.resolve([])
+			: Promise.resolve([]),
+
+		// Engagement by district (coordination visibility)
+		templateId
+			? getEngagementByDistrict(templateId, userDistrictCode).catch(() => null)
+			: Promise.resolve(null)
 	]);
 
 	// Parse typed recipient_config from template JSON
 	const recipientConfig = parentData.template
 		? parseRecipientConfig(parentData.template.recipient_config)
 		: {};
-
-	// Tag user's district in engagement data
-	const engagementByDistrict = {
-		...engagementByDistrictResult,
-		districts: engagementByDistrictResult.districts.map((d) => ({
-			...d,
-			is_user_district: userDistrictCode ? d.district_code === userDistrictCode : false
-		}))
-	};
 
 	return {
 		user: locals.user,
@@ -296,7 +280,6 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		deliveredRecipients,
 		districtOfficials: districtOfficials as DistrictOfficialInput[],
 		recipientConfig,
-		// Community field
 		engagementByDistrict
 	};
 };

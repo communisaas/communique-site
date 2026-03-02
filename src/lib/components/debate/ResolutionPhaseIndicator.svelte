@@ -47,9 +47,9 @@
 	const methodLabel = $derived.by(() => {
 		if (!resolutionMethod) return '';
 		const labels: Record<string, string> = {
-			ai_community: 'AI + Community',
+			ai_community: 'AI + Participants',
 			governance_override: 'Governance Override',
-			community_only: 'Community Only'
+			community_only: 'Participants Only'
 		};
 		return labels[resolutionMethod] ?? '';
 	});

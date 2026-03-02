@@ -42,7 +42,7 @@
 				'social-link': {
 					headline: `You're joining ${template.metrics?.sent || 0} others on this`,
 					subtext: 'They shared this because groups move decisions.',
-					cta: 'Add your voice'
+					cta: 'Send your message'
 				},
 				'direct-link': {
 					headline: 'They count every message',
@@ -50,8 +50,8 @@
 					cta: 'Speak up'
 				},
 				share: {
-					headline: 'The campaign is building',
-					subtext: `Add your pressure to ${template.metrics?.sent || 0} others.`,
+					headline: 'Pressure is building',
+					subtext: `Add yours to ${template.metrics?.sent || 0} others.`,
 					cta: 'Join them'
 				}
 			};
@@ -59,35 +59,35 @@
 			return {
 				'social-link': {
 					headline: 'Make decision-makers listen',
-					subtext: 'Someone shared this because they believe your voice can create change.',
-					cta: 'Add your voice'
+					subtext: 'Coordinated messages move decisions. Someone shared this.',
+					cta: 'Send your message'
 				},
 				'direct-link': {
 					headline: 'Decision-makers need to hear from you',
-					subtext: 'Your voice carries weight when you speak as a stakeholder.',
-					cta: 'Make your voice heard'
+					subtext: 'Stakeholders move decisions. Speak as one.',
+					cta: 'Send your position'
 				},
 				share: {
-					headline: 'Join the advocacy push',
-					subtext: 'Add your voice to the growing pressure on decision-makers.',
+					headline: 'Join the pressure',
+					subtext: 'Add yours to the growing numbers on this.',
 					cta: 'Join them'
 				}
 			};
 		} else {
 			return {
 				'social-link': {
-					headline: 'Your voice can drive change',
-					subtext: 'Someone shared this because they believe in change.',
-					cta: 'Add your voice'
+					headline: 'Coordinated messages drive change',
+					subtext: 'Someone shared this. Add your pressure.',
+					cta: 'Send your message'
 				},
 				'direct-link': {
-					headline: 'Make your voice heard',
-					subtext: 'This campaign needs supporters like you.',
-					cta: 'Get started'
+					headline: 'Send your position',
+					subtext: 'Numbers create pressure. Add yours.',
+					cta: 'Send your position'
 				},
 				share: {
 					headline: 'Shared with you',
-					subtext: 'Someone wants you to join this important cause.',
+					subtext: 'Someone shared this. Join them.',
 					cta: 'Join them'
 				}
 			};
@@ -197,7 +197,7 @@
 		<!-- Header -->
 		<div class="mb-6 text-center">
 			<h2 class="mb-2 text-xl font-bold text-slate-900">
-				{message?.headline || 'Make your voice heard'}
+				{message?.headline || 'Send your position'}
 			</h2>
 			<p class="text-sm text-slate-600">
 				{#if isCongressional}

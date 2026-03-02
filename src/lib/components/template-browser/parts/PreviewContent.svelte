@@ -121,10 +121,10 @@
 				? 'border-red-200/60 bg-red-50/50 text-red-700'
 				: 'border-amber-200/60 bg-amber-50/50 text-amber-700'}">
 		{#if debateResolution.winningStance === 'SUPPORT'}
-			<span class="font-medium">Community-validated framing</span>
+			<span class="font-medium">Deliberation-validated framing</span>
 			<span class="opacity-70"> · {debateResolution.participants} participants</span>
 		{:else if debateResolution.winningStance === 'OPPOSE'}
-			<span class="font-medium">Framing contested by community deliberation</span>
+			<span class="font-medium">Framing contested by deliberation</span>
 			<a href="#debate-surface" class="ml-1 underline opacity-70">View arguments</a>
 		{:else}
 			<span class="font-medium">Amendment proposed by deliberation</span>

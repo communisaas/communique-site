@@ -174,7 +174,7 @@
 				{#if ds.status === 'resolved'}
 					{#if ds.winningStance === 'SUPPORT'}
 						<span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/60 bg-emerald-50 px-2 py-0.5">
-							<span class="font-brand font-medium text-emerald-700">Community-reviewed</span>
+							<span class="font-brand font-medium text-emerald-700">Peer-reviewed</span>
 							<span class="text-xs text-emerald-600/70">&middot; {ds.uniqueParticipants}</span>
 						</span>
 					{:else if ds.winningStance === 'OPPOSE'}

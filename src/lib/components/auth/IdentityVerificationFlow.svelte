@@ -296,7 +296,7 @@
 							</li>
 							<li class="flex items-start gap-2">
 								<span class="text-green-600">✓</span>
-								<span>Congressional offices will prioritize your voice</span>
+								<span>Congressional offices will prioritize your message</span>
 							</li>
 							<li class="flex items-start gap-2">
 								<span class="text-green-600">✓</span>

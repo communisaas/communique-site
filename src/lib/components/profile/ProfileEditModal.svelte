@@ -231,7 +231,7 @@
 						<option value="">Select your connection...</option>
 						<option value="directly_affected">Directly affected by this issue</option>
 						<option value="professional">Professional interest/expertise</option>
-						<option value="community">Community member concerned</option>
+						<option value="community">Concerned resident</option>
 						<option value="advocate">Long-time advocate</option>
 						<option value="other">Other</option>
 					</select>

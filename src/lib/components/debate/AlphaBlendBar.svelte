@@ -51,7 +51,7 @@
 			</div>
 			<div class="flex items-center gap-1.5">
 				<span class="inline-block h-2 w-2 rounded-full bg-indigo-500"></span>
-				<span class="text-slate-600">Community</span>
+				<span class="text-slate-600">Participants</span>
 				<span class="font-mono font-semibold text-indigo-700">{formatBp(communityScore)}</span>
 			</div>
 		</div>
@@ -61,7 +61,7 @@
 	<div
 		class="flex w-full overflow-hidden rounded-lg {compact ? 'h-2' : 'h-3'}"
 		role="img"
-		aria-label="AI contributes {alphaPct.toFixed(0)}%, community {communityPct.toFixed(0)}%"
+		aria-label="AI contributes {alphaPct.toFixed(0)}%, participants {communityPct.toFixed(0)}%"
 	>
 		<div
 			class="bg-violet-500 h-full transition-none"
@@ -71,14 +71,14 @@
 		<div
 			class="bg-indigo-400 h-full transition-none"
 			style="width: {$communityWidth.toFixed(1)}%;"
-			title="Community: {communityPct.toFixed(0)}% weight"
+			title="Participants: {communityPct.toFixed(0)}% weight"
 		></div>
 	</div>
 
 	<!-- Alpha label + final score -->
 	<div class="flex items-center justify-between text-xs">
 		<span class="text-slate-500">
-			{alphaPct.toFixed(0)}% AI / {communityPct.toFixed(0)}% Community
+			{alphaPct.toFixed(0)}% AI / {communityPct.toFixed(0)}% Participants
 		</span>
 		<span class="font-mono font-semibold text-slate-800">
 			Final: {formatBp(finalScore)}

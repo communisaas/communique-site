@@ -1198,7 +1198,7 @@
 							Verify your address for faster delivery
 						</p>
 						<p class="mb-3 text-xs text-indigo-700">
-							Congressional offices prioritize verified constituents. Add your address to ensure your voice is counted.
+							Congressional offices prioritize verified constituents. Add your address to ensure your message is counted.
 						</p>
 						<button
 							onclick={() => {
@@ -1377,12 +1377,12 @@
 			</button>
 
 			{#if trustUpgradePhase === 'choice'}
-				<!-- Phase 1: Choice — strengthen your voice -->
+				<!-- Phase 1: Choice — strengthen signal -->
 				<div class="mb-6 text-center">
 					<div class="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
 						<ShieldCheck class="h-7 w-7 text-slate-600" />
 					</div>
-					<h3 class="mb-1 text-xl font-bold text-slate-900">Strengthen your voice</h3>
+					<h3 class="mb-1 text-xl font-bold text-slate-900">Strengthen your signal</h3>
 					<p class="text-sm text-slate-500">Congressional offices prioritize verified constituents</p>
 				</div>
 

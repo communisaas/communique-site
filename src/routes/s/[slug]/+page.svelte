@@ -22,6 +22,8 @@
 	import StanceRegistration from '$lib/components/action/StanceRegistration.svelte';
 	import PowerLandscape from '$lib/components/action/PowerLandscape.svelte';
 	import { positionState } from '$lib/stores/positionState.svelte';
+	import CommunityEngagementCard from '$lib/components/action/CommunityEngagementCard.svelte';
+	import type { EngagementData } from '$lib/components/action/CommunityEngagementCard.svelte';
 	import { mergeLandscape, type LandscapeMember, type DistrictOfficialInput } from '$lib/utils/landscapeMerge';
 	import type { ProcessedDecisionMaker } from '$lib/types/template';
 
@@ -217,6 +219,8 @@
 		deliveredRecipients?: string[];
 		districtOfficials?: DistrictOfficialInput[];
 		recipientConfig?: { decisionMakers?: ProcessedDecisionMaker[]; personalPrompt?: string; cwcRouting?: boolean };
+		engagementByDistrict?: EngagementData | null;
+		userDistrictCode?: string | null;
 	}
 	const pl = $derived(data as unknown as PowerLandscapeData);
 
@@ -720,6 +724,16 @@
 					} : undefined}
 				/>
 			{/if}
+
+			<!-- Coordination field — "{N} coordinating across {M} districts" -->
+			<CommunityEngagementCard
+				engagement={pl.engagementByDistrict ?? null}
+				userDistrict={data.userDistrictCode}
+				onAddPosition={!positionState.registered ? () => {
+					const stanceSection = document.querySelector('.border-y.border-slate-200\\/80');
+					stanceSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				} : undefined}
+			/>
 
 			<!-- Power Landscape: visible after position registration -->
 			{#if landscapeRevealed}
