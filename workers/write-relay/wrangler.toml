@@ -1,0 +1,14 @@
+name = "communique-write-relay"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "communique-write-relay-db"
+database_id = "REPLACE_WITH_DATABASE_ID"
+
+# Secrets (set via `npx wrangler secret put <KEY>`):
+#   RELAY_AUTH_TOKEN         - Bearer token communique uses to call this relay
+#   SIDECAR_AUTH_TOKEN       - Bearer token this relay uses to call SA sidecar
+#   SHADOW_ATLAS_SIDECAR_URL - SA sidecar base URL (e.g., https://sa.example.com)

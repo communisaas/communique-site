@@ -1,21 +1,46 @@
 /**
- * Shadow Atlas HTTP Client
+ * Shadow Atlas Client
  *
- * Connects to voter-protocol's production Shadow Atlas API for:
- * - Point-in-polygon district lookups (lat/lng → district)
- * - Merkle proofs for ZK district membership verification
- * - Production depth-20 trees (1M capacity, circuit-compatible)
+ * IPFS-native architecture (Phase A3):
+ * - READ operations use IPFS-cached data + client-side H3 resolution
+ * - WRITE operations use HTTP to Shadow Atlas relay (Phase B1 moves to thin relay)
+ * - Engagement operations remain HTTP (not in IPFS scope yet)
  *
- * This replaces the local mock Merkle tree implementation which used:
- * - Depth-12 trees (4K capacity) - INCOMPATIBLE with circuits
- * - Local Postgres storage - STALE data
- * - Client-side proof generation - SLOWER and less secure
+ * Read path (no server required):
+ *   h3-js: latLngToCell(lat, lng, 7) → H3 cell index (microseconds)
+ *   IndexedDB: cached H3→district mapping from IPFS (~3-5 MB)
+ *   Local lookup: cell → districts (hash table, microseconds)
+ *
+ * Write path (still requires server):
+ *   HTTP → Shadow Atlas API → tree mutation + proof generation
  */
 
 import { env } from '$env/dynamic/private';
+import { latLngToCell } from 'h3-js';
+import {
+	getDistrictMapping,
+	getOfficialsDataset,
+	getMerkleSnapshot,
+	checkIPFSHealth,
+	isIPFSConfigured,
+	clearCache,
+	type CellDistricts,
+} from './ipfs-store';
+import {
+	deserializeCellTreeSnapshot,
+	computeClientCellProof,
+	validateSnapshotRoot,
+	type CellTreeSnapshot,
+	type CellTreeSnapshotWire,
+} from './cell-tree-snapshot';
 
+// Server config (used by engagement reads)
 const SHADOW_ATLAS_URL = env.SHADOW_ATLAS_API_URL || 'http://localhost:3000';
 const SHADOW_ATLAS_REGISTRATION_TOKEN = env.SHADOW_ATLAS_REGISTRATION_TOKEN || '';
+
+// Write relay (Phase B1) — registration, replacement, engagement writes
+const WRITE_RELAY_URL = env.WRITE_RELAY_URL || SHADOW_ATLAS_URL;
+const WRITE_RELAY_TOKEN = env.WRITE_RELAY_TOKEN || SHADOW_ATLAS_REGISTRATION_TOKEN;
 
 /**
  * Circuit depth (must match VITE_CIRCUIT_DEPTH used by prover-client.ts).
@@ -68,14 +93,118 @@ export function validateBN254HexArray(values: string[], label: string): void {
 	}
 }
 
+// ============================================================================
+// FIPS → State Code Conversion
+// ============================================================================
+
+/**
+ * FIPS state codes → two-letter postal abbreviations.
+ * Used to convert substrate's district ID format (cd-0601) to communique's (CA-01).
+ */
+const FIPS_TO_STATE: Record<string, string> = {
+	'01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA',
+	'08': 'CO', '09': 'CT', '10': 'DE', '11': 'DC', '12': 'FL',
+	'13': 'GA', '15': 'HI', '16': 'ID', '17': 'IL', '18': 'IN',
+	'19': 'IA', '20': 'KS', '21': 'KY', '22': 'LA', '23': 'ME',
+	'24': 'MD', '25': 'MA', '26': 'MI', '27': 'MN', '28': 'MS',
+	'29': 'MO', '30': 'MT', '31': 'NE', '32': 'NV', '33': 'NH',
+	'34': 'NJ', '35': 'NM', '36': 'NY', '37': 'NC', '38': 'ND',
+	'39': 'OH', '40': 'OK', '41': 'OR', '42': 'PA', '44': 'RI',
+	'45': 'SC', '46': 'SD', '47': 'TN', '48': 'TX', '49': 'UT',
+	'50': 'VT', '51': 'VA', '53': 'WA', '54': 'WV', '55': 'WI',
+	'56': 'WY', '60': 'AS', '66': 'GU', '69': 'MP', '72': 'PR',
+	'78': 'VI',
+};
+
+/**
+ * Convert substrate's district ID format to communique's format.
+ * "cd-0601" → "CA-01", "cd-5000" → "VT-AL"
+ */
+function convertDistrictId(substrateId: string): string {
+	// Parse: "cd-{2-digit state FIPS}{2-digit district}"
+	const match = substrateId.match(/^cd-(\d{2})(\d{2})$/);
+	if (!match) return substrateId; // Fallback: return as-is
+
+	const stateFips = match[1];
+	const districtNum = match[2];
+	const stateCode = FIPS_TO_STATE[stateFips];
+	if (!stateCode) return substrateId;
+
+	// At-large districts: 00 → AL
+	const district = districtNum === '00' ? 'AL' : districtNum;
+	return `${stateCode}-${district}`;
+}
+
+/** Reverse lookup: state abbreviation → FIPS code (derived from FIPS_TO_STATE) */
+const STATE_TO_FIPS: Record<string, string> = Object.fromEntries(
+	Object.entries(FIPS_TO_STATE).map(([fips, state]) => [state, fips]),
+);
+
+/**
+ * Convert communique's district code to substrate's IPFS key format.
+ * "CA-12" → "cd-0612", "VT-AL" → "cd-5000"
+ * Used for officials dataset lookup (keyed by substrate format).
+ */
+function toSubstrateDistrictKey(districtCode: string): string {
+	const match = districtCode.match(/^([A-Z]{2})-(\d{2}|AL)$/);
+	if (!match) return districtCode;
+
+	const stateCode = match[1];
+	const district = match[2];
+	const fips = STATE_TO_FIPS[stateCode];
+	if (!fips) return districtCode;
+
+	const districtNum = district === 'AL' ? '00' : district;
+	return `cd-${fips}${districtNum}`;
+}
+
+/**
+ * Build a human-readable district name from a district code.
+ * "CA-12" → "California's 12th Congressional District"
+ * "VT-AL" → "Vermont At-Large Congressional District"
+ */
+function buildDistrictName(districtCode: string): string {
+	const STATE_NAMES: Record<string, string> = {
+		AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas',
+		CA: 'California', CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware',
+		DC: 'District of Columbia', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii',
+		ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa',
+		KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine',
+		MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota',
+		MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska',
+		NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico',
+		NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio',
+		OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island',
+		SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas',
+		UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington',
+		WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
+		AS: 'American Samoa', GU: 'Guam', MP: 'Northern Mariana Islands',
+		PR: 'Puerto Rico', VI: 'U.S. Virgin Islands',
+	};
+
+	const parts = districtCode.split('-');
+	if (parts.length !== 2) return `Congressional District ${districtCode}`;
+
+	const stateName = STATE_NAMES[parts[0]] || parts[0];
+	if (parts[1] === 'AL') return `${stateName} At-Large Congressional District`;
+
+	const num = parseInt(parts[1], 10);
+	const suffix = num === 1 ? 'st' : num === 2 ? 'nd' : num === 3 ? 'rd' : 'th';
+	return `${stateName}'s ${num}${suffix} Congressional District`;
+}
+
+// ============================================================================
+// Interfaces (unchanged — preserve backward compatibility)
+// ============================================================================
+
 /**
  * District information returned from Shadow Atlas
  */
 export interface District {
-	id: string; // e.g., "usa-ca-san-francisco-d5"
-	name: string; // e.g., "San Francisco District 5"
-	jurisdiction: string; // e.g., "city-council"
-	districtType: string; // e.g., "council"
+	id: string; // e.g., "CA-12"
+	name: string; // e.g., "California's 12th Congressional District"
+	jurisdiction: string; // e.g., "congressional"
+	districtType: string; // e.g., "congressional"
 }
 
 /**
@@ -118,16 +247,43 @@ export interface ShadowAtlasResponse {
 	data: DistrictLookupResult;
 }
 
+// ============================================================================
+// District Lookup (IPFS + H3 — no server call)
+// ============================================================================
+
+/** H3 resolution for district mapping (matches substrate's build pipeline) */
+const H3_RESOLUTION = 7;
+
 /**
- * Lookup district and Merkle proof for a given latitude/longitude
+ * Build a District object from H3 cell districts data.
+ */
+function cellDistrictsToDistrict(cellDistricts: CellDistricts): District {
+	const cdRaw = cellDistricts.cd;
+	if (!cdRaw) {
+		throw new Error('Cell has no congressional district assignment');
+	}
+
+	const districtCode = convertDistrictId(cdRaw);
+	return {
+		id: districtCode,
+		name: buildDistrictName(districtCode),
+		jurisdiction: 'congressional',
+		districtType: 'congressional',
+	};
+}
+
+/**
+ * Lookup district and Merkle proof for a given latitude/longitude.
+ *
+ * IPFS-native: resolves district locally via H3 cell index + cached mapping.
+ * No Shadow Atlas server call required.
  *
  * @param lat - Latitude (-90 to 90)
  * @param lng - Longitude (-180 to 180)
- * @returns District information and Merkle proof
+ * @returns District information and Merkle proof (proof is null until cipher integrates)
  * @throws Error if lookup fails or coordinates are invalid
  */
 export async function lookupDistrict(lat: number, lng: number): Promise<DistrictLookupResult> {
-	// Validate coordinates
 	if (lat < -90 || lat > 90) {
 		throw new Error(`Invalid latitude: ${lat}. Must be between -90 and 90.`);
 	}
@@ -135,79 +291,34 @@ export async function lookupDistrict(lat: number, lng: number): Promise<District
 		throw new Error(`Invalid longitude: ${lng}. Must be between -180 and 180.`);
 	}
 
-	const url = `${SHADOW_ATLAS_URL}/v1/lookup?lat=${lat}&lng=${lng}`;
-
 	try {
-		const response = await fetch(url, {
-			headers: {
-				Accept: 'application/json',
-				'X-Client-Version': 'communique-v1'
-			}
-		});
+		const mapping = await getDistrictMapping();
+		const cellIndex = latLngToCell(lat, lng, H3_RESOLUTION);
+		const cellDistricts = mapping.mapping[cellIndex];
 
-		if (!response.ok) {
-			// Try to parse error response
-			const errorData = await response.json().catch(() => ({
-				error: {
-					code: 'NETWORK_ERROR',
-					message: response.statusText
-				}
-			})) as ShadowAtlasError;
-
+		if (!cellDistricts) {
 			throw new Error(
-				`Shadow Atlas lookup failed: ${errorData.error.message || response.statusText}`
+				`No district data for H3 cell ${cellIndex} at (${lat.toFixed(4)}, ${lng.toFixed(4)}). ` +
+				'Location may be outside US coverage area.'
 			);
 		}
 
-		const result = (await response.json()) as ShadowAtlasResponse;
-
-		if (!result.success || !result.data) {
-			throw new Error('Shadow Atlas returned invalid response format');
-		}
-
-		// Validate response structure
-		const { district, merkleProof } = result.data;
-
-		if (!district?.id || !district?.name) {
-			throw new Error('Shadow Atlas returned invalid district data');
-		}
-
-		// Merkle proof may be null when ProofService has no data (e.g., serve-only mode)
-		if (merkleProof) {
-			if (!merkleProof.root || !merkleProof.siblings || !merkleProof.pathIndices) {
-				throw new Error('Shadow Atlas returned invalid Merkle proof');
-			}
-
-			if (merkleProof.depth !== CIRCUIT_DEPTH) {
-				throw new Error(
-					`Shadow Atlas returned invalid tree depth: ${merkleProof.depth}. Expected ${CIRCUIT_DEPTH}.`
-				);
-			}
-
-			if (merkleProof.siblings.length !== CIRCUIT_DEPTH || merkleProof.pathIndices.length !== CIRCUIT_DEPTH) {
-				throw new Error(
-					`Shadow Atlas returned invalid proof length: siblings=${merkleProof.siblings.length}, indices=${merkleProof.pathIndices.length}. Expected ${CIRCUIT_DEPTH}.`
-				);
-			}
-
-			// 29M-005: Validate BN254 field bounds on lookup Merkle proof (matches BR5-009)
-			validateBN254Hex(merkleProof.root, 'merkleProof.root');
-			validateBN254Hex(merkleProof.leaf, 'merkleProof.leaf');
-			validateBN254HexArray(merkleProof.siblings, 'merkleProof.siblings');
-		}
-
-		return result.data;
+		return {
+			district: cellDistrictsToDistrict(cellDistricts),
+			// Merkle proof: null until cipher integrates client-side path computation.
+			// Callers already handle null proof (serve-only mode).
+			merkleProof: null,
+		};
 	} catch (error) {
-		// Re-throw with context
 		if (error instanceof Error) {
-			throw new Error(`Shadow Atlas lookup failed: ${error.message}`);
+			throw new Error(`District lookup failed: ${error.message}`);
 		}
-		throw new Error('Shadow Atlas lookup failed with unknown error');
+		throw new Error('District lookup failed with unknown error');
 	}
 }
 
 // ============================================================================
-// Registration (Tree 1)
+// Registration (Tree 1) — WRITE, stays HTTP
 // ============================================================================
 
 /**
@@ -234,15 +345,18 @@ export interface RegistrationResult {
  * @returns Registration result with Merkle proof + optional signed receipt
  * @throws Error if registration fails
  */
-export async function registerLeaf(leaf: string, options?: { attestationHash?: string }): Promise<RegistrationResult> {
-	const url = `${SHADOW_ATLAS_URL}/v1/register`;
+export async function registerLeaf(leaf: string, options?: { attestationHash?: string; idempotencyKey?: string }): Promise<RegistrationResult> {
+	const url = `${WRITE_RELAY_URL}/v1/register`;
 
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 		'X-Client-Version': 'communique-v1',
 	};
-	if (SHADOW_ATLAS_REGISTRATION_TOKEN) {
-		headers['Authorization'] = `Bearer ${SHADOW_ATLAS_REGISTRATION_TOKEN}`;
+	if (WRITE_RELAY_TOKEN) {
+		headers['Authorization'] = `Bearer ${WRITE_RELAY_TOKEN}`;
+	}
+	if (options?.idempotencyKey) {
+		headers['X-Idempotency-Key'] = options.idempotencyKey;
 	}
 
 	const requestBody: Record<string, unknown> = { leaf };
@@ -254,6 +368,7 @@ export async function registerLeaf(leaf: string, options?: { attestationHash?: s
 		method: 'POST',
 		headers,
 		body: JSON.stringify(requestBody),
+		signal: AbortSignal.timeout(15_000),
 	});
 
 	if (!response.ok) {
@@ -309,21 +424,26 @@ export async function registerLeaf(leaf: string, options?: { attestationHash?: s
 export async function replaceLeaf(
 	newLeaf: string,
 	oldLeafIndex: number,
+	options?: { idempotencyKey?: string },
 ): Promise<RegistrationResult> {
-	const url = `${SHADOW_ATLAS_URL}/v1/register/replace`;
+	const url = `${WRITE_RELAY_URL}/v1/register/replace`;
 
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 		'X-Client-Version': 'communique-v1',
 	};
-	if (SHADOW_ATLAS_REGISTRATION_TOKEN) {
-		headers['Authorization'] = `Bearer ${SHADOW_ATLAS_REGISTRATION_TOKEN}`;
+	if (WRITE_RELAY_TOKEN) {
+		headers['Authorization'] = `Bearer ${WRITE_RELAY_TOKEN}`;
+	}
+	if (options?.idempotencyKey) {
+		headers['X-Idempotency-Key'] = options.idempotencyKey;
 	}
 
 	const response = await fetch(url, {
 		method: 'POST',
 		headers,
 		body: JSON.stringify({ newLeaf, oldLeafIndex }),
+		signal: AbortSignal.timeout(15_000),
 	});
 
 	if (!response.ok) {
@@ -362,7 +482,7 @@ export async function replaceLeaf(
 }
 
 // ============================================================================
-// Cell Proof (Tree 2)
+// Cell Proof (Tree 2) — IPFS snapshot + cipher's path computation
 // ============================================================================
 
 /**
@@ -376,70 +496,39 @@ export interface CellProofResult {
 }
 
 /**
+ * Deserialized cell tree snapshot — cached per session.
+ * Survives page navigations in SPA. Cleared on tab close/reload.
+ */
+let cachedTree: CellTreeSnapshot | null = null;
+
+/**
  * Get the Tree 2 SMT proof for a cell_id.
  *
- * Returns the Merkle path and all 24 district IDs for the cell.
- * cell_id is neighborhood-level (~600-3000 people) — accepted
- * privacy tradeoff for Phase 1.
+ * IPFS-native: fetches Merkle snapshot from IPFS, deserializes via cipher's
+ * cell-tree-snapshot module, then computes path locally. No server call.
  *
  * @param cellId - Census tract FIPS code (numeric string or hex)
  * @returns Cell proof with districts
- * @throws Error if cell not found or request fails
+ * @throws Error if cell not found or snapshot unavailable
  */
 export async function getCellProof(cellId: string): Promise<CellProofResult> {
-	const url = `${SHADOW_ATLAS_URL}/v1/cell-proof?cell_id=${encodeURIComponent(cellId)}`;
+	if (!cachedTree) {
+		const snapshot = await getMerkleSnapshot();
+		cachedTree = deserializeCellTreeSnapshot(snapshot.snapshot as CellTreeSnapshotWire);
 
-	const response = await fetch(url, {
-		headers: {
-			Accept: 'application/json',
-			'X-Client-Version': 'communique-v1',
-		},
-	});
-
-	if (!response.ok) {
-		const errorData = await response.json().catch(() => ({
-			error: { code: 'NETWORK_ERROR', message: response.statusText },
-		}));
-
-		const code = errorData.error?.code || 'UNKNOWN';
-		const msg = errorData.error?.message || response.statusText;
-		throw new Error(`Shadow Atlas cell proof failed [${code}]: ${msg}`);
+		const valid = await validateSnapshotRoot(cachedTree);
+		if (!valid) {
+			await clearCache();
+			cachedTree = null;
+			throw new Error('Snapshot root mismatch — stale data, retry');
+		}
 	}
 
-	const result = await response.json();
-
-	if (!result.success || !result.data) {
-		throw new Error('Shadow Atlas returned invalid cell proof response');
-	}
-
-	const { cellMapRoot, cellMapPath, cellMapPathBits, districts } = result.data;
-
-	if (!cellMapRoot || !cellMapPath || !cellMapPathBits || !districts) {
-		throw new Error('Shadow Atlas cell proof response missing required fields');
-	}
-
-	if (districts.length !== 24) {
-		throw new Error(`Invalid district count: ${districts.length}. Expected 24.`);
-	}
-
-	// 29M-004: Validate SMT proof lengths (consistent with registerLeaf validation)
-	if (cellMapPath.length !== CIRCUIT_DEPTH || cellMapPathBits.length !== CIRCUIT_DEPTH) {
-		throw new Error(
-			`Invalid SMT proof length: cellMapPath=${cellMapPath.length}, ` +
-			`cellMapPathBits=${cellMapPathBits.length}. Expected ${CIRCUIT_DEPTH}.`
-		);
-	}
-
-	// BR5-009: Validate all field elements are within BN254 scalar field
-	validateBN254Hex(cellMapRoot, 'cellMapRoot');
-	validateBN254HexArray(cellMapPath, 'cellMapPath');
-	validateBN254HexArray(districts, 'districts');
-
-	return { cellMapRoot, cellMapPath, cellMapPathBits, districts };
+	return computeClientCellProof(cachedTree, cellId);
 }
 
 // ============================================================================
-// Engagement Registration (Tree 3)
+// Engagement Registration (Tree 3) — WRITE, stays HTTP
 // ============================================================================
 
 /**
@@ -459,20 +548,21 @@ export async function registerEngagement(
 	signerAddress: string,
 	identityCommitment: string,
 ): Promise<{ leafIndex: number; engagementRoot: string } | { alreadyRegistered: true }> {
-	const url = `${SHADOW_ATLAS_URL}/v1/engagement/register`;
+	const url = `${WRITE_RELAY_URL}/v1/engagement/register`;
 
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 		'X-Client-Version': 'communique-v1',
 	};
-	if (SHADOW_ATLAS_REGISTRATION_TOKEN) {
-		headers['Authorization'] = `Bearer ${SHADOW_ATLAS_REGISTRATION_TOKEN}`;
+	if (WRITE_RELAY_TOKEN) {
+		headers['Authorization'] = `Bearer ${WRITE_RELAY_TOKEN}`;
 	}
 
 	const response = await fetch(url, {
 		method: 'POST',
 		headers,
 		body: JSON.stringify({ signerAddress, identityCommitment }),
+		signal: AbortSignal.timeout(15_000),
 	});
 
 	if (!response.ok) {
@@ -505,7 +595,7 @@ export async function registerEngagement(
 }
 
 // ============================================================================
-// Engagement Proof & Metrics (Tree 3)
+// Engagement Proof & Metrics (Tree 3) — READ, stays HTTP (not in IPFS scope)
 // ============================================================================
 
 /**
@@ -547,6 +637,7 @@ export async function getEngagementPath(leafIndex: number): Promise<EngagementPa
 			Accept: 'application/json',
 			'X-Client-Version': 'communique-v1',
 		},
+		signal: AbortSignal.timeout(10_000),
 	});
 
 	if (!response.ok) {
@@ -602,6 +693,7 @@ export async function getEngagementMetrics(identityCommitment: string): Promise<
 			Accept: 'application/json',
 			'X-Client-Version': 'communique-v1',
 		},
+		signal: AbortSignal.timeout(10_000),
 	});
 
 	if (!response.ok) {
@@ -663,6 +755,7 @@ export async function getEngagementBreakdown(identityCommitment: string): Promis
 			Accept: 'application/json',
 			'X-Client-Version': 'communique-v1',
 		},
+		signal: AbortSignal.timeout(10_000),
 	});
 
 	if (!response.ok) {
@@ -681,12 +774,12 @@ export async function getEngagementBreakdown(identityCommitment: string): Promis
 }
 
 // ============================================================================
-// Officials (Pre-Ingested Congress Data)
+// Officials (IPFS — no server call)
 // ============================================================================
 
 /**
- * Federal official from Shadow Atlas pre-ingested data.
- * Served from SQLite — no runtime calls to Congress.gov or any government API.
+ * Federal official from pre-ingested congress-legislators data.
+ * Now served from IPFS-cached dataset — no runtime server calls.
  */
 export interface Official {
 	bioguide_id: string;
@@ -721,63 +814,54 @@ export interface OfficialsResponse {
 }
 
 /**
- * Get federal officials for a congressional district from Shadow Atlas.
+ * Get federal officials for a congressional district.
  *
- * Shadow Atlas serves pre-ingested data from congress-legislators (CC0).
- * No runtime calls to Congress.gov or any government API.
+ * IPFS-native: looks up from cached officials dataset (504 KB).
+ * No runtime calls to Shadow Atlas, Congress.gov, or any government API.
  *
  * @param districtCode - District code like "CA-12", "VT-AL", "DC-00"
  * @returns Officials response with house rep + senators
- * @throws Error if request fails or shadow-atlas returns error
+ * @throws Error if district not found or data unavailable
  */
 export async function getOfficials(districtCode: string): Promise<OfficialsResponse> {
-	const url = `${SHADOW_ATLAS_URL}/v1/officials?district=${encodeURIComponent(districtCode)}`;
+	try {
+		const dataset = await getOfficialsDataset();
 
-	const response = await fetch(url, {
-		headers: {
-			Accept: 'application/json',
-			'X-Client-Version': 'communique-v1',
-		},
-	});
+		// IPFS officials dataset is keyed by substrate format (cd-0612).
+		// Callers may pass communique format (CA-12). Try substrate key first,
+		// then fall back to the raw key for forward compatibility.
+		const substrateKey = toSubstrateDistrictKey(districtCode);
+		const entry = dataset.districts[substrateKey] ?? dataset.districts[districtCode];
 
-	if (!response.ok) {
-		const errorData = await response.json().catch(() => ({
-			error: { code: 'NETWORK_ERROR', message: response.statusText },
-		}));
-
-		const code = errorData.error?.code || 'UNKNOWN';
-		const msg = errorData.error?.message || response.statusText;
-		throw new Error(`Shadow Atlas officials lookup failed [${code}]: ${msg}`);
-	}
-
-	const result = await response.json();
-
-	if (!result.success || !result.data) {
-		throw new Error('Shadow Atlas returned invalid officials response');
-	}
-
-	const data = result.data as OfficialsResponse;
-
-	if (!data.district_code || !data.state || !Array.isArray(data.officials)) {
-		throw new Error('Shadow Atlas officials response missing required fields');
-	}
-
-	for (const official of data.officials) {
-		if (!official.bioguide_id || !official.name || !official.chamber) {
-			throw new Error('Shadow Atlas officials response contains malformed official entry');
+		if (!entry) {
+			throw new Error(`No officials data for district ${districtCode} (tried key: ${substrateKey})`);
 		}
-	}
 
-	return data;
+		return {
+			officials: entry.officials as Official[],
+			district_code: districtCode,
+			state: entry.state,
+			special_status: entry.special_status,
+			source: 'congress-legislators',
+			cached: true,
+		};
+	} catch (error) {
+		if (error instanceof Error) {
+			throw new Error(`Officials lookup failed [IPFS]: ${error.message}`);
+		}
+		throw new Error('Officials lookup failed with unknown error');
+	}
 }
 
 // ============================================================================
-// Composite Resolve (Lookup + Officials in One Call)
+// Composite Resolve (IPFS + H3 — no server call)
 // ============================================================================
 
 /**
  * Composite resolve: lookup + officials in one call.
- * Saves a round-trip vs. separate lookupDistrict() + getOfficials() calls.
+ *
+ * IPFS-native: both district resolution and officials lookup are local.
+ * No Shadow Atlas server call required.
  *
  * @param lat - Latitude (-90 to 90)
  * @param lng - Longitude (-180 to 180)
@@ -790,92 +874,28 @@ export async function resolveLocation(
 	lng: number,
 	includeOfficials = true,
 ): Promise<{ district: DistrictLookupResult; officials: OfficialsResponse | null }> {
-	const params = new URLSearchParams({
-		lat: lat.toString(),
-		lng: lng.toString(),
-		include_officials: includeOfficials.toString(),
-	});
+	const districtResult = await lookupDistrict(lat, lng);
 
-	const response = await fetch(`${SHADOW_ATLAS_URL}/v1/resolve?${params}`, {
-		headers: {
-			Accept: 'application/json',
-			'X-Client-Version': 'communique-v1',
-		},
-		signal: AbortSignal.timeout(10000),
-	});
-
-	if (!response.ok) {
-		const errorData = await response.json().catch(() => ({
-			error: { code: 'NETWORK_ERROR', message: response.statusText },
-		})) as ShadowAtlasError;
-
-		throw new Error(
-			`Shadow Atlas resolve failed: ${errorData.error.message || response.statusText}`
-		);
-	}
-
-	const result = await response.json();
-
-	if (!result.success || !result.data) {
-		throw new Error('Shadow Atlas returned invalid resolve response');
-	}
-
-	const data = result.data;
-
-	// Validate district
-	if (!data.district?.id || !data.district?.name) {
-		throw new Error('Shadow Atlas resolve returned invalid district data');
-	}
-
-	// Validate Merkle proof (may be null in serve-only mode without ProofService data)
-	if (data.merkleProof) {
-		if (!data.merkleProof.root || !data.merkleProof.siblings || !data.merkleProof.pathIndices) {
-			throw new Error('Shadow Atlas resolve returned invalid Merkle proof');
-		}
-
-		if (data.merkleProof.depth !== CIRCUIT_DEPTH) {
-			throw new Error(
-				`Shadow Atlas resolve returned invalid tree depth: ${data.merkleProof.depth}. Expected ${CIRCUIT_DEPTH}.`
-			);
-		}
-
-		if (data.merkleProof.siblings.length !== CIRCUIT_DEPTH || data.merkleProof.pathIndices.length !== CIRCUIT_DEPTH) {
-			throw new Error(
-				`Shadow Atlas resolve returned invalid proof length: siblings=${data.merkleProof.siblings.length}, indices=${data.merkleProof.pathIndices.length}. Expected ${CIRCUIT_DEPTH}.`
-			);
-		}
-
-		// BR5-009: Validate BN254 field bounds
-		validateBN254Hex(data.merkleProof.root, 'merkleProof.root');
-		validateBN254Hex(data.merkleProof.leaf, 'merkleProof.leaf');
-		validateBN254HexArray(data.merkleProof.siblings, 'merkleProof.siblings');
-	}
-
-	// Validate officials if present
-	const officials: OfficialsResponse | null = data.officials || null;
-	if (officials) {
-		if (!officials.district_code || !officials.state || !Array.isArray(officials.officials)) {
-			throw new Error('Shadow Atlas resolve returned malformed officials data');
+	let officials: OfficialsResponse | null = null;
+	if (includeOfficials) {
+		try {
+			officials = await getOfficials(districtResult.district.id);
+		} catch {
+			// Officials unavailable — non-fatal, return null
+			officials = null;
 		}
 	}
 
-	return {
-		district: {
-			district: data.district,
-			merkleProof: data.merkleProof,
-		} as DistrictLookupResult,
-		officials,
-	};
+	return { district: districtResult, officials };
 }
 
 // ============================================================================
-// Address Resolution (Sovereign — self-hosted geocoding + district lookup)
+// Address Resolution — requires geocoding service (Census Bureau fallback)
 // ============================================================================
 
 /**
- * Address resolution response from Shadow Atlas POST /v1/resolve-address.
+ * Address resolution response.
  * Composite: geocode + district lookup + officials in one call.
- * All processing is local (Nominatim + R-tree + SQLite). Zero external API calls.
  */
 export interface AddressResolutionResult {
 	geocode: {
@@ -897,54 +917,30 @@ export interface AddressResolutionResult {
 }
 
 /**
- * Resolve a structured address to district + officials via Shadow Atlas.
- * Uses self-hosted Nominatim geocoding — zero external government API calls.
+ * Resolve a structured address to district + officials.
  *
- * @param address - Structured US address (street, city, state, zip)
- * @returns Address resolution result with geocode, district, and officials
- * @throws Error if address not found or service unavailable
+ * IPFS-native mode: Nominatim geocoding is no longer available (Shadow Atlas
+ * is a build pipeline, not a runtime server). This function throws to trigger
+ * the Census Bureau fallback in the route handler.
+ *
+ * @param _address - Structured US address (unused — geocoding not available)
+ * @throws Error always — caller should use Census Bureau fallback
  */
-export async function resolveAddress(address: {
+export async function resolveAddress(_address: {
 	street: string;
 	city: string;
 	state: string;
 	zip: string;
 	country?: 'US' | 'CA';
 }): Promise<AddressResolutionResult> {
-	const response = await fetch(`${SHADOW_ATLAS_URL}/v1/resolve-address`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Accept: 'application/json',
-			'X-Client-Version': 'communique-v1',
-		},
-		body: JSON.stringify(address),
-		signal: AbortSignal.timeout(15000),
-	});
-
-	if (!response.ok) {
-		const errorData = await response.json().catch(() => ({
-			error: { code: 'NETWORK_ERROR', message: response.statusText },
-		})) as ShadowAtlasError;
-
-		if (response.status === 404) {
-			throw new Error(
-				errorData.error?.message || 'Address not found. Please check your address and try again.'
-			);
-		}
-
-		throw new Error(
-			`Shadow Atlas address resolution failed: ${errorData.error?.message || response.statusText}`
-		);
-	}
-
-	const result = await response.json();
-
-	if (!result.success || !result.data) {
-		throw new Error('Shadow Atlas returned invalid resolve-address response');
-	}
-
-	return result.data as AddressResolutionResult;
+	// Shadow Atlas Nominatim is no longer available in IPFS-native mode.
+	// The route handler (resolve-address/+server.ts) catches this and falls
+	// through to its Census Bureau geocoder, which then uses H3 for district
+	// resolution via lookupDistrict().
+	throw new Error(
+		'Address geocoding unavailable in IPFS-native mode. ' +
+		'Census Bureau fallback should handle this request.'
+	);
 }
 
 // ============================================================================
@@ -952,18 +948,33 @@ export async function resolveAddress(address: {
 // ============================================================================
 
 /**
- * Health check for Shadow Atlas API
+ * Health check for the IPFS-based data layer.
  *
- * @returns true if API is reachable and healthy
+ * Checks:
+ * 1. IPFS CIDs are configured
+ * 2. IPFS gateway is reachable
+ * 3. Shadow Atlas relay is reachable (for write operations)
+ *
+ * @returns true if data layer is operational
  */
 export async function healthCheck(): Promise<boolean> {
 	try {
-		const response = await fetch(`${SHADOW_ATLAS_URL}/v1/health`, {
-			headers: {
-				Accept: 'application/json'
-			}
-		});
-		return response.ok;
+		// Check IPFS layer (read operations)
+		if (isIPFSConfigured()) {
+			const ipfsOk = await checkIPFSHealth();
+			if (!ipfsOk) return false;
+		}
+
+		// Check write relay health
+		if (WRITE_RELAY_URL && WRITE_RELAY_URL !== 'http://localhost:3000') {
+			const relayResponse = await fetch(`${WRITE_RELAY_URL}/v1/health`, {
+				headers: { Accept: 'application/json' },
+				signal: AbortSignal.timeout(5_000),
+			});
+			return relayResponse.ok;
+		}
+
+		return true;
 	} catch {
 		return false;
 	}
