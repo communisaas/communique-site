@@ -311,7 +311,7 @@
 </script>
 
 <svelte:head>
-	<title>Communiqué - Your voice. Sent together.</title>
+	<title>Communiqué — Write once, send together</title>
 	<meta
 		name="description"
 		content="Write once, share the link, everyone can send it. Coordinated messages make impact."

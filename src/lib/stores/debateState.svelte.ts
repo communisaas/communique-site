@@ -33,6 +33,8 @@ export interface ArgumentData {
 	weightedAIScore?: number;
 	finalScore?: number;
 	modelAgreement?: number;
+	// On-chain verification status (UI awareness only — backend excludes pending/rejected from resolution)
+	verificationStatus?: 'pending' | 'verified' | 'rejected';
 }
 
 export interface DebateData {

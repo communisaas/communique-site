@@ -71,7 +71,7 @@
 				class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/60 bg-emerald-50 px-2.5 py-1 text-sm"
 			>
 				<ShieldCheck class="h-3.5 w-3.5 text-emerald-600" />
-				<span class="font-medium text-emerald-700">Community-tested</span>
+				<span class="font-medium text-emerald-700">Deliberation-tested</span>
 				{#if variant === 'inline'}
 					<span class="text-emerald-600/70">· {uniqueParticipants} deliberated</span>
 				{/if}

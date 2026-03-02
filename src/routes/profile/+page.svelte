@@ -180,7 +180,7 @@
 	<!-- Signal statement -->
 	<div class="mt-6 sm:mt-8 lg:mt-10">
 		<p class="text-base text-slate-700 lg:text-lg">
-			Your voice arrives as
+			Signal strength:
 			<span class="font-bold {current.accentClass}">{current.signal}</span>.
 		</p>
 	</div>

@@ -169,8 +169,8 @@
 	<div class="spark-header">
 		<p class="brand-mark">communiqué</p>
 		<h1 class="headline">
-			Your voice.
-			<span class="accent">Sent together.</span>
+			Write once.
+			<span class="accent">Send together.</span>
 		</h1>
 		<p class="subhead">Write it once. Share the link. Everyone can send it.</p>
 	</div>

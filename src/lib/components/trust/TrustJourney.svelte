@@ -2,11 +2,11 @@
 	/**
 	 * TrustJourney — Shows how your message arrives at the recipient's desk.
 	 *
-	 * Not badges you've earned. Signal strength your voice carries.
+	 * Not badges you've earned. Signal strength your message carries.
 	 * Each tier changes what the congressional office SEES when your message lands.
 	 *
 	 * Perceptual engineering: the bar isn't "progress" — it's substance.
-	 * Your voice gaining mass.
+	 * Your message gaining mass.
 	 */
 	import { User, MapPin, ShieldCheck, Fingerprint, ArrowRight } from '@lucide/svelte';
 	import { spring } from 'svelte/motion';
@@ -136,7 +136,7 @@
 	<div class="px-4 pt-3 pb-1.5">
 		<div class="mb-1.5 flex items-center justify-between">
 			<span class="text-[11px] font-semibold uppercase tracking-widest text-slate-400">
-				Your voice
+				Signal strength
 			</span>
 			{#key tier}
 				<div

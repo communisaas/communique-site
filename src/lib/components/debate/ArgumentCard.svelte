@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { UserPlus, TrendingUp } from '@lucide/svelte';
+	import { UserPlus, TrendingUp, ShieldCheck, ShieldAlert } from '@lucide/svelte';
 	import type { ArgumentData } from '$lib/stores/debateState.svelte';
 	import TierExplanation from './TierExplanation.svelte';
 
@@ -66,10 +66,13 @@
 		return `$${amount.toFixed(2)}`;
 	});
 
+	const isPending = $derived(argument.verificationStatus === 'pending');
+	const isRejected = $derived(argument.verificationStatus === 'rejected');
+
 	let expanded = $state(false);
 </script>
 
-<div class="py-2.5 {isWinner && expanded ? 'bg-amber-50/40 -mx-1 px-1 rounded' : ''}">
+<div class="py-2.5 {isWinner && expanded ? 'bg-amber-50/40 -mx-1 px-1 rounded' : ''} {isRejected ? 'opacity-60' : ''} {isPending ? 'opacity-75' : ''}">
 	<!-- Collapsed handle: weight bar + text fragment -->
 	<button
 		class="w-full text-left group cursor-pointer"
@@ -91,6 +94,11 @@
 			{/if}
 			{#if !expanded && isWinner}
 				<span class="text-xs font-medium text-amber-600 shrink-0">Winner</span>
+			{/if}
+			{#if !expanded && isPending}
+				<span class="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" title="Confirming on-chain"></span>
+			{:else if !expanded && isRejected}
+				<ShieldAlert class="h-3 w-3 text-red-400 shrink-0" />
 			{/if}
 		</div>
 	</button>
@@ -133,11 +141,27 @@
 				{#if rank !== undefined}
 					<span class="text-slate-300">#{rank}</span>
 				{/if}
+				{#if isPending}
+					<span class="inline-flex items-center gap-1 text-amber-500">
+						<span class="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+						Confirming
+					</span>
+				{:else if isRejected}
+					<span class="inline-flex items-center gap-1 text-red-500">
+						<ShieldAlert class="h-3 w-3" />
+						Verification failed
+					</span>
+				{:else if argument.verificationStatus === 'verified'}
+					<span class="inline-flex items-center gap-1 text-emerald-500">
+						<ShieldCheck class="h-3 w-3" />
+						Verified
+					</span>
+				{/if}
 			</div>
 
-			<!-- AI scores (if resolved) -->
+			<!-- AI scores (if resolved) — muted when pending verification -->
 			{#if argument.finalScore !== undefined}
-				<div class="flex items-center gap-1.5">
+				<div class="flex items-center gap-1.5 {isPending ? 'opacity-40' : ''}">
 					<span class="font-mono text-xs font-semibold text-violet-600">
 						{(argument.finalScore / 100).toFixed(1)}%
 					</span>

@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import type { AIResolutionData, ArgumentAIScore } from '$lib/stores/debateState.svelte';
 import { prisma } from '$lib/core/db';
-import { getPositionCounts } from '$lib/services/positionService';
+import { getPositionCounts, getEngagementByDistrict } from '$lib/services/positionService';
 import { parseRecipientConfig } from '$lib/types/template';
 import { getOfficials } from '$lib/core/shadow-atlas/client';
 import type { DistrictOfficialInput } from '$lib/utils/landscapeMerge';
@@ -222,7 +222,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	}
 
 	// Batch 2: Queries depending on Batch 1 results
-	const [deliveredRecipients, districtOfficials] = await Promise.all([
+	const [deliveredRecipients, districtOfficials, engagementByDistrict] = await Promise.all([
 		existingPosition
 			? prisma.positionDelivery
 					.findMany({
@@ -252,7 +252,12 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 						}))
 					)
 					.catch(() => [])
-			: Promise.resolve([])
+			: Promise.resolve([]),
+
+		// Engagement by district (coordination visibility)
+		templateId
+			? getEngagementByDistrict(templateId, userDistrictCode).catch(() => null)
+			: Promise.resolve(null)
 	]);
 
 	// Parse typed recipient_config from template JSON
@@ -274,6 +279,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		existingPosition,
 		deliveredRecipients,
 		districtOfficials: districtOfficials as DistrictOfficialInput[],
-		recipientConfig
+		recipientConfig,
+		engagementByDistrict
 	};
 };
