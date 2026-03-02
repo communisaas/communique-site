@@ -204,6 +204,43 @@ export function buildDebateActionDomain(baseDomain: string, propositionHash: str
 }
 
 /**
+ * Build a community field epoch domain for ZK-verified spatial aggregation.
+ *
+ * Each user can contribute once per epoch (daily, UTC midnight) per jurisdiction.
+ * The epoch domain includes the base action domain + COMMUNITY_FIELD_TAG + date,
+ * producing a unique nullifier per user per day per jurisdiction.
+ *
+ * Derivation mirrors the debate domain pattern:
+ *   keccak256(abi.encodePacked(baseDomain, COMMUNITY_FIELD_TAG, epochDateString)) % BN254
+ *
+ * @param baseDomain - Jurisdiction-specific base domain (0x-prefixed, 64 hex chars)
+ * @param epochDate  - UTC date for the epoch (only year-month-day used)
+ * @returns Hex string field element (0x-prefixed, 64 chars)
+ */
+export function buildCommunityFieldEpochDomain(
+	baseDomain: string,
+	epochDate: Date
+): string {
+	if (!baseDomain || !isValidActionDomain(baseDomain)) {
+		throw new Error(
+			`Invalid baseDomain: must be a valid BN254 field element, got "${baseDomain}"`
+		);
+	}
+
+	// Epoch identifier: "2026-03-02" (UTC date only)
+	const epochStr = epochDate.toISOString().slice(0, 10);
+
+	// COMMUNITY_FIELD_TAG = 0x434649454c44 ("CFIELD")
+	const hash = solidityPackedKeccak256(
+		['bytes32', 'bytes6', 'string'],
+		[baseDomain, '0x434649454c44', epochStr]
+	);
+
+	const fieldElement = BigInt(hash) % BN254_MODULUS;
+	return '0x' + fieldElement.toString(16).padStart(64, '0');
+}
+
+/**
  * Validate that a hex string is a valid BN254 field element.
  * Useful for validating action domains received from external sources.
  *

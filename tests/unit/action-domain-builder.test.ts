@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	buildActionDomain,
 	buildDebateActionDomain,
+	buildCommunityFieldEpochDomain,
 	isValidActionDomain,
 	type ActionDomainParams
 } from '$lib/core/zkp/action-domain-builder';
@@ -289,5 +290,52 @@ describe('buildDebateActionDomain', () => {
 	it('rejects invalid propositionHash', () => {
 		expect(() => buildDebateActionDomain(baseDomain, 'short'))
 			.toThrow('Invalid propositionHash');
+	});
+});
+
+describe('buildCommunityFieldEpochDomain', () => {
+	const baseDomain = buildActionDomain({
+		country: 'US',
+		jurisdictionType: 'federal',
+		recipientSubdivision: 'US-CA',
+		templateId: 'climate-action-2026',
+		sessionId: '119th-congress'
+	});
+
+	it('produces a valid BN254 field element', () => {
+		const domain = buildCommunityFieldEpochDomain(baseDomain, new Date('2026-03-02T12:00:00Z'));
+		expect(domain).toMatch(/^0x[0-9a-f]{64}$/);
+		expect(BigInt(domain)).toBeLessThan(BN254_MODULUS);
+	});
+
+	it('is deterministic for same date', () => {
+		const d1 = buildCommunityFieldEpochDomain(baseDomain, new Date('2026-03-02T08:00:00Z'));
+		const d2 = buildCommunityFieldEpochDomain(baseDomain, new Date('2026-03-02T23:59:59Z'));
+		// Same date (2026-03-02) → same domain regardless of time
+		expect(d1).toBe(d2);
+	});
+
+	it('different dates produce different domains', () => {
+		const d1 = buildCommunityFieldEpochDomain(baseDomain, new Date('2026-03-02T00:00:00Z'));
+		const d2 = buildCommunityFieldEpochDomain(baseDomain, new Date('2026-03-03T00:00:00Z'));
+		expect(d1).not.toBe(d2);
+	});
+
+	it('different base domains produce different epoch domains', () => {
+		const otherBase = buildActionDomain({
+			country: 'US',
+			jurisdictionType: 'state',
+			recipientSubdivision: 'US-NY',
+			templateId: 'housing-reform-2026',
+			sessionId: '2026-session'
+		});
+		const d1 = buildCommunityFieldEpochDomain(baseDomain, new Date('2026-03-02T00:00:00Z'));
+		const d2 = buildCommunityFieldEpochDomain(otherBase, new Date('2026-03-02T00:00:00Z'));
+		expect(d1).not.toBe(d2);
+	});
+
+	it('rejects invalid baseDomain', () => {
+		expect(() => buildCommunityFieldEpochDomain('not-valid', new Date()))
+			.toThrow('Invalid baseDomain');
 	});
 });
