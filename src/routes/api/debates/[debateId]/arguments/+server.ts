@@ -55,6 +55,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			totalStake: arg.total_stake.toString(),
 			coSignCount: arg.co_sign_count,
 			createdAt: arg.created_at.toISOString(),
+			verificationStatus: arg.verification_status,
 			// LMSR pricing (optional)
 			currentPrice: arg.current_price ?? undefined,
 			priceHistory: arg.price_history ?? undefined,
@@ -183,6 +184,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	// Submit argument on-chain via DebateMarket contract
 	const STANCE_MAP: Record<string, number> = { SUPPORT: 0, OPPOSE: 1, AMEND: 2 };
 	let txHash: string | undefined;
+	// Track whether the server already confirmed the tx receipt (relayer path).
+	// Client-submitted txs need async verification; server-relayed txs are already confirmed.
+	let serverVerified = false;
 
 	// Accept client-submitted tx hash (from connected EVM wallet).
 	// If present and valid, skip the server-side on-chain submission.
@@ -214,8 +218,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 			if (onchainResult.success) {
 				txHash = onchainResult.txHash;
+				serverVerified = true; // Receipt already confirmed by server relayer
 			} else if (onchainResult.error?.includes('not configured')) {
 				console.warn('[debates/arguments] Blockchain not configured, creating off-chain only');
+				serverVerified = true; // No chain to verify against — treat as verified
 			} else {
 				throw error(502, `On-chain argument submission failed: ${onchainResult.error}`);
 			}
@@ -226,8 +232,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			}
 			// Import failure or unexpected error — treat as blockchain not configured
 			console.warn('[debates/arguments] Blockchain not available, creating off-chain only:', err);
+			serverVerified = true; // No chain — treat as verified
 		}
 	}
+
+	// Determine initial verification status:
+	// - Server relayer path: already confirmed by receipt → 'verified'
+	// - Client-submitted tx: needs async verification → 'pending'
+	const initialStatus = serverVerified ? 'verified' : 'pending';
 
 	// Create argument, record nullifier, and update debate counts atomically.
 	// unique_participants only increments when a new nullifier is recorded
@@ -245,7 +257,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			stake_amount: BigInt(stakeAmount),
 			engagement_tier: tier,
 			weighted_score: BigInt(weightedScore),
-			total_stake: BigInt(stakeAmount)
+			total_stake: BigInt(stakeAmount),
+			verification_status: initialStatus,
+			...(serverVerified && { verified_at: new Date() })
 		}
 	});
 
@@ -268,23 +282,35 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					data: {
 						debate_id: debateId,
 						nullifier_hash: nullifierHex,
-						action_type: 'argument'
+						action_type: 'argument',
+						verification_status: initialStatus,
+						tx_hash: txHash ?? null
 					}
 				})
 			])
 		: await prisma.$transaction([createArg, updateDebate]);
 
 	const argument = txResult[0];
+	const nullifier = nullifierHex ? txResult[2] : null;
 
 	// Fire-and-forget: verify client-submitted tx actually succeeded on-chain.
+	// Passes argumentId + nullifierId so the verifier can update verification_status
+	// and rollback on failure.
 	if (clientTxHash && txHash) {
-		verifyTransactionAsync(txHash, { debateId, type: 'argument', userId: session.userId });
+		verifyTransactionAsync(txHash, {
+			debateId,
+			type: 'argument',
+			argumentId: argument.id,
+			nullifierId: (nullifier as { id: string } | null)?.id,
+			userId: session.userId
+		});
 	}
 
 	return json({
 		argumentId: argument.id,
 		argumentIndex: argument.argument_index,
 		weightedScore: argument.weighted_score.toString(),
+		verificationStatus: argument.verification_status,
 		...(txHash ? { txHash } : {})
 	});
 };

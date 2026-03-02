@@ -21,7 +21,7 @@ import type { RequestHandler } from './$types';
  */
 export const GET: RequestHandler = async ({ params }) => {
 	const { debateId } = params;
-	const shadowAtlasUrl = env.SHADOW_ATLAS_URL || env.SHADOW_ATLAS_API_URL || 'http://localhost:3000';
+	const shadowAtlasUrl = env.SHADOW_ATLAS_API_URL || 'http://localhost:3000';
 	const { stream, emitter } = createSSEStream({
 		traceId: crypto.randomUUID(),
 		endpoint: 'debate-stream'
@@ -163,7 +163,8 @@ export const GET: RequestHandler = async ({ params }) => {
 	// Connect to shadow-atlas SSE and forward events
 	try {
 		const upstream = await fetch(`${shadowAtlasUrl}/v1/debate/${debateId}/stream`, {
-			headers: { Accept: 'text/event-stream' }
+			headers: { Accept: 'text/event-stream' },
+			signal: AbortSignal.timeout(10_000)
 		});
 
 		if (!upstream.ok || !upstream.body) {

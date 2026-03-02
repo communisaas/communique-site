@@ -60,6 +60,7 @@ declare global {
 			env?: {
 				HYPERDRIVE?: { connectionString: string };
 				DC_SESSION_KV?: KVNamespace;
+				REGISTRATION_RETRY_KV?: KVNamespace;
 			};
 			context?: {
 				waitUntil: (promise: Promise<unknown>) => void;

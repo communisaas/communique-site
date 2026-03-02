@@ -38,15 +38,15 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		throw error(400, 'positionIndex must be a non-negative integer');
 	}
 
-	const shadowAtlasUrl =
-		env.SHADOW_ATLAS_URL || env.SHADOW_ATLAS_API_URL || 'http://localhost:3000';
+	const shadowAtlasUrl = env.SHADOW_ATLAS_API_URL || 'http://localhost:3000';
 
 	const upstreamUrl = `${shadowAtlasUrl}/v1/debate/${debateId}/position-proof/${positionIndex}`;
 
 	let response: Response;
 	try {
 		response = await fetch(upstreamUrl, {
-			headers: { Accept: 'application/json' }
+			headers: { Accept: 'application/json' },
+			signal: AbortSignal.timeout(10_000)
 		});
 	} catch (fetchErr) {
 		const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);

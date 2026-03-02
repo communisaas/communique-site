@@ -33,7 +33,10 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			debate_id_onchain: true,
 			resolution_method: true,
 			ai_resolution: true,
-			arguments: { orderBy: { weighted_score: 'desc' } }
+			arguments: {
+				where: { verification_status: 'verified' },
+				orderBy: { weighted_score: 'desc' }
+			}
 		}
 	});
 
@@ -52,10 +55,10 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 	}
 
 	if (debate.arguments.length === 0) {
-		throw error(400, 'Cannot resolve a debate with no arguments');
+		throw error(400, 'Cannot resolve a debate with no verified arguments');
 	}
 
-	// Winner is the argument with the highest weighted_score
+	// Winner is the verified argument with the highest weighted_score
 	const winner = debate.arguments[0];
 
 	// Resolve on-chain if this debate has an on-chain ID

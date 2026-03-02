@@ -110,6 +110,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 	// ── On-chain co-sign via DebateMarket ──────────────────────────────
 	let txHash: string | undefined;
+	let serverVerified = false;
 
 	// Accept client-submitted tx hash (from connected EVM wallet).
 	// If present and valid, skip the server-side on-chain submission.
@@ -140,8 +141,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 			if (onchainResult.success) {
 				txHash = onchainResult.txHash;
+				serverVerified = true;
 			} else if (onchainResult.error?.includes('not configured')) {
 				console.warn('[debates/cosign] Blockchain not configured, updating off-chain only');
+				serverVerified = true;
 			} else {
 				throw error(502, `On-chain co-sign failed: ${onchainResult.error}`);
 			}
@@ -152,8 +155,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			}
 			// Unexpected import/runtime errors — treat as blockchain-not-configured
 			console.warn('[debates/cosign] Blockchain module unavailable, updating off-chain only:', err);
+			serverVerified = true;
 		}
 	}
+
+	const initialStatus = serverVerified ? 'verified' : 'pending';
 
 	// ── Prisma off-chain update ────────────────────────────────────────
 	// Extract co-signer's engagement tier with server-side enforcement.
@@ -202,26 +208,39 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	});
 
 	// Record the nullifier for cross-action dedup (arguments + co-signs).
+	// Store cosign_weight and argument_id for verification rollback (Q1 integrity fix).
 	// If nullifierHex is present, include it in the transaction.
+	let nullifier: { id: string } | null = null;
 	if (nullifierHex) {
-		await prisma.$transaction([
+		const txResult = await prisma.$transaction([
 			updateArg,
 			updateDebate,
 			prisma.debateNullifier.create({
 				data: {
 					debate_id: debateId,
 					nullifier_hash: nullifierHex,
-					action_type: 'cosign'
+					action_type: 'cosign',
+					verification_status: initialStatus,
+					cosign_weight: coSignerWeight,
+					argument_id: argument.id,
+					tx_hash: txHash ?? null
 				}
 			})
 		]);
+		nullifier = txResult[2];
 	} else {
 		await prisma.$transaction([updateArg, updateDebate]);
 	}
 
 	// Fire-and-forget: verify client-submitted tx actually succeeded on-chain.
+	// Passes nullifierId so the verifier can rollback cosign weight on failure.
 	if (clientTxHash && txHash) {
-		verifyTransactionAsync(txHash, { debateId, type: 'cosign', userId: session.userId });
+		verifyTransactionAsync(txHash, {
+			debateId,
+			type: 'cosign',
+			nullifierId: nullifier?.id,
+			userId: session.userId
+		});
 	}
 
 	return json({ success: true, ...(txHash ? { txHash } : {}) });

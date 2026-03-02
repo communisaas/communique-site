@@ -82,6 +82,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			debate_id_onchain: true,
 			proposition_text: true,
 			arguments: {
+				where: { verification_status: 'verified' },
 				orderBy: { argument_index: 'asc' },
 				select: {
 					argument_index: true,
@@ -106,7 +107,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		throw error(400, 'Debate deadline has not passed yet');
 	}
 	if (debate.arguments.length === 0) {
-		throw error(400, 'Cannot evaluate a debate with no arguments');
+		throw error(400, 'Cannot evaluate a debate with no verified arguments');
 	}
 	if (!debate.debate_id_onchain) {
 		throw error(400, 'Debate has no on-chain ID');

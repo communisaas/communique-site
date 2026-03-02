@@ -117,6 +117,15 @@ model User {
 
   verification_sessions VerificationSession[]
 
+  // === POSTAL BUBBLE (Privacy-preserving location approximation) ===
+  // The bubble is the user's privacy boundary — server stores only the bubble, never exact location.
+  // All fields nullable: bubble is optional until user enters a postal code.
+  bubble_lat     Float?    @map("bubble_lat")     // Bubble center latitude
+  bubble_lng     Float?    @map("bubble_lng")     // Bubble center longitude
+  bubble_radius  Float?    @map("bubble_radius")  // Radius in meters
+  bubble_updated DateTime? @map("bubble_updated") // Last bubble update
+  bubble_seed    String?   @map("bubble_seed")    // Postal code that seeded the bubble
+
   // === SHADOW ATLAS REGISTRATION (Three-Tree ZK Architecture) ===
   shadow_atlas_registration ShadowAtlasRegistration?
 
@@ -1035,6 +1044,11 @@ model DebateArgument {
   final_score      Int?     @map("final_score") // α-blended final score (0-10000 bp)
   model_agreement  Float?   @map("model_agreement") // Fraction of models within 20% of median (0-1)
 
+  // On-chain verification status (Q1 integrity fix — prevents unverified
+  // data from influencing resolution or display)
+  verification_status  String    @default("pending") @map("verification_status") // 'pending' | 'verified' | 'rejected'
+  verified_at          DateTime? @map("verified_at")
+
   // Timestamps
   created_at       DateTime @default(now()) @map("created_at")
 
@@ -1045,6 +1059,7 @@ model DebateArgument {
   @@unique([debate_id, nullifier_hash])
   @@index([debate_id])
   @@index([weighted_score])
+  @@index([verification_status])
   @@map("debate_argument")
 }
 
@@ -1060,12 +1075,20 @@ model DebateNullifier {
   debate_id       String   @map("debate_id")
   nullifier_hash  String   @map("nullifier_hash")
   action_type     String   @map("action_type") // 'argument' | 'cosign'
+
+  // On-chain verification (Q1 integrity fix)
+  verification_status  String    @default("pending") @map("verification_status") // 'pending' | 'verified' | 'rejected'
+  cosign_weight        BigInt?   @map("cosign_weight") // Weight contributed by this cosign (for rollback)
+  argument_id          String?   @map("argument_id") // Target argument (for cosign weight rollback)
+  tx_hash              String?   @map("tx_hash") // Transaction hash for async verification
+
   created_at      DateTime @default(now()) @map("created_at")
 
   debate          Debate   @relation(fields: [debate_id], references: [id], onDelete: Cascade)
 
   @@unique([debate_id, nullifier_hash])
   @@index([debate_id])
+  @@index([verification_status])
   @@map("debate_nullifier")
 }
 
@@ -1186,4 +1209,27 @@ model PositionDelivery {
 
   @@index([registration_id])
   @@map("position_delivery")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMMUNITY FIELD — ZK-verified bubble density aggregation
+// ═══════════════════════════════════════════════════════════════════════════
+// Tracks BubbleMembershipProof contributions per epoch. The proof verifies
+// the user is a real person (Tree 3 engagement) and their bubble maps to
+// committed H3 cells. epoch_nullifier prevents double-contribution.
+// Privacy-preserving: no user_id linkage, keyed by epoch_nullifier.
+
+model CommunityFieldContribution {
+  id                  String   @id @default(cuid())
+  epoch_date          String   @map("epoch_date")             // "2026-03-02" (daily epoch)
+  epoch_nullifier     String   @map("epoch_nullifier")        // H2(identity_commitment, epoch_domain)
+  cell_tree_root      String   @map("cell_tree_root")         // Poseidon Merkle root over H3 cells
+  proof_hash          String   @map("proof_hash")             // SHA-256(proof) for reference
+  verification_status String   @default("pending") @map("verification_status") // 'pending' | 'verified' | 'rejected'
+  created_at          DateTime @default(now()) @map("created_at")
+
+  @@unique([epoch_date, epoch_nullifier])
+  @@index([epoch_date])
+  @@index([verification_status])
+  @@map("community_field_contribution")
 }
