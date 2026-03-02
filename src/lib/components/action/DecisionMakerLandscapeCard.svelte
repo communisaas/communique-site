@@ -99,8 +99,9 @@
 {#if isActive}
 	<button
 		type="button"
+		aria-label="Write to {member.name}"
 		class="group w-full text-left rounded-xl border border-slate-200 bg-white shadow-sm p-4
-			transition-all duration-150 ease-out cursor-pointer
+			transition-[transform,box-shadow,border-color] duration-150 ease-out cursor-pointer
 			hover:-translate-y-0.5 hover:shadow-md hover:border-participation-primary-200
 			active:translate-y-0 active:shadow-sm
 			min-h-[44px]"
@@ -110,8 +111,8 @@
 	</button>
 {:else}
 	<div
-		class="rounded-xl border shadow-sm p-4 min-h-[44px] transition-all duration-700 ease-out
-			{departing ? 'departing-card border-participation-primary-200 bg-white' : contacted ? 'border-slate-100 bg-slate-50/60' : 'border-slate-200 bg-white'}"
+		class="rounded-xl border shadow-sm p-4 min-h-[44px] transition-[border-color,background-color] duration-300 ease-out
+			{departing ? 'departing-card border-participation-primary-200 bg-white' : contacted ? 'contacted-card border-slate-100 bg-slate-50/60' : 'border-slate-200 bg-white'}"
 	>
 		{@render cardContent()}
 	</div>
@@ -151,6 +152,10 @@
 		0%, 100% { opacity: 0.4; }
 		50% { opacity: 1; }
 	}
+	/* Contacted: reduce content contrast so card settles visually */
+	.contacted-card :global(h4) { color: var(--color-slate-500); }
+	.contacted-card :global(p) { color: var(--color-slate-400); }
+	.contacted-card :global(ul li) { color: var(--color-slate-300); }
 	@media (prefers-reduced-motion: reduce) {
 		.departing-card::after { animation: none; opacity: 0; }
 		.departing-pulse { animation: none; opacity: 0.7; }
