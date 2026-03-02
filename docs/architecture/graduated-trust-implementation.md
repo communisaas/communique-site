@@ -761,7 +761,7 @@ Final verification, documentation updates, and build checks.
 1. **COSE signature format alignment:** COSE uses raw r‖s (IEEE P1363) for ECDSA — same as Web Crypto. No DER conversion needed. Plan anticipated DER conversion; agent correctly identified this and omitted it.
 2. **Cross-realm Uint8Array in vitest/jsdom:** `@noble/curves` uses `instanceof Uint8Array` which fails across realms (jsdom vs Node.js). Fix: pass private keys as hex strings (accepted by noble's `Hex` type), wrap `TextEncoder.encode()` with `new Uint8Array(...)`.
 3. **Mock isolation in vitest:** `vi.stubGlobal('fetch', mockFetch)` with `mockResolvedValueOnce` leaks state between tests. Fix: `globalThis.fetch = vi.fn()` in `beforeEach` with explicit restore in `afterEach`.
-4. **IACA production certs:** Trust store structure ready and verified with dev cert, but production AAMVA VICAL certificates not yet available. Structure supports lazy DER decode and byte-level comparison.
+4. **IACA production certs:** Trust store structure ready and verified with dev cert. AAMVA VICAL is freely downloadable at `vical.dts.aamva.org/currentVical` (CBOR/COSE, ToS click-through only — no org registration needed). Multiple states also publish IACA roots directly on .gov domains (CA, AZ, GA, NM, PR). See `REMAINING-GAPS.md` Gap 1 for full research (2026-03-01). Integration pending.
 
 ### Test count
 

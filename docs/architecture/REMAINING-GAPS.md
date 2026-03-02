@@ -1,7 +1,7 @@
 # Remaining Implementation Gaps
 
-Status: February 2026
-Last updated by: gap-bridge team cycle
+Status: March 2026
+Last updated: 2026-03-01 (IACA Gap 1 research — UNBLOCKED)
 
 ---
 
@@ -9,7 +9,7 @@ Last updated by: gap-bridge team cycle
 
 | Gap | Priority | Blocked On | Estimated Effort |
 |-----|----------|------------|-----------------|
-| 1. IACA Root Certificates | **P0 — Launch blocker** | AAMVA VICAL access + per-state rollout | 2-4 weeks (access) + 1 week (code) |
+| 1. IACA Root Certificates | **P0 — UNBLOCKED** | VICAL freely downloadable; engineering integration only | 1-2 days (code) |
 | 3. mDL Identity Commitment + Shadow Atlas Registration | **P0 — Launch blocker** (mDL users cannot generate ZK proofs without this) | Selective disclosure expansion + commitment pipeline | 1-2 weeks |
 | 5. TEE Infrastructure | **P0 — Launch blocker** (production message delivery requires TEE decryption) | AWS Nitro Enclave provisioning + /api/tee/public-key server route | 3-5 weeks |
 | 6. Apple Business Connect Registration | P1 — Required for iOS mDL | Apple merchant enrollment process | 1-2 weeks (process) |
@@ -25,6 +25,11 @@ Last updated by: gap-bridge team cycle
 ---
 
 ## Gap 1: IACA Root Certificates (Tier 4 mDL Verification)
+
+**Status: UNBLOCKED** (2026-03-01). Previously marked BLOCKED pending AAMVA
+enrollment. Research confirmed the VICAL is freely downloadable — no
+organizational registration required for relying parties. Multiple states also
+publish IACA roots directly on .gov domains.
 
 ### Current State
 
@@ -63,58 +68,212 @@ against root subject DN, verify intermediate signatures."
 **Bypass logic in mDL verification:**
 `/Users/noot/Documents/communique/src/lib/core/identity/mdl-verification.ts`,
 lines 166-183. When `getIACARootsForVerification()` returns an empty array, the
-code logs a warning and proceeds without issuer verification:
-```typescript
-if (roots.length > 0) {
-    const coseResult = await verifyCoseSign1(issuerAuth, roots);
-    // ...
-} else {
-    console.warn('[mDL] No IACA roots loaded -- skipping issuer verification');
-}
-```
-This means all mDL credentials currently pass issuer verification by default,
-which is acceptable for development but not for production.
+code either hard-fails (production) or bypasses with `SKIP_ISSUER_VERIFICATION=true`
+(dev only). See mdl-verification.ts lines 211-224.
 
-### What's Needed
+### IACA Root Certificate Sources (Researched 2026-03-01)
 
-1. **AAMVA VICAL certificate ingestion.** Obtain root CA certificates (DER-encoded,
-   base64) for each participating state DMV from
-   `https://vical.dts.aamva.org`. Each entry is approximately 2KB base64.
-   Populate the `IACA_ROOTS` record keyed by state abbreviation.
+Three independent distribution channels exist. None require organizational
+enrollment or approval for relying parties (consumers of public keys).
+
+#### Source 1: AAMVA VICAL (Canonical, All Participating States)
+
+The AAMVA Digital Trust Service publishes the Verified Issuer Certificate
+Authority List (VICAL) — a CBOR/COSE-signed list of all participating states'
+IACA root certificates, as defined in ISO/IEC 18013-5 Annex B.
+
+- **Portal:** https://vical.dts.aamva.org/
+- **Current VICAL download:** https://vical.dts.aamva.org/currentVical
+- **Trust certificates:** https://vical.dts.aamva.org/trustcertificates
+  - CA Root: `/certificates/ca`
+  - CA Intermediate: `/certificates/ca_intermediate`
+  - VICAL Signer: `/certificates/vicalsigner`
+- **Current version:** `vc-2026-02-28-1772288472269` (dated 2026-02-28)
+- **Format:** CBOR-encoded (`.cbor`), signed with COSE_Sign using ES256/ES384/ES512
+- **Access requirements:** Accept Terms and Conditions click-through. No organizational registration.
+  ToS: https://www.aamva.org/identity/mobile-driver-license-digital-trust-service/for-relying-parties/terms-and-conditions-for-relying-parties
+- **ToS key terms:** "As is, as available." No warranty. Neither AAMVA nor issuing
+  authorities liable for inability to verify credentials or any damages.
+
+The VICAL is the single-artifact solution: download once, get all states. Updated
+continuously as states join. However, it requires CBOR/COSE parsing to extract
+individual state certificates.
+
+**VICAL entry structure (per ISO 18013-5 Annex B):**
+Each entry contains: issuer information, credential type (`docType`), IACA public
+key (X.509 DER), validity periods, digital signatures, fingerprints, X.509 extensions.
+
+**VICAL signing chain:**
+1. AAMVA CA Root Certificate (self-signed)
+2. AAMVA CA Intermediate Certificate
+3. VICAL Signer Certificate (end-entity, signs the VICAL)
+
+#### Source 2: Individual State .gov Websites (Subset, Direct Download)
+
+Multiple states publish their IACA root certificates directly on government
+domains, independent of AAMVA. These are standard X.509 DER-encoded certificates.
+
+| State | URL | Format | Confirmed |
+|-------|-----|--------|-----------|
+| **California** | `https://trust.dmv.ca.gov/certificates/ca-dmv-iaca-root-ca-crt.cer` | `.cer` (DER) | Yes |
+| **Arizona** | `https://azmvdnow.gov/certificates` | Download page | Yes |
+| **Georgia** | `https://dds.georgia.gov/document/document/ga-mdl-rootzip/download` | `.zip` (DER inside) | Yes |
+| **New Mexico** | `https://www.mvd.newmexico.gov/wp-content/uploads/2025/10/New-Mexico-IACA-Certificate.zip` | `.zip` | Yes |
+| **Puerto Rico** | `https://www.idmovil.pr.gov/` | Download page | Yes |
+| **Iowa** | Iowa DOT portal (referenced in Google supported issuers) | Unknown | Indirect |
+| **Hawaii** | `https://hidot.hawaii.gov/highways/mobile-driver-license/` | Download page | Indirect |
+
+States not in this table (Colorado, Maryland, Montana, North Dakota, etc.) publish
+exclusively through the AAMVA VICAL.
+
+#### Source 3: Platform Reference Lists (Apple, Google)
+
+Apple and Google both maintain curated lists of supported mDL issuers with links
+to their IACA certificate download pages. These are useful as cross-references:
+
+- **Apple:** https://developer.apple.com/wallet/get-started-with-verify-with-wallet/
+  (lists 14+ states/territories with IACA download links)
+- **Google:** https://developers.google.com/wallet/identity/verify/supported-issuers-iaca-certs
+  (structured table of supported issuers, IACA sources, and download instructions)
+
+**Important:** Neither Apple nor Google bundles IACA roots into their SDKs. Both
+explicitly push verification responsibility to the relying party. Apple states:
+"To verify a payload from a user's issuing authority, you'll need to download and
+use its IACA certificate from their website."
+
+### ISO 18013-5 Certificate Chain Structure
+
+Per the standard, the chain is intentionally shallow:
+1. **IACA Root Certificate** — self-signed X.509, max 9-year validity (Table B.1)
+2. **Document Signer Certificate (DSC)** — leaf certificate signed by the IACA
+3. **Mobile Security Object (MSO)** — signed by the DSC, embedded in the mDoc
+
+No intermediate CAs are permitted. This means `checkTrustChain()` in
+`cose-verify.ts` (line 373) can remain a direct byte comparison for now —
+the issuer cert in the mDL's COSE_Sign1 is the DSC, which should be directly
+signed by the IACA root. Full X.509 chain walking is not needed for the
+current ISO 18013-5 profile.
+
+**Cryptographic requirements:** ES256 (P-256), ES384 (P-384), or ES512 (P-521).
+IACA private keys must be stored in HSMs Level 3+. Our `cose-verify.ts` currently
+handles ES256/P-256 only — this covers the majority of deployed mDLs.
+
+### Open-Source mDL Verification Libraries
+
+No npm/crate/pip package bundles IACA root certificates. All require the integrator
+to supply trusted certificates at runtime. This is by design — trust roots are
+operational data, not code dependencies.
+
+**TypeScript/Node.js options:**
+| Library | npm | License | Notes |
+|---------|-----|---------|-------|
+| `@owf/mdoc` | `@owf/mdoc` | Apache-2.0 | OpenWallet Foundation. Successor to `@auth0/mdl`. Pluggable crypto, works in Node.js + browsers + React Native. Takes PEM certificates array for Verifier class. |
+| `@auth0/mdl` | `@auth0/mdl@3.0.1` | Apache-2.0 | **DEPRECATED** — migrated to `@owf/mdoc`. Do not use for new projects. |
+| `@protokoll/mdoc-client` | `@protokoll/mdoc-client` | — | Another TypeScript implementation. |
+
+**Rust:** SpruceID `isomdl` (https://github.com/spruceid/isomdl) — Apache-2.0/MIT,
+full ISO 18013-5 device+reader implementation.
+
+**Kotlin Multiplatform:** OpenWallet Foundation `multipaz` (https://github.com/openwallet-foundation/multipaz) —
+Apache-2.0, ISO 18013-5 + 18013-7 + OpenID4VP. Includes `multipazctl` CLI that
+can generate test IACA certificates.
+
+**ZK over mDL:** Google `longfellow-zk` (https://github.com/google/longfellow-zk) —
+ZK proofs over ISO mDoc credentials (proves facts about mDL without revealing raw
+data). IETF draft: `draft-google-cfrg-libzk-01`. Includes Docker verifier service
+with `certs.pem` IACA trust store. Relevant to our ZK architecture.
+
+### Transparency Gap (Research Finding)
+
+**No Certificate Transparency (CT) infrastructure exists for IACA.** After
+extensive search (2026-03-01), no RFC, IETF draft, academic paper, or open-source
+project applies CT-style transparency logs to mDL issuer certificates.
+
+This means:
+- No append-only Merkle log of VICAL updates
+- No monitor/auditor role detecting rogue IACA additions
+- No inclusion proofs that a given IACA was in the VICAL at a given time
+- AAMVA is a single point of trust with no verifiable history
+
+The Trillian project (https://transparency.dev/verifiable-data-structures/) provides
+the primitives (verifiable logs + verifiable maps) that could be applied. Google's
+Key Transparency work is a related concept for identity keys. This is an open
+research/engineering opportunity directly relevant to the protocol's trust model.
+
+### What's Needed (Revised)
+
+1. **VICAL ingestion pipeline.** Download the CBOR-encoded VICAL from
+   `https://vical.dts.aamva.org/currentVical`. Parse with `cbor-web` (already
+   a dependency). Extract IACA DER certificates per state. Base64-encode and
+   populate `IACA_ROOTS`. This can be a build-time script or a one-time manual
+   extraction. Each certificate is ~2KB base64.
+
+   Alternatively, start with direct .gov downloads for the highest-enrollment
+   states (CA, AZ, GA) and expand via VICAL parsing later.
 
 2. **Certificate rotation monitoring.** Each `IACACertificate` has an `expiresAt`
    field (line 35). Build a scheduled job or deploy-time check that warns when
-   certificates approach expiration.
+   certificates approach expiration. IACA roots have up to 9-year validity per
+   ISO 18013-5 Table B.1, so rotation is infrequent.
 
-3. **Intermediate CA chain validation.** Replace the direct byte-comparison in
-   `checkTrustChain()` (line 373) with proper X.509 chain walking: extract
-   issuer DN, match against root subject DN, verify intermediate signatures.
+3. **Enable the verification gate.** Remove the `SKIP_ISSUER_VERIFICATION`
+   bypass at mdl-verification.ts line 214. Convert to hard failure for any
+   state where IACA roots are loaded. Keep bypass only for states not yet in
+   the trust store (graceful per-state rollout via `supportedIACAStates()`).
 
-4. **MSO digest validation integration.** The `validateMsoDigests()` function
-   (cose-verify.ts, line 257) exists but is not called in the mDL verification
-   pipeline. Line 177 has a comment: "Optionally: validate MSO digests." This
-   should be wired in when IACA roots are populated.
+4. **MSO digest validation (already wired).** The `validateMsoDigests()` call
+   was integrated in mdl-verification.ts lines 188-209 during Cycle 13A. This
+   is complete — it runs when IACA roots are present and COSE verification passes.
 
-5. **Enable the verification gate.** Remove the bypass at mdl-verification.ts
-   line 179 (`else { console.warn(...) }`) or convert it to a hard failure once
-   IACA roots are loaded for the target states.
+### No Longer Blocking
 
-### Blocking Issues
+- ~~AAMVA access: The VICAL service requires organizational registration.~~ **RESOLVED.**
+  The VICAL is freely downloadable after a ToS click-through. No registration.
+- ~~Per-state rollout: Not all states publish IACA roots simultaneously.~~ **MITIGATED.**
+  The VICAL contains all participating states. Individual state sites provide
+  additional coverage. ~19 states are live with mDL programs.
+- **No X.509 library:** Still relevant for full chain validation, but ISO 18013-5's
+  flat chain structure (root + DSC, no intermediates) means direct byte comparison
+  in `checkTrustChain()` is architecturally correct for the current profile.
 
-- **AAMVA access:** The VICAL service requires organizational registration.
-  Timeline depends on AAMVA's approval process.
-- **Per-state rollout:** Not all states publish IACA roots simultaneously.
-  The trust store will grow incrementally. A "supported states" check
-  (`supportedIACAStates()`, iaca-roots.ts line 102) already exists for this.
-- **No X.509 library:** The current implementation avoids Node.js crypto for
-  Cloudflare Workers compatibility. Full chain validation may require a
-  lightweight WASM X.509 library or a build-time certificate validation step.
+### US mDL Ecosystem Status (Researched 2026-03-01)
+
+**19+ states/territories with active mDL programs:**
+Arizona, Arkansas, California, Colorado, Georgia, Hawaii, Illinois, Iowa,
+Louisiana, Maryland, Montana, New Mexico, New York, North Dakota, Ohio,
+Puerto Rico, Utah, Virginia, West Virginia.
+
+**Adoption:** ~41% of Americans live in states with active mDLs. Arizona leads
+with ~1.1M enrolled (~23% of licensed drivers). Projected ~100M US mDLs by end
+of 2026.
+
+**Wallet support:** 14 states in Apple Wallet, 9 in Google Wallet, 7 in Samsung
+Wallet. Multiple standalone apps (LA Wallet, MyColorado, state Idemia apps).
+
+**Protocols:**
+- `org.iso.mdoc` — ISO 18013-5 native (primary, Apple Wallet)
+- `openid4vp` — OpenID for Verifiable Presentations (Google Wallet)
+- Both supported via `digital-credentials-api.ts` dual-protocol implementation.
 
 ### Relevant Files
 
 - `/Users/noot/Documents/communique/src/lib/core/identity/iaca-roots.ts` (lines 51-60, 73-81, 87-127)
 - `/Users/noot/Documents/communique/src/lib/core/identity/cose-verify.ts` (lines 82-238, 257-319, 373-394, 405-446)
-- `/Users/noot/Documents/communique/src/lib/core/identity/mdl-verification.ts` (lines 161-186)
+- `/Users/noot/Documents/communique/src/lib/core/identity/mdl-verification.ts` (lines 161-237)
+
+### References
+
+- AAMVA VICAL Portal: https://vical.dts.aamva.org/
+- AAMVA DTS for Relying Parties: https://www.aamva.org/identity/mobile-driver-license-digital-trust-service/for-relying-parties
+- AAMVA mDL Implementation Guidelines v1.5: https://www.aamva.org/getmedia/bb4fee66-592d-4d39-813a-8fdfd910268a/MobileDLGuidelines1-5.pdf
+- ISO/IEC 18013-5:2021 (Annex B — VICAL format specification)
+- Apple Verify with Wallet: https://developer.apple.com/wallet/get-started-with-verify-with-wallet/
+- Google Supported Issuers: https://developers.google.com/wallet/identity/verify/supported-issuers-iaca-certs
+- California DMV mDL Reader: https://www.dmv.ca.gov/portal/ca-dmv-wallet/mdl-reader/
+- SpruceID isomdl: https://github.com/spruceid/isomdl
+- OpenWallet Foundation @owf/mdoc: https://github.com/animo/mdoc
+- Google longfellow-zk: https://github.com/google/longfellow-zk
+- Certificate Transparency: https://certificate.transparency.dev/
 
 ---
 
@@ -468,7 +627,7 @@ Cross-references: voter-protocol `MEMORY.md`, communique `implementation-status.
 |---|------|-----------|--------|------------|
 | L-01 | Deploy contracts to Scroll mainnet | voter-protocol | **NOT STARTED** | Compiled + tested (473 Solidity tests, v4 Sepolia verified) |
 | L-02 | `registerVerifier()` + `sealGenesis()` on mainnet | voter-protocol | **NOT STARTED** | Depends on L-01 |
-| L-03 | IACA root certificate ingestion (Gap 1) | communique | **BLOCKED** — pending AAMVA VICAL access | Trust store structure ready; bypass logic in mdl-verification.ts must become hard fail |
+| L-03 | IACA root certificate ingestion (Gap 1) | communique | **UNBLOCKED** — VICAL freely downloadable, needs integration | VICAL at `vical.dts.aamva.org/currentVical` (CBOR/COSE); states also publish directly on .gov domains (CA, AZ, GA, NM, PR). 1-2 days engineering. |
 | L-04 | mDL → identity commitment → Shadow Atlas registration (Gap 3) | communique | **NOT STARTED** | Selective disclosure expansion (`birth_date`, `document_number`) + `processCredentialResponse()` pipeline |
 | L-05 | TEE infrastructure for witness decryption (Gap 5) | communique | **NOT STARTED** | AWS Nitro Enclave provisioning; `/api/tee/public-key` route; key management |
 | L-06 | Production secrets + Shadow Atlas server deployment | voter-protocol | **NOT STARTED** | Server binary ready; needs hosting + DNS + TLS |
@@ -500,7 +659,7 @@ Cross-references: voter-protocol `MEMORY.md`, communique `implementation-status.
 ### Critical Path
 
 ```
-L-03 (IACA certs) ─────────────────────────────┐
+L-03 (IACA certs) ─[UNBLOCKED]─────────────────┐
 L-04 (mDL→commitment→registration) ────────────┤
 L-05 (TEE infrastructure) ─────────────────────→├──→ Production Launch
 L-01 (mainnet deploy) → L-02 (genesis seal) ───┤
@@ -508,4 +667,7 @@ L-06 (Shadow Atlas server) ─────────────────�
 L-07 (npm registry refs) ──────────────────────┘
 ```
 
-L-03 is externally blocked (AAMVA). All others are engineering effort with no external dependencies.
+All P0 items are engineering effort — no external blockers remain.
+L-03 was previously marked externally blocked (AAMVA enrollment).
+Research confirmed (2026-03-01) that the VICAL is freely downloadable
+at `https://vical.dts.aamva.org/currentVical` after a ToS click-through.

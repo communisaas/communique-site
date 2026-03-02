@@ -1,6 +1,5 @@
 <script lang="ts">
 
-	import { onMount as _onMount } from 'svelte';
 	import { page } from '$app/stores';
 	// Note: `browser` import removed - was causing CLS by gating route detection
 	import '../app.css';
@@ -13,7 +12,6 @@
 	import { walletState } from '$lib/stores/walletState.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
-	import { syncOAuthLocation } from '$lib/core/location/oauth-location-sync';
 	import type { HeaderUser, HeaderTemplate, TemplateUseEvent } from '$lib/types/any-replacements';
 	import type { PageUser } from '$lib/stores/walletState.svelte';
 	import type { LayoutData } from './$types';
@@ -47,13 +45,6 @@
 		walletState.initFromPageData(data.user as PageUser | null);
 	});
 
-	// Initialize app: sync OAuth location (templates fetched by page components that need them)
-	_onMount(async () => {
-		// Sync OAuth location if cookie exists (from OAuth callback)
-		syncOAuthLocation().catch((error) => {
-			console.warn('[App] Failed to sync OAuth location:', error);
-		});
-	});
 
 	// Handle template use from header/bottom bar
 	function handleTemplateUse(__event: TemplateUseEvent): void {

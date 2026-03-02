@@ -98,6 +98,53 @@ export interface AIResolutionData {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SSE EVENT SCHEMAS
+// ═══════════════════════════════════════════════════════════════════════════
+
+import { z } from 'zod';
+
+const sseStateSchema = z.object({
+	prices: z.record(z.string()).optional(),
+	epochPhase: z.enum(['commit', 'reveal', 'executing', 'idle']),
+	epochSecondsRemaining: z.number().optional()
+});
+
+const sseEpochExecutedSchema = z.object({
+	prices: z.record(z.string()).optional(),
+	pricesStale: z.boolean()
+});
+
+const sseAIScoresSchema = z.object({
+	signatureCount: z.number()
+});
+
+const sseResolutionSchema = z.object({
+	winningArgumentIndex: z.number(),
+	winningStance: z.string()
+});
+
+const sseAppealSchema = z.object({
+	appealDeadline: z.string().nullable()
+});
+
+/** Parse SSE event data with schema validation. Returns null on failure. */
+function parseSSE<T>(raw: string, schema: z.ZodType<T>, eventName: string): T | null {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		console.warn(`[debate-sse] Failed to parse ${eventName}:`, raw?.slice(0, 100));
+		return null;
+	}
+	const result = schema.safeParse(parsed);
+	if (!result.success) {
+		console.warn(`[debate-sse] Invalid ${eventName} payload:`, result.error.flatten());
+		return null;
+	}
+	return result.data;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // STORE
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -214,30 +261,20 @@ function createDebateState() {
 			sseConnection = source;
 
 			source.addEventListener('state', (e: MessageEvent) => {
-				let data: any;
-				try {
-					data = JSON.parse(e.data);
-				} catch {
-					console.warn('[debate-sse] Failed to parse state event:', e.data?.slice(0, 100));
-					return;
-				}
+				const data = parseSSE(e.data, sseStateSchema, 'state');
+				if (!data) return;
 				if (data.prices) {
 					lmsrPrices = Object.fromEntries(
 						Object.entries(data.prices).map(([k, v]) => [Number(k), Number(v)])
 					);
 				}
-				epochPhase = data.epochPhase ?? 'idle';
+				epochPhase = data.epochPhase;
 				epochSecondsRemaining = data.epochSecondsRemaining ?? 0;
 			});
 
 			source.addEventListener('epoch_executed', (e: MessageEvent) => {
-				let data: any;
-				try {
-					data = JSON.parse(e.data);
-				} catch {
-					console.warn('[debate-sse] Failed to parse epoch_executed event:', e.data?.slice(0, 100));
-					return;
-				}
+				const data = parseSSE(e.data, sseEpochExecutedSchema, 'epoch_executed');
+				if (!data) return;
 				if (data.prices) {
 					lmsrPrices = Object.fromEntries(
 						Object.entries(data.prices).map(([k, v]) => [Number(k), Number(v)])
@@ -270,19 +307,14 @@ function createDebateState() {
 			// path emits 'ai_scores_submitted'. Both carry the same payload shape and
 			// must update signatureCount identically. Extract to a shared handler.
 			const handleAIScoresSubmitted = (e: MessageEvent) => {
-				let data: any;
-				try {
-					data = JSON.parse(e.data);
-				} catch {
-					console.warn('[debate-sse] Failed to parse ai_scores event:', e.data?.slice(0, 100));
-					return;
-				}
+				const data = parseSSE(e.data, sseAIScoresSchema, 'ai_scores');
+				if (!data) return;
 				if (currentDebate && currentDebate.aiResolution) {
 					currentDebate = {
 						...currentDebate,
 						aiResolution: {
 							...currentDebate.aiResolution,
-							signatureCount: data.signatureCount ?? currentDebate.aiResolution.signatureCount
+							signatureCount: data.signatureCount
 						}
 					};
 				}
@@ -291,13 +323,8 @@ function createDebateState() {
 			source.addEventListener('ai_evaluation_submitted', handleAIScoresSubmitted);
 
 			source.addEventListener('resolved_with_ai', (e: MessageEvent) => {
-				let data: any;
-				try {
-					data = JSON.parse(e.data);
-				} catch {
-					console.warn('[debate-sse] Failed to parse resolved_with_ai event:', e.data?.slice(0, 100));
-					return;
-				}
+				const data = parseSSE(e.data, sseResolutionSchema, 'resolved_with_ai');
+				if (!data) return;
 				if (currentDebate) {
 					currentDebate = {
 						...currentDebate,
@@ -319,13 +346,8 @@ function createDebateState() {
 			});
 
 			source.addEventListener('appeal_started', (e: MessageEvent) => {
-				let data: any;
-				try {
-					data = JSON.parse(e.data);
-				} catch {
-					console.warn('[debate-sse] Failed to parse appeal_started event:', e.data?.slice(0, 100));
-					return;
-				}
+				const data = parseSSE(e.data, sseAppealSchema, 'appeal_started');
+				if (!data) return;
 				if (currentDebate) {
 					currentDebate = {
 						...currentDebate,
@@ -334,7 +356,7 @@ function createDebateState() {
 							? {
 									...currentDebate.aiResolution,
 									hasAppeal: true,
-									appealDeadline: data.appealDeadline ?? undefined
+									appealDeadline: data.appealDeadline ?? undefined // null → undefined
 								}
 							: undefined
 					};
@@ -342,13 +364,8 @@ function createDebateState() {
 			});
 
 			source.addEventListener('resolution_finalized', (e: MessageEvent) => {
-				let data: any;
-				try {
-					data = JSON.parse(e.data);
-				} catch {
-					console.warn('[debate-sse] Failed to parse resolution_finalized event:', e.data?.slice(0, 100));
-					return;
-				}
+				const data = parseSSE(e.data, sseResolutionSchema, 'resolution_finalized');
+				if (!data) return;
 				if (currentDebate) {
 					currentDebate = {
 						...currentDebate,

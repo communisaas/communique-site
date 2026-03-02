@@ -29,7 +29,9 @@ Shadow Atlas becomes the unified backend for district resolution AND representat
 | `unitedstates/congress-legislators` (GitHub) | Federal (541) | CC0 | YAML/JSON | Excellent | Primary federal source |
 | Open States (openstates.org) | State (~7,386) | CC0 | Postgres dump + nightly CSV | Good | Primary state source |
 | Census TIGER/Line shapefiles | Boundaries | Public domain | Shapefiles | Authoritative | District geometry |
-| Cicero (Melissa Data) | Local | Commercial | Negotiated | Variable | Future: county/city/school |
+| Municipal GIS Portals (716 cities) | Local | Public domain | GeoJSON | Varies | City council wards |
+| Regional COGs (7 metros, ~1,314 cities) | Local | Public domain | ArcGIS REST | Good | Municipal boundaries |
+| Special District Providers (state GIS) | Local | Public domain | GeoJSON | Good | Fire, water, school, etc. |
 
 **Dead sources (do not use):**
 - ProPublica Congress API: shut down July 2024
@@ -291,7 +293,6 @@ The architecture doc originally specified a feature flag for the Congress.gov �
 
 ## Open Questions
 
-1. **Cicero bulk license pricing** — needed for local officials (county, city, school board). Not blocking soft launch.
-2. **Open States CSV column schema** — need to validate column names match our `state_legislators` table design before first ingest.
-3. **Senate CWC code derivation** — `contact_form_url` from congress-legislators is captured but CWC code generation for Senate requires additional mapping. Not blocking CWC delivery (House CWC codes work).
-4. **`/v1/districts/:hexId` enrichment** — current handler returns Merkle proofs only. Adding human-readable names is additive and backwards-compatible but deferred.
+1. **Open States CSV column schema** — need to validate column names match our `state_legislators` table design before first ingest.
+2. **Senate CWC code derivation** — `contact_form_url` from congress-legislators is captured but CWC code generation for Senate requires additional mapping. Not blocking CWC delivery (House CWC codes work).
+3. **`/v1/districts/:hexId` enrichment** — current handler returns Merkle proofs only. Adding human-readable names is additive and backwards-compatible but deferred.

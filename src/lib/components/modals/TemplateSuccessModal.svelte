@@ -1,15 +1,31 @@
 <script lang="ts">
 	import { fade, scale } from 'svelte/transition';
-	import { CheckCircle, Clock, Share2, LayoutDashboard, X } from '@lucide/svelte';
+	import {
+		CheckCircle,
+		Clock,
+		Share2,
+		LayoutDashboard,
+		X,
+		Link,
+		Check,
+		AlertCircle
+	} from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
+	import { supportsWebShare, copyToClipboard as clipboardCopy } from '$lib/utils/browserUtils';
 
 	let {
 		template,
+		publishing = false,
+		error = null,
 		onclose,
+		onretry,
 		ondashboard
 	}: {
 		template: Template;
+		publishing?: boolean;
+		error?: string | null;
 		onclose?: () => void;
+		onretry?: () => void;
 		ondashboard?: () => void;
 	} = $props();
 
@@ -18,19 +34,23 @@
 		`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`
 	);
 
-	// Share message matching TemplateModal's medium format
 	let shareMessage = $derived(
 		(() => {
-			const actionCount = template.metrics?.sent || 0;
 			const category = template.category?.toLowerCase() || 'advocacy';
-			return `Coordinating on ${category}.\n\n"${template.title}"\n\n${actionCount > 0 ? `${actionCount.toLocaleString()} people already sent. ` : ''}Takes 2 minutes: ${shareUrl}`;
+			return `Coordinating on ${category}.\n\n"${template.title}"\n\nTakes 2 minutes: ${shareUrl}`;
 		})()
 	);
 
-	// State-aware derived values for perceptual clarity
-	let isPublished = $derived(template.status === 'published' && template.is_public);
-	let isDraft = $derived(template.status === 'draft' || !template.is_public);
-	let hasNativeShare = typeof navigator !== 'undefined' && 'share' in navigator;
+	// State derivations
+	let isPublished = $derived(
+		!publishing && !error && template.status === 'published' && template.is_public
+	);
+	let isDraft = $derived(
+		!publishing && !error && (template.status === 'draft' || !template.is_public)
+	);
+	let showShareActions = $derived(publishing || isPublished);
+	let hasError = $derived(!!error);
+	let useNativeShare = supportsWebShare();
 
 	function handleClose() {
 		onclose?.();
@@ -56,26 +76,25 @@
 				}
 			}
 		} else {
-			copyToClipboard();
+			await handleCopy();
 		}
 	}
 
-	function copyToClipboard() {
-		if (typeof navigator !== 'undefined') {
-			navigator.clipboard.writeText(shareUrl).then(() => {
-				copied = true;
-				setTimeout(() => (copied = false), 2000);
-			});
+	async function handleCopy() {
+		const success = await clipboardCopy(shareUrl);
+		if (success) {
+			copied = true;
+			setTimeout(() => (copied = false), 2000);
 		}
+	}
+
+	function handleViewTemplate() {
+		window.open(shareUrl, '_blank');
 	}
 
 	function handleDashboard() {
 		ondashboard?.();
 		window.location.href = '/';
-	}
-
-	function handleViewTemplate() {
-		window.open(shareUrl, '_blank');
 	}
 </script>
 
@@ -118,28 +137,40 @@
 
 		<!-- State-Aware Header -->
 		<div
-			class="px-6 pb-6 pt-8 text-center {isPublished
-				? 'bg-gradient-to-br from-emerald-50 to-blue-50'
-				: 'bg-gradient-to-br from-amber-50 to-orange-50'}"
+			class="px-6 pb-6 pt-8 text-center {hasError
+				? 'bg-gradient-to-br from-red-50 to-orange-50'
+				: isDraft
+					? 'bg-gradient-to-br from-amber-50 to-orange-50'
+					: 'bg-gradient-to-br from-emerald-50 to-blue-50'}"
 		>
 			<div
 				class="mb-4 inline-flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-lg"
+				class:publishing-pulse={publishing}
 				in:scale={{ duration: 600, delay: 200, start: 0 }}
 			>
-				{#if isPublished}
-					<CheckCircle class="h-12 w-12 text-emerald-500" />
-				{:else}
+				{#if hasError}
+					<AlertCircle class="h-12 w-12 text-red-500" />
+				{:else if isDraft}
 					<Clock class="h-12 w-12 text-amber-500" />
+				{:else}
+					<CheckCircle class="h-12 w-12 text-emerald-500" />
 				{/if}
 			</div>
-			{#if isPublished}
-				<h2 class="mb-2 text-2xl font-bold text-slate-900">Template Published!</h2>
-				<p class="text-slate-600">Your template is live and ready to share</p>
-			{:else}
+
+			{#if hasError}
+				<h2 class="mb-2 text-2xl font-bold text-slate-900">Couldn't publish</h2>
+				<p class="text-sm text-red-600">{error}</p>
+			{:else if isDraft}
 				<h2 class="mb-2 text-2xl font-bold text-slate-900">Template Saved as Draft</h2>
 				<p class="text-slate-600">
 					Content is being reviewed. You'll be notified when it's published.
 				</p>
+			{:else if publishing}
+				<h2 class="mb-2 text-2xl font-bold text-slate-900">Publishing...</h2>
+				<p class="text-slate-600">Your link is ready to share</p>
+			{:else}
+				<h2 class="mb-2 text-2xl font-bold text-slate-900">Published!</h2>
+				<p class="text-slate-600">Your template is live and ready to share</p>
 			{/if}
 		</div>
 
@@ -167,35 +198,57 @@
 			</div>
 		</div>
 
-		{#if isPublished}
-			<!-- Primary: Share Button -->
+		{#if showShareActions}
+			<!-- Primary action: device-adaptive -->
 			<div class="px-6 pb-2 pt-1">
-				<button
-					onclick={handleShare}
-					class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
-				>
-					<Share2 class="h-5 w-5" />
-					<span>{hasNativeShare ? 'Share template' : 'Copy share message'}</span>
-				</button>
+				{#if useNativeShare}
+					<!-- Mobile: native share sheet -->
+					<button
+						onclick={handleShare}
+						class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
+					>
+						<Share2 class="h-5 w-5" />
+						<span>Share</span>
+					</button>
+				{:else}
+					<!-- Desktop: copy link -->
+					<button
+						onclick={handleCopy}
+						class="flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 font-semibold shadow-sm transition-all active:scale-95 {copied
+							? 'bg-emerald-600 text-white'
+							: 'bg-participation-primary-600 text-white hover:bg-participation-primary-700'}"
+					>
+						{#if copied}
+							<Check class="h-5 w-5" />
+							<span>Copied!</span>
+						{:else}
+							<Link class="h-5 w-5" />
+							<span>Copy link</span>
+						{/if}
+					</button>
+				{/if}
 			</div>
 
-			<!-- Tertiary: URL display with copy link -->
+			<!-- URL display — clickable copy surface -->
 			<div class="px-6 pb-4">
-				<div class="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2">
-					<span class="flex-1 truncate font-mono text-xs text-slate-500">
-						{shareUrl}
-					</span>
+				<button onclick={handleCopy} class="url-copy-bar" class:url-copy-bar--copied={copied}>
 					{#if copied}
-						<span class="text-xs font-medium text-emerald-600" in:fade>Copied!</span>
+						<Check class="h-3.5 w-3.5 flex-shrink-0 text-emerald-600" />
+						<span class="flex-1 text-left text-sm font-medium text-emerald-600">
+							Link copied
+						</span>
 					{:else}
-						<button
-							onclick={copyToClipboard}
-							class="flex-shrink-0 text-xs font-medium text-participation-primary-600 hover:text-participation-primary-700"
+						<Link class="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+						<span class="flex-1 truncate text-left font-mono text-xs text-slate-500">
+							{shareUrl}
+						</span>
+						<span
+							class="flex-shrink-0 text-xs font-semibold text-participation-primary-600"
 						>
-							Copy URL
-						</button>
+							Copy
+						</span>
 					{/if}
-				</div>
+				</button>
 			</div>
 
 			<!-- Warm closing note -->
@@ -206,7 +259,7 @@
 				</p>
 			</div>
 
-			<!-- Secondary: single text link -->
+			<!-- View template -->
 			<div class="flex justify-center px-6 pb-6">
 				<button
 					onclick={handleViewTemplate}
@@ -215,7 +268,7 @@
 					View template
 				</button>
 			</div>
-		{:else}
+		{:else if isDraft}
 			<!-- Draft: Explain what's happening -->
 			<div class="px-6 pb-4">
 				<div class="rounded-lg bg-amber-50 p-4">
@@ -238,7 +291,7 @@
 				</button>
 			</div>
 
-			<!-- Draft: What happens next (prose, not bullets) -->
+			<!-- Draft: What happens next -->
 			<div class="px-6 pb-3 pt-1">
 				<p class="text-xs font-medium text-amber-800">What happens next</p>
 				<p class="mt-1.5 text-xs leading-relaxed text-amber-700">
@@ -256,6 +309,25 @@
 					Preview draft
 				</button>
 			</div>
+		{:else if hasError}
+			<!-- Error: Retry -->
+			<div class="px-6 pb-4 pt-1">
+				<button
+					onclick={() => onretry?.()}
+					class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
+				>
+					Try again
+				</button>
+			</div>
+
+			<div class="flex justify-center px-6 pb-6">
+				<button
+					onclick={handleClose}
+					class="text-sm text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-slate-700 hover:decoration-slate-500"
+				>
+					Close
+				</button>
+			</div>
 		{/if}
 	</div>
 </div>
@@ -267,5 +339,44 @@
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
+	}
+
+	@keyframes publish-pulse {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.6;
+		}
+	}
+
+	.publishing-pulse {
+		animation: publish-pulse 1.5s ease-in-out infinite;
+	}
+
+	.url-copy-bar {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
+		padding: 0.625rem 0.75rem;
+		border-radius: 0.5rem;
+		border: 1.5px solid oklch(0.92 0.01 250);
+		background: oklch(0.98 0.005 250);
+		cursor: pointer;
+		transition:
+			border-color 150ms,
+			background-color 150ms;
+	}
+
+	.url-copy-bar:hover {
+		border-color: oklch(0.85 0.03 250);
+		background: oklch(0.965 0.01 250);
+	}
+
+	.url-copy-bar--copied {
+		border-color: oklch(0.78 0.12 155);
+		background: oklch(0.96 0.03 155);
 	}
 </style>

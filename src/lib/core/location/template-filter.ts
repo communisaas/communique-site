@@ -19,6 +19,8 @@ import type {
 	ScoredTemplate
 } from './types';
 import type { ScopeMapping, ScopeLevel } from '$lib/utils/scope-mapper-international';
+import type { GeoScope } from '$lib/core/agents/types';
+import type { TemplateGroup, PrecisionLevel } from '$lib/types/template';
 
 // ============================================================================
 // Template Filter
@@ -750,4 +752,136 @@ export function boostByUserBehavior(
 			score: item.score * behaviorBoost
 		};
 	});
+}
+
+// ============================================================================
+// GeoScope → InferredLocation Bridge
+// ============================================================================
+
+/**
+ * Convert a user-selected GeoScope to InferredLocation for the scoring engine.
+ *
+ * This bridges the LocationPicker output (GeoScope) to the template-filter
+ * input (InferredLocation). Returns null for international scope (no filter).
+ */
+export function geoScopeToInferredLocation(scope: GeoScope): InferredLocation | null {
+	if (scope.type === 'international') return null;
+
+	const now = new Date().toISOString();
+
+	if (scope.type === 'nationwide') {
+		return {
+			country_code: scope.country,
+			congressional_district: null,
+			state_code: null,
+			confidence: 1.0,
+			signals: [
+				{
+					signal_type: 'user_selected',
+					confidence: 1.0,
+					country_code: scope.country,
+					source: 'location_scope_bar',
+					timestamp: now
+				}
+			],
+			inferred_at: now
+		};
+	}
+
+	// subnational — extract state code from subdivision (e.g. "US-CA" → "CA")
+	const stateCode = scope.subdivision?.split('-')[1] ?? null;
+
+	return {
+		country_code: scope.country,
+		congressional_district: null,
+		state_code: stateCode,
+		city_name: scope.locality ?? null,
+		confidence: 1.0,
+		signals: [
+			{
+				signal_type: 'user_selected',
+				confidence: 1.0,
+				country_code: scope.country,
+				state_code: stateCode,
+				city_name: scope.locality ?? null,
+				source: 'location_scope_bar',
+				timestamp: now
+			}
+		],
+		inferred_at: now
+	};
+}
+
+/**
+ * Convert an InferredLocation (from inference engine) to GeoScope (for breadcrumb display).
+ *
+ * Reverse bridge: inference engine → GeoScope → breadcrumbs.
+ * Returns null if no country_code (inference failed entirely).
+ */
+export function inferredLocationToGeoScope(location: InferredLocation): GeoScope | null {
+	if (!location.country_code) return null;
+
+	if (location.state_code) {
+		return {
+			type: 'subnational',
+			country: location.country_code,
+			subdivision: `${location.country_code}-${location.state_code}`,
+			locality: location.city_name ?? undefined
+		};
+	}
+
+	return {
+		type: 'nationwide',
+		country: location.country_code
+	};
+}
+
+// ============================================================================
+// Score-Based Template Grouping
+// ============================================================================
+
+interface GroupTier {
+	title: string;
+	minScore: number;
+	level: PrecisionLevel;
+}
+
+const GROUP_TIERS: GroupTier[] = [
+	{ title: 'In Your District', minScore: 0.95, level: 'district' },
+	{ title: 'In Your City / County', minScore: 0.65, level: 'city' },
+	{ title: 'In Your State', minScore: 0.45, level: 'state' },
+	{ title: 'Nationwide', minScore: 0.25, level: 'nationwide' }
+];
+
+/**
+ * Group scored templates into display tiers by score thresholds.
+ *
+ * Omits empty tiers. Computes coordinationCount per group.
+ */
+export function groupByPrecision(scored: ScoredTemplate[]): TemplateGroup[] {
+	const groups: TemplateGroup[] = [];
+
+	for (const tier of GROUP_TIERS) {
+		const nextTierMin =
+			GROUP_TIERS[GROUP_TIERS.indexOf(tier) - 1]?.minScore ?? Infinity;
+
+		const templates = scored
+			.filter((s) => s.score >= tier.minScore && s.score < nextTierMin)
+			.map((s) => s.template);
+
+		if (templates.length === 0) continue;
+
+		groups.push({
+			title: tier.title,
+			templates: templates as unknown as TemplateGroup['templates'],
+			minScore: tier.minScore,
+			level: tier.level,
+			coordinationCount: templates.reduce(
+				(sum, t) => sum + ((t as unknown as Record<string, unknown>).send_count as number || 0),
+				0
+			)
+		});
+	}
+
+	return groups;
 }

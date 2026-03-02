@@ -34,10 +34,17 @@
 </script>
 
 {#snippet cardContent()}
-	<!-- Header: name + title -->
-	<div class="mb-1">
-		<h4 class="text-base font-semibold text-slate-900">{member.name}</h4>
-		<p class="text-sm text-slate-600">
+	<!-- Accountability opener — WHY this person matters (center of gravity) -->
+	{#if member.accountabilityOpener}
+		<p class="text-sm font-medium leading-snug text-participation-primary-700 mb-2.5 line-clamp-3">
+			{member.accountabilityOpener}
+		</p>
+	{/if}
+
+	<!-- Identity: name + title + org -->
+	<div class="mb-1.5">
+		<h4 class="text-sm font-semibold text-slate-900">{member.name}</h4>
+		<p class="text-xs text-slate-500">
 			{member.title}{member.organization ? `, ${member.organization}` : ''}
 		</p>
 	</div>
@@ -48,7 +55,7 @@
 			href={member.emailSource}
 			target="_blank"
 			rel="noopener noreferrer"
-			class="mt-1 inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+			class="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
 			onclick={(e) => e.stopPropagation()}
 		>
 			<ExternalLink class="h-3 w-3" />
@@ -56,18 +63,11 @@
 		</a>
 	{/if}
 
-	<!-- Accountability opener (template DMs only) -->
-	{#if member.accountabilityOpener}
-		<p class="mt-1.5 text-sm text-participation-primary-600 line-clamp-2">
-			{member.accountabilityOpener}
-		</p>
-	{/if}
-
-	<!-- Public actions -->
+	<!-- Public actions (compact supporting evidence) -->
 	{#if member.publicActions.length > 0}
-		<ul class="mt-2 space-y-0.5">
+		<ul class="mt-1.5 space-y-0.5">
 			{#each member.publicActions.slice(0, 2) as action}
-				<li class="text-xs text-slate-500 leading-snug line-clamp-1">
+				<li class="text-xs text-slate-400 leading-snug line-clamp-1">
 					{action}
 				</li>
 			{/each}
@@ -87,9 +87,9 @@
 					Contacted
 				</span>
 			{:else}
-				<span class="flex items-center gap-0.5 text-sm font-medium text-participation-primary-600">
+				<span class="action-label flex items-center gap-0.5 text-sm font-medium text-participation-primary-600">
 					Write to them
-					<ChevronRight class="h-4 w-4" />
+					<ChevronRight class="h-4 w-4 transition-transform duration-150" />
 				</span>
 			{/if}
 		</div>
@@ -99,7 +99,11 @@
 {#if isActive}
 	<button
 		type="button"
-		class="w-full text-left rounded-xl border border-slate-200 bg-white shadow-sm p-4 transition-colors cursor-pointer hover:border-slate-300 hover:shadow min-h-[44px]"
+		class="group w-full text-left rounded-xl border border-slate-200 bg-white shadow-sm p-4
+			transition-all duration-150 ease-out cursor-pointer
+			hover:-translate-y-0.5 hover:shadow-md hover:border-participation-primary-200
+			active:translate-y-0 active:shadow-sm
+			min-h-[44px]"
 		onclick={handleClick}
 	>
 		{@render cardContent()}
@@ -107,13 +111,17 @@
 {:else}
 	<div
 		class="rounded-xl border shadow-sm p-4 min-h-[44px] transition-all duration-700 ease-out
-			{departing ? 'departing-card border-participation-primary-200 bg-white' : 'border-slate-200 bg-white'}"
+			{departing ? 'departing-card border-participation-primary-200 bg-white' : contacted ? 'border-slate-100 bg-slate-50/60' : 'border-slate-200 bg-white'}"
 	>
 		{@render cardContent()}
 	</div>
 {/if}
 
 <style>
+	/* Hover: chevron nudges right when card is hovered */
+	:global(.group:hover) .action-label :global(svg) {
+		transform: translateX(2px);
+	}
 	.departing-card {
 		position: relative;
 		overflow: hidden;

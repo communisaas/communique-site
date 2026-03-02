@@ -428,7 +428,7 @@ POST /api/identity/verify-address
 | `src/lib/core/identity/digital-credentials-api.ts` | Digital Credentials API client, feature detection, dual-protocol support |
 | `src/lib/core/identity/mdl-verification.ts` | ISO 18013-5 CBOR parsing, privacy boundary function |
 | `src/lib/core/identity/cose-verify.ts` | RFC 9052 COSE_Sign1 verification, ECDSA P-256 |
-| `src/lib/core/identity/iaca-roots.ts` | IACA root certificate store (structure ready, certs pending) |
+| `src/lib/core/identity/iaca-roots.ts` | IACA root certificate store (structure ready, VICAL freely available at `vical.dts.aamva.org/currentVical`) |
 | `src/lib/components/auth/GovernmentCredentialVerification.svelte` | 6-state Svelte 5 verification component |
 | `src/lib/components/auth/IdentityVerificationFlow.svelte` | Single-path verification orchestrator |
 | `src/routes/api/identity/verify-mdl/start/+server.ts` | Ephemeral ECDH key generation |
@@ -436,13 +436,14 @@ POST /api/identity/verify-address
 
 ### mDL Ecosystem Status (as of February 2026)
 
-**US state mDL programs:** ~22 states with active programs
-**Estimated enrollment:** ~4.5M out of ~71.5M eligible drivers (~6%)
+**US state mDL programs:** 19+ states/territories with active programs (AZ, AR, CA, CO, GA, HI, IL, IA, LA, MD, MT, NM, NY, ND, OH, PR, UT, VA, WV)
+**Estimated enrollment:** ~41% of Americans live in states with active mDLs. Arizona leads with ~1.1M enrolled (~23% of licensed drivers). Projected ~100M US mDLs by end of 2026.
 **Browser support:** Chrome 141+ (Android), Safari 26+ (iOS) — both shipped September 2025
+**Wallet support:** 14 states in Apple Wallet, 9 in Google Wallet, 7 in Samsung Wallet
 
 **Leading states (highest enrollment):**
-- Arizona, Colorado, Georgia, Louisiana, Maryland, Utah — mature programs
-- California, New York, Texas — large populations, newer programs
+- Arizona (~1.1M), Louisiana (~43% citizen adoption), Colorado, Georgia, Maryland, Utah — mature programs
+- California, New York — large populations, newer programs
 
 **Transport protocols:**
 - `org.iso.mdoc` — ISO 18013-5 native mdoc (primary, used by Apple Wallet)
@@ -451,9 +452,9 @@ POST /api/identity/verify-address
 Both protocols are supported via `digital-credentials-api.ts` dual-protocol implementation.
 
 **Production blockers:**
-1. IACA root certificates (see REMAINING-GAPS.md Gap 1)
+1. IACA root certificates — **UNBLOCKED** (2026-03-01). VICAL freely downloadable at `vical.dts.aamva.org/currentVical`. CA/AZ/GA/NM/PR also publish on .gov domains. See REMAINING-GAPS.md Gap 1 for full research.
 2. Apple requires merchant registration via Apple Business Connect for mDL verification
-3. Not all state DMVs publish IACA certificates through AAMVA VICAL
+3. ~~Not all state DMVs publish IACA certificates through AAMVA VICAL~~ — 19+ states in VICAL + direct .gov downloads for CA, AZ, GA, NM, HI, PR, IA
 
 ### Privacy Architecture
 

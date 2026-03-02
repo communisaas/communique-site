@@ -109,25 +109,27 @@
 			</div>
 		{/if}
 	{:else}
-		<!-- Populated landscape -->
+		<!-- Populated landscape — spatial grid by power category -->
 		<div class="space-y-5">
-			<!-- Role groups with staggered reveal -->
-			{#each landscape.roleGroups as group, i (group.category)}
-				<div
-					class="role-group"
-					class:revealed
-					style="animation-delay: {i * 100}ms"
-				>
-					<RoleGroup
-						{group}
-						{contactedRecipients}
-						{departingRecipients}
-						{onWriteTo}
-					/>
-				</div>
-			{/each}
+			<!-- Role groups as spatial columns: each category is a lane -->
+			<div class="landscape-grid">
+				{#each landscape.roleGroups as group, i (group.category)}
+					<div
+						class="role-group"
+						class:revealed
+						style="animation-delay: {i * 100}ms"
+					>
+						<RoleGroup
+							{group}
+							{contactedRecipients}
+							{departingRecipients}
+							{onWriteTo}
+						/>
+					</div>
+				{/each}
+			</div>
 
-			<!-- District group (your representatives) -->
+			<!-- District group spans full width below the grid -->
 			{#if landscape.districtGroup}
 				<div
 					class="role-group"
@@ -174,6 +176,23 @@
 	}
 	.landscape.revealed {
 		animation: fadeIn 250ms ease-out forwards;
+	}
+	/* Spatial grid: each role category becomes a column lane */
+	.landscape-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 1.25rem;
+		align-items: start;
+	}
+	@media (min-width: 768px) {
+		.landscape-grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+	@media (min-width: 1280px) {
+		.landscape-grid {
+			grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+		}
 	}
 	.role-group {
 		opacity: 0;

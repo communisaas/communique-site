@@ -11,8 +11,6 @@
 
 	import { templateStore } from '$lib/stores/templates.svelte';
 	import TemplatePreview from '$lib/components/template-browser/TemplatePreview.svelte';
-	import LocationFilter from '$lib/components/template-browser/LocationFilter.svelte';
-	import { FEATURES } from '$lib/config/features';
 	import TemplateList from '$lib/components/template-browser/TemplateList.svelte';
 	import TouchModal from '$lib/components/ui/TouchModal.svelte';
 	import SimpleModal from '$lib/components/modals/SimpleModal.svelte';
@@ -28,14 +26,22 @@
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
-	import { trackTemplateView } from '$lib/core/location/behavioral-tracker';
-	import type { TemplateJurisdiction } from '$lib/core/location/types';
 	import type { ModalComponent } from '$lib/types/component-props';
 
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
 	import { CreationSpark, CoordinationExplainer } from '$lib/components/activation';
+	import LocationScopeBar from '$lib/components/template-browser/LocationScopeBar.svelte';
 	import { guestState } from '$lib/stores/guestState.svelte';
 	import { z } from 'zod';
+	import type { GeoScope } from '$lib/core/agents/types';
+	import {
+		scoreTemplatesByRelevance,
+		geoScopeToInferredLocation,
+		inferredLocationToGeoScope,
+		groupByPrecision
+	} from '$lib/core/location/template-filter';
+	import { getUserLocation } from '$lib/core/location/inference-engine';
+	import type { TemplateWithJurisdictions } from '$lib/core/location/types';
 
 	let { data }: { data: PageData } = $props();
 
@@ -60,8 +66,32 @@
 	let savedTemplate = $state<Template | null>(null);
 	let templateSaveError = $state<string | null>(null);
 	let isSubmitting = $state(false);
+	let templatePublishing = $state(false);
+	let templatePublishError = $state<string | null>(null);
+	let pendingPublishData = $state<Omit<Template, 'id'> | null>(null);
 	let userInitiatedSelection = $state(false);
-	let locationFilteredGroups = $state<TemplateGroup[]>([]);
+
+	// Location scope state (user-selected geographic filter for templates)
+	const SCOPE_STORAGE_KEY = 'communique_location_scope';
+	const SCOPE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+	let selectedScope = $state<GeoScope | null>(null);
+	let scopeIsInferred = $state(false); // true when auto-resolved from IP/timezone
+
+	function handleScopeChange(scope: GeoScope | null) {
+		selectedScope = scope;
+		scopeIsInferred = false; // User explicitly selected/cleared — no longer inferred
+		if (browser) {
+			if (scope) {
+				localStorage.setItem(
+					SCOPE_STORAGE_KEY,
+					JSON.stringify({ scope, timestamp: Date.now() })
+				);
+			} else {
+				localStorage.removeItem(SCOPE_STORAGE_KEY);
+			}
+		}
+	}
 
 	// Handle OAuth return for template creation and URL parameter initialization
 	onMount(() => {
@@ -109,6 +139,41 @@
 			templateStore.fetchTemplates();
 		}
 
+		// Restore location scope from localStorage
+		let restoredFromStorage = false;
+		try {
+			const stored = localStorage.getItem(SCOPE_STORAGE_KEY);
+			if (stored) {
+				const { scope, timestamp } = JSON.parse(stored);
+				if (Date.now() - timestamp < SCOPE_MAX_AGE_MS && scope?.type) {
+					selectedScope = scope as GeoScope;
+					restoredFromStorage = true;
+				} else {
+					localStorage.removeItem(SCOPE_STORAGE_KEY);
+				}
+			}
+		} catch {
+			// Corrupted data — ignore
+		}
+
+		// Auto-infer location from IP + timezone if no stored scope
+		// Silent, no permission prompts — IP geolocation is automatic
+		if (!restoredFromStorage) {
+			getUserLocation().then((inferred) => {
+				// Only apply if user hasn't selected something in the meantime
+				if (!selectedScope && inferred.country_code && inferred.confidence > 0) {
+					const autoScope = inferredLocationToGeoScope(inferred);
+					if (autoScope) {
+						selectedScope = autoScope;
+						scopeIsInferred = true;
+						// Don't persist auto-inferred to localStorage — only user selections persist
+					}
+				}
+			}).catch(() => {
+				// Silent failure — location inference is best-effort
+			});
+		}
+
 		// Check for template creation parameter (including auth return with draft)
 		const createTemplate = $page.url.searchParams.get('create');
 		const resumeDraftParam = $page.url.searchParams.get('resumeDraft');
@@ -154,17 +219,6 @@
 		userInitiatedSelection = true;
 		templateStore.selectTemplate(id);
 
-		const template = templateStore.templates.find((t) => t.id === id);
-		if (template && 'jurisdictions' in template && Array.isArray(template.jurisdictions)) {
-			trackTemplateView(
-				template.id,
-				template.slug,
-				template.jurisdictions as TemplateJurisdiction[]
-			).catch((error) => {
-				console.warn('[HomePage] Failed to track template view:', error);
-			});
-		}
-
 		if (isMobile()) {
 			showMobilePreview = true;
 		}
@@ -187,6 +241,21 @@
 	interface AuthEventDetail {
 		name: string;
 		email: string;
+	}
+
+	async function handlePublishRetry() {
+		if (!pendingPublishData) return;
+		templatePublishing = true;
+		templatePublishError = null;
+		try {
+			const newTemplate = await templateStore.addTemplate(pendingPublishData);
+			savedTemplate = newTemplate;
+		} catch (err) {
+			templatePublishError =
+				err instanceof Error ? err.message : 'Failed to publish template';
+		} finally {
+			templatePublishing = false;
+		}
 	}
 
 	function handleTemplateCreatorAuth(_event: CustomEvent<AuthEventDetail>) {
@@ -220,24 +289,54 @@
 		)
 	);
 
-	// Use location-filtered groups if available, otherwise show all templates
-	const filteredGroups = $derived(
-		locationFilteredGroups.length > 0
-			? locationFilteredGroups
-			: [
-					{
-						title: 'All Templates',
-						templates: allTemplates,
-						minScore: 0,
-						level: 'nationwide' as const,
-						coordinationCount: allTemplates.reduce((sum, t) => sum + (t.send_count || 0), 0)
-					}
-				]
-	);
+	const filteredGroups = $derived.by(() => {
+		// No scope or international → show all templates in one group
+		if (!selectedScope || selectedScope.type === 'international') {
+			return [
+				{
+					title: 'All Templates',
+					templates: allTemplates,
+					minScore: 0,
+					level: 'nationwide' as const,
+					coordinationCount: allTemplates.reduce((sum, t) => sum + (t.send_count || 0), 0)
+				}
+			];
+		}
 
-	function handleLocationFilterChange(groups: TemplateGroup[]) {
-		locationFilteredGroups = groups;
-	}
+		const inferredLocation = geoScopeToInferredLocation(selectedScope);
+		if (!inferredLocation) {
+			return [
+				{
+					title: 'All Templates',
+					templates: allTemplates,
+					minScore: 0,
+					level: 'nationwide' as const,
+					coordinationCount: allTemplates.reduce((sum, t) => sum + (t.send_count || 0), 0)
+				}
+			];
+		}
+
+		// Score templates against the selected location
+		const scored = scoreTemplatesByRelevance(
+			allTemplates as unknown as TemplateWithJurisdictions[],
+			inferredLocation
+		);
+
+		const groups = groupByPrecision(scored);
+
+		// If scoring produced groups, use them; otherwise fall back to single group
+		if (groups.length > 0) return groups;
+
+		return [
+			{
+				title: 'All Templates',
+				templates: allTemplates,
+				minScore: 0,
+				level: 'nationwide' as const,
+				coordinationCount: allTemplates.reduce((sum, t) => sum + (t.send_count || 0), 0)
+			}
+		];
+	});
 
 	// Handle URL parameter initialization when templates load
 	$effect(() => {
@@ -354,15 +453,10 @@
 				<CoordinationExplainer />
 			</div>
 
-			<!-- Location Filter — available at region+ specificity -->
-			{#if FEATURES.ADDRESS_SPECIFICITY !== 'off'}
-				<div class="stream-header">
-					<LocationFilter
-						templates={allTemplates}
-						onFilterChange={handleLocationFilterChange}
-					/>
-				</div>
-			{/if}
+			<!-- Location Scope Bar -->
+			<div class="location-scope-row">
+				<LocationScopeBar scope={selectedScope} inferred={scopeIsInferred} onScopeChange={handleScopeChange} />
+			</div>
 
 			<!-- Template Browser: List + Preview Grid -->
 			<div class="template-browser" id="template-browser">
@@ -522,23 +616,29 @@
 			}}
 			onsave={async (templateData) => {
 				if (data.user) {
+					templateSaveError = null;
+					isSubmitting = true;
+
+					// Optimistic: show share surface immediately
+					// The slug is known — the URL is shareable from this moment
+					showTemplateCreator = false;
+					creationContext = null;
+					creationInitialText = '';
+					pendingPublishData = templateData;
+					savedTemplate = { ...templateData, id: 'optimistic' } as Template;
+					templatePublishing = true;
+					templatePublishError = null;
+					showTemplateSuccess = true;
+
 					try {
-						templateSaveError = null;
-						isSubmitting = true;
 						const newTemplate = await templateStore.addTemplate(templateData);
-						// Success: close creator and show success modal
-						// (Draft cleanup handled by TemplateCreator's onDestroy via draftCleanupMode)
-						showTemplateCreator = false;
-						creationContext = null;
-						creationInitialText = '';
 						savedTemplate = newTemplate;
-						showTemplateSuccess = true;
 					} catch (error) {
-						// Inline error at publish button (perceptual: feedback at action locus)
-						templateSaveError =
+						templatePublishError =
 							error instanceof Error ? error.message : 'Failed to publish template';
 						console.error('Template save failed:', error);
 					} finally {
+						templatePublishing = false;
 						isSubmitting = false;
 					}
 				} else {
@@ -554,9 +654,15 @@
 {#if showTemplateSuccess && savedTemplate}
 	<TemplateSuccessModal
 		template={savedTemplate}
+		publishing={templatePublishing}
+		error={templatePublishError}
+		onretry={handlePublishRetry}
 		onclose={() => {
 			showTemplateSuccess = false;
 			savedTemplate = null;
+			templatePublishing = false;
+			templatePublishError = null;
+			pendingPublishData = null;
 		}}
 	/>
 {/if}
@@ -685,8 +791,9 @@
 		}
 	}
 
-	.stream-header {
-		flex-shrink: 0;
+	/* Location Scope Row */
+	.location-scope-row {
+		padding: 0 0 0.5rem 0;
 	}
 
 	/* Template Browser Grid */

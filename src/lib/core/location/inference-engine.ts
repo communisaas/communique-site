@@ -1,25 +1,18 @@
 /**
  * Location Inference Engine
  *
- * VPN-resistant 5-signal progressive inference system.
- * Combines multiple signals to infer user location with confidence scoring.
+ * Signal-based location inference (legacy — Postal Bubble is the primary path).
+ * Retained for AddressVerificationFlow compatibility.
  *
- * Signal Priority (weakest to strongest):
- * 1. IP Geolocation (0.2 confidence) - VPN-vulnerable
- * 2. Browser API (0.6 confidence) - User can deny
- * 3. OAuth Profile (0.8 confidence) - Verified with provider
- * 4. Behavioral Patterns (0.9 confidence) - Revealed preference
- * 5. Identity Verification (1.0 confidence) - Cryptographic proof
- *
- * Architecture:
- * - All inference happens client-side (browser)
- * - Server NEVER receives user location data
- * - Location revealed only when user submits template to congress
+ * Remaining signals:
+ * 1. IP Geolocation (0.2) - VPN-vulnerable
+ * 2. Browser API (0.6) - User can deny
+ * 3. OAuth Profile (0.8) - Verified with provider
+ * 4. Identity Verification (1.0) - Cryptographic proof
  */
 
 import { locationStorage } from './storage';
 import { getBrowserGeolocation, getTimezoneLocation } from './census-api';
-import { behavioralTracker } from './behavioral-tracker';
 import {
 	calculateWeightedConfidence,
 	type LocationSignal,
@@ -379,10 +372,11 @@ export async function addBrowserGeolocationSignal(): Promise<LocationSignal | nu
 }
 
 /**
- * Trigger behavioral location inference
+ * Trigger behavioral location inference.
+ * @deprecated Behavioral tracking removed in Cycle 40 (replaced by Postal Bubble).
  */
 export async function inferBehavioralLocation(): Promise<LocationSignal | null> {
-	return behavioralTracker.inferFromBehavior();
+	return null;
 }
 
 /**

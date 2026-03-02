@@ -198,6 +198,331 @@ ZK proofs: resolved district_id → Merkle proof → circuit (unchanged)
 
 ---
 
+## 3A. TECHNOLOGY DECISIONS
+
+Every choice below was made against the constraint: **the pinch gesture → visual update must complete within a single frame (16.6ms at 60fps, 8.3ms at 120Hz ProMotion).** The geometry computation itself is ~0.02ms. The rendering is the bottleneck. Every technology serves the frame budget.
+
+### Rendering Stack
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  BubbleTerrain.svelte — container div, absolute inset-0     │
+│                                                              │
+│  ┌───────────────────────────────────────────────────────┐   │
+│  │ MapLibre GL JS canvas (z-0)                           │   │
+│  │ - 5-layer hand-crafted muted style                    │   │
+│  │ - interactive: false (zero event handlers)            │   │
+│  │ - PMTiles from Cloudflare R2 (no tile server)         │   │
+│  │ - GeoJSON source for ALL fences (native line layer)   │   │
+│  │ - Fence opacity driven by data-driven expressions     │   │
+│  └───────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌───────────────────────────────────────────────────────┐   │
+│  │ Bubble SVG overlay (z-10, absolute inset-0)           │   │
+│  │ - Single <circle> element                             │   │
+│  │ - Animated via CSS transform: scale() ONLY            │   │
+│  │ - Glow via CSS filter: drop-shadow() (compositor)     │   │
+│  │ - pointer-events: all (captures pinch/drag)           │   │
+│  │ - position synced via map.project() in rAF            │   │
+│  └───────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌───────────────────────────────────────────────────────┐   │
+│  │ Gesture capture layer (z-20, transparent)             │   │
+│  │ - Pointer Events (raw, no library)                    │   │
+│  │ - touch-action: none + preventDefault() for iOS       │   │
+│  │ - Dispatches to bubble state, never to MapLibre       │   │
+│  └───────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Why this stack:**
+
+| Component | Choice | Why | Bundle |
+|-----------|--------|-----|--------|
+| Terrain basemap | MapLibre GL JS 5.x | Vector tiles, custom styling, `project()` for coordinate bridge, GPU-accelerated. Non-interactive = zero event overhead. | 262 KB gz |
+| Tile source | Protomaps PMTiles on Cloudflare R2 | Single static file, HTTP Range Requests, no tile server, no API key. R2 egress free <10GB/mo. | 7.5 KB gz (protocol lib) |
+| Tile style | Hand-crafted 5-layer JSON | 5 layers (background, earth, water, roads, boundaries) vs ~80 in a stock style. Fewer layers = fewer GL draw calls = faster mobile render. No glyphs, no sprites, no symbols. | 0 (inline JSON) |
+| Bubble circle | SVG `<circle>` | Single DOM element. Animated via `transform: scale()` (compositor thread). Supports `aria-*` attributes. CSS `filter: drop-shadow()` for glow (compositor thread). | 0 |
+| Fence rendering | MapLibre GeoJSON layer | Fences are geographic data — they must project correctly with the basemap. MapLibre renders them via WebGL natively. Opacity toggled per-fence via data-driven paint expressions. | 0 (MapLibre handles) |
+| Gesture input | Pointer Events Level 3 (raw) | Unified touch/mouse/pen. `getCoalescedEvents()` for 120Hz tracking. `getPredictedEvents()` for fence precomputation. No library needed. | 0 |
+| Geometry math | Custom inline (~80 lines TS) | Pre-project to Web Mercator on load. Segment-circle intersection with BBOX pre-check. Total: ~0.02ms/frame. No Turf, no JSTS, no WASM. | 0 |
+| Spring physics | WAAPI + `linear()` easing | Native browser spring animation. `cubic-bezier(0.34, 1.56, 0.64, 1)` fallback for Safari (no `linear()` support). | 0 |
+| Bubble birth | View Transitions API | Cross-browser (89.5% support, Interop 2026). Postal input morphs to bubble circle. `::view-transition-old/new` pseudo-elements. | 0 |
+| Haptics | `navigator.vibrate()` | Chrome Android only — progressive enhancement. Visual glow pulse is primary feedback on all platforms. | 0 |
+| **Total added bundle** | | | **~270 KB gz** |
+
+**What we are NOT using:**
+
+| Rejected | Why |
+|----------|-----|
+| Canvas 2D for bubble | SVG `<circle>` with CSS `transform` is compositor-thread-only during pinch. Canvas would require clearing and redrawing every frame from JS — unnecessary when the bubble is a single shape. |
+| WebGL/WebGPU for bubble | MapLibre already owns the WebGL context. A second GL context wastes GPU memory. The bubble is one circle — GPU compute is absurd. |
+| Turf.js | GeoJSON allocation on every frame. Haversine per segment. No BBOX pre-check. 60-80 KB for what takes 80 lines inline. |
+| JSTS | 3.7 MB. Java factory patterns. Server-side precision for a client-side boolean test. |
+| geos-wasm | 3.2 MB. Serialization overhead (GeoJSON → WKT → WASM heap) exceeds computation time. |
+| Web Workers | Message-passing roundtrip (~0.1-0.5ms) exceeds geometry computation (~0.02ms). Workers add latency, not speed. |
+| WASM SIMD | 350 segment tests at 50ns each = 17.5μs. WASM module loading + data marshaling dwarfs the 17.5μs savings. |
+| rbush (R-tree) | 30 fences. Flat array scan with BBOX pre-check: ~0.001ms. Tree traversal overhead exceeds benefit at n=30. |
+| Leaflet | No WebGL = raster tile rendering. No custom vector styling. No `project()` for sub-pixel coordinate sync. |
+| hammer.js / any gesture lib | Pointer Events give us raw two-finger distance + `getCoalescedEvents()` + `getPredictedEvents()`. No library adds value. |
+
+### The Geometry Engine (~80 lines, zero deps)
+
+```typescript
+// bubble-geometry.ts — the complete client-side intersection engine
+
+const DEG2RAD = Math.PI / 180;
+const R = 6378137; // WGS84 semi-major axis, meters
+
+/** Project WGS84 to Web Mercator meters. 1 trig call. */
+export function toMerc(lng: number, lat: number): [number, number] {
+  return [lng * DEG2RAD * R, Math.log(Math.tan((90 + lat) * DEG2RAD / 2)) * R];
+}
+
+/** Pre-projected fence stored as flat Float64Array + BBOX. */
+export interface ProjectedFence {
+  id: string;
+  layer: string;
+  sides: [{ id: string; name: string }, { id: string; name: string }];
+  landmark?: string;
+  coords: Float64Array;   // [x0, y0, x1, y1, ...] in Mercator meters
+  vertexCount: number;
+  minX: number; minY: number; maxX: number; maxY: number;
+}
+
+/** Pre-projected district stored as flat Float64Array + BBOX. */
+export interface ProjectedDistrict {
+  id: string;
+  name: string;
+  display: string;
+  layer: string;
+  coords: Float64Array;   // [x0, y0, x1, y1, ...] polygon ring
+  vertexCount: number;
+  minX: number; minY: number; maxX: number; maxY: number;
+}
+
+/** Test if a line segment intersects a circle. Pure arithmetic. */
+function segmentHitsCircle(
+  ax: number, ay: number, bx: number, by: number,
+  cx: number, cy: number, r: number
+): boolean {
+  const dx = bx - ax, dy = by - ay;
+  const fx = ax - cx, fy = ay - cy;
+  const a = dx * dx + dy * dy;
+  const b = 2 * (fx * dx + fy * dy);
+  const c = fx * fx + fy * fy - r * r;
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return false;
+  const sq = Math.sqrt(disc);
+  const t1 = (-b - sq) / (2 * a);
+  const t2 = (-b + sq) / (2 * a);
+  return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1) || (t1 < 0 && t2 > 1);
+}
+
+/** Test if a fence has ANY segment intersecting the bubble circle. */
+export function fenceInsideBubble(f: ProjectedFence, cx: number, cy: number, r: number): boolean {
+  // BBOX cull (~80% of fences eliminated here)
+  if (cx + r < f.minX || cx - r > f.maxX || cy + r < f.minY || cy - r > f.maxY) return false;
+  for (let i = 0; i < f.vertexCount - 1; i++) {
+    const j = i * 2;
+    if (segmentHitsCircle(f.coords[j], f.coords[j+1], f.coords[j+2], f.coords[j+3], cx, cy, r))
+      return true;
+  }
+  return false;
+}
+
+/** Test if the bubble center is inside a district polygon (winding number). */
+export function pointInDistrict(d: ProjectedDistrict, px: number, py: number): boolean {
+  if (px < d.minX || px > d.maxX || py < d.minY || py > d.maxY) return false;
+  let winding = 0;
+  for (let i = 0; i < d.vertexCount - 1; i++) {
+    const j = i * 2;
+    const y0 = d.coords[j+1], y1 = d.coords[j+3];
+    if (y0 <= py) {
+      if (y1 > py) {
+        const cross = (d.coords[j+2] - d.coords[j]) * (py - y0) - (px - d.coords[j]) * (y1 - y0);
+        if (cross > 0) winding++;
+      }
+    } else if (y1 <= py) {
+      const cross = (d.coords[j+2] - d.coords[j]) * (py - y0) - (px - d.coords[j]) * (y1 - y0);
+      if (cross < 0) winding--;
+    }
+  }
+  return winding !== 0;
+}
+
+/** Project API response into pre-computed structures. Called once on load. */
+export function projectResponse(
+  fences: Fence[], districts: BubbleDistrict[]
+): { projFences: ProjectedFence[]; projDistricts: ProjectedDistrict[] } {
+  // ...project each coordinate through toMerc, compute BBox, pack Float64Arrays
+}
+
+/** Per-frame: compute which fences are inside the bubble, which districts contain the center. */
+export function computeBubbleState(
+  projFences: ProjectedFence[], projDistricts: ProjectedDistrict[],
+  centerLng: number, centerLat: number, radiusMeters: number
+): { insideFences: Set<string>; containingDistricts: Map<string, ProjectedDistrict> } {
+  const [cx, cy] = toMerc(centerLng, centerLat);
+  const insideFences = new Set<string>();
+  for (const f of projFences) {
+    if (fenceInsideBubble(f, cx, cy, radiusMeters)) insideFences.add(f.id);
+  }
+  const containingDistricts = new Map<string, ProjectedDistrict>();
+  for (const d of projDistricts) {
+    if (pointInDistrict(d, cx, cy)) containingDistricts.set(d.layer, d);
+  }
+  return { insideFences, containingDistricts };
+}
+```
+
+**Performance budget**: 30 fences × 20 vertices + 20 districts × 40 vertices = ~1,400 segment tests. BBOX culls ~80% → ~350 tests × ~50ns = **0.02ms per frame**. 800x headroom within the 16.6ms budget.
+
+### Gesture Architecture
+
+```typescript
+// bubble-gestures.ts — Pointer Events, no library
+
+const pointerCache: PointerEvent[] = [];
+let prevDist = -1;
+
+function onPointerDown(ev: PointerEvent) {
+  pointerCache.push(ev);
+  el.setPointerCapture(ev.pointerId);
+}
+
+function onPointerMove(ev: PointerEvent) {
+  const idx = pointerCache.findIndex(e => e.pointerId === ev.pointerId);
+  if (idx >= 0) pointerCache[idx] = ev;
+
+  if (pointerCache.length === 2) {
+    // Pinch: compute scale from inter-finger distance
+    const curDist = Math.hypot(
+      pointerCache[0].clientX - pointerCache[1].clientX,
+      pointerCache[0].clientY - pointerCache[1].clientY
+    );
+    if (prevDist > 0) {
+      const scale = curDist / prevDist;
+      bubbleState.radius *= scale; // Triggers reactive recomputation
+    }
+    prevDist = curDist;
+
+    // Predictive: pre-compute fence intersections for next frame
+    const predicted = ev.getPredictedEvents();
+    if (predicted.length > 0) {
+      preComputeFences(predicted[predicted.length - 1]);
+    }
+  } else if (pointerCache.length === 1) {
+    // Drag: move bubble center
+    // Convert screen delta to geo delta via map.unproject()
+  }
+}
+
+function onPointerUp(ev: PointerEvent) {
+  pointerCache.splice(pointerCache.findIndex(e => e.pointerId === ev.pointerId), 1);
+  if (pointerCache.length < 2) prevDist = -1;
+  // Trigger spring settle animation on release
+}
+```
+
+**iOS Safari critical path**: `touch-action: none` is not supported. Intercept with:
+```typescript
+el.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+el.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+```
+
+### MapLibre Style (5 layers, no fonts, no sprites)
+
+```typescript
+const MUTED_TERRAIN_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {
+    protomaps: {
+      type: 'vector',
+      url: 'pmtiles://https://cdn.communique.vote/tiles/na.pmtiles',
+      attribution: '© OpenStreetMap'
+    }
+  },
+  layers: [
+    { id: 'background', type: 'background', paint: { 'background-color': '#f8fafc' } },
+    { id: 'earth', type: 'fill', source: 'protomaps', 'source-layer': 'earth',
+      paint: { 'fill-color': '#f8fafc' } },
+    { id: 'water', type: 'fill', source: 'protomaps', 'source-layer': 'water',
+      paint: { 'fill-color': '#f1f5f9', 'fill-opacity': 0.3 } },
+    { id: 'roads', type: 'line', source: 'protomaps', 'source-layer': 'roads',
+      paint: { 'line-color': '#ffffff', 'line-width': 0.5, 'line-opacity': 0.4 } },
+    { id: 'boundaries', type: 'line', source: 'protomaps', 'source-layer': 'boundaries',
+      paint: { 'line-color': '#e2e8f0', 'line-width': 0.5, 'line-opacity': 0.2, 'line-dasharray': [2, 2] } }
+  ]
+};
+```
+
+### Animation Architecture
+
+| Moment | API | Why |
+|--------|-----|-----|
+| Bubble birth (postal → circle) | View Transitions API | `::view-transition-old(location-widget)` fades input, `::view-transition-new(location-widget)` scales circle from 0. Cross-browser since 2025. |
+| Pinch gesture (continuous) | CSS `transform: scale()` via `requestAnimationFrame` | Compositor-thread-only. No layout, no paint. The bubble `<circle>` gets `style.transform = scale(...)` on each frame. |
+| Bubble glow (continuous) | CSS `filter: drop-shadow()` | Compositor-thread. Glow radius derived from bubble state — intensifies where edge crosses a fence. |
+| Fence crossing (discrete) | CSS `filter` animation + `navigator.vibrate()` | Glow pulse: 300ms keyframe on the `<circle>`. Haptic: `[15, 10, 15]` pattern (Chrome Android only). |
+| Pinch release (spring settle) | WAAPI `element.animate()` | `linear()` easing with 40 keypoints for spring curve (stiffness: 300, damping: 20). Safari fallback: `cubic-bezier(0.34, 1.56, 0.64, 1)`. |
+| Bubble tighten (ZIP → ZIP+4) | WAAPI `element.animate()` | 300ms ease-out from current radius to new radius. |
+| Drag inertia | `requestAnimationFrame` | Velocity decay: `v *= 0.92` per frame, applied to center. Stops when `|v| < 0.5px`. |
+
+### Legacy Code Removal Plan
+
+The Bubble paradigm supersedes the 5-signal inference architecture. Here is the complete removal manifest:
+
+**REMOVE (dead code in the Bubble era):**
+
+| File | Lines | What it does | Why dead |
+|------|-------|-------------|---------|
+| `components/template-browser/LocationFilter.svelte` | ~859 | 5-signal inference UI, progressive breadcrumbs, IndexedDB | Entire paradigm replaced by Bubble |
+| `components/template-browser/DistrictBreadcrumb.svelte` | ~200 | Polymorphic breadcrumb segment, inline address form | Bubble replaces address-based district resolution |
+| `components/template-browser/InlineAddressResolver.svelte` | ~150 | Country-specific address form inside breadcrumb | Address entry replaced by postal code + pinch |
+| `components/template-browser/PrivacyBadge.svelte` | 39 | "Your location, your control" tooltip | Messaging tied to LocationFilter architecture |
+| `core/location/inference-engine.ts` | ~300 | 5-signal priority engine (IP, browser, OAuth, behavioral, verified) | Bubble seeder replaces inference |
+| `core/location/storage.ts` | ~200 | IndexedDB schema for signals, template views, inferred location | No signals to store — Bubble persists in User model |
+| `core/location/behavioral-tracker.ts` | ~150 | Track template views for location inference | Behavioral signals → irrelevant with explicit Bubble |
+| `core/location/oauth-location-sync.ts` | ~100 | Extract location from OAuth profiles (Google/FB/LinkedIn) | OAuth location → Bubble seeder (much simpler) |
+| `core/location/types.ts` | 445 | LocationSignal, InferredLocation, signal weights/expiration | Inference types → BubbleState types |
+| `core/location/index.ts` | ~20 | Re-exports all location modules | All exports become dead |
+| `services/zipDistrictLookup.ts` | 156 | GitHub ZIP→district lookup table fallback | Shadow Atlas is canonical via bubble-query |
+
+**Total removal: ~2,619 lines of dead code.**
+
+**REPLACE (logic migrates to Bubble):**
+
+| File | Action |
+|------|--------|
+| `core/location/template-filter.ts` | Filtering logic → `bubble-state.svelte.ts` derived state. Template access = `bubble.precision >= template.minimum_precision_required`. |
+| `routes/+page.svelte` (LocationFilter integration) | Remove LocationFilter import + `handleLocationFilterChange()`. Replace with Bubble component in profile/header. |
+
+**KEEP (still needed alongside Bubble):**
+
+| File | Why |
+|------|-----|
+| `components/ui/LocationPicker.svelte` | Reusable autocomplete for template creation (GeographicScopeEditor) |
+| `components/template-browser/LocationAutocomplete.svelte` | Reusable breadcrumb autocomplete for ClarificationPanel |
+| `core/location/location-search.ts` | Server-proxied Nominatim — used by autocomplete components |
+| `core/location/location-resolver.ts` | `resolveToGeoScope()`, `displayGeoScope()` — template creation + message results |
+| `core/location/state-codes.ts` | US_STATES, CA_PROVINCES lookup maps — utility |
+| `core/location/census-api.ts` | `getBrowserGeolocation()` — optional Bubble seeder |
+| `core/location/district-config.ts` | Country-specific terminology — used by address resolution routes |
+| `routes/api/location/search/+server.ts` | Nominatim proxy for autocomplete |
+| `routes/api/location/ip-lookup/+server.ts` | Optional Bubble seeder from IP |
+| `routes/api/location/resolve/+server.ts` | Coordinates → district for ZK proofs (post-Bubble) |
+| `routes/api/location/resolve-address/+server.ts` | Address → credential issuance |
+| All Prisma schema fields | `district_hash`, `district_verified`, `TemplateJurisdiction`, `TemplateScope` — structural |
+
+**ARCHIVE (superseded spec):**
+
+| File | Action |
+|------|--------|
+| `docs/specs/location-picker-spec.md` | Move to `docs/specs/archived/`. Historical record. Superseded by this spec. |
+
+---
+
 ## 4. SHADOW-ATLAS: `POST /v1/bubble-query`
 
 ### Design Principle
@@ -938,46 +1263,215 @@ No bubble exists. The user sees templates with `minimum_precision_required: 'non
 
 ## 11. IMPLEMENTATION ORDER
 
-### Phase 1: Shadow-atlas geometry engine
-1. Add `fences` table + `fence_rtree` to `schema.sql`
-2. Implement `FenceService` — compute boundary lines between adjacent districts per layer
-3. Add fence computation to `build-district-db.ts` (build-time, ~5 min for US + CA)
-4. Extend `GeocodeService.detectCountry()` for UK/AU formats
-5. Add `geocodePostal()` method — Nominatim search with `postalcode` param, returns centroid + bbox
-6. Implement `BubbleService` — R-tree query for fences + districts within bbox, clip to extent
-7. Add `POST /v1/bubble-query` route
-8. Test with US ZIPs and Canadian postal codes from seed data: verify response contains correct fences and clipped district geometries
+### Phase 1: Shadow-atlas geometry engine (voter-protocol)
 
-### Phase 2: Communique bubble state + input
-1. Create `bubble-state.svelte.ts` — reactive state with `center`, `radius`, `cachedExtent`, derived `precision` / `resolvedLayers` / `ambiguousLayers`
-2. Implement `bubble-geometry.ts` — client-side circle-polygon intersection, fence-inside-circle testing
-3. Build `BubbleInput.svelte` — postal code entry with country-specific formatting, progressive specificity (ZIP → ZIP+4 affordance)
-4. Build `bubble-client.ts` — API client for `POST /v1/bubble-query` (through server proxy)
-5. Add server proxy route: `src/routes/api/shadow-atlas/bubble/+server.ts`
-6. Add bubble fields to User model in Prisma schema (`bubble_lat`, `bubble_lng`, `bubble_radius`, `bubble_updated`, `bubble_seed`)
-7. Test: postal code entry → API call → state hydration → derived precision is correct
+**Goal**: `POST /v1/bubble-query` returns fences + districts for any point on Earth.
 
-### Phase 3: The bubble (the living object)
-1. Build `BubbleTerrain.svelte` — muted cartographic base layer (OSM tiles, desaturated)
-2. Build `Bubble.svelte` — SVG circle with radial gradient, soft glow edge, fence rendering inside
-3. Implement pinch interaction — touch events on mobile, scroll-wheel on desktop, keyboard +/-
-4. Implement drag interaction — one-finger/click-drag repositions center
-5. Wire pinch/drag to `bubble-state` — radius/center changes trigger derived recomputation, zero API calls
-6. Implement cache-miss detection — when bubble moves outside `cachedExtent.bbox`, fire new API call
-7. Build `BubbleStatus.svelte` — resolved/ambiguous layer readout with precision bar
-8. Implement spring dynamics — inertia on drag release, slight overshoot on pinch release
-9. Implement bubble persistence — save to User model on settle, restore from localStorage on load
-10. Wire into `LocationFilter` replacement — bubble seeder from GPS/IP/OAuth signals
+```
+voter-protocol/packages/shadow-atlas/
+├── src/db/officials-schema.sql        ← ADD fences + fence_rtree DDL
+├── src/scripts/build-district-db.ts   ← ADD fence computation step
+├── src/serving/fence-service.ts       ← NEW: compute + cache fences
+├── src/serving/bubble-service.ts      ← NEW: geometry query for bubble extent
+├── src/serving/geocode-service.ts     ← EXTEND: geocodePostal(), detectCountry() for UK/AU
+├── src/serving/district-service.ts    ← EXTEND: queryBbox(), clipToExtent() public methods
+├── src/serving/api.ts                 ← ADD: POST /v1/bubble-query route
+└── test/bubble-service.test.ts        ← NEW: test with known ZIPs/postal codes
+```
 
-### Phase 4: Polish + international
-1. Add landmark labels on fences (from pre-computed `landmark` field)
-2. Implement layer color coding — blue (congressional), emerald (state senate), amber (state house), slate (county)
-3. Add fence-edge intensity encoding — glow intensifies where bubble edge crosses a fence
-4. Add UK postcode support (easiest — tiny bubbles, rare fences)
-5. Add AU postcode support (suburb name as secondary tightening signal)
-6. Implement `prefers-reduced-motion` — instant transitions, no spring dynamics
-7. Implement screen reader announcements — aria-live region for resolution changes
-8. Add text-based alternative panel (collapsible, below bubble)
+Steps:
+1. Add `fences` table + `fence_rtree` to `officials-schema.sql`
+2. Implement `FenceService` — for each layer, find adjacent district pairs (bbox overlap), compute shared boundary as LineString via geometric intersection
+3. Implement landmark generation: reverse-geocode fence midpoints via Nominatim to extract road/river names. Store on fence row at build time.
+4. Add fence computation to `build-district-db.ts` (build-time, ~5 min for US + CA, produces ~500 CD fences + ~15,000 state house fences)
+5. Extend `GeocodeService.detectCountry()` for UK/AU postal formats
+6. Add `geocodePostal()` method — Nominatim search with `postalcode` param, returns centroid + bbox + country
+7. Implement `BubbleService.query(center, radius, layers?, postal_code?)`:
+   - Expand radius by 20% buffer
+   - R-tree query for fences within bbox → clip to extent, simplify to <30 vertices
+   - R-tree query for districts intersecting bbox → clip to extent, simplify to <50 vertices
+   - If `postal_code` provided: geocode it and return `postalExtent`
+   - If officials DB available: PIP lookup at center → return best-guess officials
+8. Add `POST /v1/bubble-query` route in `api.ts` with input validation (center bounds, radius 1m-5000km)
+9. Test: `94103` → response includes Market St fence between CA-11/CA-12. `K1A 0A6` → response includes zero fences.
+10. Performance test: response <100ms at p95, payload <50KB
+
+**Fence computation detail**: For each layer (congressional, state_senate, state_house, county, can_fed):
+```
+for each district_a in layer:
+  for each district_b in layer where bbox_overlaps(a, b) and a.id < b.id:
+    shared_boundary = geometric_intersection(boundary_of(a), boundary_of(b))
+    if shared_boundary is LineString:
+      store as fence(a, b, geometry, landmark=reverse_geocode(midpoint))
+```
+Spatial filtering via bbox overlap makes this O(n log n) rather than O(n²).
+
+### Phase 2: Communique bubble state + geometry engine
+
+**Goal**: Postal code → API call → client-side geometry → reactive bubble state with derived precision.
+
+```
+communique/src/lib/
+├── components/bubble/
+│   ├── bubble-state.svelte.ts     ← NEW: reactive state (Svelte 5 runes)
+│   └── bubble-geometry.ts         ← NEW: ~80 lines, zero deps (Section 3A)
+├── core/shadow-atlas/
+│   ├── client.ts                  ← EXTEND: bubbleQuery() method
+│   └── bubble-client.ts           ← NEW: typed wrapper for bubble-query
+├── components/bubble/
+│   └── BubbleInput.svelte         ← NEW: postal code entry + country detection
+├── routes/api/shadow-atlas/
+│   └── bubble/+server.ts          ← NEW: server proxy for bubble-query
+└── prisma/schema.prisma           ← ADD: bubble_lat/lng/radius/updated/seed on User
+```
+
+Steps:
+1. Implement `bubble-geometry.ts` — the ~80-line engine from Section 3A. Pre-projects coordinates to Web Mercator on load. Segment-circle intersection with BBOX culling. Winding-number point-in-polygon for district containment. Exported types: `ProjectedFence`, `ProjectedDistrict`.
+2. Create `bubble-state.svelte.ts` — Svelte 5 runes:
+   - `$state`: `center`, `radius`, `cachedExtent` (fences + districts from API), `loading`
+   - `$derived`: `precision` (computed from `resolvedLayers`), `resolvedLayers` (layers where center is inside exactly one district and no fence for that layer is inside the bubble), `ambiguousLayers` (layers with fences inside the bubble)
+   - On `center` or `radius` change: call `computeBubbleState()` from `bubble-geometry.ts` — pure function, no API call
+   - Export `seedBubble(center, radius, postalCode?)` — fires API call, hydrates `cachedExtent`, triggers derived recomputation
+   - Export `persistBubble()` — saves to User model via API, also to localStorage
+   - Export `restoreBubble()` — loads from localStorage (instant) then from User model (async)
+3. Add server proxy: `routes/api/shadow-atlas/bubble/+server.ts` — POST handler that forwards to shadow-atlas, with rate limiting
+4. Build `bubble-client.ts` — typed API client wrapping the proxy. Returns typed `BubbleQueryResponse`.
+5. Build `BubbleInput.svelte`:
+   - Text input with country-specific formatting (auto-detect via regex)
+   - ZIP → ZIP+4 progressive affordance (cursor positioned after ZIP, `-____` placeholder)
+   - Canadian FSA → full code prompt
+   - On input: detect country, validate format, call `seedBubble()` with geocoded centroid
+   - View Transition: `view-transition-name: location-widget` for bubble birth morph
+6. Add bubble fields to Prisma User model: `bubble_lat Float?`, `bubble_lng Float?`, `bubble_radius Float?`, `bubble_updated DateTime?`, `bubble_seed String?`
+7. Run Prisma migration
+8. Test: type `94103` → API fires → `cachedExtent` hydrated → `precision` = `county` (state senate + county resolved, congressional ambiguous due to Market St fence)
+
+### Phase 3: The living bubble
+
+**Goal**: Muted terrain, pinchable circle, fence visualization, spring physics — a geographic identity object that lives under the user's thumb.
+
+```
+communique/src/lib/components/bubble/
+├── Bubble.svelte              ← THE bubble: SVG circle + gesture layer
+├── BubbleTerrain.svelte       ← MapLibre GL JS, 5-layer muted style, non-interactive
+├── BubbleStatus.svelte        ← Resolved/ambiguous layer readout, precision bar
+├── BubbleInput.svelte         ← (from Phase 2)
+├── bubble-state.svelte.ts     ← (from Phase 2)
+├── bubble-geometry.ts         ← (from Phase 2)
+├── bubble-gestures.ts         ← NEW: Pointer Events pinch/drag handlers
+├── bubble-spring.ts           ← NEW: WAAPI spring animations
+└── bubble-terrain-style.ts    ← NEW: MapLibre 5-layer style JSON
+
+communique/src/routes/
+└── +page.svelte               ← MODIFY: remove LocationFilter, add Bubble
+```
+
+Steps:
+1. **BubbleTerrain.svelte** — MapLibre GL JS terrain layer:
+   - Dynamic import: `const maplibregl = await import('maplibre-gl')` — 262KB off critical path
+   - Register PMTiles protocol: `maplibregl.addProtocol('pmtiles', protocol.tile)`
+   - 5-layer hand-crafted style (background, earth, water, roads, boundaries) — no glyphs, no sprites
+   - `interactive: false` — zero event overhead, map is passive
+   - `antialias: false`, `renderWorldCopies: false`, `fadeDuration: 0` — mobile perf
+   - Add GeoJSON source for fences from `cachedExtent` — native MapLibre line layer with:
+     - Per-fence opacity driven by `computeBubbleState()` result: inside bubble = 0.5, outside = 0.15
+     - Layer color coding: `match(['get', 'layer'], 'congressional', '#60a5fa', 'state_senate', '#34d399', 'state_house', '#fbbf24', '#94a3b8')`
+     - Dashed line: `line-dasharray: [3, 2]`
+   - Expose `project(lng, lat)` for bubble position sync
+   - Expose `setView(lng, lat, zoom)` for programmatic pan
+   - `ResizeObserver` for responsive canvas sizing
+   - `IntersectionObserver` to pause MapLibre rendering when off-screen
+
+2. **bubble-gestures.ts** — Pointer Events input layer:
+   - `touch-action: none` on gesture container + `preventDefault({ passive: false })` for iOS Safari
+   - Two-pointer pinch: track `pointerId`s, compute inter-finger distance delta → scale `radius`
+   - `getCoalescedEvents()` for 120Hz displays — use last coalesced event for rendering
+   - `getPredictedEvents()` — pre-compute fence intersections for next frame in the current frame's idle time
+   - Single-pointer drag: delta → `map.unproject()` → geo offset → move `center`
+   - Desktop: scroll-wheel → radius (up = shrink, down = grow). Shift+scroll = 1/4 speed fine control.
+   - Keyboard: `+`/`-` = radius ±10%. Arrow keys = center move by radius/10. Enter = confirm.
+   - Debounced cache-miss detection: if center moves outside `cachedExtent.bbox`, fire new API call (with 300ms debounce to avoid rapid-fire during drag)
+
+3. **Bubble.svelte** — the living object:
+   - SVG overlay: `position: absolute; inset: 0; z-index: 10; pointer-events: none`
+   - The bubble `<circle>`: `pointer-events: all`, `will-change: transform, filter`
+   - Position: `cx`/`cy` set via `map.project(center)` in `requestAnimationFrame`
+   - Size: CSS `transform: scale(radiusInPixels / baseRadius)` — compositor-thread only
+   - Fill: `<radialGradient>` from `transparent` at center to `blue-400/8` at edge
+   - Edge glow: CSS `filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.15))` — compositor-thread
+   - Edge intensity encoding: where the bubble edge is near a fence, glow intensifies — compute in `requestAnimationFrame`, apply as `filter` intensity
+   - `aria-label="Your geographic bubble showing {n} district boundaries"`, `role="application"`
+
+4. **bubble-spring.ts** — spring physics:
+   - `linear()` easing: generate 40 keypoints from spring ODE (stiffness: 300, damping: 20, mass: 1)
+   - Safari fallback detection: `CSS.supports('animation-timing-function', 'linear(0, 1)')` → fall back to `cubic-bezier(0.34, 1.56, 0.64, 1)`
+   - Pinch release: WAAPI `animate()` with spring easing, 5% overshoot, 200ms settle
+   - Drag release: velocity decay in `requestAnimationFrame` — `v *= 0.92` per frame until `|v| < 0.5px`
+   - ZIP+4 tighten: WAAPI `animate()` from current radius to new radius, 300ms ease-out
+
+5. **BubbleStatus.svelte** — live readout:
+   - Layer badges: `●` resolved (solid, `text-slate-800`), `◐` ambiguous (half, `text-slate-500`)
+   - For ambiguous layers: fence label is interactive — hover/tap highlights the fence in the terrain
+   - Precision bar: 4-segment visual (country → state → county → district), filled = achieved
+   - Template access hint (contextual): "Tighten past {fence.landmark} to access {template.title}"
+   - `aria-live="polite"` region — announces resolution changes: "Congressional district resolved: CA-11"
+
+6. **Bubble birth animation** — View Transitions API:
+   - `BubbleInput` has `view-transition-name: location-widget`
+   - On postal code submit: `document.startViewTransition(() => { show bubble, hide input })`
+   - `::view-transition-old(location-widget)`: `animation: fade-out 200ms ease-out`
+   - `::view-transition-new(location-widget)`: `animation: bubble-birth 400ms spring-easing`
+   - Fallback for browsers without View Transitions: simple CSS `opacity` + `transform` transition
+
+7. **Haptic feedback** (progressive enhancement):
+   - On fence crossing: `navigator.vibrate?.([15, 10, 15])` — Chrome Android only
+   - Primary feedback: CSS glow pulse (300ms keyframe on `filter`) — all platforms
+
+8. **Integration** — wire into the app:
+   - Remove LocationFilter import from `+page.svelte`
+   - Remove `handleLocationFilterChange()` callback
+   - Add Bubble to user profile header/sidebar (persistent, always visible)
+   - Template browse page reads `bubble.precision` to show/dim templates
+   - Bubble seeder from existing signals: GPS → `seedBubble(coords, accuracyRadius)`, IP → `seedBubble(coords, ~10km)`
+
+### Phase 4: Legacy removal + polish
+
+**Goal**: Zero dead code. No half-alive inference system. Clean codebase.
+
+Steps:
+1. **Remove dead code** (2,619 lines from the manifest in Section 3A):
+   - Delete: `LocationFilter.svelte`, `DistrictBreadcrumb.svelte`, `InlineAddressResolver.svelte`, `PrivacyBadge.svelte`
+   - Delete: `core/location/inference-engine.ts`, `storage.ts`, `behavioral-tracker.ts`, `oauth-location-sync.ts`, `types.ts`, `index.ts`
+   - Delete: `services/zipDistrictLookup.ts`
+   - Update `core/location/index.ts` exports (if kept files still need a barrel)
+   - Verify: no remaining imports of deleted modules (`grep -r` for each deleted filename)
+
+2. **Archive superseded spec**:
+   - `mv docs/specs/location-picker-spec.md docs/specs/archived/location-picker-spec.md`
+
+3. **International polish**:
+   - UK postcode: tiny bubbles (~100m radius), rare fences (0.24% of codes), always binary when ambiguous
+   - AU postcode: suburb name as additional tightening signal in `BubbleInput`
+   - Layer color coding per country: UK (constituency = blue), AU (electorate = teal), CA (riding = red)
+
+4. **Accessibility**:
+   - `prefers-reduced-motion`: all transitions instant, no spring, no glow pulse
+   - Screen reader: `aria-live` announces on every resolution change
+   - Text-based alternative: collapsible panel below bubble showing current state as text, with radio buttons for manual district selection
+   - Keyboard navigation: Tab to bubble → +/- for radius → arrows for center → Enter to confirm
+
+5. **PMTiles preparation**:
+   - Extract North America tiles from Protomaps planet: `pmtiles extract planet.pmtiles na.pmtiles --bbox=-170,15,-50,72 --maxzoom=14`
+   - Upload to Cloudflare R2 bucket
+   - Configure CORS headers for communique domain
+   - Add `Content-Type: application/octet-stream` for Range Requests
+
+6. **Performance validation**:
+   - Measure: postal code → bubble visible < 1000ms (API + render + animation)
+   - Measure: pinch gesture → visual update < 16ms (should be ~0.12ms from geometry + DOM)
+   - Measure: MapLibre terrain render < 100ms initial, < 16ms steady state
+   - Lighthouse mobile: Performance > 90 (MapLibre dynamically imported)
+   - Test on: iPhone 13 Safari, Pixel 7 Chrome, Galaxy S23 Samsung Browser
 
 ---
 

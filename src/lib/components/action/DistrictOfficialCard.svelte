@@ -112,7 +112,11 @@
 {#if isActive}
 	<button
 		type="button"
-		class="w-full text-left rounded-xl border border-slate-200 bg-white shadow-sm p-4 transition-colors cursor-pointer hover:border-slate-300 hover:shadow min-h-[44px]"
+		class="group w-full text-left rounded-xl border border-slate-200 bg-white shadow-sm p-4
+			transition-all duration-150 ease-out cursor-pointer
+			hover:-translate-y-0.5 hover:shadow-md hover:border-participation-primary-200
+			active:translate-y-0 active:shadow-sm
+			min-h-[44px]"
 		onclick={handleClick}
 	>
 		{@render cardContent()}
@@ -120,7 +124,7 @@
 {:else}
 	<div
 		class="rounded-xl border shadow-sm p-4 min-h-[44px] transition-all duration-700 ease-out
-			{departing ? 'departing-card border-participation-primary-200 bg-white' : 'border-slate-200 bg-white'}"
+			{departing ? 'departing-card border-participation-primary-200 bg-white' : contacted ? 'border-slate-100 bg-slate-50/60' : 'border-slate-200 bg-white'}"
 	>
 		{@render cardContent()}
 	</div>

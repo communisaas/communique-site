@@ -1,16 +1,8 @@
 /**
  * Client-Side Location Resolution Module
  *
- * Privacy-preserving, VPN-resistant location inference for template discovery.
- * All location resolution happens in the browser - server NEVER knows user location.
- *
- * Public API:
- * - getUserLocation(): Get inferred location (cached or fresh)
- * - addOAuthLocationSignal(): Add signal from OAuth callback
- * - addVerifiedLocationSignal(): Add signal from identity verification
- * - trackTemplateView(): Track template engagement for behavioral inference
- * - filterTemplatesByLocation(): Client-side template filtering
- * - scoreTemplatesByRelevance(): Relevance-based template ranking
+ * Legacy signal-based inference — retained for AddressVerificationFlow.
+ * Primary location path is now the Postal Bubble (see $lib/core/bubble).
  */
 
 // ============================================================================
@@ -25,8 +17,6 @@ export type {
 	TemplateJurisdiction,
 	JurisdictionType,
 	ScoredTemplate,
-	BehavioralLocationPattern,
-	TemplateViewEvent,
 	OAuthLocationData,
 	CensusGeocodingResponse
 } from './types';
@@ -66,16 +56,6 @@ export { locationInferenceEngine, LocationInferenceEngine } from './inference-en
 
 export { locationStorage, LocationStorage } from './storage';
 
-// ============================================================================
-// Behavioral Tracking
-// ============================================================================
-
-export {
-	trackTemplateView,
-	getBehavioralPatterns,
-	behavioralTracker,
-	BehavioralLocationTracker
-} from './behavioral-tracker';
 
 // ============================================================================
 // Template Filtering
@@ -88,7 +68,10 @@ export {
 	boostByLocalAdoption,
 	boostByRecency,
 	calculateDistance,
-	ClientSideTemplateFilter
+	ClientSideTemplateFilter,
+	geoScopeToInferredLocation,
+	inferredLocationToGeoScope,
+	groupByPrecision
 } from './template-filter';
 
 // ============================================================================

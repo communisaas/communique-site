@@ -197,7 +197,7 @@
 	data-testid="template-preview"
 	class="border-slate-200 bg-white
                {inModal ? 'h-full border-0' : 'rounded-xl border'} 
-               {inModal ? 'p-4 sm:p-6' : 'p-3 sm:p-4 md:p-6 lg:p-8'} 
+               {inModal ? 'p-4 sm:p-6' : 'p-3 sm:p-4 md:p-5 lg:p-6'} 
                {inModal ? '' : expandToContent ? '' : 'sm:sticky sm:top-8'}
                {inModal ? '' : expandToContent ? '' : 'h-[calc(100vh-4rem)]'}
                {!inModal && onOpenModal ? 'cursor-pointer md:cursor-default' : ''}

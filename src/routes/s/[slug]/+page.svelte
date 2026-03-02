@@ -603,10 +603,10 @@
 		</div>
 	{/if}
 
-	<!-- ACT: Two-column field — message left, action space right -->
-	<div class="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8 lg:items-start overflow-hidden">
-		<!-- LEFT: Message preview — flows naturally with page scroll -->
-		<div class="min-w-0">
+	<!-- ACT: Two-column field — message as sticky reference, landscape as primary workspace -->
+	<div class="lg:grid lg:grid-cols-[2fr_3fr] lg:gap-8 lg:items-start overflow-hidden">
+		<!-- LEFT: Message preview — sticky reference while landscape scrolls -->
+		<div class="min-w-0 lg:sticky lg:top-6 lg:self-start">
 			<div class="rounded-xl border border-slate-200 bg-white shadow-sm">
 				{#if addressRequired && !landscapeRevealed}
 					<!-- Address Required Notice -->
@@ -675,7 +675,7 @@
 			</div>
 		</div>
 
-		<!-- RIGHT: Signal strength + Power Landscape + Deliberation -->
+		<!-- RIGHT (PRIMARY): Power Landscape + Signal strength + Deliberation -->
 		<div class="mt-8 lg:mt-0 space-y-8 min-w-0">
 			<!-- Trust Journey — signal strength contextualizes the action space below -->
 			{#if FEATURES.STANCE_POSITIONS && data.user}
