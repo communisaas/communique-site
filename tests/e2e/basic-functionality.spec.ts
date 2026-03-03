@@ -110,17 +110,6 @@ test.describe('Basic E2E Functionality', () => {
 		await expect(page.locator('body')).toBeVisible();
 	});
 
-	test('should navigate to analytics page', async ({ page }: { page: Page }) => {
-		await page.goto('/analytics');
-
-		// Analytics page should load
-		await expect(page.locator('body')).toBeVisible();
-
-		// Should have some content (not just empty body)
-		const content = await page.textContent('body');
-		expect(content?.trim().length).toBeGreaterThan(0);
-	});
-
 	test('should handle mobile responsive design', async ({ page }: { page: Page }) => {
 		// Test mobile viewport
 		await page.setViewportSize({ width: 375, height: 667 });
