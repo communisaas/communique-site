@@ -105,10 +105,6 @@
 			}
 			isModerating = false;
 
-			// Apply Personal Connection into the template body
-			if (typeof template?.message_body === 'string') {
-				template.message_body = template.message_body.replace(/\[Personal Connection\]/g, pc);
-			}
 		}
 
 		// Save personalization for all users
@@ -120,11 +116,6 @@
 					timestamp: Date.now()
 				})
 			);
-		}
-
-		// For unauthenticated users, set pending send flag
-		if (!user && browser) {
-			sessionStorage.setItem(`template_${template.id}_pending_send`, 'true');
 		}
 
 		// Let parent handle the entire flow (auth, address, or email modal)

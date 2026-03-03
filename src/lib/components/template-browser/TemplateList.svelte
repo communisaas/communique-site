@@ -53,7 +53,7 @@
 					{
 						send_count: t.send_count || 0,
 						created_at: new Date(t.createdAt),
-						updated_at: new Date(t.updatedAt)
+						updated_at: new Date(t.updatedAt || t.createdAt)
 					},
 					now
 				)

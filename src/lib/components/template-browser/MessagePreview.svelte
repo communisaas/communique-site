@@ -23,7 +23,8 @@
 		ontouchStateChange,
 		onvariableSelect,
 		onvariableChange,
-		expandToContent = false
+		expandToContent = false,
+		initialVariableValues = {}
 	}: {
 		preview: string;
 		template?: Template | undefined;
@@ -52,6 +53,7 @@
 		onvariableSelect?: (__event: { variableName: string; active: boolean }) => void;
 		onvariableChange?: (__event: { name: string; value: string }) => void;
 		expandToContent?: boolean;
+		initialVariableValues?: Record<string, string>;
 	} = $props();
 	let scrollContainer: HTMLDivElement;
 	let isAtTop = $state(true);
@@ -338,20 +340,25 @@
 		if (Object.keys(variableValues).length === 0) {
 			for (const segment of segments) {
 				if (segment.type === 'variable' && segment.name) {
-					// For user-editable variables, default to null so button shows [Variable Name]
-					// For system variables, use resolved values
 					if (userEditableVariables.has(segment.name)) {
-						variableValues[segment.name] = null;
+						variableValues[segment.name] = initialVariableValues[segment.name] || null;
 					} else {
-						// Use resolved value or null to show [Variable Name]
 						const resolvedValue = resolvedValues[segment.name];
-						// Only use resolved value if it's not empty
 						variableValues[segment.name] =
 							resolvedValue && typeof resolvedValue === 'string' && resolvedValue.trim() !== ''
 								? resolvedValue
 								: null;
 					}
 				}
+			}
+		}
+	});
+
+	// Sync external initial values into editable variables (handles async restore from sessionStorage)
+	$effect(() => {
+		for (const [name, value] of Object.entries(initialVariableValues)) {
+			if (value && userEditableVariables.has(name) && variableValues[name] !== value) {
+				variableValues[name] = value;
 			}
 		}
 	});
@@ -572,14 +579,15 @@
 				variableValues[variableName]!.trim() === '');
 
 		if (isSystemVariable) {
-			// Resolved system variables blend into the letter with subtle emphasis
+			// Resolved system variables — generous hover target, hint cursor signals tooltip
 			return `
-				inline-flex items-center gap-0.5
-				px-0.5 rounded
+				inline-flex items-center gap-1
+				px-1.5 py-0.5 rounded-md
 				text-sm leading-none
 				transition-colors duration-150
-				text-emerald-800 bg-emerald-50/50 border-b border-dotted border-emerald-300/70
-				cursor-default align-baseline
+				text-emerald-800 bg-emerald-50/60 border-b border-dotted border-emerald-300/70
+				hover:bg-emerald-100/80
+				cursor-help align-baseline
 			`;
 		} else if (isUserEditable) {
 			if (isEmpty) {

@@ -25,7 +25,8 @@
 			/* Optional email modal close handler */
 		},
 		expandToContent = false,
-		debateResolution = null
+		debateResolution = null,
+		personalConnectionValue = $bindable('')
 	}: {
 		template: Template;
 		inModal?: boolean;
@@ -38,14 +39,12 @@
 		onEmailModalClose?: () => void;
 		expandToContent?: boolean;
 		debateResolution?: { winningStance: string; participants: number } | null;
+		personalConnectionValue?: string;
 	} = $props();
 
 	let localShowEmailModal = $state(false);
 	const showEmailModal = $derived(externalShowEmailModal || localShowEmailModal);
 	let actionProgress = $state(spring(0, { stiffness: 0.2, damping: 0.8 }));
-
-	// Capture user-provided Personal Connection to apply in JS-land before mailto
-	let personalConnectionValue: string = $state('');
 
 	// Set actionProgress when modal is externally controlled
 	$effect(() => {
@@ -115,9 +114,6 @@
 		// Restore personalization data if returning from OAuth
 		if (browser) {
 			const savedData = sessionStorage.getItem(`template_${template.id}_personalization`);
-			// Clean up any stale pending_send flag (auto-send removed — users pick decision-makers individually)
-			sessionStorage.removeItem(`template_${template.id}_pending_send`);
-
 			if (savedData) {
 				try {
 					const parsed = JSON.parse(savedData);

@@ -20,7 +20,6 @@
 			clicked: z.number().optional(),
 			responded: z.number().optional(),
 			responses: z.number().optional(),
-			views: z.number().optional(),
 			districts_covered: z.number().optional(),
 			total_districts: z.number().optional(),
 			district_coverage_percent: z.number().optional()
@@ -35,7 +34,6 @@
 		clicked?: number;
 		responded?: number;
 		responses?: number;
-		views?: number;
 		districts_covered?: number;
 		total_districts?: number;
 		district_coverage_percent?: number;
