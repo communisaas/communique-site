@@ -223,6 +223,7 @@
 							(result.geographic_scope as typeof formData.content.geographicScope) || null;
 						formData.content.aiGenerated = true;
 						formData.content.edited = false;
+						formData.content.generatedForSubject = formData.objective.title;
 
 						console.log('[MessageGenerationResolver] Message generated:', {
 							message_length: cleanedMessage.length,
@@ -257,11 +258,23 @@
 
 	// Auto-run on mount
 	onMount(() => {
-		// Only generate if message hasn't been generated yet
-		if (!formData.content.preview || !formData.content.aiGenerated) {
+		// Check if the objective changed since content was generated
+		const generatedFor = formData.content.generatedForSubject;
+		const currentSubject = formData.objective.title;
+		const isStale = generatedFor && generatedFor !== currentSubject;
+
+		if (isStale) {
+			console.log('[MessageGenerationResolver] Subject changed, clearing stale content', {
+				generatedFor, currentSubject
+			});
+			formData.content.preview = '';
+			formData.content.aiGenerated = false;
+			formData.content.generatedForSubject = undefined;
+			generateMessage();
+		} else if (!formData.content.preview || !formData.content.aiGenerated) {
 			generateMessage();
 		} else {
-			// Already have a message, go straight to results
+			// Already have a message for the current subject, go straight to results
 			stage = 'results';
 		}
 	});

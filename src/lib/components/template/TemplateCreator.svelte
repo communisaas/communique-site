@@ -161,6 +161,12 @@
 				}
 	);
 
+	// State machine checkpoint: the subject line that downstream steps were built for.
+	// When the subject changes and the user advances, downstream state is invalidated.
+	let downstreamSubjectCheckpoint = $state<string | undefined>(
+		_loadedDraft ? formData.objective.title : undefined
+	);
+
 	// Derived: has content worth saving (for ambient indicator)
 	const hasContent = $derived(
 		formData.objective.rawInput?.trim() ||
@@ -235,6 +241,20 @@
 		const currentIndex = steps.indexOf(currentStep);
 
 		if (currentIndex < steps.length - 1) {
+			// State machine invalidation: when subject changed, clear downstream state.
+			// This is the authoritative check — children re-resolve on mount when empty.
+			if (currentStep === 'objective') {
+				const currentTitle = formData.objective.title;
+				if (downstreamSubjectCheckpoint && downstreamSubjectCheckpoint !== currentTitle) {
+					formData.audience.decisionMakers = [];
+					formData.audience.resolvedForSubject = undefined;
+					formData.content.preview = '';
+					formData.content.aiGenerated = false;
+					formData.content.generatedForSubject = undefined;
+				}
+				downstreamSubjectCheckpoint = currentTitle;
+			}
+
 			// Show immediate feedback - button enters loading state
 			isTransitioning = true;
 
@@ -328,8 +348,7 @@
 				sent: 0,
 				delivered: 0,
 				opened: 0,
-				clicked: 0,
-				views: 0
+				clicked: 0
 			},
 			campaign_id: null,
 			status: 'published',

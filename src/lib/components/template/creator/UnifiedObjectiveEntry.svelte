@@ -762,7 +762,8 @@
 
 	/**
 	 * Handle clarification answers submission
-	 * Sends COMPLETE context (original + questions + answers) for stateless reconstruction
+	 * Sends COMPLETE context (original + questions + answers) via streaming endpoint
+	 * so user sees thoughts while the agent processes their answers.
 	 */
 	async function handleClarificationSubmit(answers: Record<string, string>): Promise<void> {
 		// Prevent concurrent submissions (race condition: double-click or click+Escape)
@@ -777,44 +778,64 @@
 		};
 
 		isGenerating = true;
+		const requestId = crypto.randomUUID();
+		currentRequestId = requestId;
+
+		// Show streaming state with thoughts
+		// showAISuggest must be false so the streaming thought viewer renders
+		suggestionState = { status: 'streaming', thoughts: [], startTime: Date.now() };
+		showAISuggest = false;
 
 		try {
-			const response = await api.post(
-				'/agents/generate-subject',
+			await api.stream<{ content?: string; data?: AISuggestion; message?: string }>(
+				'/agents/stream-subject',
 				{
 					message: data.rawInput,
 					conversationContext: fullContext
 				},
-				{
-					timeout: AI_SUGGESTION_TIMING.SUGGESTION_TIMEOUT,
-					retries: AI_SUGGESTION_TIMING.MAX_RETRIES,
-					showToast: false,
-					skipErrorLogging: true
+				(event) => {
+					if (requestId !== currentRequestId) return;
+
+					switch (event.type) {
+						case 'thought':
+							if (event.data.content && suggestionState.status === 'streaming') {
+								suggestionState = {
+									...suggestionState,
+									thoughts: [...suggestionState.thoughts, event.data.content]
+								};
+							}
+							break;
+
+						case 'complete':
+							if (event.data.data) {
+								const newSuggestion = event.data.data as AISuggestion;
+								suggestionCache.set(data.rawInput.trim().toLowerCase(), newSuggestion);
+								suggestionHistory = [...suggestionHistory, newSuggestion];
+								selectedIterationIndex = suggestionHistory.length - 1;
+								suggestionState = { status: 'ready', suggestion: newSuggestion };
+								showAISuggest = true;
+								lastGeneratedText = data.rawInput;
+								attemptCount++;
+								conversationContext = null;
+							}
+							break;
+
+						case 'error':
+							suggestionState = {
+								status: 'error',
+								message: event.data.message || 'Something broke after clarification. Try again.'
+							};
+							break;
+					}
 				}
 			);
-
-			if (response.success && response.data) {
-				// Agent should return final output now (no more clarification)
-				const newSuggestion = response.data as AISuggestion;
-
-				suggestionCache.set(data.rawInput.trim().toLowerCase(), newSuggestion);
-				suggestionHistory = [...suggestionHistory, newSuggestion];
-				selectedIterationIndex = suggestionHistory.length - 1;
-
-				suggestionState = { status: 'ready', suggestion: newSuggestion };
-				lastGeneratedText = data.rawInput;
-				attemptCount++;
-
-				// Clear conversation context
-				conversationContext = null;
-			} else {
-				throw new Error(response.error || 'Generation failed after clarification');
-			}
 		} catch (err) {
-			suggestionState = {
-				status: 'error',
-				message: err instanceof Error ? err.message : 'Something broke after clarification. Try again.'
-			};
+			if (requestId === currentRequestId) {
+				suggestionState = {
+					status: 'error',
+					message: err instanceof Error ? err.message : 'Something broke after clarification. Try again.'
+				};
+			}
 		} finally {
 			isGenerating = false;
 		}

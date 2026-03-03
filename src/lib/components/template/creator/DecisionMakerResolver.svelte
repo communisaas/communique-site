@@ -280,6 +280,7 @@
 						}
 
 						formData.audience.decisionMakers = processed;
+						formData.audience.resolvedForSubject = formData.objective.title;
 						stage = 'results';
 						break;
 					}
@@ -346,15 +347,25 @@
 			console.log('[DecisionMakerResolver] No decision-makers, starting resolution', { fromOAuth });
 			resolveDecisionMakers();
 		} else {
-			// Already have decision-makers from a previous resolution or draft.
-			// DMs without email are legitimate — the agent searched and found none.
-			// Only re-resolve if every single AI-resolved DM is missing its name,
-			// which signals truly corrupted draft data (not just "no email found").
+			// Check if the objective changed since DMs were resolved.
+			// If the subject line is different, the old DMs are stale — re-resolve.
+			const resolvedFor = formData.audience.resolvedForSubject;
+			const currentSubject = formData.objective.title;
+			const isStale = resolvedFor && resolvedFor !== currentSubject;
+
+			// Also detect corrupted draft data (no names on any AI-resolved DM).
 			const isCorrupted = formData.audience.decisionMakers.every(
 				(dm) => dm.isAiResolved && !dm.name
 			);
 
-			if (isCorrupted) {
+			if (isStale) {
+				console.log('[DecisionMakerResolver] Subject changed, clearing stale DMs', {
+					resolvedFor, currentSubject
+				});
+				formData.audience.decisionMakers = [];
+				formData.audience.resolvedForSubject = undefined;
+				resolveDecisionMakers();
+			} else if (isCorrupted) {
 				console.log('[DecisionMakerResolver] Corrupted draft data (no names), re-resolving...');
 				resolveDecisionMakers();
 			} else {

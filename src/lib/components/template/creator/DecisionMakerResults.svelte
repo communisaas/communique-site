@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Plus } from '@lucide/svelte';
 	import type { ProcessedDecisionMaker, CustomRecipient } from '$lib/types/template';
+	import { FEATURES } from '$lib/config/features';
 	import DecisionMakerGrouped from './DecisionMakerGrouped.svelte';
 	import DecisionMakerCard from './DecisionMakerCard.svelte';
 	import CustomDecisionMakerForm from './CustomDecisionMakerForm.svelte';
@@ -157,27 +158,29 @@
 	{/if}
 
 	<!-- Congressional Checkbox -->
-	<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-		<label class="flex items-start gap-3">
-			<input
-				type="checkbox"
-				bind:checked={includesCongress}
-				class="mt-0.5 h-5 w-5 rounded border-slate-300 text-participation-primary-600 focus:ring-2 focus:ring-participation-primary-500"
-			/>
-			<div class="flex-1">
-				<p class="font-medium text-slate-900">Also send to my congressional representatives</p>
-				<p class="mt-0.5 text-sm text-slate-600">
-					Your message will be sent via certified delivery to your House rep and both Senators
-				</p>
-			</div>
-		</label>
-	</div>
+	{#if FEATURES.CONGRESSIONAL}
+		<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+			<label class="flex items-start gap-3">
+				<input
+					type="checkbox"
+					bind:checked={includesCongress}
+					class="mt-0.5 h-5 w-5 rounded border-slate-300 text-participation-primary-600 focus:ring-2 focus:ring-participation-primary-500"
+				/>
+				<div class="flex-1">
+					<p class="font-medium text-slate-900">Also send to my congressional representatives</p>
+					<p class="mt-0.5 text-sm text-slate-600">
+						Your message will be sent via certified delivery to your House rep and both Senators
+					</p>
+				</div>
+			</label>
+		</div>
+	{/if}
 
 	<!-- Empty State -->
 	{#if (decisionMakers?.length || 0) === 0 && (customRecipients?.length || 0) === 0 && !includesCongress}
 		<div class="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center">
 			<p class="text-sm text-slate-600">
-				No decision-makers found. Add contacts manually or include congressional representatives.
+				No decision-makers found. Add contacts manually{#if FEATURES.CONGRESSIONAL} or include congressional representatives{/if}.
 			</p>
 		</div>
 	{/if}
