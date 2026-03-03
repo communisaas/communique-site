@@ -440,8 +440,6 @@
 		headline: string;
 		body: string[];
 		insight: string;
-		cta: string;
-		ctaAction: 'write' | 'browse' | 'browse';
 	};
 
 	const narrativeContent: Record<string, NarrativeContent> = {
@@ -452,8 +450,6 @@
 				'This time is different. You write once — your authentic grievance, your specific problem. Then you share a link. And everyone who shares your problem can send it too.'
 			],
 			insight: 'One complaint gets buried. Coordinated messages make impact.',
-			cta: 'Start Writing',
-			ctaAction: 'write'
 		},
 		neighbors: {
 			headline: 'They share your streets.',
@@ -462,8 +458,6 @@
 				"When you share the link, you're not asking for a favor. You're inviting them to a fight that's already theirs. They personalize with their address, their name. Same grievance. Thousands of voices."
 			],
 			insight: "Coalition isn't built. It's unlocked.",
-			cta: 'Browse Templates',
-			ctaAction: 'browse'
 		},
 		friends: {
 			headline: 'They share your outrage.',
@@ -472,8 +466,6 @@
 				"They've felt the same frustration. They just needed someone to start. You share. They make it their own."
 			],
 			insight: 'Your network is already aligned. Activate it.',
-			cta: 'Browse Templates',
-			ctaAction: 'browse'
 		},
 		coworkers: {
 			headline: 'They share your workplace.',
@@ -482,8 +474,6 @@
 				'When one person complains, they\'re a "problem employee." When dozens coordinate, they\'re a constituency.'
 			],
 			insight: 'Individual complaints are noise. Coordinated messages are power.',
-			cta: 'Browse Templates',
-			ctaAction: 'browse'
 		},
 		rep: {
 			headline: 'They count every constituent.',
@@ -492,8 +482,6 @@
 				"One email from their district? Filed. Fifty from the same zip code on the same issue? That's a crisis meeting."
 			],
 			insight: 'They work for you. Remind them.',
-			cta: 'See Templates',
-			ctaAction: 'browse'
 		},
 		mayor: {
 			headline: 'They watch the neighborhoods.',
@@ -502,8 +490,6 @@
 				"Scattered complaints are background noise. Coordinated pressure from one neighborhood? That's the next town hall agenda item."
 			],
 			insight: 'Local power responds to local pressure.',
-			cta: 'See Local Templates',
-			ctaAction: 'browse'
 		},
 		ceo: {
 			headline: 'They fear coordinated customers.',
@@ -512,8 +498,6 @@
 				"Corporate accountability isn't about shame. It's about showing them the numbers. Making the cost of ignoring you higher than the cost of change."
 			],
 			insight: 'Corporations respond to collective voice.',
-			cta: 'See Corporate Templates',
-			ctaAction: 'browse'
 		}
 	};
 
@@ -995,22 +979,6 @@
 								<p class="narrative-body">{paragraph}</p>
 							{/each}
 							<p class="narrative-insight">{content.insight}</p>
-							<span
-								class="narrative-cta"
-								role="button"
-								tabindex="0"
-								onclick={(e) => {
-									e.stopPropagation(); /* TODO: dispatch action */
-								}}
-								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') {
-										e.preventDefault();
-										e.stopPropagation();
-									}
-								}}
-							>
-								{content.cta}
-							</span>
 						</div>
 					{/if}
 				</span>
@@ -1053,22 +1021,6 @@
 								<p class="narrative-body">{paragraph}</p>
 							{/each}
 							<p class="narrative-insight">{content.insight}</p>
-							<span
-								class="narrative-cta"
-								role="button"
-								tabindex="0"
-								onclick={(e) => {
-									e.stopPropagation(); /* TODO: dispatch action */
-								}}
-								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') {
-										e.preventDefault();
-										e.stopPropagation();
-									}
-								}}
-							>
-								{content.cta}
-							</span>
 						</div>
 					{/if}
 				</span>
@@ -1679,38 +1631,6 @@
 		border-left-color: oklch(0.7 0.1 175 / 0.4);
 	}
 
-	.narrative-cta {
-		margin-top: 0.75rem;
-		padding: 0.625rem 1rem;
-		border: none;
-		border-radius: 8px;
-		background: linear-gradient(135deg, oklch(0.55 0.18 270), oklch(0.48 0.2 270));
-		font-family: 'Satoshi', system-ui, sans-serif;
-		font-size: 0.8125rem;
-		font-weight: 600;
-		color: white;
-		cursor: pointer;
-		transition:
-			transform 150ms ease-out,
-			box-shadow 150ms ease-out;
-	}
-
-	.narrative-cta:hover {
-		transform: translateY(-1px);
-		box-shadow: 0 4px 12px -2px oklch(0.5 0.18 270 / 0.4);
-	}
-
-	.narrative-cta:active {
-		transform: translateY(0);
-	}
-
-	.node.target .narrative-cta {
-		background: linear-gradient(135deg, oklch(0.6 0.14 175), oklch(0.52 0.16 175));
-	}
-
-	.node.target .narrative-cta:hover {
-		box-shadow: 0 4px 12px -2px oklch(0.55 0.14 175 / 0.4);
-	}
 
 	/* ─────────────────────────────────────────────────────────────
 	   Responsive Expansion Sizing
@@ -1765,13 +1685,6 @@
 
 		.narrative-insight {
 			font-size: 0.75rem;
-		}
-
-		.narrative-cta {
-			font-size: 0.8125rem;
-			padding: 0.625rem 1rem;
-			/* Full width CTA on mobile for easier thumb tap */
-			width: 100%;
 		}
 	}
 
