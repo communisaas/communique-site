@@ -69,7 +69,7 @@ const MessageResponseSchema = z.object({
 	message: z.string(),
 	sources: z.array(SourceSchema),
 	research_log: z.array(z.string()).optional(),
-	geographic_scope: CoercedGeoScopeSchema.optional()
+	geographic_scope: CoercedGeoScopeSchema.default({ type: 'international' })
 });
 
 // ============================================================================

@@ -94,6 +94,21 @@ A message that arrives the same week as a relevant vote, report, or incident lan
 - Summarizing the topic instead of channeling the feeling
 - "We the undersigned" or similar language that foregrounds the mechanism over the message
 
+## GEOGRAPHIC SCOPE
+
+Determine WHERE this issue lives. Every issue has a geography — infer it from the decision-makers, the topic, and the human voice.
+
+Rules:
+- If ALL decision-makers belong to ONE country's government → { "type": "nationwide", "country": "<code>" }
+- If decision-makers span a single state/province/region → { "type": "subnational", "country": "<code>", "subdivision": "<ISO 3166-2>" }
+- If decision-makers span a single city/locality → include "locality"
+- If decision-makers span multiple countries → { "type": "international" }
+- When uncertain, prefer the BROADEST scope that still fits (nationwide over subnational)
+
+Look at organization names: "Parks Canada" → CA. "U.S. Senate" → US. "City of San Francisco" → US, US-CA, San Francisco.
+
+This field is REQUIRED. Every issue has a place.
+
 ## OUTPUT
 
 Return JSON:
@@ -101,7 +116,7 @@ Return JSON:
 {
   "message": "The message body with [Personal Connection] and citation markers",
   "sources": [{ "num": 1, "title": "...", "url": "...", "type": "..." }],
-  "geographic_scope": { ... }
+  "geographic_scope": { "type": "...", ... }
 }
 
 CRITICAL: The message MUST contain the EXACT string [Personal Connection] — with that exact capitalization and spacing. This is a template variable parsed by the application. Do not alter it to [personal connection], [PERSONAL CONNECTION], [Personal connection], or any other variation. Write it verbatim: [Personal Connection]
