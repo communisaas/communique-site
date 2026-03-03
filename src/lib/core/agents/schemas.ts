@@ -25,20 +25,23 @@ export const SUBJECT_LINE_SCHEMA = {
 				properties: {
 					id: {
 						type: 'string',
-						description: 'Unique ID: "location", "scope", or "target"'
+						description:
+							'Unique ID for this question (e.g. "issue_framing", "location", "scope")'
 					},
 					question: {
 						type: 'string',
-						description: 'Natural question grounded in user input'
+						description:
+							'Conversational question that plays back what you heard — e.g. "I hear the frustration. Which of these is closer to what you mean?"'
 					},
 					type: {
 						type: 'string',
-						enum: ['location_picker', 'open_text'],
-						description: 'location_picker for geography, open_text for everything else'
+						enum: ['location_picker', 'open_text', 'multiple_choice'],
+						description:
+							'multiple_choice for issue interpretation (surface hypotheses as options), location_picker for geography, open_text for everything else'
 					},
 					placeholder: {
 						type: 'string',
-						description: 'Hint text for open_text input'
+						description: 'Hint text for open_text input or "Something else" fallback'
 					},
 					location_level: {
 						type: 'string',
@@ -49,6 +52,34 @@ export const SUBJECT_LINE_SCHEMA = {
 						type: 'array',
 						items: { type: 'string' },
 						description: 'List of potential location strings for user to choose from'
+					},
+					options: {
+						type: 'array',
+						items: {
+							type: 'object',
+							properties: {
+								id: {
+									type: 'string',
+									description:
+										'Short snake_case identifier (e.g. "regulation_blocking")'
+								},
+								label: {
+									type: 'string',
+									description:
+										'Written in the person\'s voice — how they\'d say it if being more specific (e.g. "I\'m earning nothing on my stablecoins while they make interest off my deposits")'
+								}
+							},
+							required: ['id', 'label']
+						},
+						minItems: 2,
+						maxItems: 4,
+						description:
+							'For multiple_choice: 2-4 options written the way the person would say it. Match their emotional register and vocabulary — not analytical language.'
+					},
+					allow_other: {
+						type: 'boolean',
+						description:
+							'For multiple_choice: show "Something else" open-text escape. Default true.'
 					},
 					required: {
 						type: 'boolean',
@@ -78,7 +109,8 @@ export const SUBJECT_LINE_SCHEMA = {
 		},
 		url_slug: {
 			type: 'string',
-			description: 'Campaign-unique slug: target-anchored emotional core, 2-4 words, lowercase, hyphens'
+			description:
+				'Campaign-unique slug: target-anchored emotional core, 2-4 words, lowercase, hyphens'
 		},
 		voice_sample: {
 			type: 'string',
@@ -162,4 +194,3 @@ export const SUBJECT_LINE_SCHEMA = {
 	},
 	required: ['needs_clarification', 'clarification_questions', 'inferred_context']
 };
-

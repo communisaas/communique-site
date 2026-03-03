@@ -21,6 +21,9 @@
 import type { RequestHandler } from './$types';
 import { generateStreamWithThoughts } from '$lib/core/agents/gemini-client';
 import { SUBJECT_LINE_PROMPT } from '$lib/core/agents/prompts/subject-line';
+import { SUBJECT_LINE_SCHEMA } from '$lib/core/agents/schemas';
+import { buildClarificationPrompt } from '$lib/core/agents/agents/subject-line';
+import type { ConversationContext } from '$lib/core/agents/types';
 import { cleanThoughtForDisplay } from '$lib/core/agents/utils/thought-filter';
 import type { SubjectLineResponseWithClarification, TokenUsage } from '$lib/core/agents/types';
 import { createSSEStream, SSE_HEADERS } from '$lib/server/sse-stream';
@@ -32,10 +35,11 @@ import {
 	logLLMOperation
 } from '$lib/server/llm-cost-protection';
 import { moderatePromptOnly } from '$lib/core/server/moderation';
-import { traceRequest } from '$lib/server/agent-trace';
+import { traceRequest, traceEvent } from '$lib/server/agent-trace';
 
 interface RequestBody {
 	message: string;
+	conversationContext?: ConversationContext;
 }
 
 export const POST: RequestHandler = async (event) => {
@@ -89,7 +93,9 @@ export const POST: RequestHandler = async (event) => {
 		);
 	}
 
-	const prompt = `Analyze this issue and generate a subject line:\n\n${body.message}`;
+	const prompt = body.conversationContext
+		? buildClarificationPrompt(body.conversationContext)
+		: `Analyze this issue and generate a subject line:\n\n${body.message}`;
 
 	// Inject temporal context into system prompt
 	const currentDate = new Date().toLocaleDateString('en-US', {
@@ -101,7 +107,7 @@ export const POST: RequestHandler = async (event) => {
 	const systemPrompt = SUBJECT_LINE_PROMPT.replace('{CURRENT_DATE}', currentDate).replace(
 		'{CURRENT_YEAR}',
 		currentYear
-	);
+	) + `\n\n## RESPONSE SCHEMA\n\nYour JSON output MUST conform to this exact structure:\n${JSON.stringify(SUBJECT_LINE_SCHEMA, null, 2)}`;
 
 	const { stream, emitter } = createSSEStream({
 		traceId,
@@ -166,10 +172,27 @@ export const POST: RequestHandler = async (event) => {
 
 					if (data.needs_clarification) {
 						emitter.send('clarification', { data });
+						traceEvent(traceId, 'subject-line', 'clarification', {
+							needs_clarification: true,
+							question_count: data.clarification_questions?.length ?? 0,
+							questions: data.clarification_questions?.map((q) => ({
+								id: q.id,
+								type: q.type,
+								question: q.question,
+								options: q.options
+							})),
+							inferred_context: data.inferred_context
+						}, { userId: userContext.userId, success: true });
 					} else {
 						emitter.complete({ data });
+						traceEvent(traceId, 'subject-line', 'generation', {
+							subject_line: data.subject_line,
+							core_message: data.core_message,
+							topics: data.topics,
+							url_slug: data.url_slug,
+							inferred_context: data.inferred_context
+						}, { userId: userContext.userId, success: true });
 					}
-
 					streamSuccess = true;
 				} else {
 					console.error('[stream-subject] JSON parse error:', result.parseError);
@@ -192,7 +215,10 @@ export const POST: RequestHandler = async (event) => {
 			);
 			emitter.close();
 		}
-	})();
+	})().catch((err) => {
+		console.error('[stream-subject] Unhandled IIFE error:', err);
+		try { emitter.error('Internal error'); emitter.close(); } catch { /* already closed */ }
+	});
 
 	const headers = new Headers(SSE_HEADERS);
 	addRateLimitHeaders(headers, rateLimitCheck);

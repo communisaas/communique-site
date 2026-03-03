@@ -27,10 +27,16 @@ import type {
 const ClarificationQuestionSchema = z.object({
 	id: z.string(),
 	question: z.string(),
-	type: z.enum(['location_picker', 'open_text']),
+	type: z.enum(['location_picker', 'open_text', 'multiple_choice']),
 	placeholder: z.string().optional(),
 	location_level: z.enum(['city', 'state', 'country']).optional(),
 	suggested_locations: z.array(z.string()).optional(),
+	options: z
+		.array(z.object({ id: z.string(), label: z.string() }))
+		.min(2)
+		.max(4)
+		.optional(),
+	allow_other: z.boolean().optional(),
 	required: z.boolean()
 });
 
@@ -86,24 +92,55 @@ export interface GenerateSubjectResult {
  *
  * The agent maintains conversation state across turns.
  */
-export async function generateSubjectLine(
-	options: GenerateSubjectOptions
-): Promise<GenerateSubjectResult> {
-	let prompt: string;
+/**
+ * Build a turn-2 prompt from conversation context.
+ * Shared between the non-streaming agent and the streaming endpoint.
+ */
+export function buildClarificationPrompt(ctx: ConversationContext): string {
+	const answerLines = Object.entries(ctx.answers)
+		.filter(([, v]: [string, string]) => v?.trim())
+		.map(([questionId, answer]: [string, string]) => {
+			const question = ctx.questionsAsked.find((q) => q.id === questionId);
+			if (!question) return `- "${questionId}": ${answer}`;
 
-	if (options.conversationContext) {
-		// NEW: Full context reconstruction
-		const ctx = options.conversationContext;
+			// For multiple_choice: handle multi-select (answers delimited by |||)
+			if (question.type === 'multiple_choice' && question.options?.length) {
+				const DELIMITER = '|||';
+				const parts = answer.includes(DELIMITER) ? answer.split(DELIMITER).map((s) => s.trim()) : [answer];
 
-		const answerLines = Object.entries(ctx.answers)
-			.filter(([, v]: [string, string]) => v?.trim())
-			.map(([questionId, answer]: [string, string]) => {
-				const question = ctx.questionsAsked.find((q) => q.id === questionId);
-				return `- "${question?.question || questionId}": ${answer}`;
-			})
-			.join('\n');
+				// Partition into matched options and custom text
+				const selectedLabels: string[] = [];
+				const customTexts: string[] = [];
+				for (const part of parts) {
+					if (question.options.some((o) => o.label === part)) {
+						selectedLabels.push(part);
+					} else if (part) {
+						customTexts.push(part);
+					}
+				}
 
-		prompt = `## Original Issue
+				const rejected = question.options
+					.filter((o) => !selectedLabels.includes(o.label))
+					.map((o) => o.label);
+
+				const selectedStr = selectedLabels.length > 0
+					? `Selected: ${selectedLabels.map((l) => `"${l}"`).join(', ')}`
+					: '';
+				const customStr = customTexts.length > 0
+					? `Also wrote: ${customTexts.map((t) => `"${t}"`).join(', ')}`
+					: '';
+				const rejectedStr = rejected.length > 0
+					? `(not: ${rejected.join('; ')})`
+					: '';
+
+				return `- "${question.question}": ${[selectedStr, customStr, rejectedStr].filter(Boolean).join(' ')}`;
+			}
+
+			return `- "${question.question}": ${answer}`;
+		})
+		.join('\n');
+
+	return `## Original Issue
 ${ctx.originalDescription}
 
 ## Clarification Conversation
@@ -122,6 +159,15 @@ ${answerLines || '(User skipped - use your best judgment based on the original i
 
 Now generate the final subject_line, core_message, topics, url_slug, and voice_sample using this complete context.
 Do not ask for more clarification - generate the output now.`;
+}
+
+export async function generateSubjectLine(
+	options: GenerateSubjectOptions
+): Promise<GenerateSubjectResult> {
+	let prompt: string;
+
+	if (options.conversationContext) {
+		prompt = buildClarificationPrompt(options.conversationContext);
 	} else if (options.clarificationAnswers && options.previousInteractionId) {
 		// LEGACY: Keep for backwards compatibility (but this path is broken)
 		// User provided clarification - format all answers for the agent

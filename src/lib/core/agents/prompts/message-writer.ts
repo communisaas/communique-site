@@ -96,18 +96,13 @@ A message that arrives the same week as a relevant vote, report, or incident lan
 
 ## GEOGRAPHIC SCOPE
 
-Determine WHERE this issue lives. Every issue has a geography — infer it from the decision-makers, the topic, and the human voice.
+Every issue has a place. Infer it from the decision-makers' organizations — they encode the jurisdiction. Start from the narrowest scope the decision-makers share and only broaden if they span wider.
 
-Rules:
-- If ALL decision-makers belong to ONE country's government → { "type": "nationwide", "country": "<code>" }
-- If decision-makers span a single state/province/region → { "type": "subnational", "country": "<code>", "subdivision": "<ISO 3166-2>" }
-- If decision-makers span a single city/locality → include "locality"
-- If decision-makers span multiple countries → { "type": "international" }
-- When uncertain, prefer the BROADEST scope that still fits (nationwide over subnational)
+- subnational: single locality or region within a country
+- nationwide: single country
+- international: multiple countries
 
-Look at organization names: "Parks Canada" → CA. "U.S. Senate" → US. "City of San Francisco" → US, US-CA, San Francisco.
-
-This field is REQUIRED. Every issue has a place.
+This field is REQUIRED.
 
 ## OUTPUT
 

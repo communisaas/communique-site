@@ -3,13 +3,14 @@
  *
  * Design Philosophy:
  * - Agent has full autonomy to formulate questions
- * - Only two input types: location_picker (structured) and open_text (conversation)
+ * - Three input types: multiple_choice (recognition), location_picker (structured), open_text (recall)
  * - Feels like a conversation turn, not a form
  *
  * Perceptual Engineering:
  * - Match user's mental model: "talking to an intelligent agent"
+ * - Multiple-choice surfaces agent's interpretive hypotheses (recognition > recall)
  * - Location is structured because it's a lookup task (geocoding)
- * - Everything else is open text for richer signal
+ * - Open text is the escape valve when hypothesis space is too wide
  */
 
 // ============================================================================
@@ -19,8 +20,9 @@
 /**
  * location_picker: Uses LocationAutocomplete component for structured city/state/country selection
  * open_text: Free-form text input for richer, contextual responses
+ * multiple_choice: Agent surfaces interpretive hypotheses as concrete options (recognition > recall)
  */
-export type ClarificationQuestionType = 'location_picker' | 'open_text';
+export type ClarificationQuestionType = 'location_picker' | 'open_text' | 'multiple_choice';
 
 // ============================================================================
 // Clarification Question (agent-formulated)
@@ -47,6 +49,12 @@ export interface ClarificationQuestion {
 
 	/** For location_picker: list of potential locations the agent inferred (e.g. ["Paris, TX", "Paris, France"]) */
 	suggested_locations?: string[];
+
+	/** For multiple_choice: concrete interpretive options the agent is surfacing */
+	options?: { id: string; label: string }[];
+
+	/** For multiple_choice: whether to show a "Something else" open-text escape (default true) */
+	allow_other?: boolean;
 
 	/** Whether this question must be answered to proceed */
 	required: boolean;
