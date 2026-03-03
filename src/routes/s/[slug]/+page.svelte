@@ -493,7 +493,7 @@
 </svelte:head>
 
 <!-- Template content with zoned layout: Orient → Commit → Act -->
-<div class="py-6 overflow-x-hidden">
+<div class="py-6">
 	<!-- ORIENT: Template header (single column, clean context) -->
 	<div class="mb-6">
 		<h1 class="mb-3 text-3xl font-bold text-slate-900 sm:text-4xl">
@@ -594,7 +594,7 @@
 	{/if}
 
 	<!-- ACT: Two-column field — message as sticky reference, landscape as primary workspace -->
-	<div class="lg:grid lg:grid-cols-[2fr_3fr] lg:gap-8 lg:items-start overflow-hidden">
+	<div class="lg:grid lg:grid-cols-[2fr_3fr] lg:gap-8 lg:items-start overflow-x-clip">
 		<!-- LEFT: Message preview — sticky reference while landscape scrolls -->
 		<div class="min-w-0 lg:sticky lg:top-6 lg:self-start">
 			<div class="rounded-xl border border-slate-200 bg-white shadow-sm">
