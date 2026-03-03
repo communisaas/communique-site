@@ -12,7 +12,7 @@
 
 **What works end-to-end:** User verifies identity (mDL via Digital Credentials API) → address encrypted client-side (XChaCha20-Poly1305) → ZK proof generated in browser (Noir/WASM) → submission created with nullifier uniqueness → encrypted witness decrypted server-side → CWC API delivery to congressional offices → status tracking with polling.
 
-**What doesn't work yet:** IACA root certificates (trust store structure ready, VICAL freely downloadable at `vical.dts.aamva.org/currentVical`, integration pending — no longer externally blocked), COSE_Sign1 issuer certificate chain validation (direct match implemented, full chain walking deferred but not needed per ISO 18013-5 flat chain structure).
+**What doesn't work yet:** IACA root certificates loaded for CA and NM only; remaining states available via AAMVA VICAL parser (follow-up). TEE infrastructure (L-05) needed for production witness decryption.
 
 ---
 
@@ -113,7 +113,7 @@ All P0 engineering gaps from Cycles 1-14 are resolved. Summary of what was fixed
 
 ### Open (see Launch Readiness Matrix for full detail)
 
-**P0 — Launch blockers:** IACA production certs (L-03, UNBLOCKED — VICAL freely available, needs integration), mDL→commitment→registration pipeline (L-04), TEE infrastructure (L-05), mainnet deploy (L-01/02), Shadow Atlas server (L-06), npm registry refs (L-07)
+**P0 — Launch blockers:** TEE infrastructure (L-05), mainnet deploy (L-01/02), Shadow Atlas server (L-06), npm registry refs (L-07)
 
 **P1 — Pre-production:** Apple Business Connect (L-08), engagement tier UI (L-09), debate on-chain settlement (L-10), debate auto-resolution (L-11), CampaignRegistry timelock review (L-12)
 
@@ -183,10 +183,10 @@ Existing users with `verification_method = 'self.xyz'` or `verification_method =
 
 ### Remaining mDL Gaps (see REMAINING-GAPS.md)
 
-1. **IACA root certificates** — Trust store structure ready. VICAL freely downloadable at `vical.dts.aamva.org/currentVical` (CBOR/COSE, ToS click-through only). CA/AZ/GA/NM/PR also publish directly on .gov domains. Integration pending — no longer externally blocked.
+1. **IACA root certificates** — **RESOLVED** (Cycle 41). DSC→IACA chain verification implemented (`verifyDscAgainstRoot()`). CA and NM roots loaded from .gov downloads. 37 tests including real CA cert self-signature verification and DSC validity period enforcement. Expansion to all states via AAMVA VICAL parser is follow-up.
 2. **Poseidon2 identity commitment** — mDL path uses SHA-256² mod BN254 (Phase 1); Poseidon2 planned for Phase 2
-3. **Selective disclosure expansion** — Currently requests only `postal_code`, `city`, `state`; should add Sybil-resistance fields (`birth_date_year`, `document_number` → identity commitment)
-4. **Shadow Atlas registration** — mDL completion doesn't trigger Shadow Atlas three-tree registration yet
+3. **Selective disclosure expansion** — **RESOLVED**. `birth_date` + `document_number` in ItemsRequest, identity commitment computed in privacy boundary
+4. **Shadow Atlas registration** — **RESOLVED** (Cycle 42). Census tract GEOID resolved via Census Bureau geocoding in privacy boundary. cellId threaded through client pipeline to `triggerShadowAtlasRegistration()`. Registration status UI with spinner/error/success.
 
 ---
 

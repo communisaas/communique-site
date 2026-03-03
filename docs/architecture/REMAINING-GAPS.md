@@ -1,7 +1,7 @@
 # Remaining Implementation Gaps
 
 Status: March 2026
-Last updated: 2026-03-01 (IACA Gap 1 research — UNBLOCKED)
+Last updated: 2026-03-02 (Gap 3/L-04 — RESOLVED, Cycle 42; Gap 1/L-03 — RESOLVED, Cycle 41)
 
 ---
 
@@ -9,8 +9,8 @@ Last updated: 2026-03-01 (IACA Gap 1 research — UNBLOCKED)
 
 | Gap | Priority | Blocked On | Estimated Effort |
 |-----|----------|------------|-----------------|
-| 1. IACA Root Certificates | **P0 — UNBLOCKED** | VICAL freely downloadable; engineering integration only | 1-2 days (code) |
-| 3. mDL Identity Commitment + Shadow Atlas Registration | **P0 — Launch blocker** (mDL users cannot generate ZK proofs without this) | Selective disclosure expansion + commitment pipeline | 1-2 weeks |
+| 1. IACA Root Certificates | **RESOLVED** (Cycle 41) | DSC→IACA chain verification + CA/NM roots loaded | Done |
+| 3. mDL Identity Commitment + Shadow Atlas Registration | **RESOLVED** (Cycle 42) | Census tract resolution + client pipeline threading | Done |
 | 5. TEE Infrastructure | **P0 — Launch blocker** (production message delivery requires TEE decryption) | AWS Nitro Enclave provisioning + /api/tee/public-key server route | 3-5 weeks |
 | 6. Apple Business Connect Registration | P1 — Required for iOS mDL | Apple merchant enrollment process | 1-2 weeks (process) |
 | 2. Engagement Tier Computation Opaque to Client | P1 — UX gap, no functional blocker | Shadow Atlas API surface for tier explanation | 1-2 weeks |
@@ -26,50 +26,54 @@ Last updated: 2026-03-01 (IACA Gap 1 research — UNBLOCKED)
 
 ## Gap 1: IACA Root Certificates (Tier 4 mDL Verification)
 
-**Status: UNBLOCKED** (2026-03-01). Previously marked BLOCKED pending AAMVA
-enrollment. Research confirmed the VICAL is freely downloadable — no
-organizational registration required for relying parties. Multiple states also
-publish IACA roots directly on .gov domains.
+**Status: RESOLVED** (2026-03-02, Cycle 41). DSC-to-IACA chain verification
+implemented. Real state IACA root certificates loaded (CA, NM). 31 tests passing
+including real certificate self-signature verification via Web Crypto.
 
-### Current State
+### What Was Done (Cycle 41)
 
-The COSE_Sign1 verification pipeline is structurally complete but cannot perform
-issuer trust validation because the IACA root certificate store is empty.
+**Chain verification engine** (`cose-verify.ts`):
+- `verifyDscAgainstRoot()` replaces the old `checkTrustChain()` byte comparison
+- Extracts IACA root's public key, parses DSC's TBSCertificate and DER signature,
+  verifies DSC was signed by root via `crypto.subtle.verify()` (ECDSA P-256 SHA-256)
+- Fast path: byte equality for backward compat with self-signed test certs
+- New exported helpers: `extractTBSAndSignature()`, `derEcdsaSigToRaw()`
 
-**Trust store (empty):**
-`/Users/noot/Documents/communique/src/lib/core/identity/iaca-roots.ts`, line 51:
-```typescript
-export const IACA_ROOTS: Record<string, IACACertificate> = {
-	// Production entries from AAMVA VICAL will go here.
-};
-```
+**Trust store** (`iaca-roots.ts`):
+- California DMV IACA Root (ECDSA P-256, valid 2023-03-01 to 2033-01-07)
+  Source: `https://trust.dmv.ca.gov/certificates/ca-dmv-iaca-root-ca-crt.cer`
+- New Mexico Root Certificate Authority (ECDSA P-256, valid 2025-10-01 to 2030-10-01)
+  Source: `https://www.mvd.newmexico.gov/wp-content/uploads/2025/10/New-Mexico-IACA-Certificate.zip`
+- `checkCertificateExpiry()` warns on certs expiring within 6 months
 
-A development placeholder exists at line 73 (`DEV_IACA_ROOT`, state `'XX'`) but
-its `certificateB64` field is an empty string -- it is not a valid X.509
-certificate and exists solely to exercise the code path in tests.
+**Tests** (16 new, 31 total):
+- DSC signed by trusted IACA root → verifies ✓
+- DSC signed by untrusted CA → rejects ✓
+- Tampered DSC → rejects ✓
+- Multi-root trust store lookup → finds correct root ✓
+- Self-signed backward compat → still works ✓
+- Real CA/NM public key extraction → works ✓
+- Real CA cert self-signature via Web Crypto → passes ✓
+- DER signature edge cases (high-bit, leading zeros, round-trip) → passes ✓
 
-**COSE_Sign1 implementation (complete):**
-`/Users/noot/Documents/communique/src/lib/core/identity/cose-verify.ts` contains
-a full RFC 9052 Section 4.2 implementation:
-- Protected header parsing and ES256 algorithm check (lines 89-126)
-- Issuer certificate extraction from unprotected header key 33 / x5chain (lines 329-361)
-- Minimal ASN.1/DER EC P-256 public key extraction (lines 405-446)
-- Sig_structure construction and Web Crypto ECDSA verify (lines 196-224)
-- MSO parsing with valueDigest extraction (lines 453-531)
-- MSO digest validation (`validateMsoDigests`, lines 257-319)
+### Remaining Expansion (Non-blocking)
 
-**Trust chain check (stub):**
-`/Users/noot/Documents/communique/src/lib/core/identity/cose-verify.ts`, lines 373-394.
-`checkTrustChain()` performs direct byte comparison of the issuer certificate DER
-against each trusted root. It does not walk intermediate CA chains. The TODO at
-line 389 notes: "Full chain validation -- extract issuer DN from cert, match
-against root subject DN, verify intermediate signatures."
+**Additional states:** Parse AAMVA VICAL (`vical.dts.aamva.org/currentVical`) via
+CBOR/COSE to bulk-import all participating states' roots. Individual state .gov
+downloads also available (AZ, GA, PR, HI, IA). See Sources section below.
+
+**DSC validity period:** **RESOLVED** (Cycle 41 Q2 fix). `extractValidityPeriod()` parses
+UTCTime/GeneralizedTime from X.509 DER. `verifyCoseSign1()` rejects expired or not-yet-valid
+DSCs. Non-fatal on parse failure for backward compatibility with minimal test certs. 6 tests.
+
+**P-384/P-521:** Current parser handles P-256 only. If a state uses P-384,
+`extractEcPublicKeyFromDER()` will fail. No states known to use non-P-256 IACA roots.
 
 **Bypass logic in mDL verification:**
 `/Users/noot/Documents/communique/src/lib/core/identity/mdl-verification.ts`,
-lines 166-183. When `getIACARootsForVerification()` returns an empty array, the
-code either hard-fails (production) or bypasses with `SKIP_ISSUER_VERIFICATION=true`
-(dev only). See mdl-verification.ts lines 211-224.
+lines 166-183. With roots now loaded, `getIACARootsForVerification()` returns
+non-empty → enters verification path. `SKIP_ISSUER_VERIFICATION=true` bypass
+remains for dev/test only.
 
 ### IACA Root Certificate Sources (Researched 2026-03-01)
 
@@ -366,58 +370,33 @@ passes these values directly into the witness without interpreting them.
 
 ## Gap 3: mDL Identity Commitment + Shadow Atlas Registration
 
-### Current State
+### Status: RESOLVED (2026-03-02, Cycle 42)
 
-The mDL verification path (Digital Credentials API -> CBOR decode -> COSE_Sign1 verify -> district derivation) completes successfully but does NOT generate an identity commitment or trigger Shadow Atlas three-tree registration. This means mDL-verified users cannot generate ZK proofs for congressional submissions.
+The full mDL → identity commitment → Shadow Atlas registration pipeline is wired end-to-end.
 
-**The gap in the pipeline:**
+### What Was Done
 
-```
-mDL verification -> District derivation -> Identity commitment X -> Shadow Atlas registration X -> ZK proof generation X
-```
+**Pre-existing (before Cycle 42):**
+- Selective disclosure already expanded: `birth_date`, `document_number` in ItemsRequest
+- `computeIdentityCommitmentInBoundary()` computes SHA-256² mod BN254 inside privacy boundary
+- `bindIdentityCommitment()` called in verify-mdl/verify endpoint (Sybil dedup + account merge)
+- `triggerShadowAtlasRegistration()` in IdentityVerificationFlow.svelte (Tree 1/2/3)
 
-**What's missing:**
+**Cycle 42 — Census tract resolution + client pipeline threading:**
+1. `resolveCellIdFromAddress()` added to `mdl-verification.ts` — calls Census Bureau
+   geocoding API from inside the privacy boundary to resolve city/state/zip to 11-digit
+   Census tract GEOID. Non-fatal: returns null on failure.
+2. `cellId` threaded through: `MdlVerificationResult` → verify endpoint response →
+   `GovernmentCredentialVerification` → `IdentityVerificationFlow` → `triggerShadowAtlasRegistration()`
+3. Registration status UI: spinner/error/success indicators in verification completion screen
+4. Stale unsupported-browser copy fixed (NFC Passport + Government ID Scan references removed)
+5. 9 new tests for Census Bureau geocoding edge cases
 
-1. **Selective disclosure expansion.** The current `ItemsRequest` in `verify-mdl/start/+server.ts` requests only 3 fields:
-   - `postal_code` (for district derivation)
-   - `city` (for district derivation)
-   - `state` (for district derivation)
+### Remaining Follow-ups
 
-   For identity commitment generation, we also need:
-   - `birth_date` (year only, for `birth_year` parameter)
-   - `document_number` (for Sybil resistance hash)
-
-   These must be added to the `ItemsRequest` with `intent_to_retain: false`.
-
-2. **Identity commitment computation on mDL path.** The existing `computeIdentityCommitment()` function in `identity-binding.ts` takes `(documentNumber, nationality, birthYear, documentType)`. The mDL path needs to:
-   - Extract `document_number` and `birth_date_year` from the mdoc response
-   - Pass these through `processCredentialResponse()` privacy boundary (which currently discards them)
-   - Compute `SHA-256(SHA-256(document_number + 'US' + birth_year)) mod BN254_MODULUS`
-   - Call `bindIdentityCommitment()` for cross-provider Sybil resistance
-
-3. **Shadow Atlas registration trigger.** After identity commitment is computed, the mDL path must call `registerInShadowAtlas()` from `shadow-atlas-handler.ts` with:
-   - `identityCommitment` (from step 2)
-   - `congressionalDistrict` (already derived)
-   - `cellId` (from Census geocoding -- requires address, which mDL provides)
-   - `verificationMethod: 'digital-credentials-api'`
-
-4. **Phase 2: Poseidon2 commitment.** The current SHA-256 squared approach (Phase 1) will be replaced with `Poseidon2_H4(user_secret, cell_id, registration_salt, authority_level)` computed client-side. This requires the Noir circuit's Poseidon2 implementation to be available as a standalone WASM module for browser use.
-
-### Privacy Consideration
-
-Adding `document_number` and `birth_date` to the selective disclosure request increases the data exposed by the wallet to the browser. However:
-- These fields never leave the browser (processed in `processCredentialResponse()` and immediately hashed)
-- The `intent_to_retain: false` flag instructs the wallet that data should not be stored
-- Only the resulting `identity_commitment` hash (a single field element) is sent to the server
-- The privacy boundary function must be updated to hash these fields before discarding them
-
-### Relevant Files
-
-- `/Users/noot/Documents/communique/src/routes/api/identity/verify-mdl/start/+server.ts` (ItemsRequest construction)
-- `/Users/noot/Documents/communique/src/lib/core/identity/mdl-verification.ts` (processCredentialResponse privacy boundary)
-- `/Users/noot/Documents/communique/src/lib/core/identity/identity-binding.ts` (computeIdentityCommitment, bindIdentityCommitment)
-- `/Users/noot/Documents/communique/src/lib/core/identity/shadow-atlas-handler.ts` (registerInShadowAtlas)
-- `/Users/noot/Documents/communique/src/lib/components/auth/IdentityVerificationFlow.svelte` (orchestration)
+- **Poseidon2 commitment (Phase 2):** SHA-256² will be replaced with Poseidon2_H4 client-side
+- **Census Bureau fallback:** If geocoding fails, registration deferred to browser geolocation
+- **Tract vs block:** Without street address, resolution is tract-level (11-digit). Sufficient for Tree 2.
 
 ---
 
@@ -627,8 +606,8 @@ Cross-references: voter-protocol `MEMORY.md`, communique `implementation-status.
 |---|------|-----------|--------|------------|
 | L-01 | Deploy contracts to Scroll mainnet | voter-protocol | **NOT STARTED** | Compiled + tested (473 Solidity tests, v4 Sepolia verified) |
 | L-02 | `registerVerifier()` + `sealGenesis()` on mainnet | voter-protocol | **NOT STARTED** | Depends on L-01 |
-| L-03 | IACA root certificate ingestion (Gap 1) | communique | **UNBLOCKED** — VICAL freely downloadable, needs integration | VICAL at `vical.dts.aamva.org/currentVical` (CBOR/COSE); states also publish directly on .gov domains (CA, AZ, GA, NM, PR). 1-2 days engineering. |
-| L-04 | mDL → identity commitment → Shadow Atlas registration (Gap 3) | communique | **NOT STARTED** | Selective disclosure expansion (`birth_date`, `document_number`) + `processCredentialResponse()` pipeline |
+| L-03 | IACA root certificate ingestion (Gap 1) | communique | **RESOLVED** (Cycle 41) | DSC→IACA chain verification + CA/NM roots loaded. 31 tests, real cert self-sig verified. Expansion via VICAL parser for remaining states. |
+| L-04 | mDL → identity commitment → Shadow Atlas registration (Gap 3) | communique | **RESOLVED** (Cycle 42) | Census tract resolution in privacy boundary, cellId threaded through client pipeline, registration status UI. 9 tests. |
 | L-05 | TEE infrastructure for witness decryption (Gap 5) | communique | **NOT STARTED** | AWS Nitro Enclave provisioning; `/api/tee/public-key` route; key management |
 | L-06 | Production secrets + Shadow Atlas server deployment | voter-protocol | **NOT STARTED** | Server binary ready; needs hosting + DNS + TLS |
 | L-07 | Update communique `file:` paths → npm registry refs | communique | **NOT STARTED** | @voter-protocol packages published (crypto@0.1.3, noir-prover@0.2.0) |
@@ -659,8 +638,8 @@ Cross-references: voter-protocol `MEMORY.md`, communique `implementation-status.
 ### Critical Path
 
 ```
-L-03 (IACA certs) ─[UNBLOCKED]─────────────────┐
-L-04 (mDL→commitment→registration) ────────────┤
+L-03 (IACA certs) ─[RESOLVED]──────────────────┐
+L-04 (mDL→commitment→registration) ─[RESOLVED]─┤
 L-05 (TEE infrastructure) ─────────────────────→├──→ Production Launch
 L-01 (mainnet deploy) → L-02 (genesis seal) ───┤
 L-06 (Shadow Atlas server) ────────────────────┤
@@ -668,6 +647,6 @@ L-07 (npm registry refs) ──────────────────�
 ```
 
 All P0 items are engineering effort — no external blockers remain.
-L-03 was previously marked externally blocked (AAMVA enrollment).
+L-03 resolved in Cycle 41 (2026-03-02): DSC chain verification + CA/NM roots.
 Research confirmed (2026-03-01) that the VICAL is freely downloadable
 at `https://vical.dts.aamva.org/currentVical` after a ToS click-through.

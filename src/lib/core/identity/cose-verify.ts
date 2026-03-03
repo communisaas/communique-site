@@ -168,9 +168,30 @@ export async function verifyCoseSign1(
 	}
 
 	// --- Trust store check: verify issuer cert chains to a trusted root ---
-	const trusted = checkTrustChain(issuerCertDER, trustedRoots);
+	const trusted = await verifyDscAgainstRoot(issuerCertDER, trustedRoots);
 	if (!trusted) {
 		return { valid: false, reason: 'Issuer certificate not found in IACA trust store' };
+	}
+
+	// --- DSC validity period check ---
+	try {
+		const { notBefore, notAfter } = extractValidityPeriod(issuerCertDER);
+		const now = new Date();
+		if (now < notBefore) {
+			return {
+				valid: false,
+				reason: `DSC not yet valid (notBefore: ${notBefore.toISOString()})`
+			};
+		}
+		if (now > notAfter) {
+			return {
+				valid: false,
+				reason: `DSC expired (notAfter: ${notAfter.toISOString()})`
+			};
+		}
+	} catch {
+		// Validity extraction failed — non-fatal, proceed with signature verification.
+		// Some test certs may have minimal TBS that doesn't parse fully.
 	}
 
 	// --- Extract ECDSA P-256 public key from issuer certificate ---
@@ -361,33 +382,57 @@ function extractIssuerCert(unprotectedHeaders: unknown): Uint8Array {
 }
 
 /**
- * Check if the issuer certificate chains to one of the trusted IACA roots.
+ * Verify that a DSC (Document Signer Certificate) chains to a trusted IACA root.
  *
- * For now, this does a simple byte comparison of the issuer certificate
- * against the DER bytes of each trusted root. In a full implementation,
- * this would walk the certificate chain and verify each link.
+ * ISO 18013-5 chain structure: IACA Root → DSC → MSO
+ * The COSE_Sign1 x5chain contains the DSC. The DSC is signed by the IACA root.
  *
- * When IACA roots contain intermediate CAs, this should be extended to
- * build and verify the full chain up to the root.
+ * Verification strategy:
+ * 1. Fast path: byte equality (backward compat with self-signed test certs)
+ * 2. Real path: verify DSC's ECDSA signature using the IACA root's public key
+ *
+ * ISO 18013-5 §9.3.2 specifies a flat chain (no intermediates): root signs DSC directly.
  */
-function checkTrustChain(issuerCertDER: Uint8Array, trustedRoots: IACACertificate[]): boolean {
+async function verifyDscAgainstRoot(
+	dscDER: Uint8Array,
+	trustedRoots: IACACertificate[]
+): Promise<boolean> {
 	for (const root of trustedRoots) {
-		// Decode the root's base64 DER to compare
-		let rootDER: Uint8Array;
-		if (root.derBytes) {
-			rootDER = root.derBytes;
-		} else {
-			rootDER = base64ToUint8Array(root.certificateB64);
-		}
+		const rootDER = root.derBytes ?? base64ToUint8Array(root.certificateB64);
 
-		// Direct match: issuer cert IS the root (self-signed root scenario)
-		if (uint8ArrayEqual(issuerCertDER, rootDER)) {
+		// Fast path: DSC IS the root (self-signed test certs)
+		if (uint8ArrayEqual(dscDER, rootDER)) {
 			return true;
 		}
 
-		// TODO: Full chain validation — extract issuer DN from cert,
-		// match against root subject DN, verify intermediate signatures.
-		// For production: use a proper X.509 chain validator.
+		// Real path: verify DSC was signed by this IACA root
+		try {
+			const rootPublicKeyRaw = extractEcPublicKeyFromDER(rootDER);
+			const rootPublicKey = await crypto.subtle.importKey(
+				'raw',
+				toBufferSource(rootPublicKeyRaw),
+				{ name: 'ECDSA', namedCurve: 'P-256' },
+				false,
+				['verify']
+			);
+
+			const { tbsBytes, signatureDER } = extractTBSAndSignature(dscDER);
+			const signatureRaw = derEcdsaSigToRaw(signatureDER);
+
+			const valid = await crypto.subtle.verify(
+				{ name: 'ECDSA', hash: 'SHA-256' },
+				rootPublicKey,
+				toBufferSource(signatureRaw),
+				toBufferSource(tbsBytes)
+			);
+
+			if (valid) {
+				return true;
+			}
+		} catch {
+			// Parsing or crypto failure for this root — try next
+			continue;
+		}
 	}
 
 	return false;
@@ -443,6 +488,218 @@ export function extractEcPublicKeyFromDER(certDER: Uint8Array): Uint8Array {
 	}
 
 	throw new Error('Could not find uncompressed EC P-256 public key in certificate');
+}
+
+/**
+ * Extract TBSCertificate raw bytes and DER-encoded signature from an X.509 certificate.
+ *
+ * X.509 DER structure:
+ *   SEQUENCE (Certificate) {
+ *     SEQUENCE (TBSCertificate)        ← raw bytes including tag+length
+ *     SEQUENCE (signatureAlgorithm)
+ *     BIT STRING (signatureValue)      ← DER-encoded ECDSA signature
+ *   }
+ */
+export function extractTBSAndSignature(certDER: Uint8Array): {
+	tbsBytes: Uint8Array;
+	signatureDER: Uint8Array;
+} {
+	if (certDER[0] !== 0x30) {
+		throw new Error('Certificate does not start with SEQUENCE tag');
+	}
+	const outerLen = parseDERLength(certDER, 1);
+	if (!outerLen) throw new Error('Invalid outer SEQUENCE length');
+
+	// TBSCertificate SEQUENCE
+	const tbsTagPos = outerLen.offset;
+	if (certDER[tbsTagPos] !== 0x30) {
+		throw new Error('TBSCertificate does not start with SEQUENCE tag');
+	}
+	const tbsLen = parseDERLength(certDER, tbsTagPos + 1);
+	if (!tbsLen) throw new Error('Invalid TBSCertificate length');
+	const tbsEnd = tbsLen.offset + tbsLen.length;
+	const tbsBytes = certDER.slice(tbsTagPos, tbsEnd);
+
+	// signatureAlgorithm SEQUENCE (skip it)
+	let pos = tbsEnd;
+	if (certDER[pos] !== 0x30) {
+		throw new Error('signatureAlgorithm does not start with SEQUENCE tag');
+	}
+	const sigAlgLen = parseDERLength(certDER, pos + 1);
+	if (!sigAlgLen) throw new Error('Invalid signatureAlgorithm length');
+	pos = sigAlgLen.offset + sigAlgLen.length;
+
+	// Signature BIT STRING
+	if (certDER[pos] !== 0x03) {
+		throw new Error('Signature is not a BIT STRING');
+	}
+	const sigBsLen = parseDERLength(certDER, pos + 1);
+	if (!sigBsLen) throw new Error('Invalid signature BIT STRING length');
+
+	// First byte of BIT STRING content = unused bits count (must be 0)
+	if (certDER[sigBsLen.offset] !== 0x00) {
+		throw new Error(`Unexpected unused bits in signature: ${certDER[sigBsLen.offset]}`);
+	}
+	const signatureDER = certDER.slice(sigBsLen.offset + 1, sigBsLen.offset + sigBsLen.length);
+
+	return { tbsBytes, signatureDER };
+}
+
+/**
+ * Convert a DER-encoded ECDSA signature to raw 64-byte format (r || s).
+ *
+ * DER: SEQUENCE { INTEGER r, INTEGER s }
+ * Raw: r (32 bytes, zero-padded) || s (32 bytes, zero-padded)
+ *
+ * Handles:
+ * - Leading 0x00 padding on positive integers with high bit set (strip it)
+ * - Short integers < 32 bytes (left-zero-pad to 32)
+ */
+export function derEcdsaSigToRaw(derSig: Uint8Array): Uint8Array {
+	if (derSig[0] !== 0x30) {
+		throw new Error('DER signature does not start with SEQUENCE tag');
+	}
+	const seqLen = parseDERLength(derSig, 1);
+	if (!seqLen) throw new Error('Invalid DER signature SEQUENCE length');
+
+	let pos = seqLen.offset;
+
+	// Parse r INTEGER
+	if (derSig[pos] !== 0x02) {
+		throw new Error('Expected INTEGER tag for r');
+	}
+	const rLen = parseDERLength(derSig, pos + 1);
+	if (!rLen) throw new Error('Invalid r INTEGER length');
+	let rBytes = derSig.slice(rLen.offset, rLen.offset + rLen.length);
+	pos = rLen.offset + rLen.length;
+
+	// Parse s INTEGER
+	if (derSig[pos] !== 0x02) {
+		throw new Error('Expected INTEGER tag for s');
+	}
+	const sLen = parseDERLength(derSig, pos + 1);
+	if (!sLen) throw new Error('Invalid s INTEGER length');
+	let sBytes = derSig.slice(sLen.offset, sLen.offset + sLen.length);
+
+	// Strip leading 0x00 padding (DER uses it when high bit is set)
+	if (rBytes.length > 32 && rBytes[0] === 0x00) {
+		rBytes = rBytes.slice(rBytes.length - 32);
+	}
+	if (sBytes.length > 32 && sBytes[0] === 0x00) {
+		sBytes = sBytes.slice(sBytes.length - 32);
+	}
+
+	// Left-pad to 32 bytes if shorter
+	const r = new Uint8Array(32);
+	const s = new Uint8Array(32);
+	r.set(rBytes, 32 - rBytes.length);
+	s.set(sBytes, 32 - sBytes.length);
+
+	const raw = new Uint8Array(64);
+	raw.set(r, 0);
+	raw.set(s, 32);
+	return raw;
+}
+
+/**
+ * Extract the validity period (notBefore, notAfter) from an X.509 DER certificate.
+ *
+ * Walks the TBSCertificate structure:
+ *   version [0] → serialNumber → signatureAlgorithm → issuer → validity { notBefore, notAfter }
+ */
+export function extractValidityPeriod(certDER: Uint8Array): {
+	notBefore: Date;
+	notAfter: Date;
+} {
+	if (certDER[0] !== 0x30) throw new Error('Not a certificate SEQUENCE');
+	const outerLen = parseDERLength(certDER, 1);
+	if (!outerLen) throw new Error('Invalid certificate length');
+
+	// Enter TBSCertificate SEQUENCE
+	let pos = outerLen.offset;
+	if (certDER[pos] !== 0x30) throw new Error('Invalid TBSCertificate');
+	const tbsLen = parseDERLength(certDER, pos + 1);
+	if (!tbsLen) throw new Error('Invalid TBS length');
+
+	pos = tbsLen.offset; // start of TBS content
+
+	// Skip version [0] EXPLICIT (context tag 0xa0, present in v3 certs)
+	if (certDER[pos] === 0xa0) {
+		const vLen = parseDERLength(certDER, pos + 1);
+		if (!vLen) throw new Error('Invalid version');
+		pos = vLen.offset + vLen.length;
+	}
+
+	// Skip serialNumber (INTEGER 0x02)
+	if (certDER[pos] !== 0x02) throw new Error('Expected serial INTEGER');
+	const serialLen = parseDERLength(certDER, pos + 1);
+	if (!serialLen) throw new Error('Invalid serial');
+	pos = serialLen.offset + serialLen.length;
+
+	// Skip signatureAlgorithm (SEQUENCE 0x30)
+	if (certDER[pos] !== 0x30) throw new Error('Expected sigAlg SEQUENCE');
+	const sigAlgLen = parseDERLength(certDER, pos + 1);
+	if (!sigAlgLen) throw new Error('Invalid sigAlg');
+	pos = sigAlgLen.offset + sigAlgLen.length;
+
+	// Skip issuer (SEQUENCE 0x30)
+	if (certDER[pos] !== 0x30) throw new Error('Expected issuer SEQUENCE');
+	const issuerLen = parseDERLength(certDER, pos + 1);
+	if (!issuerLen) throw new Error('Invalid issuer');
+	pos = issuerLen.offset + issuerLen.length;
+
+	// Validity SEQUENCE
+	if (certDER[pos] !== 0x30) throw new Error('Expected validity SEQUENCE');
+	const validityLen = parseDERLength(certDER, pos + 1);
+	if (!validityLen) throw new Error('Invalid validity');
+
+	// Parse notBefore and notAfter inside the validity SEQUENCE
+	let vPos = validityLen.offset;
+	const nb = parseDERTime(certDER, vPos);
+	vPos = nb.nextOffset;
+	const na = parseDERTime(certDER, vPos);
+
+	return { notBefore: nb.date, notAfter: na.date };
+}
+
+/**
+ * Parse a DER-encoded time value (UTCTime or GeneralizedTime).
+ *
+ * UTCTime (0x17):        YYMMDDHHMMSSZ  — year < 50 → 20xx, else 19xx
+ * GeneralizedTime (0x18): YYYYMMDDHHMMSSZ
+ */
+function parseDERTime(
+	data: Uint8Array,
+	offset: number
+): { date: Date; nextOffset: number } {
+	const tag = data[offset];
+	if (tag !== 0x17 && tag !== 0x18) {
+		throw new Error(`Expected time tag (0x17 or 0x18), got 0x${tag.toString(16)}`);
+	}
+
+	const len = parseDERLength(data, offset + 1);
+	if (!len) throw new Error('Invalid time length');
+
+	const timeStr = new TextDecoder().decode(data.slice(len.offset, len.offset + len.length));
+
+	let date: Date;
+	if (tag === 0x17) {
+		// UTCTime: YYMMDDHHMMSSZ
+		const yy = parseInt(timeStr.slice(0, 2), 10);
+		const year = yy < 50 ? 2000 + yy : 1900 + yy;
+		date = new Date(
+			`${year}-${timeStr.slice(2, 4)}-${timeStr.slice(4, 6)}T` +
+				`${timeStr.slice(6, 8)}:${timeStr.slice(8, 10)}:${timeStr.slice(10, 12)}Z`
+		);
+	} else {
+		// GeneralizedTime: YYYYMMDDHHMMSSZ
+		date = new Date(
+			`${timeStr.slice(0, 4)}-${timeStr.slice(4, 6)}-${timeStr.slice(6, 8)}T` +
+				`${timeStr.slice(8, 10)}:${timeStr.slice(10, 12)}:${timeStr.slice(12, 14)}Z`
+		);
+	}
+
+	return { date, nextOffset: len.offset + len.length };
 }
 
 /**

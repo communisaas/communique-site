@@ -143,6 +143,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			district: result.district,
 			state: result.state,
 			credentialHash: result.credentialHash,
+			// Census tract GEOID for Shadow Atlas Tree 2 registration
+			cellId: result.cellId ?? null,
 			// Signal to client whether Shadow Atlas registration can proceed
 			identityCommitmentBound: true,
 			userId: canonicalUserId

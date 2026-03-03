@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { ChevronLeft, Check } from '@lucide/svelte';
+	import { ChevronLeft, Check, Loader2, AlertTriangle } from '@lucide/svelte';
 
 	import VerificationValueProp from './address-steps/VerificationValueProp.svelte';
 	import GovernmentCredentialVerification from './GovernmentCredentialVerification.svelte';
@@ -41,6 +41,7 @@
 	let currentStep = $state<FlowStep>(untrack(() => skipValueProp ? 'verify-mdl' : 'value-prop'));
 	let verificationComplete = $state(false);
 	let registrationInProgress = $state(false);
+	let registrationComplete = $state(false);
 	let registrationError = $state<string | null>(null);
 	let verificationData = $state<{
 		verified: boolean;
@@ -98,8 +99,10 @@
 		// Trigger Shadow Atlas three-tree registration (non-blocking)
 		// This registers the user's leaf hash in Tree 1 and fetches Tree 2/3 proofs,
 		// enabling ZK proof generation for congressional submissions.
-		if (cellId) {
-			triggerShadowAtlasRegistration(data.cell_id ?? cellId);
+		// cellId sources: mDL Census geocoding (data.cell_id) > parent prop (cellId)
+		const resolvedCellId = data.cell_id ?? cellId;
+		if (resolvedCellId) {
+			triggerShadowAtlasRegistration(resolvedCellId);
 		} else {
 			console.warn('[Verification] No cellId available — Shadow Atlas registration deferred');
 		}
@@ -165,6 +168,7 @@
 			});
 
 			if (result.success) {
+				registrationComplete = true;
 				console.log('[Verification] Shadow Atlas registration complete:', {
 					leafIndex: result.sessionCredential?.leafIndex,
 					districts: result.sessionCredential?.districts?.length ?? 0,
@@ -305,6 +309,30 @@
 						</ul>
 					</div>
 				</div>
+
+				<!-- Shadow Atlas registration status (non-blocking) -->
+				{#if registrationInProgress}
+					<div class="mx-auto mb-6 max-w-md rounded-lg border border-blue-200 bg-blue-50 p-3">
+						<div class="flex items-center gap-2 text-sm text-blue-700">
+							<Loader2 class="h-4 w-4 animate-spin" />
+							<span>Setting up proof credentials...</span>
+						</div>
+					</div>
+				{:else if registrationError}
+					<div class="mx-auto mb-6 max-w-md rounded-lg border border-amber-200 bg-amber-50 p-3">
+						<div class="flex items-center gap-2 text-sm text-amber-700">
+							<AlertTriangle class="h-4 w-4" />
+							<span>Proof setup pending -- you can still submit messages</span>
+						</div>
+					</div>
+				{:else if registrationComplete}
+					<div class="mx-auto mb-6 max-w-md rounded-lg border border-green-200 bg-green-50 p-3">
+						<div class="flex items-center gap-2 text-sm text-green-700">
+							<Check class="h-4 w-4" />
+							<span>Proof credentials ready</span>
+						</div>
+					</div>
+				{/if}
 
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 					<button

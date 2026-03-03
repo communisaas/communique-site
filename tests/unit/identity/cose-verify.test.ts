@@ -17,6 +17,9 @@ import {
 	verifyCoseSign1,
 	validateMsoDigests,
 	extractEcPublicKeyFromDER,
+	extractTBSAndSignature,
+	extractValidityPeriod,
+	derEcdsaSigToRaw,
 	type MobileSecurityObject
 } from '$lib/core/identity/cose-verify';
 import type { IACACertificate } from '$lib/core/identity/iaca-roots';
@@ -216,12 +219,169 @@ function wrapDERSequence(content: Uint8Array): Uint8Array {
 	return result;
 }
 
+/** Cast Uint8Array to BufferSource — works around cross-realm type mismatch in vitest/jsdom */
+function toBuffer(data: Uint8Array): BufferSource {
+	return data as unknown as BufferSource;
+}
+
 function uint8ArrayToBase64(bytes: Uint8Array): string {
 	let binary = '';
 	for (let i = 0; i < bytes.length; i++) {
 		binary += String.fromCharCode(bytes[i]);
 	}
 	return btoa(binary);
+}
+
+/**
+ * Convert a raw 64-byte ECDSA signature (r || s) to DER format.
+ * Inverse of derEcdsaSigToRaw(). Used to embed real signatures in test certificates.
+ *
+ * DER: SEQUENCE { INTEGER r, INTEGER s }
+ * Adds leading 0x00 when high bit is set (DER positive integer requirement).
+ */
+function rawSigToDer(rawSig: Uint8Array): Uint8Array {
+	const r = rawSig.slice(0, 32);
+	const s = rawSig.slice(32, 64);
+
+	function integerToDer(bytes: Uint8Array): Uint8Array {
+		// Strip leading zeros (keep at least one byte)
+		let start = 0;
+		while (start < bytes.length - 1 && bytes[start] === 0) start++;
+		let trimmed = bytes.slice(start);
+
+		// Add leading 0x00 if high bit is set (DER positive integer)
+		if (trimmed[0] >= 0x80) {
+			const padded = new Uint8Array(trimmed.length + 1);
+			padded[0] = 0x00;
+			padded.set(trimmed, 1);
+			trimmed = padded;
+		}
+
+		// INTEGER tag + length + bytes
+		return concatBytes(new Uint8Array([0x02, trimmed.length]), trimmed);
+	}
+
+	const rDer = integerToDer(r);
+	const sDer = integerToDer(s);
+	const content = concatBytes(rDer, sDer);
+
+	// SEQUENCE tag + length + content
+	return concatBytes(new Uint8Array([0x30, content.length]), content);
+}
+
+/**
+ * Build an X.509 certificate with a REAL ECDSA signature from the signer's key.
+ * Unlike buildMinimalCert (dummy signature), this produces a cert that can be
+ * verified against the signer's public key — used for DSC chain verification tests.
+ *
+ * @param subjectPublicKey  The public key to embed in the certificate
+ * @param signerPrivateKey  The private key used to sign the TBSCertificate
+ */
+async function buildSignedCert(
+	subjectPublicKey: CryptoKey,
+	signerPrivateKey: CryptoKey
+): Promise<Uint8Array> {
+	const rawKey = new Uint8Array(await crypto.subtle.exportKey('raw', subjectPublicKey));
+
+	// OIDs
+	const ecOid = new Uint8Array([0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01]);
+	const curveOid = new Uint8Array([0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07]);
+
+	// SubjectPublicKeyInfo
+	const algId = wrapDERSequence(concatBytes(ecOid, curveOid));
+	const bitStringContent = concatBytes(new Uint8Array([0x00]), rawKey);
+	const bitString = new Uint8Array([0x03, ...encodeDERLength(bitStringContent.length), ...bitStringContent]);
+	const spki = wrapDERSequence(concatBytes(algId, bitString));
+
+	// TBSCertificate components
+	const version = new Uint8Array([0xa0, 0x03, 0x02, 0x01, 0x02]);
+	const serial = new Uint8Array([0x02, 0x01, 0x02]); // serial 2 (different from root)
+	const sigAlgOid = new Uint8Array([0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02]);
+	const sigAlg = wrapDERSequence(sigAlgOid);
+	const cnOid = new Uint8Array([0x06, 0x03, 0x55, 0x04, 0x03]);
+	const cnValue = new Uint8Array([0x0c, 0x07, 0x54, 0x65, 0x73, 0x74, 0x44, 0x53, 0x43]); // "TestDSC"
+	const rdnSeq = wrapDERSequence(concatBytes(cnOid, cnValue));
+	const rdnSet = new Uint8Array([0x31, ...encodeDERLength(rdnSeq.length), ...rdnSeq]);
+	const subject = wrapDERSequence(rdnSet);
+	const notBefore = new Uint8Array([0x17, 0x0d, ...new TextEncoder().encode('250101000000Z')]);
+	const notAfter = new Uint8Array([0x17, 0x0d, ...new TextEncoder().encode('351231235959Z')]);
+	const validity = wrapDERSequence(concatBytes(notBefore, notAfter));
+	const issuer = subject; // same for simplicity
+
+	const tbsCert = wrapDERSequence(
+		concatBytes(version, serial, sigAlg, issuer, validity, subject, spki)
+	);
+
+	// Sign TBSCertificate with signer's private key
+	const rawSignature = new Uint8Array(
+		await crypto.subtle.sign(
+			{ name: 'ECDSA', hash: 'SHA-256' },
+			signerPrivateKey,
+			toBuffer(tbsCert)
+		)
+	);
+
+	// Convert raw signature to DER and wrap in BIT STRING
+	const derSignature = rawSigToDer(rawSignature);
+	const sigBitStringContent = concatBytes(new Uint8Array([0x00]), derSignature);
+	const sigBitString = new Uint8Array([
+		0x03,
+		...encodeDERLength(sigBitStringContent.length),
+		...sigBitStringContent
+	]);
+
+	// Outer Certificate SEQUENCE
+	return wrapDERSequence(concatBytes(tbsCert, sigAlg, sigBitString));
+}
+
+/**
+ * Encode a UTCTime string for DER. Format: YYMMDDHHMMSSZ
+ */
+function encodeUTCTime(dateStr: string): Uint8Array {
+	const bytes = new TextEncoder().encode(dateStr);
+	return new Uint8Array([0x17, bytes.length, ...bytes]);
+}
+
+/**
+ * Build a minimal cert with custom validity dates (for testing expiry enforcement).
+ * Like buildMinimalCert but with configurable notBefore/notAfter.
+ */
+async function buildMinimalCertWithDates(
+	publicKey: CryptoKey,
+	notBeforeUTC: string,
+	notAfterUTC: string
+): Promise<Uint8Array> {
+	const rawKey = new Uint8Array(await crypto.subtle.exportKey('raw', publicKey));
+
+	const ecOid = new Uint8Array([0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01]);
+	const curveOid = new Uint8Array([0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07]);
+	const algId = wrapDERSequence(concatBytes(ecOid, curveOid));
+
+	const bitStringContent = concatBytes(new Uint8Array([0x00]), rawKey);
+	const bitString = new Uint8Array([0x03, ...encodeDERLength(bitStringContent.length), ...bitStringContent]);
+	const spki = wrapDERSequence(concatBytes(algId, bitString));
+
+	const version = new Uint8Array([0xa0, 0x03, 0x02, 0x01, 0x02]);
+	const serial = new Uint8Array([0x02, 0x01, 0x01]);
+	const sigAlgOid = new Uint8Array([0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02]);
+	const sigAlg = wrapDERSequence(sigAlgOid);
+	const cnOid = new Uint8Array([0x06, 0x03, 0x55, 0x04, 0x03]);
+	const cnValue = new Uint8Array([0x0c, 0x04, 0x54, 0x65, 0x73, 0x74]);
+	const rdnSeq = wrapDERSequence(concatBytes(cnOid, cnValue));
+	const rdnSet = new Uint8Array([0x31, ...encodeDERLength(rdnSeq.length), ...rdnSeq]);
+	const issuer = wrapDERSequence(rdnSet);
+
+	const notBefore = encodeUTCTime(notBeforeUTC);
+	const notAfter = encodeUTCTime(notAfterUTC);
+	const validity = wrapDERSequence(concatBytes(notBefore, notAfter));
+
+	const subject = issuer;
+	const tbsCert = wrapDERSequence(
+		concatBytes(version, serial, sigAlg, issuer, validity, subject, spki)
+	);
+
+	const dummySig = new Uint8Array([0x03, 0x03, 0x00, 0x30, 0x00]);
+	return wrapDERSequence(concatBytes(tbsCert, sigAlg, dummySig));
 }
 
 // ---------------------------------------------------------------------------
@@ -611,6 +771,495 @@ describe('COSE_Sign1 Verification', () => {
 				expect(nsDigests?.get(0)).toEqual(new Uint8Array([0xde, 0xad]));
 				expect(nsDigests?.get(1)).toEqual(new Uint8Array([0xbe, 0xef]));
 			}
+		});
+	});
+
+	describe('DSC chain verification', () => {
+		it('should verify a DSC signed by a trusted IACA root', async () => {
+			// Generate IACA root key pair
+			const rootKeyPair = await generateKeyPair();
+			const rootCertDER = await buildMinimalCert(rootKeyPair.publicKey);
+
+			// Generate DSC key pair and build DSC signed by root
+			const dscKeyPair = await generateKeyPair();
+			const dscCertDER = await buildSignedCert(dscKeyPair.publicKey, rootKeyPair.privateKey);
+
+			// Build COSE_Sign1 with DSC in x5chain, signed by DSC's private key
+			const msoPayload = buildTestMso();
+			const coseSign1 = await buildCoseSign1(msoPayload, dscKeyPair.privateKey, dscCertDER);
+
+			// Trust store has the ROOT (not the DSC)
+			const trustedRoot: IACACertificate = {
+				state: 'CA',
+				issuer: 'Test IACA Root',
+				certificateB64: uint8ArrayToBase64(rootCertDER),
+				derBytes: rootCertDER,
+				expiresAt: '2035-12-31T23:59:59Z'
+			};
+
+			const result = await verifyCoseSign1(coseSign1, [trustedRoot]);
+
+			expect(result.valid).toBe(true);
+			if (result.valid) {
+				expect(result.mso.version).toBe('1.0');
+				expect(result.mso.issuerCertificate).toEqual(dscCertDER);
+			}
+		});
+
+		it('should reject a DSC signed by an untrusted CA', async () => {
+			// Root A (trusted)
+			const trustedRootKeyPair = await generateKeyPair();
+			const trustedRootCertDER = await buildMinimalCert(trustedRootKeyPair.publicKey);
+
+			// Root B (untrusted — the actual signer)
+			const untrustedRootKeyPair = await generateKeyPair();
+
+			// DSC signed by Root B (untrusted)
+			const dscKeyPair = await generateKeyPair();
+			const dscCertDER = await buildSignedCert(dscKeyPair.publicKey, untrustedRootKeyPair.privateKey);
+
+			const msoPayload = buildTestMso();
+			const coseSign1 = await buildCoseSign1(msoPayload, dscKeyPair.privateKey, dscCertDER);
+
+			// Trust store only has Root A
+			const trustedRoot: IACACertificate = {
+				state: 'CA',
+				issuer: 'Trusted Root A',
+				certificateB64: uint8ArrayToBase64(trustedRootCertDER),
+				derBytes: trustedRootCertDER,
+				expiresAt: '2035-12-31T23:59:59Z'
+			};
+
+			const result = await verifyCoseSign1(coseSign1, [trustedRoot]);
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toContain('trust store');
+			}
+		});
+
+		it('should reject a tampered DSC', async () => {
+			const rootKeyPair = await generateKeyPair();
+			const rootCertDER = await buildMinimalCert(rootKeyPair.publicKey);
+
+			const dscKeyPair = await generateKeyPair();
+			const dscCertDER = await buildSignedCert(dscKeyPair.publicKey, rootKeyPair.privateKey);
+
+			// Tamper: flip a byte in the TBSCertificate portion
+			const tamperedDsc = new Uint8Array(dscCertDER);
+			tamperedDsc[20] ^= 0xff;
+
+			const msoPayload = buildTestMso();
+			const coseSign1 = await buildCoseSign1(msoPayload, dscKeyPair.privateKey, tamperedDsc);
+
+			const trustedRoot: IACACertificate = {
+				state: 'CA',
+				issuer: 'Test IACA Root',
+				certificateB64: uint8ArrayToBase64(rootCertDER),
+				derBytes: rootCertDER,
+				expiresAt: '2035-12-31T23:59:59Z'
+			};
+
+			const result = await verifyCoseSign1(coseSign1, [trustedRoot]);
+
+			expect(result.valid).toBe(false);
+		});
+
+		it('should still work with self-signed certs (backward compat fast path)', async () => {
+			// This is the existing pattern: cert in trust store IS the signing cert
+			const keyPair = await generateKeyPair();
+			const certDER = await buildMinimalCert(keyPair.publicKey);
+			const msoPayload = buildTestMso();
+			const coseSign1 = await buildCoseSign1(msoPayload, keyPair.privateKey, certDER);
+
+			const trustedRoot: IACACertificate = {
+				state: 'XX',
+				issuer: 'Self-signed Test',
+				certificateB64: uint8ArrayToBase64(certDER),
+				derBytes: certDER,
+				expiresAt: '2035-12-31T23:59:59Z'
+			};
+
+			const result = await verifyCoseSign1(coseSign1, [trustedRoot]);
+			expect(result.valid).toBe(true);
+		});
+
+		it('should find the right root among multiple trusted roots', async () => {
+			// Three roots in trust store, only root B signed the DSC
+			const rootAKeyPair = await generateKeyPair();
+			const rootACert = await buildMinimalCert(rootAKeyPair.publicKey);
+
+			const rootBKeyPair = await generateKeyPair();
+			const rootBCert = await buildMinimalCert(rootBKeyPair.publicKey);
+
+			const rootCKeyPair = await generateKeyPair();
+			const rootCCert = await buildMinimalCert(rootCKeyPair.publicKey);
+
+			// DSC signed by root B
+			const dscKeyPair = await generateKeyPair();
+			const dscCertDER = await buildSignedCert(dscKeyPair.publicKey, rootBKeyPair.privateKey);
+
+			const msoPayload = buildTestMso();
+			const coseSign1 = await buildCoseSign1(msoPayload, dscKeyPair.privateKey, dscCertDER);
+
+			const trustedRoots: IACACertificate[] = [
+				{ state: 'CA', issuer: 'Root A', certificateB64: uint8ArrayToBase64(rootACert), derBytes: rootACert, expiresAt: '2035-12-31T23:59:59Z' },
+				{ state: 'NM', issuer: 'Root B', certificateB64: uint8ArrayToBase64(rootBCert), derBytes: rootBCert, expiresAt: '2035-12-31T23:59:59Z' },
+				{ state: 'AZ', issuer: 'Root C', certificateB64: uint8ArrayToBase64(rootCCert), derBytes: rootCCert, expiresAt: '2035-12-31T23:59:59Z' }
+			];
+
+			const result = await verifyCoseSign1(coseSign1, trustedRoots);
+			expect(result.valid).toBe(true);
+		});
+	});
+
+	describe('extractTBSAndSignature', () => {
+		it('should extract TBS and signature from a signed cert', async () => {
+			const rootKeyPair = await generateKeyPair();
+			const dscKeyPair = await generateKeyPair();
+			const dscCertDER = await buildSignedCert(dscKeyPair.publicKey, rootKeyPair.privateKey);
+
+			const { tbsBytes, signatureDER } = extractTBSAndSignature(dscCertDER);
+
+			// TBS should start with SEQUENCE tag
+			expect(tbsBytes[0]).toBe(0x30);
+			// Signature should be a DER-encoded ECDSA signature (SEQUENCE)
+			expect(signatureDER[0]).toBe(0x30);
+			// Signature should contain two INTEGERs (r and s)
+			expect(signatureDER[2]).toBe(0x02); // first INTEGER tag
+		});
+
+		it('should extract TBS from a self-signed minimal cert', async () => {
+			const keyPair = await generateKeyPair();
+			const certDER = await buildMinimalCert(keyPair.publicKey);
+
+			// buildMinimalCert has a dummy signature (empty SEQUENCE 0x30 0x00)
+			const { tbsBytes, signatureDER } = extractTBSAndSignature(certDER);
+
+			expect(tbsBytes[0]).toBe(0x30);
+			// Dummy signature is just 0x30 0x00 (empty SEQUENCE)
+			expect(signatureDER).toEqual(new Uint8Array([0x30, 0x00]));
+		});
+
+		it('should throw on non-SEQUENCE input', () => {
+			expect(() => extractTBSAndSignature(new Uint8Array([0x02, 0x01, 0x00]))).toThrow(
+				'Certificate does not start with SEQUENCE tag'
+			);
+		});
+	});
+
+	describe('derEcdsaSigToRaw', () => {
+		it('should round-trip through rawSigToDer and derEcdsaSigToRaw', () => {
+			// Create a known 64-byte raw signature
+			const rawSig = new Uint8Array(64);
+			for (let i = 0; i < 64; i++) rawSig[i] = i + 1;
+
+			const derSig = rawSigToDer(rawSig);
+			const recovered = derEcdsaSigToRaw(derSig);
+
+			expect(recovered).toEqual(rawSig);
+		});
+
+		it('should handle signatures with high-bit r value', () => {
+			const rawSig = new Uint8Array(64);
+			rawSig[0] = 0xff; // high bit set → DER will add leading 0x00
+			rawSig[1] = 0xab;
+			for (let i = 2; i < 32; i++) rawSig[i] = i;
+			for (let i = 32; i < 64; i++) rawSig[i] = i;
+
+			const derSig = rawSigToDer(rawSig);
+			const recovered = derEcdsaSigToRaw(derSig);
+
+			expect(recovered).toEqual(rawSig);
+		});
+
+		it('should handle signatures with leading zeros', () => {
+			const rawSig = new Uint8Array(64);
+			// r starts with zeros
+			rawSig[0] = 0x00;
+			rawSig[1] = 0x00;
+			rawSig[2] = 0x42;
+			for (let i = 3; i < 32; i++) rawSig[i] = i;
+			for (let i = 32; i < 64; i++) rawSig[i] = i;
+
+			const derSig = rawSigToDer(rawSig);
+			const recovered = derEcdsaSigToRaw(derSig);
+
+			expect(recovered).toEqual(rawSig);
+		});
+
+		it('should throw on non-SEQUENCE input', () => {
+			expect(() => derEcdsaSigToRaw(new Uint8Array([0x02, 0x01, 0x00]))).toThrow(
+				'DER signature does not start with SEQUENCE tag'
+			);
+		});
+	});
+
+	describe('IACA root certificate parsing', () => {
+		it('should extract public key from real CA IACA root certificate', () => {
+			// Base64 DER of the real California DMV IACA Root cert
+			const caRootB64 =
+				'MIICPzCCAeWgAwIBAgIUXd0okOOM5cylFwc2WNK7D2O+ArAwCgYIKoZIzj0EAwIw' +
+				'UTELMAkGA1UEBhMCVVMxDjAMBgNVBAgMBVVTLUNBMQ8wDQYDVQQKDAZDQS1ETVYx' +
+				'ITAfBgNVBAMMGENhbGlmb3JuaWEgRE1WIElBQ0EgUm9vdDAeFw0yMzAzMDExNzE3' +
+				'MzlaFw0zMzAxMDcxNzE3MzlaMFExCzAJBgNVBAYTAlVTMQ4wDAYDVQQIDAVVUy1D' +
+				'QTEPMA0GA1UECgwGQ0EtRE1WMSEwHwYDVQQDDBhDYWxpZm9ybmlhIERNViBJQUNB' +
+				'IFJvb3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARgzKB5QsRXYGxmIapA3ilL' +
+				'oXCDxgTMI2JArA72VQ9gL2DIKkBAclKYtix7vQwUbhbH76mnmbOFSxYlCJtilfl1' +
+				'o4GaMIGXMB0GA1UdDgQWBBS7fXVnknpvz59ye7gK9zcvnAxQNjASBgNVHRMBAf8E' +
+				'CDAGAQH/AgEAMA4GA1UdDwEB/wQEAwIBBjAfBgNVHRIEGDAWgRRpYWNhLXJvb3RA' +
+				'ZG12LmNhLmdvdjAxBgNVHR8EKjAoMCagJKAihiBodHRwczovL2NybC5kbXYuY2Eu' +
+				'Z292L2lhY2Evcm9vdDAKBggqhkjOPQQDAgNIADBFAiAJriK4wEUzgDCK++tIIW+g' +
+				'XASUIIcG/XhBNxuk2uHd7QIhAKWC8LFaM8qFsvlujtZZf647zD8BBc6kicj1Imw/' +
+				'wujS';
+
+			const derBytes = Uint8Array.from(atob(caRootB64), (c) => c.charCodeAt(0));
+			const pubKey = extractEcPublicKeyFromDER(derBytes);
+
+			expect(pubKey.length).toBe(65);
+			expect(pubKey[0]).toBe(0x04); // uncompressed point
+			// Known CA DMV public key x-coordinate starts with 0x60 0xcc 0xa0
+			expect(pubKey[1]).toBe(0x60);
+			expect(pubKey[2]).toBe(0xcc);
+			expect(pubKey[3]).toBe(0xa0);
+		});
+
+		it('should extract public key from real NM IACA root certificate', () => {
+			const nmRootB64 =
+				'MIIDgjCCAyigAwIBAgIUAIJ4VcLJGUNElxQUSUy6mDxpJrYwCgYIKoZIzj0EAwIw' +
+				'gcExDjAMBgNVBAgTBVVTLU5NMQswCQYDVQQGEwJVUzERMA8GA1UEBxMIU2FudGEg' +
+				'RmUxMzAxBgNVBAoTKk5ldyBNZXhpY28gVGF4YXRpb24gYW5kIFJldmVudWUgRGVw' +
+				'YXJ0bWVudDEqMCgGA1UECxMhTmV3IE1leGljbyBNb3RvciBWZWhpY2xlIERpdmlz' +
+				'aW9uMS4wLAYDVQQDEyVOZXcgTWV4aWNvIFJvb3QgQ2VydGlmaWNhdGUgQXV0aG9y' +
+				'aXR5MB4XDTI1MTAwMTA2MDAwMFoXDTMwMTAwMTA2MDAwMFowgcExDjAMBgNVBAgT' +
+				'BVVTLU5NMQswCQYDVQQGEwJVUzERMA8GA1UEBxMIU2FudGEgRmUxMzAxBgNVBAoT' +
+				'Kk5ldyBNZXhpY28gVGF4YXRpb24gYW5kIFJldmVudWUgRGVwYXJ0bWVudDEqMCgG' +
+				'A1UECxMhTmV3IE1leGljbyBNb3RvciBWZWhpY2xlIERpdmlzaW9uMS4wLAYDVQQD' +
+				'EyVOZXcgTWV4aWNvIFJvb3QgQ2VydGlmaWNhdGUgQXV0aG9yaXR5MFkwEwYHKoZI' +
+				'zj0CAQYIKoZIzj0DAQcDQgAEmPrlwEZA1mW8d+ekzFViC/4bxmmWa1IQcbmpGxNw' +
+				'Cv1h2A2z4BX2N7CSO1sh5Kgeh/JTfT2e7t/VJUC+TE6psqOB+zCB+DAOBgNVHQ8B' +
+				'Af8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUwDtVKIe7jBPw' +
+				'2n78JqJgSuf1wnowKQYDVR0SBCIwIIYeaHR0cHM6Ly93d3cubXZkLm5ld21leGlj' +
+				'by5nb3YvMHYGA1UdHwRvMG0wa6BpoGeGZWh0dHBzOi8vc2VydmljZXMubXZkLm5l' +
+				'd21leGljby5nb3Yvc2VydmljZXMvZXh0ZXJuYWwvY3JsL2dldExpc3QvZGFlMWE3' +
+				'YWQxMmZmNGI0YWIwMDg4MDI0NDg3NmQ5MGYuY3JsMBAGCSsGAQQBg8UhAQQDTlNQ' +
+				'MAoGCCqGSM49BAMCA0gAMEUCIQDKU91VZtiRtzly+WaK1ah2fYOTBxuIfIqKzZQk' +
+				'jInviwIgdV2QIumonPVhepHrdrccIxgbu/pJi/P83PlUAoOW5kY=';
+
+			const derBytes = Uint8Array.from(atob(nmRootB64), (c) => c.charCodeAt(0));
+			const pubKey = extractEcPublicKeyFromDER(derBytes);
+
+			expect(pubKey.length).toBe(65);
+			expect(pubKey[0]).toBe(0x04);
+			// Known NM public key x-coordinate starts with 0x98 0xfa 0xe5
+			expect(pubKey[1]).toBe(0x98);
+			expect(pubKey[2]).toBe(0xfa);
+			expect(pubKey[3]).toBe(0xe5);
+		});
+
+		it('should extract TBS and signature from real CA cert', () => {
+			const caRootB64 =
+				'MIICPzCCAeWgAwIBAgIUXd0okOOM5cylFwc2WNK7D2O+ArAwCgYIKoZIzj0EAwIw' +
+				'UTELMAkGA1UEBhMCVVMxDjAMBgNVBAgMBVVTLUNBMQ8wDQYDVQQKDAZDQS1ETVYx' +
+				'ITAfBgNVBAMMGENhbGlmb3JuaWEgRE1WIElBQ0EgUm9vdDAeFw0yMzAzMDExNzE3' +
+				'MzlaFw0zMzAxMDcxNzE3MzlaMFExCzAJBgNVBAYTAlVTMQ4wDAYDVQQIDAVVUy1D' +
+				'QTEPMA0GA1UECgwGQ0EtRE1WMSEwHwYDVQQDDBhDYWxpZm9ybmlhIERNViBJQUNB' +
+				'IFJvb3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARgzKB5QsRXYGxmIapA3ilL' +
+				'oXCDxgTMI2JArA72VQ9gL2DIKkBAclKYtix7vQwUbhbH76mnmbOFSxYlCJtilfl1' +
+				'o4GaMIGXMB0GA1UdDgQWBBS7fXVnknpvz59ye7gK9zcvnAxQNjASBgNVHRMBAf8E' +
+				'CDAGAQH/AgEAMA4GA1UdDwEB/wQEAwIBBjAfBgNVHRIEGDAWgRRpYWNhLXJvb3RA' +
+				'ZG12LmNhLmdvdjAxBgNVHR8EKjAoMCagJKAihiBodHRwczovL2NybC5kbXYuY2Eu' +
+				'Z292L2lhY2Evcm9vdDAKBggqhkjOPQQDAgNIADBFAiAJriK4wEUzgDCK++tIIW+g' +
+				'XASUIIcG/XhBNxuk2uHd7QIhAKWC8LFaM8qFsvlujtZZf647zD8BBc6kicj1Imw/' +
+				'wujS';
+
+			const derBytes = Uint8Array.from(atob(caRootB64), (c) => c.charCodeAt(0));
+			const { tbsBytes, signatureDER } = extractTBSAndSignature(derBytes);
+
+			// TBS should be a SEQUENCE
+			expect(tbsBytes[0]).toBe(0x30);
+			// Signature should be a DER ECDSA signature
+			expect(signatureDER[0]).toBe(0x30);
+
+			// Verify the self-signed signature: CA root signed its own TBS
+			// Extract public key and verify
+			const pubKey = extractEcPublicKeyFromDER(derBytes);
+			expect(pubKey.length).toBe(65);
+
+			// Convert DER signature to raw for Web Crypto verification
+			const rawSig = derEcdsaSigToRaw(signatureDER);
+			expect(rawSig.length).toBe(64);
+		});
+
+		it('should verify CA IACA root self-signature via Web Crypto', async () => {
+			const caRootB64 =
+				'MIICPzCCAeWgAwIBAgIUXd0okOOM5cylFwc2WNK7D2O+ArAwCgYIKoZIzj0EAwIw' +
+				'UTELMAkGA1UEBhMCVVMxDjAMBgNVBAgMBVVTLUNBMQ8wDQYDVQQKDAZDQS1ETVYx' +
+				'ITAfBgNVBAMMGENhbGlmb3JuaWEgRE1WIElBQ0EgUm9vdDAeFw0yMzAzMDExNzE3' +
+				'MzlaFw0zMzAxMDcxNzE3MzlaMFExCzAJBgNVBAYTAlVTMQ4wDAYDVQQIDAVVUy1D' +
+				'QTEPMA0GA1UECgwGQ0EtRE1WMSEwHwYDVQQDDBhDYWxpZm9ybmlhIERNViBJQUNB' +
+				'IFJvb3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARgzKB5QsRXYGxmIapA3ilL' +
+				'oXCDxgTMI2JArA72VQ9gL2DIKkBAclKYtix7vQwUbhbH76mnmbOFSxYlCJtilfl1' +
+				'o4GaMIGXMB0GA1UdDgQWBBS7fXVnknpvz59ye7gK9zcvnAxQNjASBgNVHRMBAf8E' +
+				'CDAGAQH/AgEAMA4GA1UdDwEB/wQEAwIBBjAfBgNVHRIEGDAWgRRpYWNhLXJvb3RA' +
+				'ZG12LmNhLmdvdjAxBgNVHR8EKjAoMCagJKAihiBodHRwczovL2NybC5kbXYuY2Eu' +
+				'Z292L2lhY2Evcm9vdDAKBggqhkjOPQQDAgNIADBFAiAJriK4wEUzgDCK++tIIW+g' +
+				'XASUIIcG/XhBNxuk2uHd7QIhAKWC8LFaM8qFsvlujtZZf647zD8BBc6kicj1Imw/' +
+				'wujS';
+
+			const derBytes = Uint8Array.from(atob(caRootB64), (c) => c.charCodeAt(0));
+			const { tbsBytes, signatureDER } = extractTBSAndSignature(derBytes);
+			const rawSig = derEcdsaSigToRaw(signatureDER);
+
+			// Import the CA root's own public key
+			const pubKeyRaw = extractEcPublicKeyFromDER(derBytes);
+			const pubKey = await crypto.subtle.importKey(
+				'raw',
+				toBuffer(pubKeyRaw),
+				{ name: 'ECDSA', namedCurve: 'P-256' },
+				false,
+				['verify']
+			);
+
+			// Self-signed: the root signed its own TBS
+			const valid = await crypto.subtle.verify(
+				{ name: 'ECDSA', hash: 'SHA-256' },
+				pubKey,
+				toBuffer(rawSig),
+				toBuffer(tbsBytes)
+			);
+
+			expect(valid).toBe(true);
+		});
+	});
+
+	describe('extractValidityPeriod', () => {
+		it('should extract validity from a synthetic cert', async () => {
+			const keyPair = await generateKeyPair();
+			// notBefore: 2025-01-01, notAfter: 2035-12-31
+			const certDER = await buildMinimalCert(keyPair.publicKey);
+			const { notBefore, notAfter } = extractValidityPeriod(certDER);
+
+			expect(notBefore.getUTCFullYear()).toBe(2025);
+			expect(notBefore.getUTCMonth()).toBe(0); // January
+			expect(notAfter.getUTCFullYear()).toBe(2035);
+			expect(notAfter.getUTCMonth()).toBe(11); // December
+		});
+
+		it('should extract validity from real CA IACA root cert', () => {
+			const caRootB64 =
+				'MIICPzCCAeWgAwIBAgIUXd0okOOM5cylFwc2WNK7D2O+ArAwCgYIKoZIzj0EAwIw' +
+				'UTELMAkGA1UEBhMCVVMxDjAMBgNVBAgMBVVTLUNBMQ8wDQYDVQQKDAZDQS1ETVYx' +
+				'ITAfBgNVBAMMGENhbGlmb3JuaWEgRE1WIElBQ0EgUm9vdDAeFw0yMzAzMDExNzE3' +
+				'MzlaFw0zMzAxMDcxNzE3MzlaMFExCzAJBgNVBAYTAlVTMQ4wDAYDVQQIDAVVUy1D' +
+				'QTEPMA0GA1UECgwGQ0EtRE1WMSEwHwYDVQQDDBhDYWxpZm9ybmlhIERNViBJQUNB' +
+				'IFJvb3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARgzKB5QsRXYGxmIapA3ilL' +
+				'oXCDxgTMI2JArA72VQ9gL2DIKkBAclKYtix7vQwUbhbH76mnmbOFSxYlCJtilfl1' +
+				'o4GaMIGXMB0GA1UdDgQWBBS7fXVnknpvz59ye7gK9zcvnAxQNjASBgNVHRMBAf8E' +
+				'CDAGAQH/AgEAMA4GA1UdDwEB/wQEAwIBBjAfBgNVHRIEGDAWgRRpYWNhLXJvb3RA' +
+				'ZG12LmNhLmdvdjAxBgNVHR8EKjAoMCagJKAihiBodHRwczovL2NybC5kbXYuY2Eu' +
+				'Z292L2lhY2Evcm9vdDAKBggqhkjOPQQDAgNIADBFAiAJriK4wEUzgDCK++tIIW+g' +
+				'XASUIIcG/XhBNxuk2uHd7QIhAKWC8LFaM8qFsvlujtZZf647zD8BBc6kicj1Imw/' +
+				'wujS';
+
+			const derBytes = Uint8Array.from(atob(caRootB64), (c) => c.charCodeAt(0));
+			const { notBefore, notAfter } = extractValidityPeriod(derBytes);
+
+			// CA DMV: 2023-03-01 to 2033-01-07
+			expect(notBefore.getUTCFullYear()).toBe(2023);
+			expect(notBefore.getUTCMonth()).toBe(2); // March
+			expect(notBefore.getUTCDate()).toBe(1);
+			expect(notAfter.getUTCFullYear()).toBe(2033);
+			expect(notAfter.getUTCMonth()).toBe(0); // January
+			expect(notAfter.getUTCDate()).toBe(7);
+		});
+
+		it('should extract validity from cert with custom dates', async () => {
+			const keyPair = await generateKeyPair();
+			const certDER = await buildMinimalCertWithDates(
+				keyPair.publicKey,
+				'200601120000Z', // 2020-06-01
+				'220101000000Z'  // 2022-01-01
+			);
+			const { notBefore, notAfter } = extractValidityPeriod(certDER);
+
+			expect(notBefore.getUTCFullYear()).toBe(2020);
+			expect(notAfter.getUTCFullYear()).toBe(2022);
+		});
+	});
+
+	describe('DSC validity enforcement', () => {
+		it('should reject a COSE_Sign1 with an expired DSC', async () => {
+			const keyPair = await generateKeyPair();
+			// Cert expired in 2022
+			const expiredCert = await buildMinimalCertWithDates(
+				keyPair.publicKey,
+				'200101000000Z', // 2020-01-01
+				'220101000000Z'  // 2022-01-01 (expired)
+			);
+			const msoPayload = buildTestMso();
+			const coseSign1 = await buildCoseSign1(msoPayload, keyPair.privateKey, expiredCert);
+
+			const trustedRoot: IACACertificate = {
+				state: 'XX',
+				issuer: 'Test Root',
+				certificateB64: uint8ArrayToBase64(expiredCert),
+				derBytes: expiredCert,
+				expiresAt: '2035-12-31T23:59:59Z'
+			};
+
+			const result = await verifyCoseSign1(coseSign1, [trustedRoot]);
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toContain('expired');
+			}
+		});
+
+		it('should reject a COSE_Sign1 with a not-yet-valid DSC', async () => {
+			const keyPair = await generateKeyPair();
+			// Cert not valid until 2040
+			const futureCert = await buildMinimalCertWithDates(
+				keyPair.publicKey,
+				'400101000000Z', // 2040-01-01 (future)
+				'500101000000Z'  // 2050-01-01
+			);
+			const msoPayload = buildTestMso();
+			const coseSign1 = await buildCoseSign1(msoPayload, keyPair.privateKey, futureCert);
+
+			const trustedRoot: IACACertificate = {
+				state: 'XX',
+				issuer: 'Test Root',
+				certificateB64: uint8ArrayToBase64(futureCert),
+				derBytes: futureCert,
+				expiresAt: '2055-12-31T23:59:59Z'
+			};
+
+			const result = await verifyCoseSign1(coseSign1, [trustedRoot]);
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toContain('not yet valid');
+			}
+		});
+
+		it('should accept a COSE_Sign1 with a currently-valid DSC', async () => {
+			const keyPair = await generateKeyPair();
+			// Default buildMinimalCert: 2025-01-01 to 2035-12-31 (currently valid)
+			const certDER = await buildMinimalCert(keyPair.publicKey);
+			const msoPayload = buildTestMso();
+			const coseSign1 = await buildCoseSign1(msoPayload, keyPair.privateKey, certDER);
+
+			const trustedRoot: IACACertificate = {
+				state: 'XX',
+				issuer: 'Test Root',
+				certificateB64: uint8ArrayToBase64(certDER),
+				derBytes: certDER,
+				expiresAt: '2035-12-31T23:59:59Z'
+			};
+
+			const result = await verifyCoseSign1(coseSign1, [trustedRoot]);
+			expect(result.valid).toBe(true);
 		});
 	});
 });

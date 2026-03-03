@@ -65,6 +65,7 @@
 		district?: string;
 		state?: string;
 		credentialHash?: string;
+		cellId?: string;
 	} | null>(null);
 
 	async function startVerification() {
@@ -127,7 +128,8 @@
 			verificationResult = {
 				district: verification.district,
 				state: verification.state,
-				credentialHash: verification.credentialHash
+				credentialHash: verification.credentialHash,
+				cellId: verification.cellId ?? undefined
 			};
 
 			verificationState = 'complete';
@@ -138,6 +140,7 @@
 				method: 'mdl',
 				district: verification.district,
 				state: verification.state,
+				cell_id: verification.cellId ?? undefined,
 				providerData: {
 					provider: 'digital-credentials-api',
 					credentialHash: verification.credentialHash,
@@ -379,25 +382,19 @@
 							Digital ID not available in this browser
 						</p>
 						<p class="mt-1 text-sm text-amber-700">
-							The Digital Credentials API requires Chrome 141+ or Safari 26+.
-							You can still verify using one of the alternative methods below.
+							Identity verification requires the W3C Digital Credentials API,
+							available in <strong>Chrome 141+</strong> or <strong>Safari 26+</strong>.
+							Please switch to a supported browser to continue.
 						</p>
 					</div>
 				</div>
 			</div>
 
 			<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-				<p class="mb-3 text-sm font-medium text-slate-900">Alternative verification methods:</p>
-				<ul class="space-y-2 text-sm text-slate-600">
-					<li class="flex items-start gap-2">
-						<span class="font-medium text-slate-700">NFC Passport</span>
-						<span>-- Tap your passport with your phone (30 seconds)</span>
-					</li>
-					<li class="flex items-start gap-2">
-						<span class="font-medium text-slate-700">Government ID Scan</span>
-						<span>-- Upload a photo of your driver's license or state ID</span>
-					</li>
-				</ul>
+				<p class="text-sm text-slate-600">
+					You'll also need a digital driver's license (mDL) enrolled in your
+					device's wallet app. Currently available in ~22 US states.
+				</p>
 			</div>
 
 			{#if oncancel}
@@ -406,7 +403,7 @@
 					onclick={oncancel}
 					class="w-full rounded-lg border-2 border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
 				>
-					Choose Another Method
+					Go Back
 				</button>
 			{/if}
 		</div>

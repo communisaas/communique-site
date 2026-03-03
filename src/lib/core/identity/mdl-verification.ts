@@ -42,6 +42,12 @@ export type MdlVerificationResult =
 			 * Undefined if wallet did not disclose document_number or birth_date.
 			 */
 			identityCommitment?: string;
+			/**
+			 * Census tract GEOID (11-digit) for Shadow Atlas Tree 2 cell mapping.
+			 * Resolved from postal_code + city + state via Census Bureau geocoding
+			 * INSIDE the privacy boundary. Null if geocoding failed (non-fatal).
+			 */
+			cellId?: string;
 	  }
 	| {
 			success: false;
@@ -285,6 +291,10 @@ async function processMdocResponse(
 			};
 		}
 
+		// Step 6b: Resolve Census tract GEOID for Shadow Atlas Tree 2 (non-fatal)
+		// Uses same address data as deriveDistrict — both calls happen inside privacy boundary
+		const cellId = await resolveCellIdFromAddress(postalCode, city ?? '', state);
+
 		// Step 7: Compute credential hash for dedup (hash of the raw data, not address)
 		const hashBuffer = await crypto.subtle.digest(
 			'SHA-256',
@@ -305,15 +315,16 @@ async function processMdocResponse(
 				birthYear
 			);
 		}
-		// documentNumber and birthYear go out of scope here — DISCARDED.
-		// Only district, credentialHash, and the hashed identityCommitment are returned.
+		// documentNumber, birthYear, postalCode, city go out of scope here — DISCARDED.
+		// Only district, cellId, credentialHash, and the hashed identityCommitment are returned.
 		return {
 			success: true,
 			district,
 			state,
 			credentialHash,
 			verificationMethod: 'mdl',
-			identityCommitment
+			identityCommitment,
+			cellId: cellId ?? undefined
 		};
 	} catch (err) {
 		console.error('[mDL] mdoc processing error:', err);
@@ -433,6 +444,9 @@ async function processOid4vpResponse(
 			};
 		}
 
+		// Resolve Census tract GEOID for Shadow Atlas Tree 2 (non-fatal)
+		const cellId = await resolveCellIdFromAddress(postalCode, city ?? '', state);
+
 		// Compute credential hash for dedup
 		const dataStr = typeof data === 'string' ? data : JSON.stringify(data);
 		const hashBuffer = await crypto.subtle.digest(
@@ -458,7 +472,8 @@ async function processOid4vpResponse(
 			state,
 			credentialHash,
 			verificationMethod: 'mdl',
-			identityCommitment
+			identityCommitment,
+			cellId: cellId ?? undefined
 		};
 	} catch (err) {
 		console.error('[mDL] OpenID4VP processing error:', err);
@@ -665,6 +680,83 @@ async function deriveDistrict(
 		return `${state.toUpperCase()}-AL`;
 	} catch (err) {
 		console.error('[mDL] District derivation failed:', err);
+		return null;
+	}
+}
+
+/**
+ * Resolve Census tract GEOID from address via Census Bureau geocoding API.
+ *
+ * Called INSIDE the privacy boundary — city/state/zip are sent to the Census
+ * Bureau (a federal government service, same trust level as Google Civic API).
+ * Returns only the 11-digit tract GEOID (not PII).
+ *
+ * Non-fatal: returns null on any failure. Shadow Atlas registration is deferred.
+ */
+export async function resolveCellIdFromAddress(
+	postalCode: string,
+	city: string,
+	state: string
+): Promise<string | null> {
+	try {
+		const url = new URL('https://geocoding.geo.census.gov/geocoder/geographies/address');
+		url.searchParams.set('city', city);
+		url.searchParams.set('state', state);
+		url.searchParams.set('zip', postalCode);
+		url.searchParams.set('benchmark', '4');
+		url.searchParams.set('vintage', '4');
+		url.searchParams.set('format', 'json');
+
+		const res = await fetch(url.toString(), { signal: AbortSignal.timeout(10000) });
+		if (!res.ok) {
+			console.warn('[mDL] Census geocoding HTTP error:', res.status);
+			return null;
+		}
+
+		const data = await res.json();
+
+		// Census address geocoder returns addressMatches with nested geographies
+		const match = data?.result?.addressMatches?.[0];
+		if (match) {
+			const tracts = match.geographies?.['Census Tracts'];
+			const tract = tracts?.[0];
+			if (tract?.GEOID) {
+				// Tract GEOIDs are 11 digits (state + county + tract)
+				return tract.GEOID.slice(0, 11);
+			}
+
+			// Fallback: extract from block GEOID (first 11 digits = tract)
+			const blocks = match.geographies?.['2020 Census Blocks'];
+			const block = blocks?.[0];
+			if (block?.GEOID && block.GEOID.length >= 11) {
+				return block.GEOID.slice(0, 11);
+			}
+		}
+
+		// No address match — try onelineaddress as fallback
+		const fallbackUrl = new URL('https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress');
+		fallbackUrl.searchParams.set('address', `${city}, ${state} ${postalCode}`);
+		fallbackUrl.searchParams.set('benchmark', '4');
+		fallbackUrl.searchParams.set('vintage', '4');
+		fallbackUrl.searchParams.set('format', 'json');
+
+		const fallbackRes = await fetch(fallbackUrl.toString(), { signal: AbortSignal.timeout(10000) });
+		if (!fallbackRes.ok) return null;
+
+		const fallbackData = await fallbackRes.json();
+		const fallbackMatch = fallbackData?.result?.addressMatches?.[0];
+		if (fallbackMatch) {
+			const tracts = fallbackMatch.geographies?.['Census Tracts'];
+			if (tracts?.[0]?.GEOID) return tracts[0].GEOID.slice(0, 11);
+
+			const blocks = fallbackMatch.geographies?.['2020 Census Blocks'];
+			if (blocks?.[0]?.GEOID?.length >= 11) return blocks[0].GEOID.slice(0, 11);
+		}
+
+		console.warn('[mDL] Census geocoding: no address match for', `${city}, ${state} ${postalCode}`);
+		return null;
+	} catch (err) {
+		console.warn('[mDL] Census geocoding failed:', err instanceof Error ? err.message : err);
 		return null;
 	}
 }
