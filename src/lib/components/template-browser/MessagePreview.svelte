@@ -660,7 +660,7 @@
 				? ''
 				: 'absolute inset-0 overflow-y-auto'} {expandToContent
 				? 'overflow-visible'
-				: ''} max-w-prose whitespace-pre-wrap rounded-lg bg-slate-50/70 p-4"
+				: ''} max-w-prose whitespace-pre-wrap rounded-lg bg-slate-50/70 p-3 sm:p-4"
 			bind:this={scrollContainer}
 			onscroll={expandToContent ? undefined : handleScroll}
 			ontouchstart={expandToContent ? undefined : handleTouchStart}
@@ -698,12 +698,13 @@
 								</span>
 								<!-- Hover tooltip -->
 								<span
-									class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2
+									class="pointer-events-none absolute bottom-full left-0 z-50 mb-2
+										sm:left-1/2 sm:-translate-x-1/2
 										opacity-0 transition-opacity duration-150
 										group-hover/cite:pointer-events-auto group-hover/cite:opacity-100"
 								>
 									<span
-										class="flex w-max max-w-[280px] flex-col gap-1 rounded-lg border border-slate-200
+										class="flex w-max max-w-[min(280px,calc(100vw-3rem))] flex-col gap-1 rounded-lg border border-slate-200
 											bg-white px-3 py-2.5 shadow-lg"
 									>
 										<span class="flex items-center gap-1.5">
@@ -721,7 +722,7 @@
 									</span>
 									<!-- Arrow -->
 									<span
-										class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-white drop-shadow-sm"
+										class="absolute left-4 top-full sm:left-1/2 sm:-translate-x-1/2 border-4 border-transparent border-t-white drop-shadow-sm"
 									></span>
 								</span>
 							</a>
@@ -733,13 +734,13 @@
 						{#if activeInlineEditor === segment.instanceId}
 							<div class="my-3 whitespace-normal" transition:slide={{ duration: 200 }}>
 								<div class="rounded-xl border border-participation-primary-200/80 bg-white/95 shadow-sm">
-									<div class="flex items-center gap-1.5 px-4 pt-3 pb-1">
+									<div class="flex items-center gap-1.5 px-3 pt-2.5 pb-1 sm:px-4 sm:pt-3">
 										<Edit3 class="h-3 w-3 text-participation-primary-400" />
 										<span class="text-xs font-medium text-slate-500">
 											{(segment.name && variableHints[segment.name]?.prompt) || segment.name}
 										</span>
 									</div>
-									<div class="px-4 pb-3">
+									<div class="px-3 pb-2.5 sm:px-4 sm:pb-3">
 										<textarea
 											use:autofocusAction
 											value={variableValues[segment.name] || ''}

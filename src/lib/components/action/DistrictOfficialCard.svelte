@@ -74,6 +74,7 @@
 	{/if}
 
 	<!-- Action affordance -->
+	{#if canAct}
 	<div class="mt-3 flex items-center justify-end">
 		{#if departing}
 			<span class="departing-pulse text-sm font-medium text-slate-400">
@@ -107,6 +108,7 @@
 			</a>
 		{/if}
 	</div>
+	{/if}
 {/snippet}
 
 {#if isActive}
