@@ -55,4 +55,4 @@ id = "a76f18d2c07042bc856a30038af05ab8"
 # Then replace the id below with the output namespace ID
 [[kv_namespaces]]
 binding = "REGISTRATION_RETRY_KV"
-id = "REPLACE_WITH_NAMESPACE_ID"
+id = "90772b3f79d945d5b5f0df3d6d2ca732"
