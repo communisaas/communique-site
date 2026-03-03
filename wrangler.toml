@@ -47,6 +47,15 @@ localConnectionString = "postgresql://communique:communique@localhost:5432/commu
 binding = "DC_SESSION_KV"
 id = "a76f18d2c07042bc856a30038af05ab8"
 
+# REJECTION_MONITOR_KV: KV namespace for rejection rate monitoring (P1 #18)
+# Tracks hourly rejection counts per route group. Entries have 2hr TTL.
+# Create the namespace before deploying:
+#   npx wrangler kv namespace create REJECTION_MONITOR_KV
+# Then replace the id below with the output namespace ID
+[[kv_namespaces]]
+binding = "REJECTION_MONITOR_KV"
+id = "PLACEHOLDER_CREATE_VIA_WRANGLER_CLI"
+
 # REGISTRATION_RETRY_KV: KV namespace for Shadow Atlas registration retry queue
 # Stores atlas responses when Postgres write fails after successful tree mutation.
 # Entries have 1hr TTL — processed by /api/admin/reconcile-registrations endpoint.

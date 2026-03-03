@@ -10,6 +10,7 @@ import {
 } from '$lib/core/security/rate-limiter';
 import { createRequestClient, runWithDb } from '$lib/core/db';
 import { deriveTrustTier } from '$lib/core/identity/authority-level';
+import { trackForRejection } from '$lib/services/rejectionMonitor';
 
 // MongoDB removed — intelligence data now lives in Postgres via pgvector
 
@@ -356,14 +357,57 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
 };
 
 /**
+ * BA-018: Rejection Rate Monitoring
+ *
+ * Tracks rejection rates for debate/position/submission endpoints.
+ * Runs LAST in the sequence — observes the final response status.
+ * Uses waitUntil() for async KV writes — zero impact on response latency.
+ *
+ * Configuration (environment variables):
+ *   REJECTION_MONITOR_WEBHOOK_URL  - Webhook URL for threshold alerts
+ *   REJECTION_THRESHOLD_PERCENT    - Alert threshold (default: 1%)
+ */
+const handleRejectionMonitoring: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event);
+
+	const pathname = event.url.pathname;
+
+	// Only track API routes (skip pages, assets, etc.)
+	if (!pathname.startsWith('/api/')) {
+		return response;
+	}
+
+	// Fire-and-forget via waitUntil — don't add latency
+	const kv = event.platform?.env?.REJECTION_MONITOR_KV as
+		| { get(key: string): Promise<string | null>; put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> }
+		| undefined;
+	const waitUntil = event.platform?.context?.waitUntil?.bind(event.platform.context);
+
+	if (kv && waitUntil) {
+		waitUntil(
+			trackForRejection({
+				pathname,
+				status: response.status,
+				kv,
+				webhookUrl: process.env.REJECTION_MONITOR_WEBHOOK_URL,
+				thresholdPercent: parseFloat(process.env.REJECTION_THRESHOLD_PERCENT || '1')
+			}).catch((err) => console.error('[RejectionMonitor] Tracking error:', err))
+		);
+	}
+
+	return response;
+};
+
+/**
  * Hook execution order:
- * 1. handleAuth - Populate session/user in locals (needed for user-based rate limits)
- * 2. handleRateLimit - Check rate limits (can use user ID from auth)
- * 3. handleCsrfGuard - CSRF protection for sensitive endpoints
- * 4. handleSecurityHeaders - Add COOP/COEP + CSP headers
+ * 1. handlePlatformEnv - Copy platform.env to process.env + init per-request Prisma
+ * 2. handleAuth - Populate session/user in locals (needed for user-based rate limits)
+ * 3. handleRateLimit - Check rate limits (can use user ID from auth)
+ * 4. handleCsrfGuard - CSRF protection for sensitive endpoints
+ * 5. handleSecurityHeaders - Add COOP/COEP + CSP headers
+ * 6. handleRejectionMonitoring - Track rejection rates (async, zero latency impact)
  *
  * Note: Auth runs first so rate limiting can use user ID for user-keyed limits.
- * This is a minor performance trade-off (auth runs on rate-limited requests),
- * but ensures accurate per-user rate limiting.
+ * Rejection monitoring runs last so it observes the final response status.
  */
-export const handle = sequence(handlePlatformEnv, handleAuth, handleRateLimit, handleCsrfGuard, handleSecurityHeaders);
+export const handle = sequence(handlePlatformEnv, handleAuth, handleRateLimit, handleCsrfGuard, handleSecurityHeaders, handleRejectionMonitoring);
