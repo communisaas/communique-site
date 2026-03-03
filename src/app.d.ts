@@ -23,6 +23,8 @@ declare global {
 				passkey_credential_id: string | null;
 				// did:key identifier derived from WebAuthn public key
 				did_key: string | null;
+				// Cryptographic identity commitment (Semaphore/ZK)
+				identity_commitment: string | null;
 				// Privacy-preserving district (hash only, no PII)
 				district_hash: string | null;
 				district_verified: boolean;
@@ -146,7 +148,7 @@ declare global {
 			GROQ_API_KEY?: string; // Used for Llama Guard 4 safety moderation
 
 			// Identity Verification (mDL via Digital Credentials API — no provider API keys needed)
-			GOOGLE_CIVIC_API_KEY?: string; // Google Civic Information API for district lookup
+			// District resolution via Shadow Atlas H3 mapping (no external API keys needed)
 
 			// Witness Encryption (X25519 keypair for witness encryption/decryption)
 			// Generate with: npx tsx scripts/generate-witness-keypair.ts

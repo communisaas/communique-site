@@ -140,49 +140,7 @@ export const selfXyzHandlers = [
   })
 ];
 
-// Congressional Data Services Mocks
-export const congressionalDataHandlers = [
-  // Representative lookup by address
-  http.get('https://www.googleapis.com/civicinfo/v2/representatives', ({ request }) => {
-    const url = new URL(request.url);
-    const address = url.searchParams.get('address');
-    
-    return HttpResponse.json({
-      offices: [
-        {
-          name: 'United States House of Representatives',
-          divisionId: 'ocd-division/country:us/state:ca/cd:12',
-          levels: ['country'],
-          roles: ['legislatorLowerBody'],
-          officialIndices: [0]
-        }
-      ],
-      officials: [
-        {
-          name: 'Nancy Pelosi',
-          party: 'Democratic Party',
-          emails: ['nancy.pelosi@mail.house.gov'],
-          urls: ['https://pelosi.house.gov/'],
-          channels: [
-            { type: 'Twitter', id: 'SpeakerPelosi' }
-          ]
-        }
-      ]
-    });
-  }),
-
-  // District boundaries
-  http.get('https://www.googleapis.com/civicinfo/v2/divisions', () => {
-    return HttpResponse.json({
-      results: [
-        {
-          ocdId: 'ocd-division/country:us/state:ca/cd:12',
-          name: 'California\'s 12th congressional district'
-        }
-      ]
-    });
-  })
-];
+// Congressional Data Services Mocks (Google Civic API removed — district resolution via Shadow Atlas)
 
 // AWS SQS Mocks for async processing
 export const sqsHandlers = [
@@ -288,7 +246,7 @@ function buildCensusResponse(matched: CensusTestAddress, address: string) {
 }
 
 export const censusAndCongressHandlers = [
-  // Census Bureau Geocoding API — onelineaddress (used by address-lookup.ts)
+  // Census Bureau Geocoding API — onelineaddress (used by resolve-address fallback)
   http.get('https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress', ({ request }) => {
     const url = new URL(request.url);
     const address = (url.searchParams.get('address') || '').toLowerCase();
@@ -616,7 +574,6 @@ export const externalServiceHandlers = [
   ...cwcHandlers,
   ...oauthHandlers,
   ...selfXyzHandlers,
-  ...congressionalDataHandlers,
   ...sqsHandlers,
   ...censusAndCongressHandlers,
   ...shadowAtlasHandlers

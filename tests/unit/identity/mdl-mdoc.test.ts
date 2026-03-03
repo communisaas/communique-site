@@ -22,7 +22,7 @@ import { processCredentialResponse, type MdlVerificationResult } from '$lib/core
 const originalFetch = globalThis.fetch;
 
 beforeAll(() => {
-	process.env.GOOGLE_CIVIC_API_KEY = 'test-mdoc-api-key';
+	// District derivation uses Census Bureau geocoding + Shadow Atlas H3 lookup (no API key needed)
 	// Synthetic test data has no real IACA-signed issuerAuth.
 	// Bypass signature verification so field extraction / privacy / district logic can be tested.
 	process.env.SKIP_ISSUER_VERIFICATION = 'true';

@@ -15,7 +15,7 @@ import { processCredentialResponse } from '$lib/core/identity/mdl-verification';
 const originalFetch = globalThis.fetch;
 
 beforeAll(() => {
-	process.env.GOOGLE_CIVIC_API_KEY = 'test-api-key';
+	// District derivation uses Census Bureau geocoding + Shadow Atlas H3 lookup (no API key needed)
 });
 
 beforeEach(() => {
