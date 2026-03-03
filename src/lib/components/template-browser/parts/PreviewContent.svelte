@@ -147,7 +147,29 @@
 	{/if}
 </div>
 
-{#if recipientCount > 0}
+{#if context === 'page' && decisionMakers.length > 0}
+	<!-- Compact avatar stack — Power Landscape to the right provides full detail -->
+	<div class="mb-4 flex shrink-0 items-center gap-2.5">
+		<div class="flex -space-x-1.5">
+			{#each decisionMakers.slice(0, 6) as dm}
+				<div
+					class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[10px] font-semibold text-slate-500"
+					title={dm.name}
+				>
+					{dm.name.charAt(0)}
+				</div>
+			{/each}
+			{#if decisionMakers.length > 6}
+				<div class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-slate-50 text-[10px] font-medium text-slate-400">
+					+{decisionMakers.length - 6}
+				</div>
+			{/if}
+		</div>
+		<span class="text-xs text-slate-400 tabular-nums">
+			{recipientCount} {recipientCount === 1 ? 'recipient' : 'recipients'}
+		</span>
+	</div>
+{:else if recipientCount > 0}
 	<div class="mb-4 flex shrink-0 items-center gap-2 text-sm">
 		{#if targetInfo.type === 'multi-level'}
 			<!-- Multi-Level: Compact vertical stack -->
