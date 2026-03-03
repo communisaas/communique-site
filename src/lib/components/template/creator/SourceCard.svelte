@@ -25,69 +25,65 @@
 	});
 </script>
 
-<div class="rounded-lg border border-slate-200 bg-white transition-all hover:shadow-sm">
+<div class="rounded-md border border-slate-200/80 bg-white transition-all hover:border-slate-300/80">
 	<!-- Compact view -->
 	<button
 		type="button"
 		onclick={() => (expanded = !expanded)}
-		class="flex w-full items-start gap-3 p-4 text-left transition-colors hover:bg-slate-50"
+		class="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-slate-50/60"
 	>
 		<!-- Citation number -->
-		<div
-			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-participation-primary-100 text-sm font-semibold text-participation-primary-700"
+		<span
+			class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-participation-primary-50 text-[10px] font-semibold leading-none text-participation-primary-600"
 		>
-			[{source.num}]
-		</div>
+			{source.num}
+		</span>
 
-		<!-- Source info -->
-		<div class="flex-1 space-y-1">
-			<h4 class="font-medium text-slate-900">{source.title}</h4>
-			<div class="flex items-center gap-2 text-xs text-slate-600">
+		<!-- Source info — single line when possible -->
+		<div class="flex-1 min-w-0">
+			<span class="text-sm text-slate-800 line-clamp-1">{source.title}</span>
+			<div class="flex items-center gap-1.5 text-[11px] text-slate-400 mt-0.5">
 				<span
-					class="inline-flex items-center rounded-full border px-2 py-0.5 font-medium {badge.bg} {badge.text} {badge.border}"
+					class="inline-flex items-center rounded-full border px-1.5 py-px font-medium {badge.bg} {badge.text} {badge.border}"
 				>
 					{source.type}
 				</span>
-				<span class="text-slate-400">•</span>
+				<span>·</span>
 				<span class="truncate">{domain}</span>
 			</div>
 		</div>
 
 		<!-- Expand icon -->
-		<div class="flex-shrink-0 text-slate-400">
+		<div class="flex-shrink-0 text-slate-300">
 			{#if expanded}
-				<ChevronUp class="h-5 w-5" />
+				<ChevronUp class="h-3.5 w-3.5" />
 			{:else}
-				<ChevronDown class="h-5 w-5" />
+				<ChevronDown class="h-3.5 w-3.5" />
 			{/if}
 		</div>
 	</button>
 
 	<!-- Expanded view -->
 	{#if expanded}
-		<div class="border-t border-slate-100 p-4 pt-3">
+		<div class="border-t border-slate-100 px-3 py-2.5">
 			<!-- Full URL with visit link -->
-			<div class="flex items-start justify-between gap-3">
-				<div class="flex-1 space-y-1">
-					<p class="text-xs font-medium text-slate-700">Source URL</p>
-					<p class="break-all text-sm text-slate-600">{source.url}</p>
-				</div>
+			<div class="flex items-start justify-between gap-2">
+				<p class="flex-1 min-w-0 break-all text-xs text-slate-500 leading-relaxed">{source.url}</p>
 				<a
 					href={source.url}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+					class="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
 					onclick={(e) => e.stopPropagation()}
 				>
 					Visit
-					<ExternalLink class="h-3.5 w-3.5" />
+					<ExternalLink class="h-3 w-3" />
 				</a>
 			</div>
 
 			<!-- Citation format -->
-			<div class="mt-3 rounded-lg bg-slate-50 p-3">
-				<p class="text-xs font-medium text-slate-700">Citation</p>
-				<p class="mt-1 font-mono text-xs text-slate-600">{citationText}</p>
+			<div class="mt-2 rounded-md bg-slate-50 px-2.5 py-2">
+				<p class="font-mono text-[11px] leading-relaxed text-slate-500">{citationText}</p>
 			</div>
 		</div>
 	{/if}
