@@ -471,16 +471,17 @@
 
 	.location-bar {
 		position: relative;
-		background: white;
-		border-radius: 0.75rem;
-		border: 1px solid oklch(0.92 0.01 250);
-		box-shadow: 0 1px 2px oklch(0 0 0 / 0.04);
+		background: oklch(0.975 0.006 250);
+		border-radius: 0.625rem;
+		border: 1px solid transparent;
 		transition:
+			background 150ms ease-out,
 			border-color 150ms ease-out,
 			box-shadow 150ms ease-out;
 	}
 
 	.location-bar.is-searching {
+		background: white;
 		border-color: oklch(0.7 0.12 250);
 		box-shadow: 0 0 0 3px oklch(0.7 0.12 250 / 0.08);
 	}
@@ -724,9 +725,8 @@
 	.bar-display {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		padding: 0.5rem 0.625rem;
-		gap: 0.5rem;
+		padding: 0.375rem 0.5rem;
+		gap: 0.25rem;
 	}
 
 	.breadcrumb-chips {
@@ -812,11 +812,11 @@
 	.bar-invitation {
 		display: flex;
 		align-items: center;
-		gap: 0.625rem;
+		gap: 0.5rem;
 		width: 100%;
-		padding: 0.75rem 1rem;
+		padding: 0.5rem 0.75rem;
 		border: none;
-		border-radius: 0.75rem;
+		border-radius: 0.625rem;
 		background: transparent;
 		cursor: pointer;
 		transition: background 120ms ease-out;
@@ -825,18 +825,19 @@
 	}
 
 	.bar-invitation:hover {
-		background: oklch(0.985 0.004 250);
+		background: oklch(0.965 0.008 250);
 	}
 
 	.invitation-content {
 		display: flex;
 		flex-direction: column;
-		gap: 0.125rem;
+		gap: 0.0625rem;
 	}
 
 	.invitation-primary {
-		font-size: 0.875rem;
-		color: oklch(0.5 0.015 250);
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: oklch(0.5 0.02 250);
 	}
 
 	.invitation-hint {
