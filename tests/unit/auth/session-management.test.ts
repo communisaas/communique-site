@@ -451,7 +451,7 @@ describe('session-management (auth.ts)', () => {
 					{ passkey_credential_id: null }
 				);
 				// Simulate DB returning undefined instead of null
-				(sessionData.user as Record<string, unknown>).passkey_credential_id = undefined;
+				(sessionData.user as unknown as Record<string, unknown>).passkey_credential_id = undefined;
 				mockSessionFindUnique.mockResolvedValue(sessionData);
 
 				const result = await validateSession(sessionData.id);
@@ -461,7 +461,7 @@ describe('session-management (auth.ts)', () => {
 
 			it('should map undefined did_key to null', async () => {
 				const sessionData = makeSessionWithUser({}, { did_key: null });
-				(sessionData.user as Record<string, unknown>).did_key = undefined;
+				(sessionData.user as unknown as Record<string, unknown>).did_key = undefined;
 				mockSessionFindUnique.mockResolvedValue(sessionData);
 
 				const result = await validateSession(sessionData.id);
@@ -471,7 +471,7 @@ describe('session-management (auth.ts)', () => {
 
 			it('should map undefined address_verified_at to null', async () => {
 				const sessionData = makeSessionWithUser({}, { address_verified_at: null });
-				(sessionData.user as Record<string, unknown>).address_verified_at = undefined;
+				(sessionData.user as unknown as Record<string, unknown>).address_verified_at = undefined;
 				mockSessionFindUnique.mockResolvedValue(sessionData);
 
 				const result = await validateSession(sessionData.id);
@@ -481,7 +481,7 @@ describe('session-management (auth.ts)', () => {
 
 			it('should map undefined identity_commitment to null', async () => {
 				const sessionData = makeSessionWithUser({}, { identity_commitment: null });
-				(sessionData.user as Record<string, unknown>).identity_commitment = undefined;
+				(sessionData.user as unknown as Record<string, unknown>).identity_commitment = undefined;
 				mockSessionFindUnique.mockResolvedValue(sessionData);
 
 				const result = await validateSession(sessionData.id);
@@ -491,7 +491,7 @@ describe('session-management (auth.ts)', () => {
 
 			it('should map undefined document_type to null', async () => {
 				const sessionData = makeSessionWithUser({}, { document_type: null });
-				(sessionData.user as Record<string, unknown>).document_type = undefined;
+				(sessionData.user as unknown as Record<string, unknown>).document_type = undefined;
 				mockSessionFindUnique.mockResolvedValue(sessionData);
 
 				const result = await validateSession(sessionData.id);

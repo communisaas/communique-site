@@ -44,7 +44,7 @@ const TEST_ADDRESS = {
 // ---------------------------------------------------------------------------
 
 describe.runIf(dbAvailable)('Address Verification E2E Flow', () => {
-	let testUser: { id: string; email: string; did_key: string };
+	let testUser: { id: string; email: string; did_key: string | null };
 	const uniqueSuffix = `addr-e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 	beforeAll(async () => {

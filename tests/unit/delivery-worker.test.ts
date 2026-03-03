@@ -137,7 +137,7 @@ const HOUSE_OFFICIAL = {
 };
 
 /** Wrap officials in the OfficialsResponse shape that getOfficials returns */
-function makeOfficialsResponse(officials: typeof SENATE_OFFICIAL[]) {
+function makeOfficialsResponse(officials: Array<typeof SENATE_OFFICIAL | typeof HOUSE_OFFICIAL>) {
 	return {
 		officials,
 		district_code: 'CA-12',

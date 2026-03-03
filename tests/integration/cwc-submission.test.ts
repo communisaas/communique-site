@@ -27,7 +27,6 @@ import {
 	createMockRequestEvent,
 	db
 } from '../setup/api-test-setup';
-import type { RequestEvent } from '@sveltejs/kit';
 
 // ---------------------------------------------------------------------------
 // Database connectivity check — skip DB-dependent tests when unreachable
@@ -129,7 +128,8 @@ function authenticatedEvent(body: Record<string, unknown>, userOverrides: Record
 				...userOverrides
 			}
 		}
-	}) as unknown as RequestEvent;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	}) as any;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +166,7 @@ describe('POST /api/submissions/create', () => {
 				method: 'POST',
 				body: JSON.stringify(body),
 				locals: { session: null, user: null }
-			}) as unknown as RequestEvent;
+			}) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 			await expect(POST(event)).rejects.toMatchObject({ status: 401 });
 		});
@@ -178,7 +178,7 @@ describe('POST /api/submissions/create', () => {
 				method: 'POST',
 				body: JSON.stringify(body),
 				locals: { session: {}, user: null }
-			}) as unknown as RequestEvent;
+			}) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 			await expect(POST(event)).rejects.toMatchObject({ status: 401 });
 		});
@@ -196,7 +196,7 @@ describe('POST /api/submissions/create', () => {
 						verified_at: null // Not verified
 					}
 				}
-			}) as unknown as RequestEvent;
+			}) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 			const response = await POST(event);
 			const data = await response.json();

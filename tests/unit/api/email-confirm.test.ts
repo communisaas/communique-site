@@ -89,7 +89,7 @@ describe('GET /api/email/confirm/[token]', () => {
 		it('should throw 400 when token param is not provided in params object', async () => {
 			// SvelteKit always provides params.token from URL pattern [token],
 			// but if somehow it is missing, the handler checks !token and throws 400.
-			const event = { params: {} };
+			const event = { params: {} } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 			await expect(GET(event)).rejects.toMatchObject({ status: 400 });
 		});

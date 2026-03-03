@@ -378,7 +378,7 @@ describe('POST /api/location/resolve', () => {
 			const officialsData = mockOfficialsResponse(3, 'NY-10');
 			mockedResolveLocation.mockResolvedValue({
 				district: {
-					district: { id: 'NY-10', name: 'New York 10th' },
+					district: { id: 'NY-10', name: 'New York 10th', jurisdiction: 'congressional', districtType: 'congressional' },
 					merkleProof: mockMerkleProof
 				},
 				officials: {
@@ -414,7 +414,7 @@ describe('POST /api/location/resolve', () => {
 		it('resolves district only when composite returns null officials', async () => {
 			mockedResolveLocation.mockResolvedValue({
 				district: {
-					district: { id: 'NY-10', name: 'New York 10th' },
+					district: { id: 'NY-10', name: 'New York 10th', jurisdiction: 'congressional', districtType: 'congressional' },
 					merkleProof: mockMerkleProof
 				},
 				officials: null

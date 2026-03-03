@@ -710,7 +710,7 @@ describe('ExaRateLimiter', () => {
 	describe('state management', () => {
 		it('getState should return a snapshot (not reference to internal state)', () => {
 			const state1 = limiter.getState();
-			state1.consecutiveFailures = 999;
+			(state1 as { consecutiveFailures: number }).consecutiveFailures = 999;
 
 			const state2 = limiter.getState();
 			expect(state2.consecutiveFailures).toBe(0);
