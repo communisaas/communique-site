@@ -229,7 +229,7 @@
 	// Click-outside and cleanup
 	// ---------------------------------------------------------------------------
 
-	function handleClickOutside(e: MouseEvent) {
+	function handlePointerDownOutside(e: PointerEvent) {
 		if (containerRef && !containerRef.contains(e.target as Node)) {
 			closeSearch();
 		}
@@ -237,8 +237,14 @@
 
 	$effect(() => {
 		if (browser && isSearching) {
-			document.addEventListener('click', handleClickOutside);
-			return () => document.removeEventListener('click', handleClickOutside);
+			// Use pointerdown (not click) for outside detection. pointerdown fires
+			// BEFORE onclick handlers, so:
+			// 1. The opening button is still in the DOM during the check
+			// 2. Hint pills / result buttons haven't re-rendered yet
+			// This avoids the orphaned-target race condition where a click removes
+			// its own element from the DOM before propagation reaches document.
+			document.addEventListener('pointerdown', handlePointerDownOutside);
+			return () => document.removeEventListener('pointerdown', handlePointerDownOutside);
 		}
 	});
 
