@@ -175,7 +175,10 @@ async function handleReplace(
 	}
 
 	// Capacity check
-	const size = await storage.getTreeSize();
+	const [size, capacity] = await Promise.all([storage.getTreeSize(), storage.getTreeCapacity()]);
+	if (size >= capacity) {
+		return errorResponse('Registration tree is full', 503, 'TREE_FULL');
+	}
 	const newIndex = size;
 
 	// Replace in D1
