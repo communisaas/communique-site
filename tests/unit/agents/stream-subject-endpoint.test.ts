@@ -44,6 +44,14 @@ vi.mock('$lib/core/agents/prompts/subject-line', () => ({
 	SUBJECT_LINE_PROMPT: 'test prompt'
 }));
 
+vi.mock('$lib/core/agents/schemas', () => ({
+	SUBJECT_LINE_SCHEMA: { type: 'object', properties: {} }
+}));
+
+vi.mock('$lib/core/agents/agents/subject-line', () => ({
+	buildClarificationPrompt: vi.fn()
+}));
+
 vi.mock('$lib/core/agents/utils/thought-filter', () => ({
 	cleanThoughtForDisplay: vi.fn((t: string) => t)
 }));
@@ -233,7 +241,7 @@ describe('POST /api/agents/stream-subject', () => {
 			expect(mockGenerateStream).toHaveBeenCalledWith(
 				`Analyze this issue and generate a subject line:\n\n${testMessage}`,
 				{
-					systemInstruction: 'test prompt',
+					systemInstruction: expect.stringContaining('test prompt'),
 					temperature: 0.4,
 					thinkingLevel: 'high'
 				}
