@@ -4,6 +4,7 @@ import { TEMPLATE_LIST_SELECT } from '$lib/core/db/template-select';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import type { UnknownRecord } from '$lib/types/any-replacements';
 import { z } from 'zod';
+import { FEATURES } from '$lib/config/features';
 
 const MetricsSchema = z
 	.object({
@@ -29,7 +30,10 @@ const MetricsSchema = z
 export const load: PageServerLoad = async () => {
 	try {
 		const dbTemplates = await db.template.findMany({
-			where: { is_public: true },
+			where: {
+				is_public: true,
+				...(!FEATURES.CONGRESSIONAL ? { deliveryMethod: { not: 'cwc' } } : {}),
+			},
 			orderBy: { createdAt: 'desc' },
 			select: TEMPLATE_LIST_SELECT,
 		});

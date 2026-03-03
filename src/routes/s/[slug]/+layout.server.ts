@@ -3,6 +3,7 @@ import { db } from '$lib/core/db';
 import { extractRecipientEmails, extractTemplateMetrics } from '$lib/types/templateConfig';
 import type { LayoutServerLoad } from './$types';
 import { detectCountryFromHeaders, resolveChannel } from '$lib/services/channelResolver';
+import { FEATURES } from '$lib/config/features';
 
 export const load: LayoutServerLoad = async ({ params, locals: _locals, request }) => {
 	const { slug } = params;
@@ -24,6 +25,11 @@ export const load: LayoutServerLoad = async ({ params, locals: _locals, request 
 	});
 
 	if (!template) {
+		throw error(404, 'Template not found');
+	}
+
+	// Gate CWC templates behind CONGRESSIONAL feature flag
+	if (!FEATURES.CONGRESSIONAL && template.deliveryMethod === 'cwc') {
 		throw error(404, 'Template not found');
 	}
 

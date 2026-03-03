@@ -2,6 +2,7 @@ import { error, redirect } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import { extractRecipientEmails, extractTemplateMetrics } from '$lib/types/templateConfig';
 import type { PageServerLoad } from './$types';
+import { FEATURES } from '$lib/config/features';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const { slug } = params;
@@ -23,6 +24,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	});
 
 	if (!template) {
+		throw error(404, 'Template not found');
+	}
+
+	// Gate CWC templates behind CONGRESSIONAL feature flag
+	if (!FEATURES.CONGRESSIONAL && template.deliveryMethod === 'cwc') {
 		throw error(404, 'Template not found');
 	}
 

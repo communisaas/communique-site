@@ -33,6 +33,7 @@
 	import LocationScopeBar from '$lib/components/template-browser/LocationScopeBar.svelte';
 	import { guestState } from '$lib/stores/guestState.svelte';
 	import { z } from 'zod';
+	import { FEATURES } from '$lib/config/features';
 	import type { GeoScope } from '$lib/core/agents/types';
 	import {
 		scoreTemplatesByRelevance,
@@ -281,11 +282,13 @@
 		});
 	}
 
-	// Show all templates (congressional + direct email)
+	// Show templates filtered by feature flags
 	const allTemplates = $derived(
 		templateStore.templates.filter(
 			(t) =>
-				t.deliveryMethod === 'cwc' || t.deliveryMethod === 'email' || t.deliveryMethod === 'direct'
+				(FEATURES.CONGRESSIONAL && t.deliveryMethod === 'cwc') ||
+				t.deliveryMethod === 'email' ||
+				t.deliveryMethod === 'direct'
 		)
 	);
 
