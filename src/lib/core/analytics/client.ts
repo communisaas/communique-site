@@ -251,9 +251,27 @@ export const analytics = new AnalyticsClient();
 // =============================================================================
 
 /**
- * Track template view
+ * Track template view (deduplicated: 1 view per template per browser per day)
  */
 export function trackTemplateView(templateId: string, jurisdiction?: string): void {
+	if (!browser) return;
+
+	const today = new Date().toISOString().split('T')[0];
+	const key = `viewed:${today}`;
+
+	try {
+		const seen = JSON.parse(localStorage.getItem(key) || '[]') as string[];
+		if (seen.includes(templateId)) return;
+		seen.push(templateId);
+		localStorage.setItem(key, JSON.stringify(seen));
+
+		// Prune yesterday's key
+		const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+		localStorage.removeItem(`viewed:${yesterday}`);
+	} catch {
+		// localStorage unavailable — fire anyway, server rate-limit catches repeats
+	}
+
 	analytics.increment(METRICS.template_view, {
 		template_id: templateId,
 		jurisdiction
@@ -281,9 +299,29 @@ export function trackTemplateShare(templateId: string, utmSource?: string): void
 }
 
 /**
- * Track delivery attempt
+ * Track delivery attempt (deduplicated: 1 action per template per browser per day)
+ *
+ * Whether someone writes to 1 recipient or 10, individually or via "Write to all",
+ * it counts as a single person acting on this template.
  */
 export function trackDeliveryAttempt(templateId: string, deliveryMethod: DeliveryMethod): void {
+	if (!browser) return;
+
+	const today = new Date().toISOString().split('T')[0];
+	const key = `acted:${today}`;
+
+	try {
+		const acted = JSON.parse(localStorage.getItem(key) || '[]') as string[];
+		if (acted.includes(templateId)) return;
+		acted.push(templateId);
+		localStorage.setItem(key, JSON.stringify(acted));
+
+		const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+		localStorage.removeItem(`acted:${yesterday}`);
+	} catch {
+		// localStorage unavailable — fire anyway
+	}
+
 	analytics.increment(METRICS.delivery_attempt, {
 		template_id: templateId,
 		delivery_method: deliveryMethod

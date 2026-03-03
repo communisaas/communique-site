@@ -29,7 +29,6 @@ export interface TemplateMetrics {
 	opened: number; // Deprecated - not trackable for direct email
 	clicked: number; // For direct: recipient count; for congressional: not used
 	responded: number; // For congressional: delivery confirmations; for direct: not used
-	views?: number; // Deep link views
 
 	// Congressional-specific metrics
 	districts_covered?: number;
@@ -43,8 +42,6 @@ export interface TemplateMetrics {
 	viral_coefficient?: number; // Sharing rate
 
 	// Funnel tracking metrics
-	funnel_views?: number; // Template page views
-	modal_views?: number; // Modal popup views
 	onboarding_starts?: number; // Users who started onboarding
 	onboarding_completes?: number; // Users who completed onboarding
 	auth_completions?: number; // Users who completed authentication

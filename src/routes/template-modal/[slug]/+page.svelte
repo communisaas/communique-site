@@ -4,6 +4,7 @@
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
 	import type { PageData } from './$types';
 	import { coordinated } from '$lib/utils/timerCoordinator';
+	import { trackTemplateView } from '$lib/core/analytics/client';
 
 	let { data }: { data: PageData } = $props();
 
@@ -15,6 +16,9 @@
 	);
 
 	onMount(() => {
+		// Track view via DP analytics pipeline
+		trackTemplateView(data.template.id);
+
 		// Check for pending template action from OAuth flow
 		const pendingAction = sessionStorage.getItem('pending_template_action');
 		if (pendingAction) {

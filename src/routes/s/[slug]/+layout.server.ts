@@ -4,6 +4,8 @@ import { extractRecipientEmails, extractTemplateMetrics } from '$lib/types/templ
 import type { LayoutServerLoad } from './$types';
 import { detectCountryFromHeaders, resolveChannel } from '$lib/services/channelResolver';
 import { FEATURES } from '$lib/config/features';
+import { queryNoisySnapshots } from '$lib/core/analytics/snapshot';
+import { getDaysAgoUTC, getTodayUTC } from '$lib/core/analytics/aggregate';
 
 export const load: LayoutServerLoad = async ({ params, locals: _locals, request }) => {
 	const { slug } = params;
@@ -33,24 +35,40 @@ export const load: LayoutServerLoad = async ({ params, locals: _locals, request 
 		throw error(404, 'Template not found');
 	}
 
-	// Fire-and-forget: view tracking should not block SSR response
-	const currentMetrics = extractTemplateMetrics(template.metrics);
-	db.template.update({
-		where: { id: template.id },
-		data: {
-			metrics: {
-				...currentMetrics,
-				views: (currentMetrics.views || 0) + 1
-			}
-		}
-	}).catch((err) => console.warn('[slug layout] View tracking failed:', err));
-
 	// Detect country and resolve channel
 	const detectedCountry = detectCountryFromHeaders(request.headers) || 'US';
 	const channelInfo = await resolveChannel(detectedCountry);
 
-	// Reuse currentMetrics (already extracted above for view tracking)
-	const jsonMetrics = currentMetrics;
+	// DP snapshots (historical, Laplace-noised) + today's LDP-corrected aggregate
+	const today = getTodayUTC();
+	const ninetyDaysAgo = getDaysAgoUTC(90);
+	const [viewSnapshots, sendSnapshots, todayViews, todaySends] = await Promise.all([
+		queryNoisySnapshots({
+			metric: 'template_view',
+			start: ninetyDaysAgo,
+			end: today,
+			filters: { template_id: template.id }
+		}),
+		queryNoisySnapshots({
+			metric: 'delivery_attempt',
+			start: ninetyDaysAgo,
+			end: today,
+			filters: { template_id: template.id }
+		}),
+		db.analytics_aggregate.aggregate({
+			where: { metric: 'template_view', template_id: template.id, date: today },
+			_sum: { count: true }
+		}),
+		db.analytics_aggregate.aggregate({
+			where: { metric: 'delivery_attempt', template_id: template.id, date: today },
+			_sum: { count: true }
+		})
+	]);
+	const noisyViews = (viewSnapshots[0]?.count ?? 0) + (todayViews._sum.count ?? 0);
+	const noisySends = (sendSnapshots[0]?.count ?? 0) + (todaySends._sum.count ?? 0);
+
+	// View tracking handled client-side via DP analytics pipeline (trackTemplateView)
+	const jsonMetrics = extractTemplateMetrics(template.metrics);
 
 	// Format template for client
 	const formattedTemplate = {
@@ -73,7 +91,7 @@ export const load: LayoutServerLoad = async ({ params, locals: _locals, request 
 
 		// === METRICS OBJECT (backward compatibility) ===
 		metrics: {
-			sent: template.verified_sends, // Use schema field as source of truth
+			sent: noisySends || template.verified_sends, // DP pipeline, fallback to schema field
 			districts_covered: template.unique_districts, // Use schema field as source of truth
 			total_districts: jsonMetrics.total_districts || 435,
 			district_coverage_percent:
@@ -82,7 +100,7 @@ export const load: LayoutServerLoad = async ({ params, locals: _locals, request 
 			opened: jsonMetrics.opened || 0,
 			clicked: jsonMetrics.clicked || 0,
 			responded: jsonMetrics.responded || 0,
-			views: jsonMetrics.views || 0
+			views: noisyViews
 		},
 
 		delivery_config: template.delivery_config,

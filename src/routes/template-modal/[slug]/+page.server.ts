@@ -32,18 +32,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		throw error(404, 'Template not found');
 	}
 
-	// Fire-and-forget: view tracking should not block SSR response
-	const currentMetrics = extractTemplateMetrics(template.metrics);
-	db.template.update({
-		where: { id: template.id },
-		data: {
-			metrics: {
-				...currentMetrics,
-				views: (currentMetrics.views || 0) + 1,
-				modal_views: (currentMetrics.modal_views || 0) + 1
-			}
-		}
-	}).catch((err) => console.warn('[template-modal] View tracking failed:', err));
+	// View tracking handled client-side via DP analytics pipeline (trackTemplateView)
 
 	// Allow unauthenticated access via QR code / direct link
 	// Users can send via mailto FIRST, then we prompt account creation

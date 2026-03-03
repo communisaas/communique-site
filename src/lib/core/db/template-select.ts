@@ -5,7 +5,7 @@
  * embedding_version, embeddings_updated_at, avg_reputation,
  * reputation_delta, reputation_applied, flagged_by_moderation,
  * consensus_approved, verification_status, reviewed_at, reviewed_by,
- * updatedAt, userId.
+ * userId.
  */
 export const TEMPLATE_LIST_SELECT = {
 	id: true,
@@ -30,6 +30,7 @@ export const TEMPLATE_LIST_SELECT = {
 	unique_districts: true,
 	country_code: true,
 	createdAt: true,
+	updatedAt: true,
 	jurisdictions: true,
 	user: { select: { name: true, avatar: true } },
 } as const;
