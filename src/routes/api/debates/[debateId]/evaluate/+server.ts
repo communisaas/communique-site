@@ -2,7 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { prisma } from '$lib/core/db';
-import { escalateToGovernance } from '$lib/core/blockchain/debate-market-client';
+import { escalateToGovernance, readChainResolution } from '$lib/core/blockchain/debate-market-client';
 
 // ── Rate limiting ────────────────────────────────────────────────────────
 // Guards against accidental double-triggers and runaway cron jobs.
@@ -252,7 +252,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		evaluationResult.aggregatedScores.reduce((sum, a) => sum + a.modelAgreement, 0) /
 		evaluationResult.aggregatedScores.length;
 
-	// Step 5: Determine winner (highest weighted score from aggregated)
+	// Step 5: Determine winner (highest weighted score from aggregated — fallback)
 	let winnerIndex = 0;
 	let bestScore = 0;
 	for (const agg of evaluationResult.aggregatedScores) {
@@ -261,7 +261,29 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			winnerIndex = agg.argumentIndex;
 		}
 	}
-	const winnerArg = debate.arguments.find((a) => a.argument_index === winnerIndex);
+	let winnerStance = debate.arguments.find((a) => a.argument_index === winnerIndex)?.stance ?? null;
+	let resolvedFromChain = false;
+
+	// Defense in depth: read authoritative winner from chain after resolveDebateWithAI()
+	const chainState = await readChainResolution(debate.debate_id_onchain);
+	if (chainState.success && chainState.winningArgumentIndex !== undefined) {
+		const stanceMap: Record<number, string> = { 0: 'SUPPORT', 1: 'OPPOSE', 2: 'AMEND' };
+
+		if (chainState.winningArgumentIndex !== winnerIndex) {
+			console.warn('[evaluate] Chain winner differs from local computation!', {
+				chainWinner: chainState.winningArgumentIndex,
+				localWinner: winnerIndex,
+				debateId
+			});
+		}
+
+		// Chain is authoritative
+		winnerIndex = chainState.winningArgumentIndex;
+		winnerStance = stanceMap[chainState.winningStance ?? 0] ?? winnerStance;
+		resolvedFromChain = true;
+	} else {
+		console.warn('[evaluate] Chain read failed, using local winner:', chainState.error);
+	}
 
 	// Step 6: Update Prisma with resolution data
 	await prisma.debate.update({
@@ -285,8 +307,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			ai_panel_consensus: overallAgreement,
 			resolution_method: 'ai_community',
 			winning_argument_index: winnerIndex,
-			winning_stance: winnerArg?.stance ?? null,
-			resolved_at: new Date()
+			winning_stance: winnerStance,
+			resolved_at: new Date(),
+			resolved_from_chain: resolvedFromChain,
 		}
 	});
 
@@ -309,7 +332,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	console.debug('[evaluate] Debate resolved with AI:', {
 		debateId,
 		winnerIndex,
-		winnerStance: winnerArg?.stance,
+		winnerStance,
 		signatureCount: modelConfigs.length,
 		consensus: overallAgreement.toFixed(2),
 		gasUsed: submissionResult.gasUsed.toString()
@@ -320,7 +343,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		status: 'resolved',
 		resolutionMethod: 'ai_community',
 		winningArgumentIndex: winnerIndex,
-		winningStance: winnerArg?.stance,
+		winningStance: winnerStance,
+		resolvedFromChain,
 		signatureCount: modelConfigs.length,
 		panelConsensus: overallAgreement,
 		submitTxHash: submissionResult.submitTxHash,

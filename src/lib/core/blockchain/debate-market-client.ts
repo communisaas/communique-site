@@ -58,6 +58,8 @@ const DEBATE_MARKET_ABI = [
 	'function finalizeAppeal(bytes32 debateId)',
 	// View / pure
 	'function getDebateState(bytes32 debateId) view returns (uint8 status, uint256 deadline_, uint256 argumentCount, uint256 totalStake, uint256 uniqueParticipants)',
+	'function debates(bytes32 debateId) view returns (uint256 winningArgumentIndex, uint8 winningStance, uint8 status, uint8 resolutionMethod)',
+	'function arguments(bytes32 debateId, uint256 index) view returns (uint8 stance, bytes32 bodyHash, uint256 weightedScore)',
 	'function deriveDomain(bytes32 baseDomain, bytes32 propositionHash) pure returns (bytes32)',
 	'function aiArgumentScores(bytes32 debateId, uint256 argumentIndex) view returns (uint256)',
 	'function aiSignatureCount(bytes32 debateId) view returns (uint256)',
@@ -1090,6 +1092,57 @@ export async function getDebateState(debateId: string): Promise<DebateStateResul
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 		console.error('[DebateMarketClient] getDebateState failed:', {
+			error: msg,
+			debateId: debateId.slice(0, 12) + '...'
+		});
+		return { success: false, error: msg };
+	}
+}
+
+/** Result of reading the on-chain resolution state for a debate. */
+export interface ChainResolutionResult {
+	success: boolean;
+	winningArgumentIndex?: number;
+	winningStance?: number;
+	status?: number;
+	resolutionMethod?: number;
+	error?: string;
+}
+
+/**
+ * Read the authoritative resolution state from the on-chain DebateMarket.
+ *
+ * Uses the debates() public getter which returns the full struct including
+ * winningArgumentIndex and winningStance — set atomically by resolveDebate()
+ * or resolveDebateWithAI() on-chain.
+ *
+ * Call this AFTER a resolution tx confirms to get the chain-authoritative winner.
+ * The on-chain state is the single source of truth — it only contains arguments
+ * that passed verifyThreeTreeProof() atomically.
+ *
+ * @param debateId - On-chain debate ID (bytes32 hex)
+ * @returns Chain resolution state, or error if unavailable
+ */
+export async function readChainResolution(debateId: string): Promise<ChainResolutionResult> {
+	const instance = getDebateMarketInstance();
+	if (!instance) {
+		return { success: false, error: 'Blockchain not configured' };
+	}
+
+	try {
+		const [winningArgumentIndex, winningStance, status, resolutionMethod] =
+			await instance.debateMarket.debates(debateId);
+
+		return {
+			success: true,
+			winningArgumentIndex: Number(winningArgumentIndex),
+			winningStance: Number(winningStance),
+			status: Number(status),
+			resolutionMethod: Number(resolutionMethod),
+		};
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		console.error('[DebateMarketClient] readChainResolution failed:', {
 			error: msg,
 			debateId: debateId.slice(0, 12) + '...'
 		});

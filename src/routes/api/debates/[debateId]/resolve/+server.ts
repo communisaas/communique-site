@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
-import { resolveDebate as resolveDebateOnChain } from '$lib/core/blockchain/debate-market-client';
+import { resolveDebate as resolveDebateOnChain, readChainResolution } from '$lib/core/blockchain/debate-market-client';
 
 /**
  * POST /api/debates/[debateId]/resolve
@@ -58,16 +58,41 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		throw error(400, 'Cannot resolve a debate with no verified arguments');
 	}
 
-	// Winner is the verified argument with the highest weighted_score
-	const winner = debate.arguments[0];
+	// Winner from DB: verified argument with highest weighted_score (fallback)
+	const dbWinner = debate.arguments[0];
 
 	// Resolve on-chain if this debate has an on-chain ID
 	let txHash: string | undefined;
+	let resolvedFromChain = false;
+	let winningIndex = dbWinner.argument_index;
+	let winningStance = dbWinner.stance;
+
 	if (debate.debate_id_onchain) {
 		const onchainResult = await resolveDebateOnChain(debate.debate_id_onchain);
 
 		if (onchainResult.success) {
 			txHash = onchainResult.txHash;
+
+			// Defense in depth: read the authoritative winner from chain
+			// The on-chain state only contains arguments that passed verifyThreeTreeProof()
+			const chainState = await readChainResolution(debate.debate_id_onchain);
+			if (chainState.success && chainState.winningArgumentIndex !== undefined) {
+				winningIndex = chainState.winningArgumentIndex;
+				// Map on-chain stance enum to string
+				const stanceMap: Record<number, string> = { 0: 'SUPPORT', 1: 'OPPOSE', 2: 'AMEND' };
+				winningStance = stanceMap[chainState.winningStance ?? 0] ?? dbWinner.stance;
+				resolvedFromChain = true;
+
+				if (winningIndex !== dbWinner.argument_index) {
+					console.warn('[debates/resolve] Chain winner differs from DB winner!', {
+						chainWinner: winningIndex,
+						dbWinner: dbWinner.argument_index,
+						debateId
+					});
+				}
+			} else {
+				console.warn('[debates/resolve] Chain read failed, using DB winner:', chainState.error);
+			}
 		} else if (onchainResult.error?.includes('not configured')) {
 			console.warn('[debates/resolve] Blockchain not configured, resolving off-chain only');
 		} else {
@@ -80,10 +105,11 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			where: { id: debateId, status: 'active' },
 			data: {
 				status: 'resolved',
-				winning_argument_index: winner.argument_index,
-				winning_stance: winner.stance,
+				winning_argument_index: winningIndex,
+				winning_stance: winningStance,
 				resolved_at: new Date(),
-				resolution_method: 'community_only'
+				resolution_method: 'community_only',
+				resolved_from_chain: resolvedFromChain,
 			}
 		});
 
@@ -93,6 +119,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			winningArgumentIndex: resolved.winning_argument_index,
 			winningStance: resolved.winning_stance,
 			resolvedAt: resolved.resolved_at?.toISOString(),
+			resolvedFromChain,
 			...(txHash && { txHash })
 		});
 	} catch (err: unknown) {

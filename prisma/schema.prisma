@@ -974,6 +974,7 @@ model Debate {
   winning_argument_index  Int?    @map("winning_argument_index")
   winning_stance          String? @map("winning_stance")
   resolved_at             DateTime? @map("resolved_at")
+  resolved_from_chain     Boolean @default(false) @map("resolved_from_chain") // True when winner confirmed by on-chain read
 
   // AI Resolution (Phase 3: AI-Augmented Resolution)
   ai_resolution           Json?     @map("ai_resolution") // Full AIResolutionData blob
