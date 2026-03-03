@@ -287,10 +287,7 @@ export function generateMailtoUrl(
 
 		// Congressional routing takes precedence
 		if (resolved.isCongressional && resolved.routingEmail) {
-			// For certified delivery, include template slug in subject for mail server parsing
-			const enhancedSubject = template.slug
-				? `[${template.slug}] ${resolved.subject || template.title || ''}`
-				: resolved.subject || template.title || '';
+			const enhancedSubject = resolved.subject || template.title || '';
 
 			const encodedSubject = encodeURIComponent(enhancedSubject);
 

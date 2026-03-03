@@ -98,11 +98,7 @@
   );
 
   // Subject line
-  const subject = $derived(
-    template.subject
-      ? `[${template.slug}] ${template.subject}`
-      : `[${template.slug}] ${template.title}`
-  );
+  const subject = $derived(template.subject || template.title);
 
   function handleSend() {
     if (!recipient.email) {

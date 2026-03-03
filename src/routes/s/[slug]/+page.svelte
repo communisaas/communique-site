@@ -114,26 +114,12 @@
 			return;
 		}
 
-		// FOR AUTHENTICATED USERS:
-		// Check if OAuth just completed → open modal immediately
+		// Clean up OAuth completion cookie if present — user lands on the page
+		// and chooses who to write to via the Power Landscape, no auto-send
 		const oauthCompletion = getOAuthCompletionCookie();
-
 		if (oauthCompletion) {
-			// Just completed OAuth - open template modal IMMEDIATELY
-			// No address wall, no interruptions
-			// Address will be collected DURING modal flow if needed (congressional templates only)
-			console.log('[Template Page] OAuth completion detected - opening modal immediately');
-
-			modalSystem.openModal('template-modal', 'template_modal', {
-				template,
-				user: data.user
-			});
-
-			// Clean up the completion cookie
 			clearOAuthCompletionCookie();
 		}
-		// Note: We removed the old "immediately trigger email flow" logic
-		// Modal will now only open after OAuth or when user clicks "Send message"
 	});
 
 	/**
@@ -249,7 +235,13 @@
 
 		const settle = () => {
 			if (departingRecipients.size > 0) {
+				// Promote departing → contacted, then clear departing
+				contactedRecipients = new Set([...contactedRecipients, ...departingRecipients]);
 				departingRecipients = new Set();
+				// Complete batch registration if it was in progress
+				if (batchRegistrationState === 'registering') {
+					batchRegistrationState = 'complete';
+				}
 			}
 		};
 
@@ -309,17 +301,19 @@
 		} else if (member.deliveryRoute === 'email' && member.email) {
 			// Direct mailto — opener + resolved template body, no intermediate compose view
 			const districtName = data.userDistrictCode ?? '';
-			const subject = template.subject
-				? `[${template.slug}] ${template.subject}`
-				: `[${template.slug}] ${template.title}`;
+			const subject = template.subject || template.title;
 
 			const trustTier = data.user?.trust_tier ?? 0;
 			const attestation = trustTier >= 2
 				? `Verified resident, ${districtName}\nCryptographic proof of residency`
 				: undefined;
 
-			// Resolve all template placeholders ([Name], [Representative], [Personal Connection], etc.)
-			const resolved = resolveTemplate(template as any, data.user as any ?? null);
+			// Inject personal connection before resolveTemplate strips the placeholder
+			const pc = personalConnectionValue?.trim();
+			const templateWithPC = pc
+				? { ...template, message_body: (template.message_body || '').replace(/\[Personal Connection\]/g, pc) }
+				: template;
+			const resolved = resolveTemplate(templateWithPC as any, data.user as any ?? null);
 			const resolvedBody = resolved.body.replace(/\[District\]/g, districtName);
 
 			const result = generatePersonalizedMailto({
@@ -331,7 +325,6 @@
 				},
 				subject,
 				opener: member.accountabilityOpener ?? '',
-				personalInput: personalConnectionValue?.trim() || undefined,
 				templateBody: resolvedBody,
 				attestation
 			});
@@ -367,8 +360,8 @@
 		}
 	}
 
-	async function handleBatchRegister(memberIds: string[]) {
-		if (!positionState.registrationId || batchRegistrationState === 'registering') return;
+	function handleBatchRegister(memberIds: string[]) {
+		if (batchRegistrationState === 'registering') return;
 		batchRegistrationState = 'registering';
 
 		const allMembers = [
@@ -384,16 +377,13 @@
 		const emailMembers = members.filter(m => m.email && m.deliveryRoute === 'email');
 		if (emailMembers.length > 0) {
 			const districtName = data.userDistrictCode ?? '';
-			const subject = template.subject
-				? `[${template.slug}] ${template.subject}`
-				: `[${template.slug}] ${template.title}`;
+			const subject = template.subject || template.title;
 
 			const trustTier = data.user?.trust_tier ?? 0;
 			const attestation = trustTier >= 2
 				? `Verified resident, ${districtName}\nCryptographic proof of residency`
 				: undefined;
 
-			// Resolve all template placeholders ([Name], [Representative], [Personal Connection], etc.)
 			const resolved = resolveTemplate(template as any, data.user as any ?? null);
 			const resolvedBody = resolved.body.replace(/\[District\]/g, districtName).trim();
 
@@ -410,38 +400,34 @@
 			const url = `mailto:${encodeURIComponent(emails)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyParts.join('\n\n'))}`;
 
 			if (url.length <= 8000) {
+				// Set departing only — settle handler promotes to contacted when user returns
 				departingRecipients = new Set([...departingRecipients, ...emailMembers.map(m => m.id)]);
 				trackDeliveryAttempt(template.id, 'email');
+
+				// Persist delivery records (fire-and-forget)
+				if (positionState.registrationId) {
+					fetch('/api/positions/batch-register', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							registrationId: positionState.registrationId,
+							recipients: members.map((m) => ({
+								name: m.name,
+								email: m.email ?? undefined,
+								deliveryMethod: m.deliveryRoute === 'cwc' ? 'cwc' : m.deliveryRoute === 'email' ? 'email' : 'recorded'
+							}))
+						}),
+						keepalive: true
+					}).catch(() => {});
+				}
+
+				// Stay in 'registering' — settle handler transitions to 'complete' on return
 				window.location.href = url;
+				return;
 			}
 		}
 
-		// Persist delivery records for ALL members (fire-and-forget for mailto, blocking for state)
-		const recipients = members.map((m) => ({
-			name: m.name,
-			email: m.email ?? undefined,
-			deliveryMethod: m.deliveryRoute === 'cwc' ? 'cwc' : m.deliveryRoute === 'email' ? 'email' : 'recorded'
-		}));
-
-		try {
-			const res = await fetch('/api/positions/batch-register', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					registrationId: positionState.registrationId,
-					recipients
-				})
-			});
-
-			if (res.ok) {
-				contactedRecipients = new Set([...contactedRecipients, ...memberIds]);
-				batchRegistrationState = 'complete';
-			} else {
-				batchRegistrationState = 'idle';
-			}
-		} catch {
-			batchRegistrationState = 'idle';
-		}
+		batchRegistrationState = 'idle';
 	}
 
 	async function _handleAddressSubmit(address: string) {
@@ -509,37 +495,37 @@
 <!-- Template content with zoned layout: Orient → Commit → Act -->
 <div class="py-6 overflow-x-hidden">
 	<!-- ORIENT: Template header (single column, clean context) -->
-	<div class="mb-2">
+	<div class="mb-6">
 		<h1 class="mb-3 text-3xl font-bold text-slate-900 sm:text-4xl">
 			{template.title}
 		</h1>
-		<p class="mb-4 text-lg text-slate-600">{template.description}</p>
+		<p class="mb-3 text-lg text-slate-600">{template.description}</p>
 
-		<!-- Template metadata -->
-		<div class="flex flex-wrap items-center gap-3">
+		<!-- Template metadata — single scannable line -->
+		<div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+			<ShareButton url={shareUrl} _title={template.title} variant="secondary" size="sm" />
 			<Badge variant={isCongressional ? 'congressional' : 'direct'}>
 				{isCongressional ? 'Congressional Delivery' : 'Direct Outreach'}
 			</Badge>
-			<span class="rounded bg-slate-100 px-2 py-1 text-sm text-slate-600">
-				{template.category}
-			</span>
+			<span class="text-slate-500">{template.category}</span>
 			{#if FEATURES.CONGRESSIONAL && (data.user?.trust_tier ?? 0) >= 2 && template.deliveryMethod === 'cwc'}
-				<div class="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-sm text-green-700">
+				<span class="flex items-center gap-1 text-green-600">
 					<VerificationBadge showText={false} />
-					<span>Enhanced Credibility</span>
-				</div>
+					Enhanced Credibility
+				</span>
 			{/if}
-			<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
-				<div class="flex items-center gap-1.5">
-					<Users class="h-4 w-4" />
-					<span>{(template.metrics?.sent || 0).toLocaleString()} sent this</span>
-				</div>
-				<div class="flex items-center gap-1.5">
-					<Eye class="h-4 w-4" />
-					<span>{(template.metrics?.views || 0).toLocaleString()} views</span>
-				</div>
-				<ShareButton url={shareUrl} _title={template.title} variant="secondary" size="sm" />
-			</div>
+			{#if (template.metrics?.sent || 0) >= 5}
+				<span class="flex items-center gap-1.5 text-slate-400">
+					<Users class="h-3.5 w-3.5" />
+					{template.metrics.sent.toLocaleString()} acted on this
+				</span>
+			{/if}
+			{#if (template.metrics?.views || 0) >= 20}
+				<span class="flex items-center gap-1.5 text-slate-400">
+					<Eye class="h-3.5 w-3.5" />
+					{template.metrics.views.toLocaleString()} views
+				</span>
+			{/if}
 		</div>
 	</div>
 
@@ -656,6 +642,7 @@
 					user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
 					showEmailModal={false}
 					{debateResolution}
+					bind:personalConnectionValue
 					onEmailModalClose={() => {
 						/* Intentionally empty - modal close handled elsewhere */
 					}}
@@ -737,7 +724,7 @@
 
 			<!-- Power Landscape: visible after position registration -->
 			{#if landscapeRevealed}
-				<div id="power-landscape"></div>
+				<div id="power-landscape">
 				<PowerLandscape
 					{template}
 					decisionMakers={pl.recipientConfig?.decisionMakers ?? []}
@@ -759,6 +746,7 @@
 					} : undefined}
 					registrationState={batchRegistrationState}
 				/>
+				</div>
 			{/if}
 
 			<!-- Debate surface -->

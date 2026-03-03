@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { mergeLandscape, type LandscapeMember, type DistrictOfficialInput } from '$lib/utils/landscapeMerge';
 	import RoleGroup from './RoleGroup.svelte';
-	import BatchRegistrationBar from './BatchRegistrationBar.svelte';
 	import type { ProcessedDecisionMaker, Template } from '$lib/types/template';
-	import { MapPin, ChevronRight, Check } from '@lucide/svelte';
+	import { MapPin, ChevronRight, Check, Loader2 } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
 	let {
@@ -119,7 +118,12 @@
 		<div class="space-y-5">
 			<!-- Batch action header — same "Write to" gesture as cards, collective scope -->
 			<div class="flex items-center justify-between">
-				{#if remainingCount > 0}
+				{#if registrationState === 'registering'}
+					<span class="flex items-center gap-1.5 text-sm font-medium text-slate-400 min-h-[44px]">
+						<Loader2 class="h-4 w-4 animate-spin" />
+						Opening mail&hellip;
+					</span>
+				{:else if remainingCount > 0}
 					<button
 						type="button"
 						class="group/batch flex items-center gap-1 text-sm font-medium text-participation-primary-600 hover:text-participation-primary-700 transition-colors cursor-pointer min-h-[44px]"
@@ -175,13 +179,6 @@
 					/>
 				</div>
 			{/if}
-
-			<!-- Batch action -->
-			<BatchRegistrationBar
-				{emailRemainingCount}
-				{registrationState}
-				onBatchRegister={handleBatchRegister}
-			/>
 
 			<!-- Hybrid: DMs visible but congress requires address verification -->
 			{#if isCwc && !landscape.districtGroup && onVerifyAddress}
