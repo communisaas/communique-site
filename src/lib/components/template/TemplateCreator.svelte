@@ -346,6 +346,13 @@
 			recipientEmails: formData.audience.recipientEmails
 		};
 
+		// Attach full GeoScope object for TemplateScope creation.
+		// Template type has geographic_scope as a string enum (display-level),
+		// but the API expects the structured GeoScope object with country/subdivision.
+		const payload = formData.content.geographicScope
+			? { ...template, geographic_scope: formData.content.geographicScope }
+			: template;
+
 		// Optimistic: mark draft for deletion BEFORE dispatching to parent.
 		// Parent may destroy us synchronously (showTemplateCreator=false happens before
 		// isSubmitting=false in the finally block), so the $effect that was setting this
@@ -354,7 +361,7 @@
 		// and the component stays alive on failure (parent only unmounts on success).
 		draftCleanupMode = 'delete';
 
-		onsave?.(template);
+		onsave?.(payload as Omit<Template, 'id'>);
 	}
 
 	// Progress calculation
