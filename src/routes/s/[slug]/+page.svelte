@@ -729,7 +729,7 @@
 			<CommunityEngagementCard
 				engagement={pl.engagementByDistrict ?? null}
 				userDistrict={data.userDistrictCode}
-				onAddPosition={!positionState.registered ? () => {
+				onAddPosition={!positionState.isRegistered ? () => {
 					const stanceSection = document.querySelector('.border-y.border-slate-200\\/80');
 					stanceSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 				} : undefined}

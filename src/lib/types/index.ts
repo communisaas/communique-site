@@ -14,7 +14,18 @@ export * from './analytics';
 
 // Core Domain Types
 export * from './template';
-export * from './templateConfig';
+export {
+	// RecipientConfig intentionally excluded — exported from './template' instead
+	type DeliveryConfig,
+	type CwcConfig,
+	type TemplateMetrics,
+	type TypedTemplate,
+	isValidRecipientConfig,
+	isValidDeliveryConfig,
+	extractRecipientEmails,
+	extractDeliveryConfig,
+	extractTemplateMetrics
+} from './templateConfig';
 export * from './user';
 
 // Geographic & Location Types

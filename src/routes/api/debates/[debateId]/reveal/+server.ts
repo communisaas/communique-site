@@ -71,7 +71,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			direction,
 			nonce,
 			debateWeightProof,
-			debateWeightPublicInputs
+			debateWeightPublicInputs: debateWeightPublicInputs as [string, string]
 		});
 
 		if (onchainResult.success) {

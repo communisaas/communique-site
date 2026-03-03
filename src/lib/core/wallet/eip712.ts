@@ -96,7 +96,7 @@ export function buildProofAuthorizationData(params: ProofAuthorizationParams): {
 
 	return {
 		domain,
-		types: { ...DISTRICT_GATE_EIP712_TYPES },
+		types: { ...DISTRICT_GATE_EIP712_TYPES } as unknown as Record<string, EIP712TypeField[]>,
 		value
 	};
 }

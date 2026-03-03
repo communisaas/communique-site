@@ -20,7 +20,7 @@
 			argumentIndex: number;
 			direction: 'BUY' | 'SELL';
 			stakeAmount: number;
-			weightedAmount: number;
+			weightedAmount: string;
 			noteCommitment: string;
 			proof?: Uint8Array;
 		}) => void;

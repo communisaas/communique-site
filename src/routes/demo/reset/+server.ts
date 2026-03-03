@@ -13,7 +13,7 @@ import { env } from '$env/dynamic/private';
 import { db } from '$lib/core/db';
 import type { RequestHandler } from './$types';
 
-async function resetUser(locals: App.Locals, returnTo: string) {
+async function resetUser(locals: App.Locals, returnTo: string): Promise<never> {
 	if (!dev && env.DEMO_MODE !== 'true') {
 		throw error(404, 'Not found');
 	}

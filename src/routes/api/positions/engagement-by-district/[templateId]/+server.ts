@@ -35,6 +35,10 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		const userDistrict = url.searchParams.get('userDistrict');
 		const engagement = await getEngagementByDistrict(templateId);
 
+		if (!engagement) {
+			return json({ template_id: templateId, districts: [], aggregate: { total_districts: 0, total_positions: 0, total_support: 0, total_oppose: 0 } });
+		}
+
 		// Tag user's district if provided
 		const districts = engagement.districts.map((d) => ({
 			...d,
