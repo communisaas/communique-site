@@ -67,23 +67,46 @@ export function setCIDs(cids: Partial<typeof IPFS_CIDS>): void {
 /**
  * District codes for a single H3 cell.
  *
- * Format from substrate's build pipeline:
- * - cd: "cd-{stateFIPS}{districtNum}" e.g., "cd-0601" (California 1st)
- * - sldu: "sldu-{stateFIPS}{seatNum}" e.g., "sldu-06001" (state senate)
- * - sldl: "sldl-{stateFIPS}{seatNum}" e.g., "sldl-06001" (state house)
- * - county: "county-{countyFIPS}" e.g., "county-06001"
+ * Version 2: 24-element slot-indexed array matching the protocol's jurisdiction taxonomy.
+ * Each slot is a district identifier string or null (unpopulated).
  *
- * All fields optional — a cell might only have county (e.g., at-large states).
+ * Slot index → jurisdiction type (from voter-protocol jurisdiction.ts):
+ *   0: Congressional District    1: Federal Senate          2: State Senate
+ *   3: State House/Assembly      4: County                  5: City/Municipality
+ *   6: City Council Ward         7: Unified School District 8: Elementary School District
+ *   9: Secondary School District 10: Community College      11-18: Special districts
+ *   19: Judicial District        20: Township/MCD           21: Voting Precinct
+ *   22-23: Overflow
+ *
+ * Version 1 (legacy): Named fields { cd?, sldu?, sldl?, county? }.
+ * Converted to v2 format during fetch (see convertV1CellDistricts).
  */
 export interface CellDistricts {
-	/** Congressional district: "cd-{stateFIPS}{districtNum}" */
+	/** 24-element slot-indexed array. null for unpopulated slots. */
+	slots: (string | null)[];
+}
+
+/**
+ * Legacy v1 CellDistricts format (4 named fields).
+ * Used for backward-compatible deserialization.
+ */
+interface CellDistrictsV1 {
 	cd?: string;
-	/** State senate (upper chamber): "sldu-{stateFIPS}{seatNum}" */
 	sldu?: string;
-	/** State house (lower chamber): "sldl-{stateFIPS}{seatNum}" */
 	sldl?: string;
-	/** County: "county-{countyFIPS}" */
 	county?: string;
+}
+
+/**
+ * Convert v1 named-field format to v2 slot-indexed array.
+ */
+function convertV1CellDistricts(v1: CellDistrictsV1): CellDistricts {
+	const slots: (string | null)[] = new Array(24).fill(null);
+	if (v1.cd) slots[0] = v1.cd;
+	if (v1.sldu) slots[2] = v1.sldu;
+	if (v1.sldl) slots[3] = v1.sldl;
+	if (v1.county) slots[4] = v1.county;
+	return { slots };
 }
 
 /**
@@ -329,9 +352,29 @@ async function getCached<T>(key: string, cid: string, mode: 'json' | 'binary' = 
  * Fetch H3→district mapping.
  * ~3-5 MB brotli compressed, ~1.9M cell entries.
  * Cached in IndexedDB (browser) or memory (server) for 7 days.
+ *
+ * Handles v1→v2 format migration transparently: if the IPFS data uses
+ * v1 named fields ({ cd, sldu, sldl, county }), converts to v2 slot array
+ * on fetch. Cached result is always v2.
  */
 export async function getDistrictMapping(): Promise<DistrictMappingData> {
-	return getCached<DistrictMappingData>('district-mapping', IPFS_CIDS.districtMapping);
+	const data = await getCached<DistrictMappingData>('district-mapping', IPFS_CIDS.districtMapping);
+
+	// v1→v2 migration: convert named fields to slot array
+	if (data.version === 1) {
+		const converted: Record<string, CellDistricts> = {};
+		for (const [cellIndex, cellData] of Object.entries(data.mapping)) {
+			// v1 data has named fields, not slots array
+			if ('slots' in cellData) {
+				converted[cellIndex] = cellData;
+			} else {
+				converted[cellIndex] = convertV1CellDistricts(cellData as unknown as CellDistrictsV1);
+			}
+		}
+		data.mapping = converted;
+	}
+
+	return data;
 }
 
 /**

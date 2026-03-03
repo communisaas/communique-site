@@ -366,6 +366,22 @@ export class ClientSideTemplateFilter {
 			return true;
 		}
 
+		// State senate district match
+		if (
+			this.inferredLocation.state_senate_district &&
+			jurisdiction.state_senate_district === this.inferredLocation.state_senate_district
+		) {
+			return true;
+		}
+
+		// State house district match
+		if (
+			this.inferredLocation.state_house_district &&
+			jurisdiction.state_house_district === this.inferredLocation.state_house_district
+		) {
+			return true;
+		}
+
 		// State match (medium priority)
 		// Normalize: jurisdictions may use "CA-ON" while location uses "ON"
 		if (
@@ -392,6 +408,22 @@ export class ClientSideTemplateFilter {
 			return true;
 		}
 
+		// Ward match
+		if (
+			this.inferredLocation.ward_code &&
+			jurisdiction.ward_code === this.inferredLocation.ward_code
+		) {
+			return true;
+		}
+
+		// School district match
+		if (
+			this.inferredLocation.school_district_id &&
+			jurisdiction.school_district_id === this.inferredLocation.school_district_id
+		) {
+			return true;
+		}
+
 		return false;
 	}
 
@@ -399,9 +431,11 @@ export class ClientSideTemplateFilter {
 	 * Score jurisdiction by relevance
 	 *
 	 * Scoring hierarchy (highest to lowest):
-	 * 1.0 = District match (most specific)
+	 * 1.0 = Congressional district match (federal)
+	 * 0.9 = State senate / state house district match (state legislative)
 	 * 0.8 = County match
-	 * 0.7 = City match
+	 * 0.7 = City / ward match (municipal)
+	 * 0.6 = School district match
 	 * 0.51 = State match (margin above 0.45 state threshold)
 	 * 0.3 = Federal/national (baseline - always relevant within country)
 	 * 0.0 = No match
@@ -433,7 +467,7 @@ export class ClientSideTemplateFilter {
 			return { score: 0, reason: 'Country mismatch' };
 		}
 
-		// Exact congressional district match (1.0 score)
+		// Exact congressional district match (1.0 — federal)
 		if (
 			this.inferredLocation.congressional_district &&
 			jurisdiction.congressional_district === this.inferredLocation.congressional_district
@@ -442,7 +476,25 @@ export class ClientSideTemplateFilter {
 			matchLevel = 'district';
 			reason = `Your district: ${this.inferredLocation.congressional_district}`;
 		}
-		// County match (0.8 score)
+		// State senate district match (0.9 — state legislative)
+		else if (
+			this.inferredLocation.state_senate_district &&
+			jurisdiction.state_senate_district === this.inferredLocation.state_senate_district
+		) {
+			score = 0.9;
+			matchLevel = 'district';
+			reason = `Your state senate district: ${this.inferredLocation.state_senate_district}`;
+		}
+		// State house district match (0.9 — state legislative)
+		else if (
+			this.inferredLocation.state_house_district &&
+			jurisdiction.state_house_district === this.inferredLocation.state_house_district
+		) {
+			score = 0.9;
+			matchLevel = 'district';
+			reason = `Your state house district: ${this.inferredLocation.state_house_district}`;
+		}
+		// County match (0.8)
 		else if (
 			this.inferredLocation.county_fips &&
 			jurisdiction.county_fips === this.inferredLocation.county_fips
@@ -451,7 +503,7 @@ export class ClientSideTemplateFilter {
 			matchLevel = 'county';
 			reason = `Your county: ${jurisdiction.county_name || this.inferredLocation.county_fips}`;
 		}
-		// City match (0.7 score)
+		// City match (0.7)
 		else if (
 			this.inferredLocation.city_name &&
 			jurisdiction.city_name?.toLowerCase() === this.inferredLocation.city_name.toLowerCase()
@@ -460,7 +512,25 @@ export class ClientSideTemplateFilter {
 			matchLevel = 'city';
 			reason = `Your city: ${this.inferredLocation.city_name}`;
 		}
-		// State match (0.51 score — margin above 0.45 state threshold)
+		// Ward match (0.7 — municipal)
+		else if (
+			this.inferredLocation.ward_code &&
+			jurisdiction.ward_code === this.inferredLocation.ward_code
+		) {
+			score = 0.7;
+			matchLevel = 'city';
+			reason = `Your ward: ${this.inferredLocation.ward_code}`;
+		}
+		// School district match (0.6)
+		else if (
+			this.inferredLocation.school_district_id &&
+			jurisdiction.school_district_id === this.inferredLocation.school_district_id
+		) {
+			score = 0.6;
+			matchLevel = 'district';
+			reason = `Your school district: ${jurisdiction.school_district_name || this.inferredLocation.school_district_id}`;
+		}
+		// State match (0.51 — margin above 0.45 state threshold)
 		// Normalize state codes: jurisdictions may use ISO 3166-2 format ("CA-ON", "US-OR")
 		// while inferred location uses short form ("ON", "OR"). Compare the suffix.
 		else if (

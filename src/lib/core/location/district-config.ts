@@ -119,6 +119,26 @@ export const DISTRICT_CONFIG: Record<string, DistrictConfig> = {
 };
 
 /**
+ * US district type labels for the full 24-slot taxonomy
+ *
+ * Maps slot jurisdiction names to human-readable labels.
+ * Slot indices: congressional(0), state_senate(2), state_house(3),
+ * county(4), city(5), ward(6), school_unified(7), school_elementary(8),
+ * school_secondary(9)
+ */
+export const US_DISTRICT_LABELS: Record<string, { label: string; shortLabel: string }> = {
+	congressional: { label: 'Congressional District', shortLabel: 'Congress' },
+	state_senate: { label: 'State Senate District', shortLabel: 'State Senate' },
+	state_house: { label: 'State House District', shortLabel: 'State House' },
+	county: { label: 'County', shortLabel: 'County' },
+	city: { label: 'City / Municipality', shortLabel: 'City' },
+	ward: { label: 'City Council Ward', shortLabel: 'Ward' },
+	school_unified: { label: 'Unified School District', shortLabel: 'School (Unified)' },
+	school_elementary: { label: 'Elementary School District', shortLabel: 'School (Elem.)' },
+	school_secondary: { label: 'Secondary School District', shortLabel: 'School (Sec.)' }
+};
+
+/**
  * Get district config for a country code
  * Returns null if:
  * - Country code is not provided

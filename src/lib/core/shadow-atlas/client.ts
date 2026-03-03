@@ -248,6 +248,51 @@ export interface ShadowAtlasResponse {
 }
 
 // ============================================================================
+// 24-Slot Jurisdiction Taxonomy
+// ============================================================================
+
+/**
+ * Slot index → jurisdiction metadata.
+ * Inline from voter-protocol jurisdiction.ts (will import after cross-repo exports P0).
+ */
+const US_SLOT_NAMES: ReadonlyArray<{ jurisdiction: string; label: string }> = [
+	/* 0  */ { jurisdiction: 'congressional', label: 'Congressional District' },
+	/* 1  */ { jurisdiction: 'federal-senate', label: 'Federal Senate' },
+	/* 2  */ { jurisdiction: 'state-senate', label: 'State Senate' },
+	/* 3  */ { jurisdiction: 'state-house', label: 'State House/Assembly' },
+	/* 4  */ { jurisdiction: 'county', label: 'County' },
+	/* 5  */ { jurisdiction: 'city', label: 'City/Municipality' },
+	/* 6  */ { jurisdiction: 'city-council', label: 'City Council Ward' },
+	/* 7  */ { jurisdiction: 'unified-school', label: 'Unified School District' },
+	/* 8  */ { jurisdiction: 'elementary-school', label: 'Elementary School District' },
+	/* 9  */ { jurisdiction: 'secondary-school', label: 'Secondary School District' },
+	/* 10 */ { jurisdiction: 'community-college', label: 'Community College District' },
+	/* 11 */ { jurisdiction: 'water', label: 'Water District' },
+	/* 12 */ { jurisdiction: 'fire', label: 'Fire District' },
+	/* 13 */ { jurisdiction: 'transit', label: 'Transit District' },
+	/* 14 */ { jurisdiction: 'hospital', label: 'Hospital District' },
+	/* 15 */ { jurisdiction: 'library', label: 'Library District' },
+	/* 16 */ { jurisdiction: 'park', label: 'Park District' },
+	/* 17 */ { jurisdiction: 'conservation', label: 'Conservation District' },
+	/* 18 */ { jurisdiction: 'utility', label: 'Utility District' },
+	/* 19 */ { jurisdiction: 'judicial', label: 'Judicial District' },
+	/* 20 */ { jurisdiction: 'township', label: 'Township/MCD' },
+	/* 21 */ { jurisdiction: 'precinct', label: 'Voting Precinct' },
+	/* 22 */ { jurisdiction: 'overflow-1', label: 'Overflow 1' },
+	/* 23 */ { jurisdiction: 'overflow-2', label: 'Overflow 2' },
+];
+
+/**
+ * Result of a multi-district lookup across all 24 jurisdiction slots.
+ */
+export interface MultiDistrictResult {
+	/** All populated districts across all slots */
+	districts: District[];
+	/** Slot 0 (congressional) for backward compatibility — null if unpopulated */
+	primary: District | null;
+}
+
+// ============================================================================
 // District Lookup (IPFS + H3 — no server call)
 // ============================================================================
 
@@ -255,10 +300,57 @@ export interface ShadowAtlasResponse {
 const H3_RESOLUTION = 7;
 
 /**
- * Build a District object from H3 cell districts data.
+ * Build a District object from a slot value and index.
+ */
+function slotToDistrict(slotValue: string, slotIndex: number): District {
+	const meta = US_SLOT_NAMES[slotIndex];
+	const jurisdiction = meta?.jurisdiction ?? `slot-${slotIndex}`;
+
+	// Congressional district (slot 0): convert substrate ID format
+	if (slotIndex === 0) {
+		const districtCode = convertDistrictId(slotValue);
+		return {
+			id: districtCode,
+			name: buildDistrictName(districtCode),
+			jurisdiction,
+			districtType: jurisdiction,
+		};
+	}
+
+	// Other slots: use raw ID with jurisdiction label
+	return {
+		id: slotValue,
+		name: `${meta?.label ?? jurisdiction}: ${slotValue}`,
+		jurisdiction,
+		districtType: jurisdiction,
+	};
+}
+
+/**
+ * Extract all populated districts from a cell's 24-slot array.
+ */
+function cellDistrictsToMulti(cellDistricts: CellDistricts): MultiDistrictResult {
+	const districts: District[] = [];
+	let primary: District | null = null;
+
+	for (let i = 0; i < cellDistricts.slots.length; i++) {
+		const val = cellDistricts.slots[i];
+		if (val) {
+			const district = slotToDistrict(val, i);
+			districts.push(district);
+			if (i === 0) primary = district;
+		}
+	}
+
+	return { districts, primary };
+}
+
+/**
+ * Build a District object from H3 cell districts data (backward compat).
+ * Returns the congressional district (slot 0).
  */
 function cellDistrictsToDistrict(cellDistricts: CellDistricts): District {
-	const cdRaw = cellDistricts.cd;
+	const cdRaw = cellDistricts.slots[0];
 	if (!cdRaw) {
 		throw new Error('Cell has no congressional district assignment');
 	}
@@ -314,6 +406,46 @@ export async function lookupDistrict(lat: number, lng: number): Promise<District
 			throw new Error(`District lookup failed: ${error.message}`);
 		}
 		throw new Error('District lookup failed with unknown error');
+	}
+}
+
+/**
+ * Lookup ALL districts for a given latitude/longitude across all 24 jurisdiction slots.
+ *
+ * Returns congressional + state senate + state house + county + city + school + special
+ * districts — everything the H3 cell maps to.
+ *
+ * @param lat - Latitude (-90 to 90)
+ * @param lng - Longitude (-180 to 180)
+ * @returns Multi-district result with all populated slots + primary (congressional)
+ * @throws Error if lookup fails or coordinates are invalid
+ */
+export async function lookupAllDistricts(lat: number, lng: number): Promise<MultiDistrictResult> {
+	if (lat < -90 || lat > 90) {
+		throw new Error(`Invalid latitude: ${lat}. Must be between -90 and 90.`);
+	}
+	if (lng < -180 || lng > 180) {
+		throw new Error(`Invalid longitude: ${lng}. Must be between -180 and 180.`);
+	}
+
+	try {
+		const mapping = await getDistrictMapping();
+		const cellIndex = latLngToCell(lat, lng, H3_RESOLUTION);
+		const cellDistricts = mapping.mapping[cellIndex];
+
+		if (!cellDistricts) {
+			throw new Error(
+				`No district data for H3 cell ${cellIndex} at (${lat.toFixed(4)}, ${lng.toFixed(4)}). ` +
+				'Location may be outside US coverage area.'
+			);
+		}
+
+		return cellDistrictsToMulti(cellDistricts);
+	} catch (error) {
+		if (error instanceof Error) {
+			throw new Error(`Multi-district lookup failed: ${error.message}`);
+		}
+		throw new Error('Multi-district lookup failed with unknown error');
 	}
 }
 

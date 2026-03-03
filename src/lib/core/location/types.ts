@@ -36,6 +36,12 @@ export interface LocationSignal {
 	/** Congressional district (e.g., "TX-18") */
 	congressional_district?: string | null;
 
+	/** State upper house (senate) district */
+	state_senate_district?: string | null;
+
+	/** State lower house (assembly/house) district */
+	state_house_district?: string | null;
+
 	/** State code (e.g., "TX") */
 	state_code?: string | null;
 
@@ -44,6 +50,12 @@ export interface LocationSignal {
 
 	/** County FIPS code (e.g., "48453" for Travis County, TX) */
 	county_fips?: string | null;
+
+	/** City council ward code */
+	ward_code?: string | null;
+
+	/** School district ID (NCES) */
+	school_district_id?: string | null;
 
 	/**
 	 * Census Block GEOID (15-digit cell identifier)
@@ -82,6 +94,12 @@ export interface InferredLocation {
 	/** Congressional district (highest confidence signal) */
 	congressional_district: string | null;
 
+	/** State upper house (senate) district — slot 2 */
+	state_senate_district?: string | null;
+
+	/** State lower house (assembly/house) district — slot 3 */
+	state_house_district?: string | null;
+
 	/** State code (highest confidence signal) */
 	state_code: string | null;
 
@@ -93,6 +111,12 @@ export interface InferredLocation {
 
 	/** County FIPS code (optional, from highest confidence signal) */
 	county_fips?: string | null;
+
+	/** City council ward code — slot 6 */
+	ward_code?: string | null;
+
+	/** School district ID (NCES) — slot 7 */
+	school_district_id?: string | null;
 
 	/**
 	 * Census Block GEOID (15-digit cell identifier)
@@ -370,6 +394,9 @@ export interface TemplateJurisdiction {
 	city_name?: string | null;
 	city_fips?: string | null;
 
+	// Ward/council
+	ward_code?: string | null;
+
 	// School district
 	school_district_id?: string | null;
 	school_district_name?: string | null;
@@ -386,7 +413,7 @@ export interface TemplateJurisdiction {
 /**
  * Jurisdiction types
  */
-export type JurisdictionType = 'federal' | 'state' | 'county' | 'city' | 'school_district';
+export type JurisdictionType = 'federal' | 'state' | 'county' | 'city' | 'ward' | 'school_district';
 
 /**
  * Template with relevance score
@@ -440,7 +467,7 @@ export const INDEXED_DB_STORES = {
 /**
  * IndexedDB database name and version
  */
-export const INDEXED_DB_NAME = 'communique_location';
+export const INDEXED_DB_NAME = 'commons_location';
 export const INDEXED_DB_VERSION = 3; // Bumped from 2 to force inferred_location schema fix
 
 // ============================================================================
@@ -514,7 +541,7 @@ export function isTemplateJurisdiction(value: unknown): value is TemplateJurisdi
 		typeof jurisdiction.id === 'string' &&
 		typeof jurisdiction.template_id === 'string' &&
 		typeof jurisdiction.jurisdiction_type === 'string' &&
-		['federal', 'state', 'county', 'city', 'school_district'].includes(
+		['federal', 'state', 'county', 'city', 'ward', 'school_district'].includes(
 			jurisdiction.jurisdiction_type
 		)
 	);
