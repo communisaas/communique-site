@@ -774,7 +774,7 @@ export async function getEngagementBreakdown(identityCommitment: string): Promis
 }
 
 // ============================================================================
-// Officials (IPFS — no server call)
+// Officials (IPFS primary, Shadow Atlas HTTP fallback)
 // ============================================================================
 
 /**
@@ -816,38 +816,72 @@ export interface OfficialsResponse {
 /**
  * Get federal officials for a congressional district.
  *
- * IPFS-native: looks up from cached officials dataset (504 KB).
- * No runtime calls to Shadow Atlas, Congress.gov, or any government API.
+ * Dual-path architecture:
+ * 1. IPFS-native (primary): cached officials dataset (504 KB). Zero runtime calls.
+ * 2. Shadow Atlas HTTP (fallback): when IPFS CIDs are not yet published.
  *
  * @param districtCode - District code like "CA-12", "VT-AL", "DC-00"
  * @returns Officials response with house rep + senators
  * @throws Error if district not found or data unavailable
  */
 export async function getOfficials(districtCode: string): Promise<OfficialsResponse> {
+	// Primary: IPFS-native (when quarterly CIDs are published)
+	if (isIPFSConfigured()) {
+		try {
+			const dataset = await getOfficialsDataset();
+
+			// IPFS officials dataset is keyed by substrate format (cd-0612).
+			// Callers may pass communique format (CA-12). Try substrate key first,
+			// then fall back to the raw key for forward compatibility.
+			const substrateKey = toSubstrateDistrictKey(districtCode);
+			const entry = dataset.districts[substrateKey] ?? dataset.districts[districtCode];
+
+			if (!entry) {
+				throw new Error(`No officials data for district ${districtCode} (tried key: ${substrateKey})`);
+			}
+
+			return {
+				officials: entry.officials as Official[],
+				district_code: districtCode,
+				state: entry.state,
+				special_status: entry.special_status,
+				source: 'congress-legislators',
+				cached: true,
+			};
+		} catch (error) {
+			if (error instanceof Error) {
+				throw new Error(`Officials lookup failed [IPFS]: ${error.message}`);
+			}
+			throw new Error('Officials lookup failed with unknown error');
+		}
+	}
+
+	// Fallback: Shadow Atlas HTTP (pre-IPFS deployment)
 	try {
-		const dataset = await getOfficialsDataset();
+		const url = `${SHADOW_ATLAS_URL}/v1/officials?district=${encodeURIComponent(districtCode)}`;
+		const response = await fetch(url, {
+			headers: { Accept: 'application/json' },
+			signal: AbortSignal.timeout(10_000),
+		});
 
-		// IPFS officials dataset is keyed by substrate format (cd-0612).
-		// Callers may pass communique format (CA-12). Try substrate key first,
-		// then fall back to the raw key for forward compatibility.
-		const substrateKey = toSubstrateDistrictKey(districtCode);
-		const entry = dataset.districts[substrateKey] ?? dataset.districts[districtCode];
-
-		if (!entry) {
-			throw new Error(`No officials data for district ${districtCode} (tried key: ${substrateKey})`);
+		if (!response.ok) {
+			throw new Error(`Shadow Atlas officials returned ${response.status}`);
 		}
 
+		const json = await response.json();
+		const data = json.data ?? json;
+
 		return {
-			officials: entry.officials as Official[],
-			district_code: districtCode,
-			state: entry.state,
-			special_status: entry.special_status,
+			officials: (data.officials ?? []) as Official[],
+			district_code: data.district_code ?? districtCode,
+			state: data.state ?? districtCode.split('-')[0],
+			special_status: data.special_status ?? null,
 			source: 'congress-legislators',
-			cached: true,
+			cached: data.cached ?? false,
 		};
 	} catch (error) {
 		if (error instanceof Error) {
-			throw new Error(`Officials lookup failed [IPFS]: ${error.message}`);
+			throw new Error(`Officials lookup failed [HTTP fallback]: ${error.message}`);
 		}
 		throw new Error('Officials lookup failed with unknown error');
 	}
