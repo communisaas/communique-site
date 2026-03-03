@@ -41,8 +41,7 @@ describe('Census API Module', () => {
 	// =========================================================================
 
 	describe('getTimezoneLocation', () => {
-		it('should return location signal for America/New_York', () => {
-			// Mock Intl to return a specific timezone
+		it('should return country-level signal for America/New_York', () => {
 			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
 				() =>
 					({
@@ -54,13 +53,13 @@ describe('Census API Module', () => {
 
 			expect(signal).not.toBeNull();
 			expect(signal!.signal_type).toBe('ip');
-			expect(signal!.confidence).toBe(0.2);
-			expect(signal!.state_code).toBe('NY');
+			expect(signal!.confidence).toBe(0.15);
 			expect(signal!.country_code).toBe('US');
+			expect(signal!.state_code).toBeNull();
 			expect(signal!.source).toBe('browser.timezone');
 		});
 
-		it('should return CA for America/Los_Angeles', () => {
+		it('should return US for America/Los_Angeles', () => {
 			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
 				() =>
 					({
@@ -69,10 +68,11 @@ describe('Census API Module', () => {
 			);
 
 			const signal = getTimezoneLocation();
-			expect(signal!.state_code).toBe('CA');
+			expect(signal!.country_code).toBe('US');
+			expect(signal!.state_code).toBeNull();
 		});
 
-		it('should return IL for America/Chicago', () => {
+		it('should return US for America/Chicago', () => {
 			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
 				() =>
 					({
@@ -81,10 +81,11 @@ describe('Census API Module', () => {
 			);
 
 			const signal = getTimezoneLocation();
-			expect(signal!.state_code).toBe('IL');
+			expect(signal!.country_code).toBe('US');
+			expect(signal!.state_code).toBeNull();
 		});
 
-		it('should return CO for America/Denver', () => {
+		it('should return US for America/Denver', () => {
 			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
 				() =>
 					({
@@ -93,10 +94,11 @@ describe('Census API Module', () => {
 			);
 
 			const signal = getTimezoneLocation();
-			expect(signal!.state_code).toBe('CO');
+			expect(signal!.country_code).toBe('US');
+			expect(signal!.state_code).toBeNull();
 		});
 
-		it('should return AK for America/Anchorage', () => {
+		it('should return US for America/Anchorage', () => {
 			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
 				() =>
 					({
@@ -105,10 +107,11 @@ describe('Census API Module', () => {
 			);
 
 			const signal = getTimezoneLocation();
-			expect(signal!.state_code).toBe('AK');
+			expect(signal!.country_code).toBe('US');
+			expect(signal!.state_code).toBeNull();
 		});
 
-		it('should return HI for Pacific/Honolulu', () => {
+		it('should return US for Pacific/Honolulu', () => {
 			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
 				() =>
 					({
@@ -117,10 +120,11 @@ describe('Census API Module', () => {
 			);
 
 			const signal = getTimezoneLocation();
-			expect(signal!.state_code).toBe('HI');
+			expect(signal!.country_code).toBe('US');
+			expect(signal!.state_code).toBeNull();
 		});
 
-		it('should return PR for America/Puerto_Rico', () => {
+		it('should return US for America/Puerto_Rico', () => {
 			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
 				() =>
 					({
@@ -129,14 +133,29 @@ describe('Census API Module', () => {
 			);
 
 			const signal = getTimezoneLocation();
-			expect(signal!.state_code).toBe('PR');
+			expect(signal!.country_code).toBe('US');
+			expect(signal!.state_code).toBeNull();
 		});
 
-		it('should return null for unknown timezone', () => {
+		it('should return GB for Europe/London', () => {
 			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
 				() =>
 					({
 						resolvedOptions: () => ({ timeZone: 'Europe/London' })
+					}) as Intl.DateTimeFormat
+			);
+
+			const signal = getTimezoneLocation();
+			expect(signal).not.toBeNull();
+			expect(signal!.country_code).toBe('GB');
+			expect(signal!.state_code).toBeNull();
+		});
+
+		it('should return null for unmapped timezone', () => {
+			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
+				() =>
+					({
+						resolvedOptions: () => ({ timeZone: 'Antarctica/McMurdo' })
 					}) as Intl.DateTimeFormat
 			);
 
@@ -163,10 +182,11 @@ describe('Census API Module', () => {
 
 			const signal = getTimezoneLocation();
 			expect(signal!.metadata?.timezone).toBe('America/Detroit');
-			expect(signal!.state_code).toBe('MI');
+			expect(signal!.country_code).toBe('US');
+			expect(signal!.state_code).toBeNull();
 		});
 
-		it('should handle Indiana timezone zones', () => {
+		it('should resolve multi-segment Indiana timezone to US', () => {
 			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
 				() =>
 					({
@@ -175,10 +195,11 @@ describe('Census API Module', () => {
 			);
 
 			const signal = getTimezoneLocation();
-			expect(signal!.state_code).toBe('IN');
+			expect(signal!.country_code).toBe('US');
+			expect(signal!.state_code).toBeNull();
 		});
 
-		it('should handle Kentucky timezone zones', () => {
+		it('should resolve multi-segment Kentucky timezone to US', () => {
 			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
 				() =>
 					({
@@ -187,7 +208,8 @@ describe('Census API Module', () => {
 			);
 
 			const signal = getTimezoneLocation();
-			expect(signal!.state_code).toBe('KY');
+			expect(signal!.country_code).toBe('US');
+			expect(signal!.state_code).toBeNull();
 		});
 
 		it('should set congressional_district to null (timezone cannot determine district)', () => {
@@ -202,7 +224,7 @@ describe('Census API Module', () => {
 			expect(signal!.congressional_district).toBeNull();
 		});
 
-		it('should return GU for Pacific/Guam', () => {
+		it('should return US for Pacific/Guam', () => {
 			vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
 				() =>
 					({
@@ -211,7 +233,8 @@ describe('Census API Module', () => {
 			);
 
 			const signal = getTimezoneLocation();
-			expect(signal!.state_code).toBe('GU');
+			expect(signal!.country_code).toBe('US');
+			expect(signal!.state_code).toBeNull();
 		});
 	});
 
