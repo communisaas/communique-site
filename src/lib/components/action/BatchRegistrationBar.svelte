@@ -13,7 +13,7 @@
 </script>
 
 <div
-	class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white p-4 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:relative md:bottom-auto md:left-auto md:right-auto md:z-auto md:border-t-0 md:p-0 md:shadow-none"
+	class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white p-4 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:hidden"
 >
 	{#if registrationState === 'complete'}
 		<!-- Completed state -->

@@ -3,7 +3,7 @@
 	import RoleGroup from './RoleGroup.svelte';
 	import BatchRegistrationBar from './BatchRegistrationBar.svelte';
 	import type { ProcessedDecisionMaker, Template } from '$lib/types/template';
-	import { MapPin, ChevronRight } from '@lucide/svelte';
+	import { MapPin, ChevronRight, Check } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
 	let {
@@ -31,14 +31,20 @@
 	} = $props();
 
 	const landscape = $derived(mergeLandscape(decisionMakers, districtOfficials));
-	const contactedCount = $derived(contactedRecipients.size);
 	const isCwc = $derived(template.deliveryMethod === 'cwc' || isCongressional);
 
-	// Count email-bearing members not yet contacted (for batch mailto label)
+	// Landscape-specific counts (only members actually in this landscape)
 	const allMembers = $derived([
 		...landscape.roleGroups.flatMap(g => g.members),
 		...(landscape.districtGroup?.members ?? [])
 	]);
+	const totalCount = $derived(allMembers.length);
+	const contactedInLandscape = $derived(
+		allMembers.filter(m => contactedRecipients.has(m.id)).length
+	);
+	const remainingCount = $derived(totalCount - contactedInLandscape);
+
+	// Count email-bearing members not yet contacted (for mobile batch bar)
 	const emailRemainingCount = $derived(
 		allMembers.filter(m => m.email && m.deliveryRoute === 'email' && !contactedRecipients.has(m.id)).length
 	);
@@ -109,10 +115,34 @@
 			</div>
 		{/if}
 	{:else}
-		<!-- Populated landscape — spatial grid by power category -->
+		<!-- Populated landscape -->
 		<div class="space-y-5">
-			<!-- Role groups as spatial columns: each category is a lane -->
-			<div class="landscape-grid">
+			<!-- Batch action header — same "Write to" gesture as cards, collective scope -->
+			<div class="flex items-center justify-between">
+				{#if remainingCount > 0}
+					<button
+						type="button"
+						class="group/batch flex items-center gap-1 text-sm font-medium text-participation-primary-600 hover:text-participation-primary-700 transition-colors cursor-pointer min-h-[44px]"
+						onclick={handleBatchRegister}
+					>
+						Write to all {remainingCount}
+						<ChevronRight class="h-4 w-4 transition-transform group-hover/batch:translate-x-0.5" />
+					</button>
+				{:else if totalCount > 0}
+					<span class="flex items-center gap-1.5 text-sm font-medium text-channel-verified-600">
+						<Check class="h-4 w-4" />
+						All {totalCount} contacted
+					</span>
+				{/if}
+				{#if contactedInLandscape > 0 && remainingCount > 0}
+					<span class="text-xs tabular-nums text-slate-400">
+						{contactedInLandscape} of {totalCount}
+					</span>
+				{/if}
+			</div>
+
+			<!-- Role groups in balanced columns — no row-alignment gaps -->
+			<div class="landscape-columns">
 				{#each landscape.roleGroups as group, i (group.category)}
 					<div
 						class="role-group"
@@ -177,24 +207,19 @@
 	.landscape.revealed {
 		animation: fadeIn 250ms ease-out forwards;
 	}
-	/* Spatial grid: each role category becomes a column lane */
-	.landscape-grid {
-		display: grid;
-		grid-template-columns: 1fr;
-		gap: 1.25rem;
-		align-items: start;
+	/* Balanced columns: content packs vertically, no row-alignment gaps */
+	.landscape-columns {
+		columns: 1;
+		column-gap: 1.25rem;
 	}
 	@media (min-width: 768px) {
-		.landscape-grid {
-			grid-template-columns: repeat(2, 1fr);
-		}
-	}
-	@media (min-width: 1280px) {
-		.landscape-grid {
-			grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+		.landscape-columns {
+			columns: 2;
 		}
 	}
 	.role-group {
+		break-inside: avoid;
+		margin-bottom: 1.25rem;
 		opacity: 0;
 		transform: translateY(8px);
 	}
