@@ -1,12 +1,12 @@
-name = "communique-write-relay"
+name = "commons-write-relay"
 main = "src/index.ts"
 compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "communique-write-relay-db"
-database_id = "REPLACE_WITH_DATABASE_ID"
+database_name = "commons-write-relay-db"
+database_id = "232c589e-38ad-41d6-9650-5ab8d293086f"
 
 # Secrets (set via `npx wrangler secret put <KEY>`):
 #   RELAY_AUTH_TOKEN         - Bearer token communique uses to call this relay
