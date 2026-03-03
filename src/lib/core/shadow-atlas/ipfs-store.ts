@@ -25,7 +25,7 @@ const IPFS_GATEWAY = 'https://cloudflare-ipfs.com/ipfs';
 /** Fallback gateways (tried in order if primary fails) */
 const FALLBACK_GATEWAYS = [
 	'https://dweb.link/ipfs',
-	'https://w3s.link/ipfs',
+	'https://storacha.link/ipfs',
 ];
 
 /** Cache TTL: 7 days (quarterly updates with comfortable margin) */
