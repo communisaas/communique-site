@@ -137,6 +137,16 @@ function getFrZero(): FrType {
 }
 
 /**
+ * Domain separation tag for 1-input hash.
+ * DOMAIN_HASH1 = 0x48314d = "H1M" in ASCII.
+ * Prevents collision with hash2(a, 0) by placing domain tag in slot 1.
+ *
+ * Must match voter-protocol/packages/crypto/poseidon2.ts DOMAIN_HASH1
+ * and Noir circuit global DOMAIN_HASH1: Field = 0x48314d.
+ */
+export const DOMAIN_HASH1 = '0x' + (0x48314d).toString(16).padStart(64, '0');
+
+/**
  * Domain separation tag for 2-input hash (BA-003).
  * DOMAIN_HASH2 = 0x48324d = "H2M" in ASCII.
  * Prevents collision between hash2(a, b) and hash4(a, b, 0, 0).
@@ -144,7 +154,25 @@ function getFrZero(): FrType {
  * Must match voter-protocol/packages/crypto/poseidon2.ts DOMAIN_HASH2
  * and Noir circuit global DOMAIN_HASH2: Field = 0x48324d.
  */
-const DOMAIN_HASH2 = '0x' + (0x48324d).toString(16).padStart(64, '0');
+export const DOMAIN_HASH2 = '0x' + (0x48324d).toString(16).padStart(64, '0');
+
+/**
+ * Poseidon2 hash of a single field element (matches voter-protocol hashSingle)
+ * state = [input, DOMAIN_HASH1, 0, 0], output = permutation(state)[0]
+ *
+ * Domain tag in slot 1 prevents collision with hash2(input, 0).
+ *
+ * @param input - Field element as hex string (0x-prefixed)
+ * @returns Hash as hex string (0x-prefixed)
+ */
+export async function poseidon2Hash1(input: string): Promise<string> {
+	await loadBbJs();
+	const bb = await getBarretenbergSync();
+	const zero = getFrZero();
+	const state = [hexToFr(input), hexToFr(DOMAIN_HASH1), zero, zero];
+	const result = bb.poseidon2Permutation(state);
+	return frToHex(result[0]);
+}
 
 /**
  * Poseidon2 hash of 2 field elements (matches Noir's poseidon2_hash2)
@@ -170,7 +198,7 @@ export async function poseidon2Hash2(left: string, right: string): Promise<strin
  *
  * Must match voter-protocol/packages/crypto/poseidon2.ts DOMAIN_HASH3.
  */
-const DOMAIN_HASH3 = '0x' + (0x48334d).toString(16).padStart(64, '0');
+export const DOMAIN_HASH3 = '0x' + (0x48334d).toString(16).padStart(64, '0');
 
 /**
  * Poseidon2 hash of 3 field elements (matches voter-protocol hash3)
@@ -202,7 +230,7 @@ export async function poseidon2Hash3(a: string, b: string, c: string): Promise<s
  * Used for user leaf: hash4(user_secret, cell_id, registration_salt, authority_level)
  * Must match voter-protocol/packages/crypto/poseidon2.ts DOMAIN_HASH4.
  */
-const DOMAIN_HASH4 = '0x' + (0x48344d).toString(16).padStart(64, '0');
+export const DOMAIN_HASH4 = '0x' + (0x48344d).toString(16).padStart(64, '0');
 
 /**
  * Poseidon2 hash of 4 field elements using 2-round sponge (BR5-001)
@@ -242,7 +270,7 @@ export async function poseidon2Hash4(a: string, b: string, c: string, d: string)
  * DOMAIN_SPONGE_24 = 0x534f4e47455f24 = "SONGE_$" in ASCII.
  * Must match voter-protocol Noir circuit's DOMAIN_SPONGE_24.
  */
-const DOMAIN_SPONGE_24 = '0x' + (0x534f4e47455f24).toString(16).padStart(64, '0');
+export const DOMAIN_SPONGE_24 = '0x' + (0x534f4e47455f24).toString(16).padStart(64, '0');
 
 /**
  * Poseidon2 sponge for hashing 24 district IDs into a single commitment.

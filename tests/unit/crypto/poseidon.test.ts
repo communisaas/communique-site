@@ -61,6 +61,103 @@ describe('hexToFr', () => {
 	});
 });
 
+describe('domain constants', () => {
+	it('DOMAIN_HASH1 = 0x48314d ("H1M")', async () => {
+		const { DOMAIN_HASH1 } = await import('$lib/core/crypto/poseidon');
+		expect(BigInt(DOMAIN_HASH1)).toBe(0x48314dn);
+	});
+
+	it('DOMAIN_HASH2 = 0x48324d ("H2M")', async () => {
+		const { DOMAIN_HASH2 } = await import('$lib/core/crypto/poseidon');
+		expect(BigInt(DOMAIN_HASH2)).toBe(0x48324dn);
+	});
+
+	it('DOMAIN_HASH3 = 0x48334d ("H3M")', async () => {
+		const { DOMAIN_HASH3 } = await import('$lib/core/crypto/poseidon');
+		expect(BigInt(DOMAIN_HASH3)).toBe(0x48334dn);
+	});
+
+	it('DOMAIN_HASH4 = 0x48344d ("H4M")', async () => {
+		const { DOMAIN_HASH4 } = await import('$lib/core/crypto/poseidon');
+		expect(BigInt(DOMAIN_HASH4)).toBe(0x48344dn);
+	});
+
+	it('DOMAIN_SPONGE_24 = 0x534f4e47455f24 ("SONGE_$")', async () => {
+		const { DOMAIN_SPONGE_24 } = await import('$lib/core/crypto/poseidon');
+		expect(BigInt(DOMAIN_SPONGE_24)).toBe(0x534f4e47455f24n);
+	});
+
+	it('domain tags are sequential H{N}M pattern', async () => {
+		const { DOMAIN_HASH1, DOMAIN_HASH2, DOMAIN_HASH3, DOMAIN_HASH4 } = await import(
+			'$lib/core/crypto/poseidon'
+		);
+		const d1 = BigInt(DOMAIN_HASH1);
+		const d2 = BigInt(DOMAIN_HASH2);
+		const d3 = BigInt(DOMAIN_HASH3);
+		const d4 = BigInt(DOMAIN_HASH4);
+		// "H1M"=0x48314d, "H2M"=0x48324d, etc. — differ only in middle byte (0x31→0x32→0x33→0x34)
+		expect(d2 - d1).toBe(0x100n); // 0x32 - 0x31 = 1, shifted left 8 bits
+		expect(d3 - d2).toBe(0x100n);
+		expect(d4 - d3).toBe(0x100n);
+	});
+});
+
+describe('poseidon2Hash1 (hashSingle)', () => {
+	it('produces a valid BN254 field element', async () => {
+		const { poseidon2Hash1 } = await import('$lib/core/crypto/poseidon');
+		const input = '0x0000000000000000000000000000000000000000000000000000000000000001';
+
+		const result = await poseidon2Hash1(input);
+
+		expect(result).toMatch(/^0x[0-9a-f]{64}$/);
+		expect(BigInt(result)).toBeLessThan(BN254_MODULUS);
+	});
+
+	it('is deterministic', async () => {
+		const { poseidon2Hash1 } = await import('$lib/core/crypto/poseidon');
+		const input = '0x0000000000000000000000000000000000000000000000000000000000000042';
+
+		const result1 = await poseidon2Hash1(input);
+		const result2 = await poseidon2Hash1(input);
+
+		expect(result1).toBe(result2);
+	});
+
+	it('differs from hash2(input, 0) due to domain separation', async () => {
+		const { poseidon2Hash1, poseidon2Hash2 } = await import('$lib/core/crypto/poseidon');
+		const input = '0x0000000000000000000000000000000000000000000000000000000000000001';
+		const zero = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+		const h1 = await poseidon2Hash1(input);
+		const h2 = await poseidon2Hash2(input, zero);
+
+		// hash1 = permute([input, DOMAIN_HASH1, 0, 0])
+		// hash2 = permute([input, 0, DOMAIN_HASH2, 0])
+		// Must differ — domain tags occupy different slots
+		expect(h1).not.toBe(h2);
+	});
+
+	it('different inputs produce different hashes', async () => {
+		const { poseidon2Hash1 } = await import('$lib/core/crypto/poseidon');
+		const a = '0x0000000000000000000000000000000000000000000000000000000000000001';
+		const b = '0x0000000000000000000000000000000000000000000000000000000000000002';
+
+		const ha = await poseidon2Hash1(a);
+		const hb = await poseidon2Hash1(b);
+
+		expect(ha).not.toBe(hb);
+	});
+
+	it('hashing zero produces a non-zero result', async () => {
+		const { poseidon2Hash1 } = await import('$lib/core/crypto/poseidon');
+		const zero = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+		const result = await poseidon2Hash1(zero);
+
+		expect(BigInt(result)).not.toBe(0n);
+	});
+});
+
 describe('poseidon2Hash2', () => {
 	it('produces a valid BN254 field element', async () => {
 		const { poseidon2Hash2 } = await import('$lib/core/crypto/poseidon');
