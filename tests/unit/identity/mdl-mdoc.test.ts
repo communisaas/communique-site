@@ -40,20 +40,31 @@ afterEach(() => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Mock a successful Civic API response returning a district */
+/** Mock a successful Census Bureau geocode response returning a district + tract */
 function mockCivicApiSuccess(state: string, cd: string) {
 	(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
 		ok: true,
 		json: () =>
 			Promise.resolve({
-				divisions: {
-					[`ocd-division/country:us/state:${state.toLowerCase()}/cd:${cd}`]: {}
+				result: {
+					addressMatches: [{
+						coordinates: { x: -118.2437, y: 34.0522 },
+						geographies: {
+							'119th Congressional Districts': [{
+								CD119: cd,
+								GEOID: `${state.toUpperCase()}${cd}`
+							}],
+							'States': [{ STUSAB: state.toUpperCase() }],
+							'Census Tracts': [{ GEOID: '06037264000' }],
+							'2020 Census Blocks': [{ GEOID: '060372640001001' }]
+						}
+					}]
 				}
 			})
 	});
 }
 
-/** Mock a Civic API failure */
+/** Mock a Census Bureau geocode failure */
 function mockCivicApiFailure() {
 	(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
 		ok: false,
@@ -256,7 +267,7 @@ describe('mDL mdoc verification', () => {
 				resident_state: 'IL'
 			});
 
-			mockCivicApiSuccess('il', '7');
+			mockCivicApiSuccess('il', '07');
 
 			const result = await processCredentialResponse(
 				mdocData,
@@ -267,7 +278,7 @@ describe('mDL mdoc verification', () => {
 
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.district).toBe('IL-7');
+				expect(result.district).toBe('IL-07');
 			}
 		});
 
@@ -278,13 +289,23 @@ describe('mDL mdoc verification', () => {
 				resident_state: 'VT'
 			});
 
-			// Civic API returns state-level only (no cd:XX division)
+			// Census returns at-large district (CD119 = '00' → normalized to 'AL')
 			(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
 				ok: true,
 				json: () =>
 					Promise.resolve({
-						divisions: {
-							'ocd-division/country:us/state:vt': {}
+						result: {
+							addressMatches: [{
+								coordinates: { x: -73.2126, y: 44.4759 },
+								geographies: {
+									'119th Congressional Districts': [{
+										CD119: '00',
+										GEOID: 'VT00'
+									}],
+									'States': [{ STUSAB: 'VT' }],
+									'Census Tracts': [{ GEOID: '50007000100' }]
+								}
+							}]
 						}
 					})
 			});

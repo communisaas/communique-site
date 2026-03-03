@@ -45,14 +45,25 @@ function buildDisclosure(salt: string, name: string, value: string): string {
 	return base64urlEncode(JSON.stringify([salt, name, value]));
 }
 
-// Mock a successful Civic API response
+// Mock a successful Census Bureau geocode response returning a district
 function mockCivicApiSuccess(state: string, cd: string) {
 	(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
 		ok: true,
 		json: () =>
 			Promise.resolve({
-				divisions: {
-					[`ocd-division/country:us/state:${state.toLowerCase()}/cd:${cd}`]: {}
+				result: {
+					addressMatches: [{
+						coordinates: { x: -118.2437, y: 34.0522 },
+						geographies: {
+							'119th Congressional Districts': [{
+								CD119: cd,
+								GEOID: `${state.toUpperCase()}${cd}`
+							}],
+							'States': [{ STUSAB: state.toUpperCase() }],
+							'Census Tracts': [{ GEOID: '06037264000' }],
+							'2020 Census Blocks': [{ GEOID: '060372640001001' }]
+						}
+					}]
 				}
 			})
 	});
@@ -173,13 +184,13 @@ describe('OpenID4VP response processing', () => {
 			resident_state: 'IL'
 		};
 
-		mockCivicApiSuccess('il', '7');
+		mockCivicApiSuccess('il', '07');
 
 		const result = await processCredentialResponse(data, 'openid4vp', ephemeralKey, nonce);
 
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.district).toBe('IL-7');
+			expect(result.district).toBe('IL-07');
 		}
 	});
 

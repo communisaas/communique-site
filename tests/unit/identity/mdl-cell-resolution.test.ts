@@ -38,6 +38,7 @@ describe('resolveCellIdFromAddress', () => {
 						addressMatches: [
 							{
 								matchedAddress: 'Denver, CO 80202',
+								coordinates: { x: -104.9903, y: 39.7392 },
 								geographies: {
 									'Census Tracts': [
 										{ GEOID: '08031000100', NAME: 'Census Tract 1' }
@@ -63,6 +64,7 @@ describe('resolveCellIdFromAddress', () => {
 						addressMatches: [
 							{
 								matchedAddress: 'San Francisco, CA 94103',
+								coordinates: { x: -122.4194, y: 37.7749 },
 								geographies: {
 									'2020 Census Blocks': [
 										{ GEOID: '060750176011234' }
@@ -123,6 +125,7 @@ describe('resolveCellIdFromAddress', () => {
 						addressMatches: [
 							{
 								matchedAddress: 'Denver, CO 80202',
+								coordinates: { x: -104.9903, y: 39.7392 },
 								geographies: {}
 							}
 						]
@@ -157,6 +160,7 @@ describe('resolveCellIdFromAddress', () => {
 						addressMatches: [
 							{
 								matchedAddress: 'Santa Fe, NM 87501',
+								coordinates: { x: -105.9378, y: 35.6870 },
 								geographies: {
 									'Census Tracts': [
 										{ GEOID: '35049000101' }
@@ -182,6 +186,7 @@ describe('resolveCellIdFromAddress', () => {
 				result: {
 					addressMatches: [
 						{
+							coordinates: { x: -122.4194, y: 37.7749 },
 							geographies: {
 								'Census Tracts': [{ GEOID: '06075017601' }]
 							}
@@ -210,6 +215,7 @@ describe('resolveCellIdFromAddress', () => {
 					result: {
 						addressMatches: [
 							{
+								coordinates: { x: -77.0369, y: 38.9072 },
 								geographies: {
 									'Census Tracts': [
 										// 11-digit tract GEOID
