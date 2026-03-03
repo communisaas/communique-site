@@ -54,8 +54,7 @@ export const load: PageServerLoad = async () => {
 				total_districts: z.number().optional(),
 				district_coverage_percent: z.number().optional(),
 				opened: z.number().optional(),
-				clicked: z.number().optional(),
-				views: z.number().optional()
+				clicked: z.number().optional()
 			})
 			.passthrough();
 
@@ -130,8 +129,7 @@ export const load: PageServerLoad = async () => {
 						(jsonMetrics as { district_coverage_percent?: number }).district_coverage_percent ||
 						(template.unique_districts ? Math.round((template.unique_districts / 435) * 100) : 0),
 					opened: (jsonMetrics as { opened?: number }).opened || 0,
-					clicked: (jsonMetrics as { clicked?: number }).clicked || 0,
-					views: (jsonMetrics as { views?: number }).views || 0
+					clicked: (jsonMetrics as { clicked?: number }).clicked || 0
 				},
 
 				// Config

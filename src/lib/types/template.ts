@@ -189,6 +189,8 @@ export interface TemplateFormData {
 		recipientEmails: string[];
 		includesCongress: boolean;
 		customRecipients: CustomRecipient[];
+		/** Subject line DMs were resolved for — triggers re-resolution on mismatch */
+		resolvedForSubject?: string;
 	};
 	content: {
 		preview: string;
@@ -198,6 +200,8 @@ export interface TemplateFormData {
 		geographicScope?: GeoScope | null; // Geographic scope from message writer agent
 		aiGenerated?: boolean; // Flag indicating message was AI-generated
 		edited?: boolean; // Flag indicating user edited AI-generated message
+		/** Subject line content was generated for — triggers re-generation on mismatch */
+		generatedForSubject?: string;
 	};
 	review: Record<string, never>; // For validation purposes, no data to store
 }

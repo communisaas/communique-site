@@ -43,6 +43,7 @@
 	} from '$lib/core/location/template-filter';
 	import { getUserLocation } from '$lib/core/location/inference-engine';
 	import type { TemplateWithJurisdictions } from '$lib/core/location/types';
+	import { scoreTemplate, sortTemplatesByScore } from '$lib/utils/template-scoring';
 
 	let { data }: { data: PageData } = $props();
 
@@ -57,6 +58,7 @@
 
 	let showMobilePreview = $state(false);
 	let showTemplateCreator = $state(false);
+	let personalConnectionValue = $state('');
 	let showTemplateAuthModal = $state(false);
 	let showTemplateSuccess = $state(false);
 	let modalComponent = $state<ModalComponent>();
@@ -292,13 +294,31 @@
 		)
 	);
 
+	// Sort templates within a group by display score (send_count, recency)
+	// so the homepage order matches what TemplateList renders
+	function sortGroupTemplates(templates: Template[]): Template[] {
+		const now = new Date();
+		const scored = templates.map((t) => ({
+			...t,
+			...scoreTemplate(
+				{
+					send_count: t.send_count || 0,
+					created_at: new Date(t.createdAt),
+					updated_at: new Date((t as Record<string, unknown>).updatedAt as string || t.createdAt)
+				},
+				now
+			)
+		}));
+		return sortTemplatesByScore(scored);
+	}
+
 	const filteredGroups = $derived.by(() => {
 		// No scope or international → show all templates in one group
 		if (!selectedScope || selectedScope.type === 'international') {
 			return [
 				{
 					title: 'All Templates',
-					templates: allTemplates,
+					templates: sortGroupTemplates(allTemplates),
 					minScore: 0,
 					level: 'nationwide' as const,
 					coordinationCount: allTemplates.reduce((sum, t) => sum + (t.send_count || 0), 0)
@@ -311,7 +331,7 @@
 			return [
 				{
 					title: 'All Templates',
-					templates: allTemplates,
+					templates: sortGroupTemplates(allTemplates),
 					minScore: 0,
 					level: 'nationwide' as const,
 					coordinationCount: allTemplates.reduce((sum, t) => sum + (t.send_count || 0), 0)
@@ -327,13 +347,15 @@
 
 		const groups = groupByPrecision(scored);
 
-		// If scoring produced groups, use them; otherwise fall back to single group
-		if (groups.length > 0) return groups;
+		// If scoring produced groups, use them (with display-score sorting within each)
+		if (groups.length > 0) {
+			return groups.map((g) => ({ ...g, templates: sortGroupTemplates(g.templates) }));
+		}
 
 		return [
 			{
 				title: 'All Templates',
-				templates: allTemplates,
+				templates: sortGroupTemplates(allTemplates),
 				minScore: 0,
 				level: 'nationwide' as const,
 				coordinationCount: allTemplates.reduce((sum, t) => sum + (t.send_count || 0), 0)
@@ -342,6 +364,7 @@
 	});
 
 	// Handle URL parameter initialization when templates load
+	// Sync selection to URL param or first visible template after filtering
 	$effect(() => {
 		if (browser && templateStore.templates.length > 0 && !userInitiatedSelection) {
 			const templateParam = $page.url.searchParams.get('template');
@@ -349,6 +372,12 @@
 				const targetTemplate = templateStore.templates.find((t) => t.slug === templateParam);
 				if (targetTemplate && targetTemplate.id !== templateStore.selectedId) {
 					templateStore.selectTemplateBySlug(templateParam);
+				}
+			} else {
+				// Default: select first template in the first visible group
+				const firstTemplate = filteredGroups[0]?.templates[0];
+				if (firstTemplate && firstTemplate.id !== templateStore.selectedId) {
+					templateStore.selectTemplate(firstTemplate.id);
 				}
 			}
 		}
@@ -521,6 +550,7 @@
 						<TemplatePreview
 							template={selectedTemplate}
 							user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
+							bind:personalConnectionValue
 							onSendMessage={async () => handleSendMessage(selectedTemplate)}
 						/>
 					{:else}
@@ -559,6 +589,7 @@
 			<TemplatePreview
 				template={selectedTemplate}
 				user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
+				bind:personalConnectionValue
 				onSendMessage={async () => {
 					if (!data.user) {
 						modalActions.openModal('onboarding-modal', 'onboarding', {
@@ -823,7 +854,7 @@
 	.template-list-column {
 		min-width: 0;
 		position: relative;
-		z-index: 20;
+		z-index: 1;
 	}
 
 	.template-preview-column {
@@ -834,6 +865,8 @@
 		.template-preview-column {
 			display: block;
 			min-width: 0;
+			position: relative;
+			z-index: 2;
 		}
 	}
 

@@ -11,15 +11,12 @@ const MetricsSchema = z
 		opened: z.number().optional(),
 		clicked: z.number().optional(),
 		responded: z.number().optional(),
-		views: z.number().optional(),
 		total_districts: z.number().optional(),
 		district_coverage_percent: z.number().optional(),
 		personalization_rate: z.number().optional(),
 		effectiveness_score: z.number().optional(),
 		cascade_depth: z.number().optional(),
 		viral_coefficient: z.number().optional(),
-		funnel_views: z.number().optional(),
-		modal_views: z.number().optional(),
 		onboarding_starts: z.number().optional(),
 		onboarding_completes: z.number().optional(),
 		auth_completions: z.number().optional(),
@@ -27,7 +24,10 @@ const MetricsSchema = z
 	})
 	.passthrough();
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ depends }) => {
+	// Cache across client-side navigations — only re-fetch when invalidated
+	depends('data:templates');
+
 	try {
 		const dbTemplates = await db.template.findMany({
 			where: {
@@ -136,7 +136,6 @@ export const load: PageServerLoad = async () => {
 					opened: jm.opened || 0,
 					clicked: jm.clicked || 0,
 					responded: jm.responded || 0,
-					views: jm.views || 0,
 					total_districts: jm.total_districts || 435,
 					district_coverage_percent: jm.district_coverage_percent ||
 						(template.unique_districts ? Math.round((template.unique_districts / 435) * 100) : 0),
@@ -144,8 +143,6 @@ export const load: PageServerLoad = async () => {
 					effectiveness_score: jm.effectiveness_score,
 					cascade_depth: jm.cascade_depth,
 					viral_coefficient: jm.viral_coefficient,
-					funnel_views: jm.funnel_views,
-					modal_views: jm.modal_views,
 					onboarding_starts: jm.onboarding_starts,
 					onboarding_completes: jm.onboarding_completes,
 					auth_completions: jm.auth_completions,

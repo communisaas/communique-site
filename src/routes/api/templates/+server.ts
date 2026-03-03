@@ -165,8 +165,7 @@ function validateTemplateData(data: unknown): {
 		metrics: (templateData.metrics as UnknownRecord) || {
 			sent: 0,
 			opened: 0,
-			clicked: 0,
-			views: 0
+			clicked: 0
 		},
 		geographic_scope: (templateData.geographic_scope as GeoScope) || undefined
 	};
@@ -221,15 +220,12 @@ export const GET: RequestHandler = async () => {
 				opened: z.number().optional(),
 				clicked: z.number().optional(),
 				responded: z.number().optional(),
-				views: z.number().optional(),
 				total_districts: z.number().optional(),
 				district_coverage_percent: z.number().optional(),
 				personalization_rate: z.number().optional(),
 				effectiveness_score: z.number().optional(),
 				cascade_depth: z.number().optional(),
 				viral_coefficient: z.number().optional(),
-				funnel_views: z.number().optional(),
-				modal_views: z.number().optional(),
 				onboarding_starts: z.number().optional(),
 				onboarding_completes: z.number().optional(),
 				auth_completions: z.number().optional(),
@@ -311,7 +307,6 @@ export const GET: RequestHandler = async () => {
 					opened: (jsonMetrics as { opened?: number }).opened || 0,
 					clicked: (jsonMetrics as { clicked?: number }).clicked || 0,
 					responded: (jsonMetrics as { responded?: number }).responded || 0,
-					views: (jsonMetrics as { views?: number }).views || 0,
 
 					// Congressional-specific (fallback to JSON if not in aggregate)
 					total_districts: (jsonMetrics as { total_districts?: number }).total_districts || 435,
@@ -327,9 +322,6 @@ export const GET: RequestHandler = async () => {
 					cascade_depth: (jsonMetrics as { cascade_depth?: number }).cascade_depth,
 					viral_coefficient: (jsonMetrics as { viral_coefficient?: number }).viral_coefficient,
 
-					// Funnel tracking metrics from JSON
-					funnel_views: (jsonMetrics as { funnel_views?: number }).funnel_views,
-					modal_views: (jsonMetrics as { modal_views?: number }).modal_views,
 					onboarding_starts: (jsonMetrics as { onboarding_starts?: number }).onboarding_starts,
 					onboarding_completes: (jsonMetrics as { onboarding_completes?: number })
 						.onboarding_completes,
@@ -573,7 +565,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 								opened: jsonMetrics.opened || 0,
 								clicked: jsonMetrics.clicked || 0,
 								responded: jsonMetrics.responded || 0,
-								views: jsonMetrics.views || 0,
 								total_districts: jsonMetrics.total_districts || 435,
 								district_coverage_percent: jsonMetrics.district_coverage_percent || 0,
 								personalization_rate: 0
@@ -792,7 +783,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							opened: jsonMetrics.opened || 0,
 							clicked: jsonMetrics.clicked || 0,
 							responded: jsonMetrics.responded || 0,
-							views: jsonMetrics.views || 0,
 							total_districts: 435,
 							district_coverage_percent: 0,
 							personalization_rate: 0

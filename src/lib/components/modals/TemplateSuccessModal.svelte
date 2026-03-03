@@ -254,7 +254,7 @@
 			<!-- Warm closing note -->
 			<div class="px-6 pb-3 pt-1">
 				<p class="text-center text-sm leading-relaxed text-slate-500">
-					Share the link. Others send the same message to their representatives.
+					Share the link. Others send the same message.
 				</p>
 			</div>
 
