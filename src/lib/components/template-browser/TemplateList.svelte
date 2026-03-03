@@ -18,6 +18,22 @@
 
 	let { groups, selectedId, onSelect, onCreateTemplate, loading = false }: Props = $props();
 
+	// Track loading → loaded transition for staggered entrance animation
+	let wasLoading = $state(false);
+	let justLoaded = $state(false);
+
+	$effect(() => {
+		if (loading) {
+			wasLoading = true;
+		} else if (wasLoading) {
+			wasLoading = false;
+			justLoaded = true;
+			// Clear after animation window
+			const timer = setTimeout(() => { justLoaded = false; }, 600);
+			return () => clearTimeout(timer);
+		}
+	});
+
 	/**
 	 * PERCEPTUAL ENGINEERING: Progressive Rendering Constants
 	 *
@@ -268,7 +284,7 @@
 <div class="space-y-6 md:space-y-8" data-testid="template-list">
 	{#if loading}
 		<!-- Loading State using SkeletonTemplate -->
-		{#each Array(3) as _, index}
+		{#each Array(4) as _, index}
 			<SkeletonTemplate variant="list" animate={true} classNames="template-loading-{index}" />
 		{/each}
 	{:else}
@@ -344,9 +360,10 @@
 						data-testid="template-button-{template.id}"
 						class="template-card relative flex w-full items-start justify-between gap-3 rounded-xl border border-l-4 bg-white/80 p-3 text-left shadow-atmospheric-card backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-atmospheric-card-hover md:p-4"
 						class:newly-revealed={isNewlyRevealed}
+						class:initial-reveal={justLoaded}
 						class:!bg-direct-50={selectedId === template.id && !isCongressional}
 						class:!bg-congressional-50={selectedId === template.id && isCongressional}
-						style="will-change: transform; backface-visibility: hidden; border-width: 1px; border-left-width: 4px;"
+						style="will-change: transform; backface-visibility: hidden; border-width: 1px; border-left-width: 4px;{justLoaded ? ` animation-delay: ${templateIndex * 60}ms;` : ''}"
 						class:cursor-pointer={selectedId !== template.id}
 						class:cursor-default={selectedId === template.id}
 						class:border-direct-400={selectedId === template.id && !isCongressional}
@@ -534,6 +551,23 @@
 	 */
 	.template-card.newly-revealed {
 		animation: reveal 200ms ease-out forwards;
+	}
+
+	/* Staggered entrance when skeleton → content transition completes */
+	.template-card.initial-reveal {
+		opacity: 0;
+		animation: initial-reveal 250ms ease-out forwards;
+	}
+
+	@keyframes initial-reveal {
+		from {
+			opacity: 0;
+			transform: translateY(12px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	@keyframes reveal {

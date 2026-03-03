@@ -53,7 +53,7 @@
 	const selectedTemplate = $derived(
 		templateStore.templates.find((t) => t.id === templateStore.selectedId)
 	);
-	const isLoading = $derived(templateStore.loading);
+	const isLoading = $derived(templateStore.loading || !templateStore.initialized);
 	const hasError = $derived(!!templateStore.error);
 
 	let showMobilePreview = $state(false);
