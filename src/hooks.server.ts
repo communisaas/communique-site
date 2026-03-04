@@ -11,6 +11,7 @@ import {
 import { createRequestClient, runWithDb } from '$lib/core/db';
 import { deriveTrustTier } from '$lib/core/identity/authority-level';
 import { trackForRejection } from '$lib/services/rejectionMonitor';
+import { setCIDs } from '$lib/core/shadow-atlas/ipfs-store';
 
 // MongoDB removed — intelligence data now lives in Postgres via pgvector
 
@@ -26,6 +27,14 @@ const handlePlatformEnv: Handle = async ({ event, resolve }) => {
 			}
 		}
 		envShimApplied = true;
+
+		// Wire IPFS CIDs from env vars so Shadow Atlas reads go live.
+		// Quarterly CID updates are a `wrangler pages secret put` — no redeploy.
+		setCIDs({
+			districtMapping: process.env.IPFS_CID_DISTRICT_MAPPING || '',
+			officials: process.env.IPFS_CID_OFFICIALS || '',
+			merkleSnapshot: process.env.IPFS_CID_MERKLE_SNAPSHOT || '',
+		});
 	}
 	// Initialize per-request PrismaClient with Hyperdrive connection.
 	// On Workers, Hyperdrive provides a local connection string to its pool.

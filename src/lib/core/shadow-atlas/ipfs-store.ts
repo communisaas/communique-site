@@ -51,10 +51,10 @@ export const IPFS_CIDS = {
 } as const;
 
 /**
- * Override CIDs at runtime (e.g., from KV namespace or on-chain registry).
- * Call this before any data fetch if CIDs are dynamic.
+ * Override CIDs at runtime (e.g., from env vars or on-chain registry).
+ * Called from hooks.server.ts (server) and +layout.svelte (browser).
  */
-export function setCIDs(cids: Partial<typeof IPFS_CIDS>): void {
+export function setCIDs(cids: Partial<Record<keyof typeof IPFS_CIDS, string>>): void {
 	if (cids.districtMapping) (IPFS_CIDS as Record<string, string>).districtMapping = cids.districtMapping;
 	if (cids.officials) (IPFS_CIDS as Record<string, string>).officials = cids.officials;
 	if (cids.merkleSnapshot) (IPFS_CIDS as Record<string, string>).merkleSnapshot = cids.merkleSnapshot;
