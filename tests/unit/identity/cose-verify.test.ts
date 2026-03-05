@@ -12,7 +12,7 @@
  *   - Trust store matching
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import {
 	verifyCoseSign1,
 	validateMsoDigests,
@@ -1260,6 +1260,430 @@ describe('COSE_Sign1 Verification', () => {
 
 			const result = await verifyCoseSign1(coseSign1, [trustedRoot]);
 			expect(result.valid).toBe(true);
+		});
+	});
+
+	// =========================================================================
+	// EXPANDED IACA TRUST STORE VALIDATION
+	//
+	// Parameterized per-state validation suite. Automatically tests every
+	// certificate in IACA_ROOTS — when cipher adds new states, these tests
+	// cover them without code changes.
+	// =========================================================================
+
+	describe('Expanded IACA Trust Store Validation', () => {
+		// Import IACA_ROOTS dynamically to test whatever cipher has added
+		// Flattened: IACA_ROOTS is Record<string, IACACertificate[]>, we test each cert individually
+		let IACA_ROOTS_ENTRIES: [string, IACACertificate][];
+
+		// Lazy import to pick up cipher's additions
+		beforeAll(async () => {
+			const mod = await import('$lib/core/identity/iaca-roots');
+			IACA_ROOTS_ENTRIES = Object.entries(mod.IACA_ROOTS).flatMap(
+				([state, certs]) => (certs as IACACertificate[]).map(cert => [state, cert] as [string, IACACertificate])
+			);
+		});
+
+		function base64ToDER(b64: string): Uint8Array {
+			const binaryString = atob(b64);
+			const bytes = new Uint8Array(binaryString.length);
+			for (let i = 0; i < binaryString.length; i++) {
+				bytes[i] = binaryString.charCodeAt(i);
+			}
+			return bytes;
+		}
+
+		describe('per-state certificate validation', () => {
+			// Dynamically generate tests for each state in trust store
+			it('should have at least CA and NM in trust store', () => {
+				const states = IACA_ROOTS_ENTRIES.map(([s]) => s);
+				expect(states).toContain('CA');
+				expect(states).toContain('NM');
+			});
+
+			it('should extract valid 65-byte P-256 public key from every IACA root', () => {
+				const failures: string[] = [];
+
+				for (const [state, cert] of IACA_ROOTS_ENTRIES) {
+					try {
+						const der = base64ToDER(cert.certificateB64);
+						const pubKey = extractEcPublicKeyFromDER(der);
+
+						if (pubKey.length !== 65) {
+							failures.push(`${state}: expected 65-byte key, got ${pubKey.length}`);
+						}
+						if (pubKey[0] !== 0x04) {
+							failures.push(`${state}: expected uncompressed point (0x04), got 0x${pubKey[0].toString(16)}`);
+						}
+					} catch (err) {
+						failures.push(`${state}: ${err instanceof Error ? err.message : String(err)}`);
+					}
+				}
+
+				if (failures.length > 0) {
+					throw new Error(`Public key extraction failures:\n${failures.join('\n')}`);
+				}
+			});
+
+			it('should verify self-signature of every IACA root via Web Crypto', async () => {
+				const failures: string[] = [];
+
+				for (const [state, cert] of IACA_ROOTS_ENTRIES) {
+					try {
+						const der = base64ToDER(cert.certificateB64);
+						const pubKeyRaw = extractEcPublicKeyFromDER(der);
+						const pubKey = await crypto.subtle.importKey(
+							'raw',
+							toBuffer(pubKeyRaw),
+							{ name: 'ECDSA', namedCurve: 'P-256' },
+							false,
+							['verify']
+						);
+
+						const { tbsBytes, signatureDER } = extractTBSAndSignature(der);
+						const rawSig = derEcdsaSigToRaw(signatureDER);
+
+						const valid = await crypto.subtle.verify(
+							{ name: 'ECDSA', hash: 'SHA-256' },
+							pubKey,
+							toBuffer(rawSig),
+							toBuffer(tbsBytes)
+						);
+
+						if (!valid) {
+							failures.push(`${state}: self-signature verification FAILED`);
+						}
+					} catch (err) {
+						failures.push(`${state}: ${err instanceof Error ? err.message : String(err)}`);
+					}
+				}
+
+				if (failures.length > 0) {
+					throw new Error(`Self-signature verification failures:\n${failures.join('\n')}`);
+				}
+			});
+
+			it('should parse valid notBefore < now < notAfter for every IACA root', () => {
+				const failures: string[] = [];
+				const now = new Date();
+
+				for (const [state, cert] of IACA_ROOTS_ENTRIES) {
+					try {
+						const der = base64ToDER(cert.certificateB64);
+						const { notBefore, notAfter } = extractValidityPeriod(der);
+
+						if (isNaN(notBefore.getTime())) {
+							failures.push(`${state}: notBefore is invalid date`);
+							continue;
+						}
+						if (isNaN(notAfter.getTime())) {
+							failures.push(`${state}: notAfter is invalid date`);
+							continue;
+						}
+						if (notBefore >= notAfter) {
+							failures.push(`${state}: notBefore (${notBefore.toISOString()}) >= notAfter (${notAfter.toISOString()})`);
+							continue;
+						}
+						if (now < notBefore) {
+							failures.push(`${state}: certificate not yet valid (notBefore: ${notBefore.toISOString()})`);
+						}
+						if (now > notAfter) {
+							failures.push(`${state}: certificate EXPIRED (notAfter: ${notAfter.toISOString()})`);
+						}
+					} catch (err) {
+						failures.push(`${state}: ${err instanceof Error ? err.message : String(err)}`);
+					}
+				}
+
+				if (failures.length > 0) {
+					throw new Error(`Validity period failures:\n${failures.join('\n')}`);
+				}
+			});
+
+			it('should round-trip base64 decode/encode for every IACA root', () => {
+				const failures: string[] = [];
+
+				for (const [state, cert] of IACA_ROOTS_ENTRIES) {
+					try {
+						const der = base64ToDER(cert.certificateB64);
+						const reencoded = uint8ArrayToBase64(der);
+
+						// Normalize whitespace for comparison (base64 should have no whitespace)
+						const normalizedOriginal = cert.certificateB64.replace(/\s/g, '');
+						const normalizedReencoded = reencoded.replace(/\s/g, '');
+
+						if (normalizedOriginal !== normalizedReencoded) {
+							failures.push(`${state}: base64 round-trip mismatch (lengths: ${normalizedOriginal.length} vs ${normalizedReencoded.length})`);
+						}
+
+						// DER must start with SEQUENCE tag (0x30)
+						if (der[0] !== 0x30) {
+							failures.push(`${state}: DER does not start with SEQUENCE tag (got 0x${der[0].toString(16)})`);
+						}
+					} catch (err) {
+						failures.push(`${state}: ${err instanceof Error ? err.message : String(err)}`);
+					}
+				}
+
+				if (failures.length > 0) {
+					throw new Error(`Base64 round-trip failures:\n${failures.join('\n')}`);
+				}
+			});
+
+			it('should have consistent expiresAt metadata matching DER validity', () => {
+				const failures: string[] = [];
+
+				for (const [state, cert] of IACA_ROOTS_ENTRIES) {
+					try {
+						const der = base64ToDER(cert.certificateB64);
+						const { notAfter } = extractValidityPeriod(der);
+						const metadataExpiry = new Date(cert.expiresAt);
+
+						// Allow 1 day tolerance for timezone/rounding differences
+						const diffMs = Math.abs(notAfter.getTime() - metadataExpiry.getTime());
+						if (diffMs > 86400000) {
+							failures.push(
+								`${state}: expiresAt metadata (${cert.expiresAt}) differs from DER notAfter (${notAfter.toISOString()}) by ${Math.round(diffMs / 86400000)} days`
+							);
+						}
+					} catch (err) {
+						failures.push(`${state}: ${err instanceof Error ? err.message : String(err)}`);
+					}
+				}
+
+				if (failures.length > 0) {
+					throw new Error(`Expiry metadata mismatches:\n${failures.join('\n')}`);
+				}
+			});
+		});
+
+		describe('edge cases: non-P-256 certificates', () => {
+			it('should reject a certificate with P-384 key (no P-256 OID)', () => {
+				// Fabricate a DER-like blob with EC OID but P-384 curve OID instead of P-256
+				// OID 1.3.132.0.34 = secp384r1 (P-384)
+				const p384CurveOid = new Uint8Array([0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x22]);
+				const ecOid = new Uint8Array([0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01]);
+
+				// Build a minimal structure with EC OID + P-384 OID (no P-256)
+				const algId = wrapDERSequence(concatBytes(ecOid, p384CurveOid));
+				// 97-byte P-384 uncompressed point (04 + 48 + 48)
+				const fakeKey = new Uint8Array(97);
+				fakeKey[0] = 0x04;
+				const bitStringContent = concatBytes(new Uint8Array([0x00]), fakeKey);
+				const bitString = new Uint8Array([0x03, ...encodeDERLength(bitStringContent.length), ...bitStringContent]);
+				const spki = wrapDERSequence(concatBytes(algId, bitString));
+				const cert = wrapDERSequence(spki);
+
+				expect(() => extractEcPublicKeyFromDER(cert)).toThrow('P-256 curve OID not found');
+			});
+
+			it('should reject a certificate with no EC OID at all (RSA cert)', () => {
+				// Fabricate a DER blob without the EC public key OID
+				// RSA OID: 1.2.840.113549.1.1.1
+				const rsaOid = new Uint8Array([0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01]);
+				const cert = wrapDERSequence(wrapDERSequence(rsaOid));
+
+				expect(() => extractEcPublicKeyFromDER(cert)).toThrow('EC public key OID not found');
+			});
+		});
+
+		describe('edge cases: DER encoding', () => {
+			it('should handle long-form DER length encoding (> 127 bytes)', () => {
+				// The real CA and NM certs have multi-byte DER lengths (> 127 bytes)
+				// This verifies parseDERLength handles 0x81 and 0x82 length forms
+				for (const [state, cert] of IACA_ROOTS_ENTRIES) {
+					const der = base64ToDER(cert.certificateB64);
+					// Outer SEQUENCE length must be > 127 for any real X.509 cert
+					expect(der[1]).toBeGreaterThanOrEqual(0x80);
+					// Still parses correctly
+					const pubKey = extractEcPublicKeyFromDER(der);
+					expect(pubKey.length).toBe(65);
+				}
+			});
+
+			it('should handle GeneralizedTime in validity period', async () => {
+				// Build a cert with GeneralizedTime (0x18) instead of UTCTime (0x17)
+				// GeneralizedTime: YYYYMMDDHHMMSSZ
+				const keyPair = await generateKeyPair();
+				const rawKey = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
+
+				const ecOid = new Uint8Array([0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01]);
+				const curveOid = new Uint8Array([0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07]);
+				const algId = wrapDERSequence(concatBytes(ecOid, curveOid));
+
+				const bitStringContent = concatBytes(new Uint8Array([0x00]), rawKey);
+				const bitString = new Uint8Array([0x03, ...encodeDERLength(bitStringContent.length), ...bitStringContent]);
+				const spki = wrapDERSequence(concatBytes(algId, bitString));
+
+				const version = new Uint8Array([0xa0, 0x03, 0x02, 0x01, 0x02]);
+				const serial = new Uint8Array([0x02, 0x01, 0x01]);
+				const sigAlgOid = new Uint8Array([0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02]);
+				const sigAlg = wrapDERSequence(sigAlgOid);
+				const cnOid = new Uint8Array([0x06, 0x03, 0x55, 0x04, 0x03]);
+				const cnValue = new Uint8Array([0x0c, 0x04, 0x54, 0x65, 0x73, 0x74]);
+				const rdnSeq = wrapDERSequence(concatBytes(cnOid, cnValue));
+				const rdnSet = new Uint8Array([0x31, ...encodeDERLength(rdnSeq.length), ...rdnSeq]);
+				const issuer = wrapDERSequence(rdnSet);
+
+				// GeneralizedTime (tag 0x18): "20250101000000Z"
+				const notBeforeStr = new TextEncoder().encode('20250101000000Z');
+				const notBefore = new Uint8Array([0x18, notBeforeStr.length, ...notBeforeStr]);
+				const notAfterStr = new TextEncoder().encode('20351231235959Z');
+				const notAfter = new Uint8Array([0x18, notAfterStr.length, ...notAfterStr]);
+				const validity = wrapDERSequence(concatBytes(notBefore, notAfter));
+
+				const subject = issuer;
+				const tbsCert = wrapDERSequence(
+					concatBytes(version, serial, sigAlg, issuer, validity, subject, spki)
+				);
+				const dummySig = new Uint8Array([0x03, 0x03, 0x00, 0x30, 0x00]);
+				const cert = wrapDERSequence(concatBytes(tbsCert, sigAlg, dummySig));
+
+				const { notBefore: nb, notAfter: na } = extractValidityPeriod(cert);
+				expect(nb.getUTCFullYear()).toBe(2025);
+				expect(na.getUTCFullYear()).toBe(2035);
+				expect(nb < na).toBe(true);
+			});
+
+			it('should handle mixed UTCTime/GeneralizedTime in same validity block', async () => {
+				// Some CAs use UTCTime for notBefore and GeneralizedTime for notAfter
+				const keyPair = await generateKeyPair();
+				const rawKey = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
+
+				const ecOid = new Uint8Array([0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01]);
+				const curveOid = new Uint8Array([0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07]);
+				const algId = wrapDERSequence(concatBytes(ecOid, curveOid));
+
+				const bitStringContent = concatBytes(new Uint8Array([0x00]), rawKey);
+				const bitString = new Uint8Array([0x03, ...encodeDERLength(bitStringContent.length), ...bitStringContent]);
+				const spki = wrapDERSequence(concatBytes(algId, bitString));
+
+				const version = new Uint8Array([0xa0, 0x03, 0x02, 0x01, 0x02]);
+				const serial = new Uint8Array([0x02, 0x01, 0x01]);
+				const sigAlgOid = new Uint8Array([0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02]);
+				const sigAlg = wrapDERSequence(sigAlgOid);
+				const cnOid = new Uint8Array([0x06, 0x03, 0x55, 0x04, 0x03]);
+				const cnValue = new Uint8Array([0x0c, 0x04, 0x54, 0x65, 0x73, 0x74]);
+				const rdnSeq = wrapDERSequence(concatBytes(cnOid, cnValue));
+				const rdnSet = new Uint8Array([0x31, ...encodeDERLength(rdnSeq.length), ...rdnSeq]);
+				const issuer = wrapDERSequence(rdnSet);
+
+				// UTCTime for notBefore, GeneralizedTime for notAfter
+				const nbStr = new TextEncoder().encode('250601120000Z');
+				const notBefore = new Uint8Array([0x17, nbStr.length, ...nbStr]);
+				const naStr = new TextEncoder().encode('20500101000000Z');
+				const notAfter = new Uint8Array([0x18, naStr.length, ...naStr]);
+				const validity = wrapDERSequence(concatBytes(notBefore, notAfter));
+
+				const subject = issuer;
+				const tbsCert = wrapDERSequence(
+					concatBytes(version, serial, sigAlg, issuer, validity, subject, spki)
+				);
+				const dummySig = new Uint8Array([0x03, 0x03, 0x00, 0x30, 0x00]);
+				const cert = wrapDERSequence(concatBytes(tbsCert, sigAlg, dummySig));
+
+				const { notBefore: nb, notAfter: na } = extractValidityPeriod(cert);
+				expect(nb.getUTCFullYear()).toBe(2025);
+				expect(nb.getUTCMonth()).toBe(5); // June (0-indexed)
+				expect(na.getUTCFullYear()).toBe(2050);
+			});
+		});
+
+		describe('DSC cross-verification with IACA roots', () => {
+			it('should verify a synthetic DSC signed by each real IACA root public key', async () => {
+				// For each IACA root, generate a DSC key pair, sign the DSC with
+				// the root, and verify the chain. This tests the full chain:
+				// IACA root pub key → verifyDscAgainstRoot → DSC accepted
+				//
+				// NOTE: We can't sign with the real IACA root private keys (we don't
+				// have them). Instead, we test that extractTBSAndSignature + derEcdsaSigToRaw
+				// correctly decompose the real certificates, then test the chain with
+				// synthetic keys.
+				for (const [state, cert] of IACA_ROOTS_ENTRIES) {
+					const der = base64ToDER(cert.certificateB64);
+
+					// Verify real root's structure is decomposable
+					const { tbsBytes, signatureDER } = extractTBSAndSignature(der);
+					expect(tbsBytes[0]).toBe(0x30); // TBS is a SEQUENCE
+					expect(signatureDER[0]).toBe(0x30); // Signature is a DER SEQUENCE
+
+					const rawSig = derEcdsaSigToRaw(signatureDER);
+					expect(rawSig.length).toBe(64); // r || s, each 32 bytes
+
+					// Verify the real root is self-signed
+					const pubKeyRaw = extractEcPublicKeyFromDER(der);
+					const pubKey = await crypto.subtle.importKey(
+						'raw',
+						toBuffer(pubKeyRaw),
+						{ name: 'ECDSA', namedCurve: 'P-256' },
+						false,
+						['verify']
+					);
+
+					const valid = await crypto.subtle.verify(
+						{ name: 'ECDSA', hash: 'SHA-256' },
+						pubKey,
+						toBuffer(rawSig),
+						toBuffer(tbsBytes)
+					);
+
+					expect(valid).toBe(true);
+				}
+			});
+
+			it('should verify a synthetic DSC→IACA chain end-to-end', async () => {
+				// Generate a CA key pair, build a self-signed root, sign a DSC
+				const caKeyPair = await generateKeyPair();
+				const dscKeyPair = await generateKeyPair();
+
+				const dscCert = await buildSignedCert(dscKeyPair.publicKey, caKeyPair.privateKey);
+				const caCert = await buildSignedCert(caKeyPair.publicKey, caKeyPair.privateKey);
+
+				// Build IACA root entry
+				const root: IACACertificate = {
+					state: 'XX',
+					issuer: 'Synthetic Root',
+					certificateB64: uint8ArrayToBase64(caCert),
+					derBytes: caCert,
+					expiresAt: '2035-12-31T23:59:59Z'
+				};
+
+				// Build a COSE_Sign1 signed by the DSC key, with DSC in x5chain
+				const msoPayload = buildTestMso();
+				const coseSign1 = await buildCoseSign1(msoPayload, dscKeyPair.privateKey, dscCert);
+
+				// Verify — the DSC was signed by the CA key, which is in the trust store
+				const result = await verifyCoseSign1(coseSign1, [root]);
+				expect(result.valid).toBe(true);
+			});
+
+			it('should reject a DSC signed by an unknown CA', async () => {
+				const unknownCaKeyPair = await generateKeyPair();
+				const trustedCaKeyPair = await generateKeyPair();
+				const dscKeyPair = await generateKeyPair();
+
+				// DSC signed by unknown CA
+				const dscCert = await buildSignedCert(dscKeyPair.publicKey, unknownCaKeyPair.privateKey);
+				// Trust store only has the trusted CA
+				const trustedCaCert = await buildSignedCert(trustedCaKeyPair.publicKey, trustedCaKeyPair.privateKey);
+
+				const root: IACACertificate = {
+					state: 'XX',
+					issuer: 'Trusted Root',
+					certificateB64: uint8ArrayToBase64(trustedCaCert),
+					derBytes: trustedCaCert,
+					expiresAt: '2035-12-31T23:59:59Z'
+				};
+
+				const msoPayload = buildTestMso();
+				const coseSign1 = await buildCoseSign1(msoPayload, dscKeyPair.privateKey, dscCert);
+
+				const result = await verifyCoseSign1(coseSign1, [root]);
+				expect(result.valid).toBe(false);
+				if (!result.valid) {
+					expect(result.reason).toContain('not found in IACA trust store');
+				}
+			});
 		});
 	});
 });
