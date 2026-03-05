@@ -56,6 +56,15 @@ id = "a76f18d2c07042bc856a30038af05ab8"
 binding = "REJECTION_MONITOR_KV"
 id = "7e394f2a84174949b5b51c534c3a4976"
 
+# VICAL_KV: KV namespace for AAMVA VICAL certificate cache
+# Stores raw VICAL CBOR bytes with 7-day TTL for runtime IACA root extraction.
+# Create the namespace before deploying:
+#   npx wrangler kv namespace create VICAL_KV
+# Then replace the id below with the output namespace ID
+[[kv_namespaces]]
+binding = "VICAL_KV"
+id = "PLACEHOLDER_CREATE_WITH_WRANGLER"
+
 # REGISTRATION_RETRY_KV: KV namespace for Shadow Atlas registration retry queue
 # Stores atlas responses when Postgres write fails after successful tree mutation.
 # Entries have 1hr TTL — processed by /api/admin/reconcile-registrations endpoint.

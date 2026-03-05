@@ -64,6 +64,7 @@ declare global {
 				DC_SESSION_KV?: KVNamespace;
 				REGISTRATION_RETRY_KV?: KVNamespace;
 				REJECTION_MONITOR_KV?: KVNamespace;
+				VICAL_KV?: KVNamespace;
 			};
 			context?: {
 				waitUntil: (promise: Promise<unknown>) => void;
