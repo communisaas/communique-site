@@ -1,21 +1,11 @@
 import type { LayoutServerLoad } from './$types';
 import { db } from '$lib/core/db';
-import { IPFS_CIDS } from '$lib/core/shadow-atlas/ipfs-store';
-
 export const load: LayoutServerLoad = async ({ locals, depends }) => {
 	// Cache user data across navigations — only re-fetch when explicitly invalidated
 	depends('data:user');
 
-	// Pass IPFS CIDs to client so browser-side Shadow Atlas reads work.
-	// CIDs are set server-side from env vars in hooks.server.ts.
-	const ipfsCids = {
-		districtMapping: IPFS_CIDS.districtMapping || '',
-		officials: IPFS_CIDS.officials || '',
-		merkleSnapshot: IPFS_CIDS.merkleSnapshot || '',
-	};
-
 	if (!locals.user) {
-		return { user: null, ipfsCids };
+		return { user: null };
 	}
 
 	// Fetch user with representatives data
@@ -54,7 +44,6 @@ export const load: LayoutServerLoad = async ({ locals, depends }) => {
 			})) || [];
 
 		return {
-			ipfsCids,
 			user: {
 				id: locals.user.id,
 				email: locals.user.email,
@@ -84,7 +73,6 @@ export const load: LayoutServerLoad = async ({ locals, depends }) => {
 		console.error('[Layout] Failed to load representatives:', error instanceof Error ? error.message : String(error));
 		// Fallback to basic user data without representatives
 		return {
-			ipfsCids,
 			user: {
 				id: locals.user.id,
 				email: locals.user.email,

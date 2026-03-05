@@ -10,7 +10,6 @@
 	import ModalRegistry from '$lib/components/modals/ModalRegistry.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { walletState } from '$lib/stores/walletState.svelte';
-	import { setCIDs } from '$lib/core/shadow-atlas/ipfs-store';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 	import type { HeaderUser, HeaderTemplate, TemplateUseEvent } from '$lib/types/any-replacements';
@@ -39,14 +38,6 @@
 		children: Snippet;
 		data: LayoutData;
 	} = $props();
-
-	// Hydrate IPFS CIDs from server-provided layout data.
-	// Enables browser-side Shadow Atlas reads without a separate API call.
-	$effect(() => {
-		if (data.ipfsCids) {
-			setCIDs(data.ipfsCids);
-		}
-	});
 
 	// Hydrate wallet state from server-provided user data.
 	// Runs reactively so wallet state updates if the user changes (login/logout).
@@ -121,3 +112,4 @@
 <!-- Global UI components (always present) -->
 <ToastContainer />
 <ModalRegistry />
+

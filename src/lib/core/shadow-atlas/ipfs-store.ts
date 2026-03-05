@@ -3,17 +3,14 @@
  *
  * Fetches and caches content-addressed data from IPFS gateways.
  * District mapping, officials, and Merkle snapshots are pinned to IPFS
- * quarterly and cached locally with 7-day TTL.
+ * quarterly and cached in-memory with 7-day TTL.
  *
- * Dual-environment caching:
- * - Browser: IndexedDB (persistent, survives page reloads)
- * - CF Workers: In-memory Map (per-isolate, cleared on redeploy)
+ * Server-only: runs in CF Workers (in-memory Map per-isolate).
+ * Browser never downloads the full datasets — server-side API routes
+ * resolve districts and officials, returning only the user's data.
  *
  * This module has NO server-only imports ($env/dynamic/private).
- * It works in both browser and CF Workers environments.
  */
-
-import { openDB, type IDBPDatabase } from 'idb';
 
 // ============================================================================
 // Configuration
@@ -38,11 +35,11 @@ const IPFS_FETCH_TIMEOUT_MS = 30_000;
  * Content identifiers for pinned IPFS data.
  * Updated quarterly by the shadow-atlas-quarterly.yml pipeline.
  *
- * TODO: Move to KV namespace or read from on-chain DistrictRegistry
- * so quarterly updates don't require a redeploy.
+ * Defaults are overridden at runtime by setCIDs() from env vars
+ * (hooks.server.ts reads IPFS_CID_* env vars on startup).
  */
 export const IPFS_CIDS = {
-	/** H3 resolution-7 → district mapping (~3-5 MB brotli) */
+	/** H3 resolution-7 → district mapping (~355 MB decompressed JSON) */
 	districtMapping: '',
 	/** Federal officials dataset (~504 KB) */
 	officials: '',
@@ -52,7 +49,7 @@ export const IPFS_CIDS = {
 
 /**
  * Override CIDs at runtime (e.g., from env vars or on-chain registry).
- * Called from hooks.server.ts (server) and +layout.svelte (browser).
+ * Called from hooks.server.ts on app startup.
  */
 export function setCIDs(cids: Partial<Record<keyof typeof IPFS_CIDS, string>>): void {
 	if (cids.districtMapping) (IPFS_CIDS as Record<string, string>).districtMapping = cids.districtMapping;
@@ -178,7 +175,7 @@ export interface MerkleSnapshotData {
 }
 
 // ============================================================================
-// Cache Infrastructure
+// In-Memory Cache (CF Workers — per-isolate, cleared on redeploy)
 // ============================================================================
 
 interface CacheEntry<T> {
@@ -187,91 +184,7 @@ interface CacheEntry<T> {
 	fetchedAt: number;
 }
 
-interface CacheAdapter {
-	get<T>(key: string): Promise<CacheEntry<T> | null>;
-	set<T>(key: string, entry: CacheEntry<T>): Promise<void>;
-	delete(key: string): Promise<void>;
-}
-
-// -- IndexedDB Cache (Browser) -----------------------------------------------
-
-const IDB_NAME = 'shadow-atlas-ipfs';
-const IDB_VERSION = 1;
-const IDB_STORE = 'cache';
-
-let idbInstance: IDBPDatabase | null = null;
-
-async function getIDB(): Promise<IDBPDatabase> {
-	if (!idbInstance) {
-		idbInstance = await openDB(IDB_NAME, IDB_VERSION, {
-			upgrade(db) {
-				if (!db.objectStoreNames.contains(IDB_STORE)) {
-					db.createObjectStore(IDB_STORE);
-				}
-			},
-		});
-	}
-	return idbInstance;
-}
-
-const indexedDBCache: CacheAdapter = {
-	async get<T>(key: string): Promise<CacheEntry<T> | null> {
-		try {
-			const db = await getIDB();
-			const result = await db.get(IDB_STORE, key);
-			return result ?? null;
-		} catch {
-			return null;
-		}
-	},
-	async set<T>(key: string, entry: CacheEntry<T>): Promise<void> {
-		try {
-			const db = await getIDB();
-			await db.put(IDB_STORE, entry, key);
-		} catch (err) {
-			// IndexedDB write failures are non-fatal — data will be re-fetched
-			console.warn('[IPFS Store] IndexedDB write failed:', err);
-		}
-	},
-	async delete(key: string): Promise<void> {
-		try {
-			const db = await getIDB();
-			await db.delete(IDB_STORE, key);
-		} catch {
-			// Non-fatal
-		}
-	},
-};
-
-// -- In-Memory Cache (CF Workers / Server) ------------------------------------
-
 const memoryStore = new Map<string, CacheEntry<unknown>>();
-
-const memoryCache: CacheAdapter = {
-	async get<T>(key: string): Promise<CacheEntry<T> | null> {
-		return (memoryStore.get(key) as CacheEntry<T>) ?? null;
-	},
-	async set<T>(key: string, entry: CacheEntry<T>): Promise<void> {
-		memoryStore.set(key, entry as CacheEntry<unknown>);
-	},
-	async delete(key: string): Promise<void> {
-		memoryStore.delete(key);
-	},
-};
-
-// -- Environment Detection ----------------------------------------------------
-
-function isIndexedDBAvailable(): boolean {
-	try {
-		return typeof indexedDB !== 'undefined';
-	} catch {
-		return false;
-	}
-}
-
-function getCache(): CacheAdapter {
-	return isIndexedDBAvailable() ? indexedDBCache : memoryCache;
-}
 
 // ============================================================================
 // IPFS Fetch
@@ -327,20 +240,19 @@ async function fetchFromIPFS<T>(cid: string, mode: 'json' | 'binary' = 'json'): 
 
 /**
  * Fetch data with cache-through semantics:
- * 1. Check cache (return if valid: same CID + within TTL)
+ * 1. Check in-memory cache (return if valid: same CID + within TTL)
  * 2. Fetch from IPFS gateways
- * 3. Store in cache
+ * 3. Store in memory cache
  */
 async function getCached<T>(key: string, cid: string, mode: 'json' | 'binary' = 'json'): Promise<T> {
-	const cache = getCache();
-	const cached = await cache.get<T>(key);
+	const cached = memoryStore.get(key) as CacheEntry<T> | undefined;
 
 	if (cached && cached.cid === cid && (Date.now() - cached.fetchedAt) < CACHE_TTL_MS) {
 		return cached.data;
 	}
 
 	const data = await fetchFromIPFS<T>(cid, mode);
-	await cache.set(key, { data, cid, fetchedAt: Date.now() });
+	memoryStore.set(key, { data, cid, fetchedAt: Date.now() } as CacheEntry<unknown>);
 	return data;
 }
 
@@ -350,8 +262,8 @@ async function getCached<T>(key: string, cid: string, mode: 'json' | 'binary' = 
 
 /**
  * Fetch H3→district mapping.
- * ~3-5 MB brotli compressed, ~1.9M cell entries.
- * Cached in IndexedDB (browser) or memory (server) for 7 days.
+ * ~355 MB decompressed JSON, ~1.9M cell entries.
+ * Cached in Worker memory for 7 days per isolate.
  *
  * Handles v1→v2 format migration transparently: if the IPFS data uses
  * v1 named fields ({ cd, sldu, sldl, county }), converts to v2 slot array
@@ -380,7 +292,7 @@ export async function getDistrictMapping(): Promise<DistrictMappingData> {
 /**
  * Fetch officials dataset.
  * ~504 KB, keyed by congressional district code (e.g., "CA-12").
- * Cached for 7 days.
+ * Cached in Worker memory for 7 days.
  */
 export async function getOfficialsDataset(): Promise<OfficialsDataset> {
 	return getCached<OfficialsDataset>('officials', IPFS_CIDS.officials);
@@ -388,9 +300,9 @@ export async function getOfficialsDataset(): Promise<OfficialsDataset> {
 
 /**
  * Fetch Merkle tree snapshot.
- * ~15-25 MB compressed (brotli). Stored as JSON in IndexedDB.
+ * ~15-25 MB compressed (brotli).
  * Cipher's cell-tree-snapshot.ts deserializes + computes paths from this.
- * Cached for 7 days.
+ * Cached in Worker memory for 7 days.
  *
  * The returned MerkleSnapshotData.snapshot is the CellTreeSnapshotWire
  * JSON object — cipher's deserializeCellTreeSnapshot() consumes it.
@@ -420,12 +332,9 @@ export async function checkIPFSHealth(): Promise<boolean> {
  * Clear all cached data. Forces re-fetch from IPFS on next access.
  */
 export async function clearCache(): Promise<void> {
-	const cache = getCache();
-	await Promise.all([
-		cache.delete('district-mapping'),
-		cache.delete('officials'),
-		cache.delete('merkle-snapshot'),
-	]);
+	memoryStore.delete('district-mapping');
+	memoryStore.delete('officials');
+	memoryStore.delete('merkle-snapshot');
 }
 
 /**
