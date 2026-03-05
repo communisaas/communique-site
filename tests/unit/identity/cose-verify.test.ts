@@ -20,7 +20,8 @@ import {
 	extractTBSAndSignature,
 	extractValidityPeriod,
 	derEcdsaSigToRaw,
-	type MobileSecurityObject
+	type MobileSecurityObject,
+	type EcPublicKeyInfo
 } from '$lib/core/identity/cose-verify';
 import type { IACACertificate } from '$lib/core/identity/iaca-roots';
 import { encode, decode } from 'cbor-web';
@@ -489,9 +490,9 @@ describe('COSE_Sign1 Verification', () => {
 		});
 
 		it('should reject unsupported algorithms', async () => {
-			// Build protected headers with algorithm -35 (ES384) instead of -7 (ES256)
+			// Build protected headers with algorithm -36 (ES512) — not supported
 			const protectedHeaders = new Map<number, number>();
-			protectedHeaders.set(1, -35);
+			protectedHeaders.set(1, -36);
 			const protectedHeadersCBOR = new Uint8Array(encode(protectedHeaders));
 
 			const result = await verifyCoseSign1(
@@ -557,9 +558,10 @@ describe('COSE_Sign1 Verification', () => {
 
 			const extracted = extractEcPublicKeyFromDER(certDER);
 
-			expect(extracted.length).toBe(65);
-			expect(extracted[0]).toBe(0x04); // Uncompressed point prefix
-			expect(extracted).toEqual(rawKey);
+			expect(extracted.curve).toBe('P-256');
+			expect(extracted.keyBytes.length).toBe(65);
+			expect(extracted.keyBytes[0]).toBe(0x04); // Uncompressed point prefix
+			expect(extracted.keyBytes).toEqual(rawKey);
 		});
 
 		it('should throw if EC OID is not present', () => {
@@ -1014,8 +1016,9 @@ describe('COSE_Sign1 Verification', () => {
 				'wujS';
 
 			const derBytes = Uint8Array.from(atob(caRootB64), (c) => c.charCodeAt(0));
-			const pubKey = extractEcPublicKeyFromDER(derBytes);
+			const { keyBytes: pubKey, curve } = extractEcPublicKeyFromDER(derBytes);
 
+			expect(curve).toBe('P-256');
 			expect(pubKey.length).toBe(65);
 			expect(pubKey[0]).toBe(0x04); // uncompressed point
 			// Known CA DMV public key x-coordinate starts with 0x60 0xcc 0xa0
@@ -1047,8 +1050,9 @@ describe('COSE_Sign1 Verification', () => {
 				'jInviwIgdV2QIumonPVhepHrdrccIxgbu/pJi/P83PlUAoOW5kY=';
 
 			const derBytes = Uint8Array.from(atob(nmRootB64), (c) => c.charCodeAt(0));
-			const pubKey = extractEcPublicKeyFromDER(derBytes);
+			const { keyBytes: pubKey, curve } = extractEcPublicKeyFromDER(derBytes);
 
+			expect(curve).toBe('P-256');
 			expect(pubKey.length).toBe(65);
 			expect(pubKey[0]).toBe(0x04);
 			// Known NM public key x-coordinate starts with 0x98 0xfa 0xe5
@@ -1083,7 +1087,7 @@ describe('COSE_Sign1 Verification', () => {
 
 			// Verify the self-signed signature: CA root signed its own TBS
 			// Extract public key and verify
-			const pubKey = extractEcPublicKeyFromDER(derBytes);
+			const { keyBytes: pubKey } = extractEcPublicKeyFromDER(derBytes);
 			expect(pubKey.length).toBe(65);
 
 			// Convert DER signature to raw for Web Crypto verification
@@ -1112,11 +1116,11 @@ describe('COSE_Sign1 Verification', () => {
 			const rawSig = derEcdsaSigToRaw(signatureDER);
 
 			// Import the CA root's own public key
-			const pubKeyRaw = extractEcPublicKeyFromDER(derBytes);
+			const keyInfo = extractEcPublicKeyFromDER(derBytes);
 			const pubKey = await crypto.subtle.importKey(
 				'raw',
-				toBuffer(pubKeyRaw),
-				{ name: 'ECDSA', namedCurve: 'P-256' },
+				toBuffer(keyInfo.keyBytes),
+				{ name: 'ECDSA', namedCurve: keyInfo.curve },
 				false,
 				['verify']
 			);
@@ -1301,19 +1305,25 @@ describe('COSE_Sign1 Verification', () => {
 				expect(states).toContain('NM');
 			});
 
-			it('should extract valid 65-byte P-256 public key from every IACA root', () => {
+			it('should extract valid EC public key from every IACA root (P-256 or P-384)', () => {
 				const failures: string[] = [];
+				const expectedSizes: Record<string, number> = { 'P-256': 65, 'P-384': 97 };
 
 				for (const [state, cert] of IACA_ROOTS_ENTRIES) {
 					try {
 						const der = base64ToDER(cert.certificateB64);
-						const pubKey = extractEcPublicKeyFromDER(der);
+						const { keyBytes, curve } = extractEcPublicKeyFromDER(der);
+						const expectedSize = expectedSizes[curve];
 
-						if (pubKey.length !== 65) {
-							failures.push(`${state}: expected 65-byte key, got ${pubKey.length}`);
+						if (!expectedSize) {
+							failures.push(`${state}: unexpected curve ${curve}`);
+							continue;
 						}
-						if (pubKey[0] !== 0x04) {
-							failures.push(`${state}: expected uncompressed point (0x04), got 0x${pubKey[0].toString(16)}`);
+						if (keyBytes.length !== expectedSize) {
+							failures.push(`${state}: expected ${expectedSize}-byte ${curve} key, got ${keyBytes.length}`);
+						}
+						if (keyBytes[0] !== 0x04) {
+							failures.push(`${state}: expected uncompressed point (0x04), got 0x${keyBytes[0].toString(16)}`);
 						}
 					} catch (err) {
 						failures.push(`${state}: ${err instanceof Error ? err.message : String(err)}`);
@@ -1327,24 +1337,26 @@ describe('COSE_Sign1 Verification', () => {
 
 			it('should verify self-signature of every IACA root via Web Crypto', async () => {
 				const failures: string[] = [];
+				const curveHash: Record<string, string> = { 'P-256': 'SHA-256', 'P-384': 'SHA-384' };
+				const curveComponentSize: Record<string, number> = { 'P-256': 32, 'P-384': 48 };
 
 				for (const [state, cert] of IACA_ROOTS_ENTRIES) {
 					try {
 						const der = base64ToDER(cert.certificateB64);
-						const pubKeyRaw = extractEcPublicKeyFromDER(der);
+						const keyInfo = extractEcPublicKeyFromDER(der);
 						const pubKey = await crypto.subtle.importKey(
 							'raw',
-							toBuffer(pubKeyRaw),
-							{ name: 'ECDSA', namedCurve: 'P-256' },
+							toBuffer(keyInfo.keyBytes),
+							{ name: 'ECDSA', namedCurve: keyInfo.curve },
 							false,
 							['verify']
 						);
 
 						const { tbsBytes, signatureDER } = extractTBSAndSignature(der);
-						const rawSig = derEcdsaSigToRaw(signatureDER);
+						const rawSig = derEcdsaSigToRaw(signatureDER, curveComponentSize[keyInfo.curve]);
 
 						const valid = await crypto.subtle.verify(
-							{ name: 'ECDSA', hash: 'SHA-256' },
+							{ name: 'ECDSA', hash: curveHash[keyInfo.curve] },
 							pubKey,
 							toBuffer(rawSig),
 							toBuffer(tbsBytes)
@@ -1457,14 +1469,14 @@ describe('COSE_Sign1 Verification', () => {
 			});
 		});
 
-		describe('edge cases: non-P-256 certificates', () => {
-			it('should reject a certificate with P-384 key (no P-256 OID)', () => {
-				// Fabricate a DER-like blob with EC OID but P-384 curve OID instead of P-256
+		describe('edge cases: curve detection', () => {
+			it('should accept a certificate with P-384 key and return correct curve', () => {
+				// Fabricate a DER-like blob with EC OID + P-384 curve OID
 				// OID 1.3.132.0.34 = secp384r1 (P-384)
 				const p384CurveOid = new Uint8Array([0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x22]);
 				const ecOid = new Uint8Array([0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01]);
 
-				// Build a minimal structure with EC OID + P-384 OID (no P-256)
+				// Build a minimal structure with EC OID + P-384 OID
 				const algId = wrapDERSequence(concatBytes(ecOid, p384CurveOid));
 				// 97-byte P-384 uncompressed point (04 + 48 + 48)
 				const fakeKey = new Uint8Array(97);
@@ -1474,7 +1486,10 @@ describe('COSE_Sign1 Verification', () => {
 				const spki = wrapDERSequence(concatBytes(algId, bitString));
 				const cert = wrapDERSequence(spki);
 
-				expect(() => extractEcPublicKeyFromDER(cert)).toThrow('P-256 curve OID not found');
+				const { keyBytes, curve } = extractEcPublicKeyFromDER(cert);
+				expect(curve).toBe('P-384');
+				expect(keyBytes.length).toBe(97);
+				expect(keyBytes[0]).toBe(0x04);
 			});
 
 			it('should reject a certificate with no EC OID at all (RSA cert)', () => {
@@ -1496,8 +1511,8 @@ describe('COSE_Sign1 Verification', () => {
 					// Outer SEQUENCE length must be > 127 for any real X.509 cert
 					expect(der[1]).toBeGreaterThanOrEqual(0x80);
 					// Still parses correctly
-					const pubKey = extractEcPublicKeyFromDER(der);
-					expect(pubKey.length).toBe(65);
+					const { keyBytes } = extractEcPublicKeyFromDER(der);
+					expect([65, 97]).toContain(keyBytes.length);
 				}
 			});
 
@@ -1599,6 +1614,9 @@ describe('COSE_Sign1 Verification', () => {
 				// have them). Instead, we test that extractTBSAndSignature + derEcdsaSigToRaw
 				// correctly decompose the real certificates, then test the chain with
 				// synthetic keys.
+				const curveHash: Record<string, string> = { 'P-256': 'SHA-256', 'P-384': 'SHA-384' };
+				const curveComponent: Record<string, number> = { 'P-256': 32, 'P-384': 48 };
+
 				for (const [state, cert] of IACA_ROOTS_ENTRIES) {
 					const der = base64ToDER(cert.certificateB64);
 
@@ -1607,21 +1625,22 @@ describe('COSE_Sign1 Verification', () => {
 					expect(tbsBytes[0]).toBe(0x30); // TBS is a SEQUENCE
 					expect(signatureDER[0]).toBe(0x30); // Signature is a DER SEQUENCE
 
-					const rawSig = derEcdsaSigToRaw(signatureDER);
-					expect(rawSig.length).toBe(64); // r || s, each 32 bytes
+					const keyInfo = extractEcPublicKeyFromDER(der);
+					const compSize = curveComponent[keyInfo.curve];
+					const rawSig = derEcdsaSigToRaw(signatureDER, compSize);
+					expect(rawSig.length).toBe(compSize * 2); // r || s
 
 					// Verify the real root is self-signed
-					const pubKeyRaw = extractEcPublicKeyFromDER(der);
 					const pubKey = await crypto.subtle.importKey(
 						'raw',
-						toBuffer(pubKeyRaw),
-						{ name: 'ECDSA', namedCurve: 'P-256' },
+						toBuffer(keyInfo.keyBytes),
+						{ name: 'ECDSA', namedCurve: keyInfo.curve },
 						false,
 						['verify']
 					);
 
 					const valid = await crypto.subtle.verify(
-						{ name: 'ECDSA', hash: 'SHA-256' },
+						{ name: 'ECDSA', hash: curveHash[keyInfo.curve] },
 						pubKey,
 						toBuffer(rawSig),
 						toBuffer(tbsBytes)

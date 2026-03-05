@@ -2,14 +2,14 @@
  * COSE_Sign1 Verification for ISO 18013-5 mDL Credentials
  *
  * Implements RFC 9052 Section 4.2 (COSE_Sign1) signature verification
- * using Web Crypto API ECDSA P-256 — Cloudflare Workers compatible.
+ * using Web Crypto API ECDSA P-256/P-384 — Cloudflare Workers compatible.
  *
  * COSE_Sign1 = [protectedHeaders, unprotectedHeaders, payload, signature]
  * Sig_structure = ["Signature1", protectedHeaders, externalAad, payload]
  *
  * The issuer's X.509 certificate is extracted from unprotectedHeaders (key 33 = x5chain),
- * its ECDSA P-256 public key is parsed via minimal ASN.1/DER extraction, then imported
- * into Web Crypto for signature verification.
+ * its ECDSA public key (P-256 or P-384) is parsed via minimal ASN.1/DER extraction,
+ * then imported into Web Crypto for signature verification.
  *
  * Dependencies: cbor-web (CBOR encode/decode), Web Crypto API (ECDSA verification)
  * No Node.js crypto, no Buffer — runs on CF Workers.
@@ -52,6 +52,9 @@ export interface MobileSecurityObject {
 /** ES256 = ECDSA w/ SHA-256 using P-256 */
 const COSE_ALG_ES256 = -7;
 
+/** ES384 = ECDSA w/ SHA-384 using P-384 */
+const COSE_ALG_ES384 = -35;
+
 /** COSE header key for algorithm */
 const COSE_HEADER_ALG = 1;
 
@@ -67,6 +70,23 @@ const EC_PUBLIC_KEY_OID = new Uint8Array([0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x
 
 /** OID 1.2.840.10045.3.1.7 — prime256v1 (P-256) */
 const P256_CURVE_OID = new Uint8Array([0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07]);
+
+/** OID 1.3.132.0.34 — secp384r1 (P-384) */
+const P384_CURVE_OID = new Uint8Array([0x2b, 0x81, 0x04, 0x00, 0x22]);
+
+/** Supported EC curves with their parameters */
+export type EcCurve = 'P-256' | 'P-384';
+
+export interface EcPublicKeyInfo {
+	keyBytes: Uint8Array;
+	curve: EcCurve;
+}
+
+/** Curve → hash algorithm mapping */
+const CURVE_PARAMS: Record<EcCurve, { hash: string; sigSize: number; componentSize: number }> = {
+	'P-256': { hash: 'SHA-256', sigSize: 64, componentSize: 32 },
+	'P-384': { hash: 'SHA-384', sigSize: 96, componentSize: 48 },
+};
 
 // ---------------------------------------------------------------------------
 // Main verification function
@@ -118,12 +138,15 @@ export async function verifyCoseSign1(
 	}
 
 	const algorithm = protectedHeaders.get(COSE_HEADER_ALG);
-	if (algorithm !== COSE_ALG_ES256) {
+	if (algorithm !== COSE_ALG_ES256 && algorithm !== COSE_ALG_ES384) {
 		return {
 			valid: false,
-			reason: `Unsupported COSE algorithm: ${algorithm} (expected ES256 = -7)`
+			reason: `Unsupported COSE algorithm: ${algorithm} (expected ES256 = -7 or ES384 = -35)`
 		};
 	}
+
+	const coseAlgCurve: EcCurve = algorithm === COSE_ALG_ES384 ? 'P-384' : 'P-256';
+	const coseAlgParams = CURVE_PARAMS[coseAlgCurve];
 
 	// --- Signature must be bytes ---
 	let signatureBytes: Uint8Array;
@@ -135,11 +158,11 @@ export async function verifyCoseSign1(
 		return { valid: false, reason: 'Signature must be a byte string' };
 	}
 
-	// ES256 signature should be 64 bytes (r || s, each 32 bytes)
-	if (signatureBytes.length !== 64) {
+	// Verify signature length matches algorithm (ES256=64, ES384=96)
+	if (signatureBytes.length !== coseAlgParams.sigSize) {
 		return {
 			valid: false,
-			reason: `Invalid ES256 signature length: ${signatureBytes.length} (expected 64)`
+			reason: `Invalid signature length: ${signatureBytes.length} (expected ${coseAlgParams.sigSize} for ${coseAlgCurve})`
 		};
 	}
 
@@ -194,14 +217,16 @@ export async function verifyCoseSign1(
 		// Some test certs may have minimal TBS that doesn't parse fully.
 	}
 
-	// --- Extract ECDSA P-256 public key from issuer certificate ---
+	// --- Extract ECDSA public key from issuer certificate ---
 	let publicKey: CryptoKey;
+	let certCurve: EcCurve;
 	try {
-		const rawKey = extractEcPublicKeyFromDER(issuerCertDER);
+		const keyInfo = extractEcPublicKeyFromDER(issuerCertDER);
+		certCurve = keyInfo.curve;
 		publicKey = await crypto.subtle.importKey(
 			'raw',
-			toBufferSource(rawKey),
-			{ name: 'ECDSA', namedCurve: 'P-256' },
+			toBufferSource(keyInfo.keyBytes),
+			{ name: 'ECDSA', namedCurve: keyInfo.curve },
 			false,
 			['verify']
 		);
@@ -223,12 +248,13 @@ export async function verifyCoseSign1(
 		return { valid: false, reason: 'Failed to CBOR-encode Sig_structure' };
 	}
 
-	// COSE signature is raw format (r || s, 64 bytes for P-256).
+	// COSE signature is raw format (r || s). Length depends on curve.
 	// Web Crypto API also uses raw (IEEE P1363) format for ECDSA — pass directly.
+	const verifyHash = CURVE_PARAMS[certCurve].hash;
 	let valid: boolean;
 	try {
 		valid = await crypto.subtle.verify(
-			{ name: 'ECDSA', hash: 'SHA-256' },
+			{ name: 'ECDSA', hash: verifyHash },
 			publicKey,
 			toBufferSource(signatureBytes),
 			toBufferSource(sigStructureEncoded)
@@ -407,20 +433,21 @@ async function verifyDscAgainstRoot(
 
 		// Real path: verify DSC was signed by this IACA root
 		try {
-			const rootPublicKeyRaw = extractEcPublicKeyFromDER(rootDER);
+			const rootKeyInfo = extractEcPublicKeyFromDER(rootDER);
+			const rootCurveParams = CURVE_PARAMS[rootKeyInfo.curve];
 			const rootPublicKey = await crypto.subtle.importKey(
 				'raw',
-				toBufferSource(rootPublicKeyRaw),
-				{ name: 'ECDSA', namedCurve: 'P-256' },
+				toBufferSource(rootKeyInfo.keyBytes),
+				{ name: 'ECDSA', namedCurve: rootKeyInfo.curve },
 				false,
 				['verify']
 			);
 
 			const { tbsBytes, signatureDER } = extractTBSAndSignature(dscDER);
-			const signatureRaw = derEcdsaSigToRaw(signatureDER);
+			const signatureRaw = derEcdsaSigToRaw(signatureDER, rootCurveParams.componentSize);
 
 			const valid = await crypto.subtle.verify(
-				{ name: 'ECDSA', hash: 'SHA-256' },
+				{ name: 'ECDSA', hash: rootCurveParams.hash },
 				rootPublicKey,
 				toBufferSource(signatureRaw),
 				toBufferSource(tbsBytes)
@@ -439,34 +466,47 @@ async function verifyDscAgainstRoot(
 }
 
 /**
- * Minimal ASN.1/DER parser to extract an EC P-256 public key from an X.509 certificate.
+ * Minimal ASN.1/DER parser to extract an EC public key from an X.509 certificate.
  *
  * Searches for the SubjectPublicKeyInfo structure containing:
  *   - OID 1.2.840.10045.2.1 (id-ecPublicKey)
- *   - OID 1.2.840.10045.3.1.7 (prime256v1 / P-256)
+ *   - OID 1.2.840.10045.3.1.7 (prime256v1 / P-256) OR
+ *   - OID 1.3.132.0.34 (secp384r1 / P-384)
  *
- * Then extracts the 65-byte uncompressed point (04 || x || y) from the BIT STRING.
+ * Then extracts the uncompressed point (04 || x || y) from the BIT STRING.
+ * P-256: 65 bytes (04 + 32x + 32y), P-384: 97 bytes (04 + 48x + 48y)
  */
-export function extractEcPublicKeyFromDER(certDER: Uint8Array): Uint8Array {
+export function extractEcPublicKeyFromDER(certDER: Uint8Array): EcPublicKeyInfo {
 	// Find the EC public key OID
 	const ecOidIndex = findBytes(certDER, EC_PUBLIC_KEY_OID);
 	if (ecOidIndex === -1) {
 		throw new Error('EC public key OID not found in certificate');
 	}
 
-	// Find the P-256 curve OID after the EC OID
-	const curveOidIndex = findBytes(certDER, P256_CURVE_OID, ecOidIndex);
-	if (curveOidIndex === -1) {
-		throw new Error('P-256 curve OID not found in certificate');
+	// Detect curve: try P-256, then P-384
+	let curve: EcCurve;
+	let curveOidEnd: number;
+
+	const p256Index = findBytes(certDER, P256_CURVE_OID, ecOidIndex);
+	const p384Index = findBytes(certDER, P384_CURVE_OID, ecOidIndex);
+
+	if (p256Index !== -1 && (p384Index === -1 || p256Index < p384Index)) {
+		curve = 'P-256';
+		curveOidEnd = p256Index + P256_CURVE_OID.length;
+	} else if (p384Index !== -1) {
+		curve = 'P-384';
+		curveOidEnd = p384Index + P384_CURVE_OID.length;
+	} else {
+		throw new Error('Supported curve OID not found in certificate (need P-256 or P-384)');
 	}
 
-	// After the curve OID, find the BIT STRING containing the public key.
-	// BIT STRING tag = 0x03
-	// The public key BIT STRING follows the AlgorithmIdentifier SEQUENCE.
-	// Search for BIT STRING tag after the curve OID
-	const searchStart = curveOidIndex + P256_CURVE_OID.length;
+	const params = CURVE_PARAMS[curve];
+	// Uncompressed point: 04 + x + y
+	const keySize = 1 + 2 * params.componentSize; // 65 for P-256, 97 for P-384
+	const bitStringContentLen = keySize + 1; // +1 for 0x00 unused bits byte
 
-	for (let i = searchStart; i < certDER.length - 67; i++) {
+	// After the curve OID, find the BIT STRING containing the public key.
+	for (let i = curveOidEnd; i < certDER.length - keySize; i++) {
 		if (certDER[i] === 0x03) {
 			// BIT STRING tag
 			const len = parseDERLength(certDER, i + 1);
@@ -476,18 +516,21 @@ export function extractEcPublicKeyFromDER(certDER: Uint8Array): Uint8Array {
 			const contentLen = len.length;
 
 			// BIT STRING for EC key: first byte is 0x00 (unused bits),
-			// then 0x04 (uncompressed point), then 64 bytes (x || y)
+			// then 0x04 (uncompressed point), then coordinate bytes
 			if (
-				contentLen === 66 &&
+				contentLen === bitStringContentLen &&
 				certDER[contentStart] === 0x00 &&
 				certDER[contentStart + 1] === 0x04
 			) {
-				return certDER.slice(contentStart + 1, contentStart + 1 + 65);
+				return {
+					keyBytes: certDER.slice(contentStart + 1, contentStart + 1 + keySize),
+					curve,
+				};
 			}
 		}
 	}
 
-	throw new Error('Could not find uncompressed EC P-256 public key in certificate');
+	throw new Error(`Could not find uncompressed EC ${curve} public key in certificate`);
 }
 
 /**
@@ -546,16 +589,18 @@ export function extractTBSAndSignature(certDER: Uint8Array): {
 }
 
 /**
- * Convert a DER-encoded ECDSA signature to raw 64-byte format (r || s).
+ * Convert a DER-encoded ECDSA signature to raw format (r || s).
  *
  * DER: SEQUENCE { INTEGER r, INTEGER s }
- * Raw: r (32 bytes, zero-padded) || s (32 bytes, zero-padded)
+ * Raw: r (componentSize bytes, zero-padded) || s (componentSize bytes, zero-padded)
+ *
+ * @param componentSize  Byte length of each component (32 for P-256, 48 for P-384). Default: 32.
  *
  * Handles:
  * - Leading 0x00 padding on positive integers with high bit set (strip it)
- * - Short integers < 32 bytes (left-zero-pad to 32)
+ * - Short integers < componentSize bytes (left-zero-pad)
  */
-export function derEcdsaSigToRaw(derSig: Uint8Array): Uint8Array {
+export function derEcdsaSigToRaw(derSig: Uint8Array, componentSize = 32): Uint8Array {
 	if (derSig[0] !== 0x30) {
 		throw new Error('DER signature does not start with SEQUENCE tag');
 	}
@@ -582,22 +627,22 @@ export function derEcdsaSigToRaw(derSig: Uint8Array): Uint8Array {
 	let sBytes = derSig.slice(sLen.offset, sLen.offset + sLen.length);
 
 	// Strip leading 0x00 padding (DER uses it when high bit is set)
-	if (rBytes.length > 32 && rBytes[0] === 0x00) {
-		rBytes = rBytes.slice(rBytes.length - 32);
+	if (rBytes.length > componentSize && rBytes[0] === 0x00) {
+		rBytes = rBytes.slice(rBytes.length - componentSize);
 	}
-	if (sBytes.length > 32 && sBytes[0] === 0x00) {
-		sBytes = sBytes.slice(sBytes.length - 32);
+	if (sBytes.length > componentSize && sBytes[0] === 0x00) {
+		sBytes = sBytes.slice(sBytes.length - componentSize);
 	}
 
-	// Left-pad to 32 bytes if shorter
-	const r = new Uint8Array(32);
-	const s = new Uint8Array(32);
-	r.set(rBytes, 32 - rBytes.length);
-	s.set(sBytes, 32 - sBytes.length);
+	// Left-pad to componentSize bytes if shorter
+	const r = new Uint8Array(componentSize);
+	const s = new Uint8Array(componentSize);
+	r.set(rBytes, componentSize - rBytes.length);
+	s.set(sBytes, componentSize - sBytes.length);
 
-	const raw = new Uint8Array(64);
+	const raw = new Uint8Array(componentSize * 2);
 	raw.set(r, 0);
-	raw.set(s, 32);
+	raw.set(s, componentSize);
 	return raw;
 }
 

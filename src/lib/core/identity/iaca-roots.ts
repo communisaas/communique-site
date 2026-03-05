@@ -10,8 +10,8 @@
  *   - All other states: AAMVA VICAL (https://vical.dts.aamva.org/currentVical)
  *     Parsed via scripts/parse-vical.ts from VICAL version vc-2026-03-04-1772661350906
  *
- * All certificates are ECDSA P-256 (secp256r1), self-signed root CAs with
- * CA:TRUE and KeyUsage: Certificate Sign, CRL Sign per ISO 18013-5 §9.1.
+ * Certificates are ECDSA P-256 (secp256r1) or P-384 (secp384r1), self-signed
+ * root CAs with CA:TRUE and KeyUsage: Certificate Sign, CRL Sign per ISO 18013-5 §9.1.
  *
  * Certificate chain: IACA Root → DSC (Document Signer Certificate) → MSO
  * The IACA root is the trust anchor; DSCs are signed by the root and included
@@ -21,9 +21,7 @@
  * different wallet providers (e.g., AZ has separate roots for Samsung, Google,
  * AzWallet, Avocet). All are included to verify mDLs from any wallet.
  *
- * Skipped: Alaska (P-384 — not currently supported by our P-256-only verifier).
- *
- * Coverage: 11 states (AZ, CA, CO, GA, IL, MD, MT, ND, NM, UT, VA)
+ * Coverage: 12 states (AK, AZ, CA, CO, GA, IL, MD, MT, ND, NM, UT, VA)
  * Last updated: 2026-03-04
  */
 
@@ -56,6 +54,38 @@ export interface IACACertificate {
  * AAMVA VICAL certificates.
  */
 export const IACA_ROOTS: Record<string, IACACertificate[]> = {
+	// =========================================================================
+	// Alaska — 1 IACA root (P-384 / secp384r1)
+	// Source: AAMVA VICAL
+	// =========================================================================
+	AK: [
+		{
+			state: 'AK',
+			issuer: 'Alaska DMV IACA',
+			certificateB64:
+				'MIIDcDCCAvagAwIBAgIUX9Ek9pKNP/yYUYu9pf6pyxFM2M4wCgYIKoZIzj0EAwMw' +
+				'STEYMBYGA1UEAwwPQWxhc2thIERNViBJQUNBMRMwEQYDVQQKDApBbGFza2EgRE1W' +
+				'MQswCQYDVQQIDAJBSzELMAkGA1UEBhMCVVMwHhcNMjUwMjEyMjMyMjM4WhcNMzUw' +
+				'MjEwMjMyMjM3WjBJMRgwFgYDVQQDDA9BbGFza2EgRE1WIElBQ0ExEzARBgNVBAoM' +
+				'CkFsYXNrYSBETVYxCzAJBgNVBAgMAkFLMQswCQYDVQQGEwJVUzB2MBAGByqGSM49' +
+				'AgEGBSuBBAAiA2IABDMUuKt2Met/TjeB0klqsmfJyBiyc6liSk8s/R2FSwWJT10A' +
+				'zaWq3t77Fzl5xrUJfXrZOgmAad+R79nfCDKEw9nOUDyPxwnK+x1Tf56IyV9HEV9' +
+				'S5OweERm+HnOLqcYblqOCAZ0wggGZMBIGA1UdEwEB/wQIMAYBAf8CAQAwHwYDVR0j' +
+				'BBgwFoAUnG/8jgGkyjyKsmmZHwRklS8YxNQwMQYDVR0SBCowKIEmdXMuZGlzLm5v' +
+				'cmFtLml0LmFkbWluc0B0aGFsZXNncm91cC5jb20wMQYDVR0RBCowKIEmdXMuZGlz' +
+				'Lm5vcmFtLml0LmFkbWluc0B0aGFsZXNncm91cC5jb20wgbAGA1UdHwSBqDCBpTCB' +
+				'oqCBn6CBnIaBmWh0dHA6Ly9pc3N1aW5nLmFrbWRsLnVzLmFwcC5hei5rZXlmYWN0' +
+				'b3JzYWFzLmNvbS9lamJjYS9wdWJsaWN3ZWIvd2ViZGlzdC9jZXJ0ZGlzdD9jbWQ9' +
+				'Y3JsJmlzc3Vlcj1DTiUzREFsYXNrYStETVYrSUFDQSUyQ08lM0RBbGFza2ErRE1W' +
+				'JTJDU1QlM0RBSyUyQ0MlM0RVUzAdBgNVHQ4EFgQUnG/8jgGkyjyKsmmZHwRklS8Y' +
+				'xNQwGgYDVR0QBBMwEYEPMjAzMzAyMTAyMzIyMzhaMA4GA1UdDwEB/wQEAwIBBjAK' +
+				'BggqhkjOPQQDAwNoADBlAjBo/GoIeq0E6ZJAxUtMfyj3IYsXu9Aucg28yTfDAR0J' +
+				'8sqH18j3H9YThID1rFWT3+ECMQDlUAUD4AOg8BdCV9MJoBEMQXXPwa/NxLpRSrps' +
+				'hflgNiPYiTEagDl2oH5AglotZmU=',
+			expiresAt: '2035-02-10T23:22:37Z'
+		},
+	],
+
 	// =========================================================================
 	// Arizona — 7 IACA roots (3 MVMProdCA rotations + per-wallet-provider roots)
 	// Source: AAMVA VICAL
