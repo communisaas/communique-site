@@ -7,6 +7,9 @@
  * Sources:
  *   - California: https://trust.dmv.ca.gov/certificates/ca-dmv-iaca-root-ca-crt.cer
  *   - New Mexico: https://www.mvd.newmexico.gov/wp-content/uploads/2025/10/New-Mexico-IACA-Certificate.zip
+ *   - Hawaii: https://hidot.hawaii.gov/highways/files/2024/08/2024_HI_IACA_Root.zip
+ *   - Ohio: https://bmvonline.dps.ohio.gov (ohio_mdl_iaca_root_2024.zip)
+ *   - Puerto Rico: https://docs.pr.gov/files/ID_movil-mDL/Certificado_IACA/PRDTOPProdCA.pem
  *   - All other states: AAMVA VICAL (https://vical.dts.aamva.org/currentVical)
  *     Parsed via scripts/parse-vical.ts from VICAL version vc-2026-03-04-1772661350906
  *
@@ -21,7 +24,7 @@
  * different wallet providers (e.g., AZ has separate roots for Samsung, Google,
  * AzWallet, Avocet). All are included to verify mDLs from any wallet.
  *
- * Coverage: 12 states (AK, AZ, CA, CO, GA, IL, MD, MT, ND, NM, UT, VA)
+ * Coverage: 15 states/territories (AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA)
  * Last updated: 2026-03-04
  */
 
@@ -364,6 +367,35 @@ export const IACA_ROOTS: Record<string, IACACertificate[]> = {
 	],
 
 	// =========================================================================
+	// Hawaii — 1 IACA root
+	// Source: https://hidot.hawaii.gov/highways/files/2024/08/2024_HI_IACA_Root.zip
+	// =========================================================================
+	HI: [
+		{
+			state: 'HI',
+			issuer: 'HI_IACA_Prod',
+			certificateB64:
+				'MIIC3DCCAoKgAwIBAgIQO0MRI6jbr3YzWm0a/hWz7zAKBggqhkjOPQQDAjCBiDEL' +
+				'MAkGA1UEBhMCVVMxJTAjBgNVBAoMHERlcGFydG1lbnQgb2YgVHJhbnNwb3J0YXRp' +
+				'b24xGDAWBgNVBAsMD1N0YXRlIG9mIEhhd2FpaTEOMAwGA1UECAwFVVMtSEkxFTAT' +
+				'BgNVBAMMDEhJX0lBQ0FfUHJvZDERMA8GA1UEBwwISG9ub2x1bHUwHhcNMjQwNjA1' +
+				'MjEzNzI0WhcNMzQwNjAzMjIzNzI0WjCBiDELMAkGA1UEBhMCVVMxJTAjBgNVBAoM' +
+				'HERlcGFydG1lbnQgb2YgVHJhbnNwb3J0YXRpb24xGDAWBgNVBAsMD1N0YXRlIG9m' +
+				'IEhhd2FpaTEOMAwGA1UECAwFVVMtSEkxFTATBgNVBAMMDEhJX0lBQ0FfUHJvZDER' +
+				'MA8GA1UEBwwISG9ub2x1bHUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARCcrrc' +
+				'8mVy8VHxjpV8ZfO8alQwpFRCT8kazy5f/iPEQPSsqc0pj6LdbLQdqXEaokUDKwcx' +
+				'fpdN0uaDk5MGWTFZo4HLMIHIMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYE' +
+				'FMCDFIyYQWlWmM2VtWMzENDagXvNMA4GA1UdDwEB/wQEAwIBBjAfBgNVHRIEGDAW' +
+				'hhRodHRwczovL21kbC5obmwuaW5mbzBiBgNVHR8EWzBZMFegVaBThlFodHRwOi8v' +
+				'ZDE3NWdjZzB6YzI4dGkuY2xvdWRmcm9udC5uZXQvY3JsLzlkNTE3MmZmLWZhMDYt' +
+				'NDJiMy04Zjc0LTI2OTM4ZjdkYWI0Yy5jcmwwCgYIKoZIzj0EAwIDSAAwRQIhAOrQ' +
+				'e8YV+0FSVI8EoNZeQklQvzql0UfTs2/+VxB4DnJdAiAuhccsfdM5gsysRhtdTuSL' +
+				'+G1QKJa/XMMZxJFWh/ozjg==',
+			expiresAt: '2034-06-03T22:37:24Z'
+		},
+	],
+
+	// =========================================================================
 	// Illinois
 	// Source: AAMVA VICAL
 	// =========================================================================
@@ -533,6 +565,66 @@ export const IACA_ROOTS: Record<string, IACACertificate[]> = {
 				'MAoGCCqGSM49BAMCA0gAMEUCIQDKU91VZtiRtzly+WaK1ah2fYOTBxuIfIqKzZQk' +
 				'jInviwIgdV2QIumonPVhepHrdrccIxgbu/pJi/P83PlUAoOW5kY=',
 			expiresAt: '2030-10-01T06:00:00Z'
+		},
+	],
+
+	// =========================================================================
+	// Ohio — 1 IACA root
+	// Source: https://bmvonline.dps.ohio.gov (direct .gov download)
+	// SHA256(PEM): 373a40d4bacd185a55624aa53a142c4e74401af5908e6b8b7d6fcda7dfc37715
+	// =========================================================================
+	OH: [
+		{
+			state: 'OH',
+			issuer: 'Ohio mDL Root CA Gen 1',
+			certificateB64:
+				'MIIC1zCCAn2gAwIBAgIRANaPmlNgk2S+WiJCeTF1zhowCgYIKoZIzj0EAwIwgYkx' +
+				'CzAJBgNVBAYTAlVTMSkwJwYDVQQKDCBPaGlvIERlcGFydG1lbnQgb2YgUHVibGlj' +
+				'IFNhZmV0eTELMAkGA1UECwwCSVQxDjAMBgNVBAgMBVVTLU9IMR8wHQYDVQQDDBZP' +
+				'aGlvIG1ETCBSb290IENBIEdlbiAxMREwDwYDVQQHDAhDb2x1bWJ1czAeFw0yNDAz' +
+				'MjExNTE0NDhaFw0zNDAzMTkxNjE0NDhaMIGJMQswCQYDVQQGEwJVUzEpMCcGA1UE' +
+				'CgwgT2hpbyBEZXBhcnRtZW50IG9mIFB1YmxpYyBTYWZldHkxCzAJBgNVBAsMAklU' +
+				'MQ4wDAYDVQQIDAVVUy1PSDEfMB0GA1UEAwwWT2hpbyBtREwgUm9vdCBDQSBHZW4g' +
+				'MTERMA8GA1UEBwwIQ29sdW1idXMwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARe' +
+				'xt/Ni9E/fWdcjHrhzlWbqkwKFHRw5CTPqQMiXMD+80E4EOiR92x542DOrbfKNKFb' +
+				'Jt0QLUm4ZuSH9oz2iF8No4HDMIHAMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0O' +
+				'BBYEFC8eJP9Sk7FKOdar7gURCcGB218IMA8GA1UdDwEB/wQFAwMHBgAwHwYDVR0S' +
+				'BBgwFoEUTURMSUFDQUBkcHMub2hpby5nb3YwWQYDVR0fBFIwUDBOoEygSoZIaHR0' +
+				'cHM6Ly9tZGxjcmwuZHBzLm9oaW8uZ292L2NybC81ZmNiZmZmMi03YWMwLTQ4YzAt' +
+				'YWM5Ni1mZjI3NzVlZDJiNDQuY3JsMAoGCCqGSM49BAMCA0gAMEUCIC9zOsELjdul' +
+				'T21W0YSpE8jm4ec1r4wM0nonxXVkMKceAiEAszOHaGlCDE0zmugt/AMrHKqd0OlJ' +
+				'VlY708JBLhMGBwA=',
+			expiresAt: '2034-03-19T16:14:48Z'
+		},
+	],
+
+	// =========================================================================
+	// Puerto Rico — 1 IACA root
+	// Source: https://docs.pr.gov (direct .gov download)
+	// =========================================================================
+	PR: [
+		{
+			state: 'PR',
+			issuer: 'PRDTOP-MDL-PROD-CA',
+			certificateB64:
+				'MIIDIDCCAsagAwIBAgIQG9W2OpTXyQJ0PrtCwfrFKDAKBggqhkjOPQQDAjCBiDEL' +
+				'MAkGA1UEBhMCVVMxOTA3BgNVBAoMMFBSIERlcGFydG1lbnQgb2YgVHJhbnNwb3J0' +
+				'YXRpb24gYW5kIFB1YmxpYyBXb3JrczEOMAwGA1UECAwFVVMtUFIxGzAZBgNVBAMM' +
+				'ElBSRFRPUC1NREwtUFJPRC1DQTERMA8GA1UEBwwIU2FuIEp1YW4wHhcNMjQwNjAz' +
+				'MjAxMTM4WhcNMjkwNjAzMjExMTM4WjCBiDELMAkGA1UEBhMCVVMxOTA3BgNVBAoM' +
+				'MFBSIERlcGFydG1lbnQgb2YgVHJhbnNwb3J0YXRpb24gYW5kIFB1YmxpYyBXb3Jr' +
+				'czEOMAwGA1UECAwFVVMtUFIxGzAZBgNVBAMMElBSRFRPUC1NREwtUFJPRC1DQTER' +
+				'MA8GA1UEBwwIU2FuIEp1YW4wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATP6mVx' +
+				'4VpNQqr4b4bKe/D7EZqaUouYe2vyca/g/GblDp4HaR2TbEFxYBolDNfBFmCum1Dc' +
+				'2a58A/ZAppPJcu/7o4IBDjCCAQowEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4E' +
+				'FgQUGjv4xc68io+nxd+htquQiI5OM9wwDwYDVR0PAQH/BAUDAwcGADAvBgNVHRIE' +
+				'KDAmgQ9tZGxAZHRvcC5wci5nb3aGE2h0dHBzOi8vbWRsLnByLmdvdi8wcgYDVR0f' +
+				'BGswaTBnoGWgY4ZhaHR0cDovL21kbC1pYWNhLWNvbHdyLnMzLnVzLWdvdi1lYXN0' +
+				'LTEuYW1hem9uYXdzLmNvbS9jcmwvMDI4ZTFkYjAtNjFhZC00Yzg3LTg1OTItYTQ1' +
+				'MTQ0ZDU4Mzk4LmNybDAfBgNVHSMEGDAWgBQaO/jFzryKj6fF36G2q5CIjk4z3DAK' +
+				'BggqhkjOPQQDAgNIADBFAiEA3zWqrvBJJAtiowJaHMGczNu0t2nIxe7FFatBcQW5' +
+				'mGkCIGN4OCs8VZTY0/cgc+GWG8xfeW9lXwR68Sef9L5XYEva',
+			expiresAt: '2029-06-03T21:11:38Z'
 		},
 	],
 
