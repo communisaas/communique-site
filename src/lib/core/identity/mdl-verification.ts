@@ -55,11 +55,13 @@ export type MdlVerificationResult =
 				| 'invalid_format'
 				| 'decryption_failed'
 				| 'signature_invalid'
+				| 'unsupported_state'
 				| 'expired'
 				| 'missing_fields'
 				| 'unsupported_protocol'
 				| 'district_lookup_failed';
 			message: string;
+			supportedStates?: string[];
 	  };
 
 /**
@@ -175,12 +177,20 @@ async function processMdocResponse(
 		const issuerAuth = issuerSigned.issuerAuth;
 		if (issuerAuth && Array.isArray(issuerAuth)) {
 			const { verifyCoseSign1 } = await import('./cose-verify');
-			const { getIACARootsForVerification } = await import('./iaca-roots');
+			const { getIACARootsForVerification, supportedIACAStates } = await import('./iaca-roots');
 			const roots = getIACARootsForVerification();
 
 			if (roots.length > 0) {
 				const coseResult = await verifyCoseSign1(issuerAuth, roots);
 				if (!coseResult.valid) {
+					if (coseResult.reason === 'Issuer certificate not found in IACA trust store') {
+						return {
+							success: false,
+							error: 'unsupported_state',
+							message: `This mDL was issued by a state not yet in our trust store. Supported states: ${supportedIACAStates().join(', ')}`,
+							supportedStates: supportedIACAStates()
+						};
+					}
 					return {
 						success: false,
 						error: 'signature_invalid',

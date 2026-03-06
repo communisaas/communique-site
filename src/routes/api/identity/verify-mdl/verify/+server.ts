@@ -74,7 +74,11 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 		if (!result.success) {
 			console.error('[mDL Verify] Verification failed:', result.error, result.message);
-			return json({ error: result.error, message: result.message }, { status: 422 });
+			return json({
+				error: result.error,
+				message: result.message,
+				...(result.supportedStates && { supportedStates: result.supportedStates })
+			}, { status: 422 });
 		}
 
 		// Identity commitment was computed INSIDE the privacy boundary
