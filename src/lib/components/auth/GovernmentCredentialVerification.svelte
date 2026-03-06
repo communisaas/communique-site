@@ -18,7 +18,9 @@
 		AlertCircle,
 		ShieldCheck,
 		RefreshCw,
-		Info
+		Info,
+		Copy,
+		CheckCheck
 	} from '@lucide/svelte';
 	import {
 		isDigitalCredentialsSupported,
@@ -26,6 +28,7 @@
 		type CredentialRequestResult
 	} from '$lib/core/identity/digital-credentials-api';
 	import { dev } from '$app/environment';
+	import QRCode from 'qrcode';
 
 	interface Props {
 		userId: string;
@@ -210,6 +213,44 @@
 		errorMessage = null;
 		startVerification();
 	}
+
+	// Mobile verification fallback for unsupported browsers
+	let mobileVerifyUrl = $state<string | null>(null);
+	let qrSvg = $state<string | null>(null);
+	let linkCopied = $state(false);
+
+	async function generateMobileLink() {
+		const sessionId = crypto.randomUUID();
+		const origin = typeof window !== 'undefined' ? window.location.origin : '';
+		mobileVerifyUrl = `${origin}/verify-mobile?session=${sessionId}`;
+
+		try {
+			qrSvg = await QRCode.toString(mobileVerifyUrl, {
+				type: 'svg',
+				width: 200,
+				margin: 2,
+				color: { dark: '#1e293b', light: '#ffffff' }
+			});
+		} catch {
+			qrSvg = null;
+		}
+	}
+
+	async function copyMobileLink() {
+		if (!mobileVerifyUrl) return;
+		try {
+			await navigator.clipboard.writeText(mobileVerifyUrl);
+			linkCopied = true;
+			setTimeout(() => { linkCopied = false; }, 2000);
+		} catch { /* clipboard not available */ }
+	}
+
+	// Generate QR on mount if unsupported
+	$effect(() => {
+		if (verificationState === 'unsupported') {
+			generateMobileLink();
+		}
+	});
 </script>
 
 <div class="space-y-6">
@@ -372,30 +413,54 @@
 			</button>
 		</div>
 	{:else if verificationState === 'unsupported'}
-		<!-- Unsupported Browser State -->
+		<!-- Unsupported Browser — Mobile QR Fallback -->
 		<div class="space-y-4">
 			<div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
 				<div class="flex items-start gap-3">
 					<Info class="h-5 w-5 flex-shrink-0 text-amber-600" />
 					<div class="flex-1">
 						<p class="text-sm font-medium text-amber-900">
-							Digital ID not available in this browser
+							Continue on your phone
 						</p>
 						<p class="mt-1 text-sm text-amber-700">
-							Identity verification requires the W3C Digital Credentials API,
-							available in <strong>Chrome 141+</strong> or <strong>Safari 26+</strong>.
-							Please switch to a supported browser to continue.
+							This browser doesn't support digital ID verification.
+							Scan the code below with your phone to verify using your wallet app.
 						</p>
 					</div>
 				</div>
 			</div>
 
-			<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-				<p class="text-sm text-slate-600">
-					You'll also need a digital driver's license (mDL) enrolled in your
-					device's wallet app. Currently available in ~22 US states.
-				</p>
-			</div>
+			<!-- QR Code -->
+			{#if qrSvg}
+				<div class="flex flex-col items-center gap-3 rounded-lg border border-slate-200 bg-white p-6">
+					<div class="rounded-lg bg-white p-2">
+						{@html qrSvg}
+					</div>
+					<p class="text-sm font-medium text-slate-700">Scan with your phone to verify</p>
+					<p class="text-xs text-slate-500">Your phone's wallet app can complete verification</p>
+				</div>
+			{/if}
+
+			<!-- Copyable link fallback -->
+			{#if mobileVerifyUrl}
+				<button
+					type="button"
+					onclick={copyMobileLink}
+					class="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+				>
+					{#if linkCopied}
+						<CheckCheck class="h-4 w-4 text-emerald-600" />
+						<span class="text-emerald-600">Link copied</span>
+					{:else}
+						<Copy class="h-4 w-4" />
+						<span>Copy verification link</span>
+					{/if}
+				</button>
+			{/if}
+
+			<p class="text-center text-xs text-slate-400">
+				Supported browsers: Chrome 141+ or Safari 26+
+			</p>
 
 			{#if oncancel}
 				<button

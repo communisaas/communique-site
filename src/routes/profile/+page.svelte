@@ -219,14 +219,16 @@
 				Verify your address &rarr;
 			</button>
 		</p>
-	{:else if tier === 2}
-		<p class="mt-2.5 text-sm text-slate-400 lg:text-base">
-			Verify with digital ID &mdash; coming soon
-		</p>
-	{:else if tier === 3}
+	{:else if tier === 2 || tier === 3}
 		<p class="mt-2.5 text-sm lg:text-base">
-			<button class="font-medium text-indigo-600 transition-colors hover:text-indigo-800">
-				Generate ZK proof &rarr;
+			<button class="font-medium text-indigo-600 transition-colors hover:text-indigo-800" onclick={handleVerifyAddress}>
+				Verify with Government ID &rarr;
+			</button>
+		</p>
+	{:else if tier >= 4}
+		<p class="mt-2.5 text-sm lg:text-base">
+			<button class="font-medium text-indigo-600 transition-colors hover:text-indigo-800" onclick={handleVerifyAddress}>
+				Re-verify identity &rarr;
 			</button>
 		</p>
 	{/if}

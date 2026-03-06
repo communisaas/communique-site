@@ -1726,6 +1726,7 @@
 		userId={user.id}
 		templateSlug={template.slug}
 		cellId={verifiedCellId}
+		minimumTier={template.deliveryMethod === 'cwc' ? 4 : 2}
 		userTrustTier={user.trust_tier ?? 1}
 		bind:showModal={showVerificationGate}
 		onverified={(data) => handleVerificationComplete(data)}
