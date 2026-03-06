@@ -139,6 +139,7 @@ export interface InteractionResponse {
 	id: string;
 	outputs: string;
 	model: string;
+	tokenUsage?: TokenUsage;
 }
 
 // ============================================================================
@@ -170,6 +171,56 @@ export function sumTokenUsage(...usages: (TokenUsage | undefined)[]): TokenUsage
 			? defined.reduce((s, u) => s + (u.thoughtsTokens ?? 0), 0)
 			: undefined,
 		totalTokens: defined.reduce((s, u) => s + u.totalTokens, 0)
+	};
+}
+
+// ============================================================================
+// External API Cost Tracking
+// ============================================================================
+
+/**
+ * Counts of external (non-Gemini) API calls across a pipeline run.
+ * Used alongside TokenUsage to compute full cost breakdowns.
+ */
+export interface ExternalApiCounts {
+	exaSearches: number;
+	firecrawlReads: number;
+	groundingSearches: number;
+	groqModerations: number;
+}
+
+/** Zero-valued ExternalApiCounts factory */
+export function emptyExternalCounts(): ExternalApiCounts {
+	return { exaSearches: 0, firecrawlReads: 0, groundingSearches: 0, groqModerations: 0 };
+}
+
+/** Sum multiple ExternalApiCounts (mirrors sumTokenUsage pattern). */
+export function sumExternalCounts(...counts: (ExternalApiCounts | undefined)[]): ExternalApiCounts {
+	const defined = counts.filter((c): c is ExternalApiCounts => c !== undefined);
+	if (defined.length === 0) return emptyExternalCounts();
+	return {
+		exaSearches: defined.reduce((s, c) => s + c.exaSearches, 0),
+		firecrawlReads: defined.reduce((s, c) => s + c.firecrawlReads, 0),
+		groundingSearches: defined.reduce((s, c) => s + c.groundingSearches, 0),
+		groqModerations: defined.reduce((s, c) => s + c.groqModerations, 0)
+	};
+}
+
+/**
+ * Per-component cost breakdown for a pipeline run.
+ * Computed by computeCostUsd() in llm-cost-protection.ts.
+ */
+export interface CostBreakdown {
+	tokenUsage?: TokenUsage;
+	externalCounts: ExternalApiCounts;
+	totalCostUsd: number;
+	components: {
+		geminiInput: number;
+		geminiOutput: number;
+		geminiThinking: number;
+		exaSearch: number;
+		firecrawlRead: number;
+		groundingSearch: number;
 	};
 }
 

@@ -29,6 +29,8 @@
 
 import { ThoughtEmitter } from '$lib/core/thoughts/emitter';
 import { decisionMakerRouter } from '../providers';
+import { sumTokenUsage } from '../types';
+import { verifyEmailBatch, type EmailVerdict } from '$lib/server/email-verification';
 import { generateAccountabilityOpeners } from './decision-maker-accountability';
 import {
 	documentToolDefinition,
@@ -70,8 +72,15 @@ interface CandidateResolvedEvent {
 	metadata: { candidate: unknown };
 }
 
+interface VerificationEvent {
+	type: 'verification';
+	content: string;
+	timestamp: number;
+	metadata: { status: 'starting' | 'complete'; count?: number; verified?: number; dropped?: number; message: string };
+}
+
 /** Union of ThoughtSegment and progressive reveal events */
-export type SegmentOrRevealEvent = ThoughtSegment | IdentityFoundEvent | CandidateResolvedEvent;
+export type SegmentOrRevealEvent = ThoughtSegment | IdentityFoundEvent | CandidateResolvedEvent | VerificationEvent;
 
 // ============================================================================
 // Agentic Tool Context — shared state for tool handlers during a session
@@ -199,7 +208,7 @@ export const readPageToolDeclaration = {
 	description: `Fetch and read the full text content of a web page.
 Returns the page's text content in markdown format plus pre-extracted contact_hints (emails, phones, social URLs found on the page).
 
-IMPORTANT: Email addresses you report MUST appear verbatim in the text returned by this tool.`,
+IMPORTANT: Email addresses you report MUST appear verbatim in the text returned by this tool. Only trust emails from pages with institutional provenance — published by the person's organization or in authoritative reporting. Third-party sites that aggregate contact information cannot establish that an email is current or routes to the right person.`,
 	parameters: {
 		type: 'object' as const,
 		properties: {
@@ -604,12 +613,71 @@ export async function resolveDecisionMakers(
 
 		const totalResolved = result.decisionMakers.length;
 		result.decisionMakers = result.decisionMakers.filter(hasVerifiedEmail);
-		const droppedCount = totalResolved - result.decisionMakers.length;
+		let droppedCount = totalResolved - result.decisionMakers.length;
 
 		if (droppedCount > 0) {
 			console.debug(
 				`[decision-maker] Filtered ${droppedCount} decision-maker(s) without verified email`
 			);
+		}
+
+		// ========================================================================
+		// Phase 3.5: Email Deliverability Verification
+		// ========================================================================
+
+		if (result.decisionMakers.length > 0) {
+			const emailsToVerify = result.decisionMakers
+				.filter((dm): dm is typeof dm & { email: string } => typeof dm.email === 'string')
+				.map((dm) => dm.email);
+
+			if (emailsToVerify.length > 0) {
+				onSegment({
+					type: 'verification',
+					content: '',
+					timestamp: Date.now(),
+					metadata: { status: 'starting', count: emailsToVerify.length, message: `Verifying ${emailsToVerify.length} email address${emailsToVerify.length > 1 ? 'es' : ''}...` }
+				});
+
+				try {
+					const verificationResults = await verifyEmailBatch(emailsToVerify);
+
+					let droppedByVerification = 0;
+					result.decisionMakers = result.decisionMakers.filter((dm) => {
+						if (!dm.email) return true; // no email to verify, keep
+						const vr = verificationResults.get(dm.email);
+						if (vr && vr.verdict === 'undeliverable') {
+							droppedByVerification++;
+							return false;
+						}
+						// Annotate survivors
+						if (vr) {
+							dm.emailVerified = vr.verdict as Exclude<EmailVerdict, 'undeliverable'>;
+						}
+						return true;
+					});
+
+					onSegment({
+						type: 'verification',
+						content: '',
+						timestamp: Date.now(),
+						metadata: {
+							status: 'complete',
+							verified: emailsToVerify.length - droppedByVerification,
+							dropped: droppedByVerification,
+							message: droppedByVerification > 0
+								? `Verified ${emailsToVerify.length - droppedByVerification} addresses, removed ${droppedByVerification} undeliverable`
+								: `All ${emailsToVerify.length} addresses verified`
+						}
+					});
+
+					if (droppedByVerification > 0) {
+						droppedCount += droppedByVerification;
+						console.debug(`[decision-maker] Phase 3.5: Dropped ${droppedByVerification} undeliverable email(s)`);
+					}
+				} catch (err) {
+					console.warn('[decision-maker] Phase 3.5 failed (non-fatal):', err);
+				}
+			}
 		}
 
 		// ========================================================================
@@ -713,6 +781,11 @@ export async function resolveDecisionMakers(
 				// Store personalPrompt on first DM (extracted by UI for compose pane placeholder)
 				if (result.decisionMakers[0] && accountabilityResult.personalPrompt) {
 					result.decisionMakers[0].personalPrompt = accountabilityResult.personalPrompt;
+				}
+
+				// Sum Phase 4 token usage into pipeline total
+				if (accountabilityResult.tokenUsage) {
+					result.tokenUsage = sumTokenUsage(result.tokenUsage, accountabilityResult.tokenUsage);
 				}
 
 				emitter.insight(

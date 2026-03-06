@@ -155,6 +155,7 @@ export const POST: RequestHandler = async (event) => {
 	(async () => {
 		let streamSuccess = false;
 		let resultTokenUsage: import('$lib/core/agents/types').TokenUsage | undefined;
+		let resultExternalCounts: import('$lib/core/agents/types').ExternalApiCounts | undefined;
 
 		// Server-side abort: 4-minute ceiling prevents runaway resolutions
 		// from holding the SSE connection (and Worker CPU) indefinitely.
@@ -179,12 +180,15 @@ export const POST: RequestHandler = async (event) => {
 					emitter.send('identity-found', segment.metadata.identities);
 				} else if (segment.type === 'candidate-resolved') {
 					emitter.send('candidate-resolved', segment.metadata.candidate);
+				} else if (segment.type === 'verification') {
+					emitter.send('verification', segment.metadata);
 				} else {
 					emitter.send('segment', segment);
 				}
 			});
 
 			resultTokenUsage = result.tokenUsage;
+			resultExternalCounts = result.metadata?.externalCounts as import('$lib/core/agents/types').ExternalApiCounts | undefined;
 
 			// Build response - source is the email source (verified)
 			const response = {
@@ -238,7 +242,8 @@ export const POST: RequestHandler = async (event) => {
 				{
 					durationMs: Date.now() - startTime,
 					success: streamSuccess,
-					tokenUsage: resultTokenUsage
+					tokenUsage: resultTokenUsage,
+					externalCounts: resultExternalCounts
 				},
 				traceId
 			);

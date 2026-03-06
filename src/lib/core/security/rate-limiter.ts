@@ -455,6 +455,12 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		windowMs: 60 * 1000, // 1 minute — email send throttle
 		keyStrategy: 'user'
 	},
+	{
+		pattern: '/api/emails/',
+		maxRequests: 5,
+		windowMs: 60 * 1000, // 5 req/min — bounce report throttle
+		keyStrategy: 'user'
+	},
 	// Rate limit confirmation endpoint (GET-based)
 	{
 		pattern: '/api/email/confirm/',

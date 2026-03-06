@@ -37,6 +37,8 @@ export async function getCachedContacts(
 		title: string | null;
 		email: string | null;
 		emailSource: string | null;
+		verificationStatus: string | null;
+		verifiedAt: Date | null;
 	}>
 > {
 	if (pairs.length === 0) return [];
@@ -63,7 +65,9 @@ export async function getCachedContacts(
 				name: r.name,
 				title: r.title,
 				email: r.email,
-				emailSource: r.emailSource
+				emailSource: r.emailSource,
+				verificationStatus: r.verificationStatus,
+				verifiedAt: r.verifiedAt
 			}));
 	} catch (error) {
 		console.warn('[contact-cache] getCachedContacts failed:', error);
@@ -81,6 +85,7 @@ export async function upsertResolvedContacts(
 		name?: string;
 		email?: string;
 		emailSource?: string;
+		verificationStatus?: string;
 	}>
 ): Promise<void> {
 	if (contacts.length === 0) return;
@@ -101,12 +106,16 @@ export async function upsertResolvedContacts(
 					title: c.title,
 					email: c.email ?? null,
 					emailSource: c.emailSource ?? null,
+					verificationStatus: c.verificationStatus ?? null,
+					verifiedAt: c.verificationStatus ? new Date() : null,
 					expiresAt
 				},
 				update: {
 					name: c.name ?? undefined,
 					email: c.email ?? undefined,
 					emailSource: c.emailSource ?? undefined,
+					verificationStatus: c.verificationStatus ?? undefined,
+					verifiedAt: c.verificationStatus ? new Date() : undefined,
 					resolvedAt: new Date(),
 					expiresAt
 				}

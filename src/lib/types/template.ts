@@ -242,6 +242,10 @@ export interface ProcessedDecisionMaker {
 	publicActions?: string[];
 	/** Issue-specific prompt for compose Zone 2 */
 	personalPrompt?: string | null;
+
+	// === Email Deliverability Verification ===
+	/** SMTP verification status from Reacher probe */
+	emailVerified?: 'deliverable' | 'risky' | 'unknown';
 }
 
 /**

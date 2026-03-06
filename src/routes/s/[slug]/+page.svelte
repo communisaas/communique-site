@@ -26,6 +26,7 @@
 	import type { EngagementData } from '$lib/components/action/CommunityEngagementCard.svelte';
 	import { mergeLandscape, type LandscapeMember, type DistrictOfficialInput } from '$lib/utils/landscapeMerge';
 	import type { ProcessedDecisionMaker } from '$lib/types/template';
+	import { generateShareMessage } from '$lib/utils/share-messages';
 
 	import { spring } from 'svelte/motion';
 	import { browser } from '$app/environment';
@@ -229,6 +230,35 @@
 	let departingRecipients = $state(new Set<string>());
 	let batchRegistrationState = $state<'idle' | 'registering' | 'complete'>('idle');
 
+	// Bounce reporting state
+	let reportedBounces = $state(new Set<string>());
+	let reportingBounce = $state<string | null>(null);
+
+	// Contextual share message — shifts from recruiting to movement-building after send
+	const shareMessage = $derived(
+		generateShareMessage(
+			{
+				template: {
+					title: template.title,
+					category: template.category || 'advocacy',
+					description: template.description
+				},
+				contactedNames: [...contactedRecipients]
+					.map(id => {
+						const allMembers = [
+							...landscape.roleGroups.flatMap(g => g.members),
+							...(landscape.districtGroup?.members ?? [])
+						];
+						return allMembers.find(m => m.id === id)?.name;
+					})
+					.filter((n): n is string => !!n),
+				totalRecipients: landscape.totalCount,
+				shareUrl
+			},
+			'medium'
+		)
+	);
+
 	// Mail app handoff detection — settle departing cards when user returns
 	$effect(() => {
 		if (departingRecipients.size === 0 || !browser) return;
@@ -264,9 +294,12 @@
 		const tmplId = template.id;
 		const existing = pl.existingPosition ?? null;
 		const counts = pl.positionCounts;
+		const isCreatorArrival = browser && ($page.state as Record<string, unknown>)?.fromPublish;
 
-		if (!FEATURES.STANCE_POSITIONS) {
-			// No stance gate — show decision-makers immediately
+		if (!FEATURES.STANCE_POSITIONS || isCreatorArrival) {
+			// No stance gate — show decision-makers immediately.
+			// Creator arrivals skip the gate: they authored this template,
+			// so landscapeRevealed without auto-registering their stance.
 			landscapeRevealed = true;
 		} else if (existing) {
 			// Returning user — restore registered state, skip stance buttons
@@ -284,6 +317,18 @@
 
 		// Restore sent recipients from delivery records
 		contactedRecipients = new Set(pl.deliveredRecipients ?? []);
+	});
+
+	// Auto-scroll to PowerLandscape on creator arrival (separate effect for reactivity isolation)
+	$effect(() => {
+		if (browser && ($page.state as Record<string, unknown>)?.fromPublish && landscapeRevealed) {
+			tick().then(() => {
+				document.getElementById('power-landscape')?.scrollIntoView({
+					behavior: 'smooth',
+					block: 'start'
+				});
+			});
+		}
 	});
 
 	function handleRegistered(_stance: 'support' | 'oppose') {
@@ -430,6 +475,35 @@
 		batchRegistrationState = 'idle';
 	}
 
+	// Resolve contacted members with emails for bounce reporting
+	const contactedMembers = $derived((() => {
+		if (contactedRecipients.size === 0) return [];
+		const allMembers = [
+			...landscape.roleGroups.flatMap(g => g.members),
+			...(landscape.districtGroup?.members ?? [])
+		];
+		return allMembers.filter(m => contactedRecipients.has(m.id) && m.email && !reportedBounces.has(m.email));
+	})());
+
+	async function handleReportBounce(email: string) {
+		if (reportingBounce || reportedBounces.has(email)) return;
+		reportingBounce = email;
+		try {
+			const res = await fetch('/api/emails/report-bounce', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email })
+			});
+			if (res.ok) {
+				reportedBounces = new Set([...reportedBounces, email]);
+			}
+		} catch {
+			// Silently fail — not critical
+		} finally {
+			reportingBounce = null;
+		}
+	}
+
 	async function _handleAddressSubmit(address: string) {
 		try {
 			_isUpdatingAddress = true;
@@ -503,7 +577,7 @@
 
 		<!-- Template metadata — single scannable line -->
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-			<ShareButton url={shareUrl} _title={template.title} variant="secondary" size="sm" />
+			<ShareButton url={shareUrl} _title={template.title} message={shareMessage} variant="secondary" size="sm" />
 			<Badge variant={isCongressional ? 'congressional' : 'direct'}>
 				{isCongressional ? 'Congressional Delivery' : 'Direct Outreach'}
 			</Badge>
@@ -746,6 +820,27 @@
 					} : undefined}
 					registrationState={batchRegistrationState}
 				/>
+
+				{#if contactedMembers.length > 0}
+					<div class="mt-3 text-xs text-slate-400">
+						<span>Did an email bounce?</span>
+						{#each contactedMembers as member}
+							<button
+								class="ml-2 underline hover:text-slate-600 disabled:opacity-50 disabled:no-underline"
+								disabled={reportingBounce === member.email}
+								onclick={() => member.email && handleReportBounce(member.email)}
+							>
+								{member.name}
+							</button>
+						{/each}
+					</div>
+				{/if}
+
+				{#if reportedBounces.size > 0}
+					<p class="mt-1 text-xs text-green-600">
+						Noted — {reportedBounces.size === 1 ? 'this address' : 'these addresses'} won't appear in future results.
+					</p>
+				{/if}
 				</div>
 			{/if}
 
