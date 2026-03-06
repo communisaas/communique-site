@@ -70,7 +70,9 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		);
 
 		// Process through privacy boundary
-		const result = await processCredentialResponse(data, protocol, ephemeralPrivateKey, nonce);
+		const result = await processCredentialResponse(data, protocol, ephemeralPrivateKey, nonce, {
+			vicalKv: platform?.env?.VICAL_KV
+		});
 
 		if (!result.success) {
 			console.error('[mDL Verify] Verification failed:', result.error, result.message);

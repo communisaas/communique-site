@@ -23,6 +23,17 @@
  * 7. Extract address fields -> derive district -> discard address
  */
 
+/** Workers KV binding (minimal type for VICAL fallback — avoids @cloudflare/workers-types dependency) */
+type KVNamespace = {
+	get(key: string, type: 'arrayBuffer'): Promise<ArrayBuffer | null>;
+	get(key: string): Promise<string | null>;
+	put(
+		key: string,
+		value: string | ArrayBuffer | ArrayBufferView,
+		options?: { expirationTtl?: number }
+	): Promise<void>;
+};
+
 /** Result of processing a credential response (discriminated union) */
 export type MdlVerificationResult =
 	| {
@@ -79,11 +90,12 @@ export async function processCredentialResponse(
 	encryptedData: unknown,
 	protocol: string,
 	ephemeralPrivateKey: CryptoKey,
-	nonce: string
+	nonce: string,
+	options?: { vicalKv?: KVNamespace }
 ): Promise<MdlVerificationResult> {
 	try {
 		if (protocol === 'org-iso-mdoc') {
-			return await processMdocResponse(encryptedData, ephemeralPrivateKey, nonce);
+			return await processMdocResponse(encryptedData, ephemeralPrivateKey, nonce, options?.vicalKv);
 		} else if (protocol === 'openid4vp') {
 			return await processOid4vpResponse(encryptedData, ephemeralPrivateKey, nonce);
 		} else {
@@ -118,7 +130,8 @@ export async function processCredentialResponse(
 async function processMdocResponse(
 	data: unknown,
 	_ephemeralPrivateKey: CryptoKey,
-	_nonce: string
+	_nonce: string,
+	vicalKv?: KVNamespace
 ): Promise<MdlVerificationResult> {
 	// Dynamic import cbor-web (Workers-compatible)
 	const { decode } = await import('cbor-web');
@@ -181,7 +194,22 @@ async function processMdocResponse(
 			const roots = getIACARootsForVerification();
 
 			if (roots.length > 0) {
-				const coseResult = await verifyCoseSign1(issuerAuth, roots);
+				let coseResult = await verifyCoseSign1(issuerAuth, roots);
+
+				// VICAL fallback: if static roots don't have this issuer, try runtime VICAL roots
+				if (!coseResult.valid && coseResult.reason === 'Issuer certificate not found in IACA trust store') {
+					try {
+						const { getExpandedIACARoots } = await import('./vical-service');
+						const expandedRoots = await getExpandedIACARoots(vicalKv);
+						// Only retry if VICAL added new roots beyond static
+						if (expandedRoots.length > roots.length) {
+							coseResult = await verifyCoseSign1(issuerAuth, expandedRoots);
+						}
+					} catch (e) {
+						console.warn('[mDL] VICAL fallback failed (continuing with static roots):', e);
+					}
+				}
+
 				if (!coseResult.valid) {
 					if (coseResult.reason === 'Issuer certificate not found in IACA trust store') {
 						return {

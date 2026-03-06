@@ -607,7 +607,8 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 				'test-credential-data',
 				'org-iso-mdoc',
 				MOCK_IMPORTED_KEY,
-				TEST_NONCE
+				TEST_NONCE,
+				{ vicalKv: undefined }
 			);
 		});
 
@@ -1337,7 +1338,8 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 				'test',
 				'org-iso-mdoc',
 				expect.anything(),
-				TEST_NONCE
+				TEST_NONCE,
+				{ vicalKv: undefined }
 			);
 		});
 
@@ -1359,7 +1361,8 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 				{ vp_token: 'jwt.token.sig' },
 				'openid4vp',
 				expect.anything(),
-				TEST_NONCE
+				TEST_NONCE,
+				{ vicalKv: undefined }
 			);
 		});
 	});
