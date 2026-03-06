@@ -10,6 +10,7 @@
  *   - Hawaii: https://hidot.hawaii.gov/highways/files/2024/08/2024_HI_IACA_Root.zip
  *   - Ohio: https://bmvonline.dps.ohio.gov (ohio_mdl_iaca_root_2024.zip)
  *   - Puerto Rico: https://docs.pr.gov/files/ID_movil-mDL/Certificado_IACA/PRDTOPProdCA.pem
+ *   - West Virginia: https://transportation.wv.gov/DMV/MiD (WV mID Root.zip)
  *   - All other states: AAMVA VICAL (https://vical.dts.aamva.org/currentVical)
  *     Parsed via scripts/parse-vical.ts from VICAL version vc-2026-03-04-1772661350906
  *
@@ -24,7 +25,7 @@
  * different wallet providers (e.g., AZ has separate roots for Samsung, Google,
  * AzWallet, Avocet). All are included to verify mDLs from any wallet.
  *
- * Coverage: 15 states/territories (AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA)
+ * Coverage: 16 states/territories (AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA, WV)
  * Last updated: 2026-03-04
  */
 
@@ -698,6 +699,31 @@ export const IACA_ROOTS: Record<string, IACACertificate[]> = {
 				'BAMCA0cAMEQCIAZyBOjZrupvH9PqbgZNZFtgwVs+fXZVqgJKckP6FAbrAiAQdjxr' +
 				'6xA4VRVp/yjS9CKGoMw7tPkUrcfofZTv2AvPCA==',
 			expiresAt: '2027-07-22T13:26:01Z'
+		},
+	],
+
+	// =========================================================================
+	// West Virginia — 1 IACA root
+	// Source: https://transportation.wv.gov/DMV/MiD (WV mID Root.zip)
+	// =========================================================================
+	WV: [
+		{
+			state: 'WV',
+			issuer: 'WV prod IACA certificate',
+			certificateB64:
+				'MIICOTCCAd+gAwIBAgIUUug/LrZd1Og3FACxL5tn3vvIZYowCgYIKoZIzj0EAwIw' +
+				'TTELMAkGA1UEBhMCVVMxDjAMBgNVBAgMBVVTLVdWMQswCQYDVQQKDAJXVjEhMB8G' +
+				'A1UEAwwYV1YgcHJvZCBJQUNBIGNlcnRpZmljYXRlMB4XDTI0MTIxMTIwMTQzNloX' +
+				'DTMzMTIwOTIwMTQzNlowTTELMAkGA1UEBhMCVVMxDjAMBgNVBAgMBVVTLVdWMQsw' +
+				'CQYDVQQKDAJXVjEhMB8GA1UEAwwYV1YgcHJvZCBJQUNBIGNlcnRpZmljYXRlMFkw' +
+				'EwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAENWgdDNLgfrrAFyzIlluaAJ7Meg6qcdVv' +
+				'8Pv421XMVDxoSTK0Zy/ezOP101ykhRhwccSDzsxX8YtdEOjHUVAoL6OBnDCBmTAd' +
+				'BgNVHQ4EFgQUBZe3UtbTEXhGfwqcsAUAiXfP5g4wEgYDVR0TAQH/BAgwBgEB/wIB' +
+				'ADAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0SBBYwFIYSaHR0cHM6Ly9kbXYud3YuZ292' +
+				'MDUGA1UdHwQuMCwwKqAooCaGJGh0dHA6Ly9jcmwud3YubWlkLjQzMDA5OS5uZXQv' +
+				'Y3JsLnBlbTAKBggqhkjOPQQDAgNIADBFAiADLiceQNoJyTivJMLKdHi0wbRiaEtI' +
+				'MqLJAqHoIfR2iAIhAOuTC/gN4Pu0AQ8T+qgyUVebnQ8xjtcEzlR0lAPO8bLA',
+			expiresAt: '2033-12-09T20:14:36Z'
 		},
 	],
 };
