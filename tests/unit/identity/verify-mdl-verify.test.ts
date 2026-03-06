@@ -765,6 +765,39 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 			}
 		});
 
+		it('should have 16 states in supportedIACAStates() including WV', async () => {
+			const { supportedIACAStates } = await import('$lib/core/identity/iaca-roots');
+			const states = supportedIACAStates();
+
+			expect(states.length).toBe(16);
+			expect(states).toContain('WV');
+			expect(states).toContain('CA');
+			expect(states).toContain('NM');
+			expect(states).toContain('AK');
+		});
+
+		it('should have valid WV IACA root structure', async () => {
+			const { IACA_ROOTS } = await import('$lib/core/identity/iaca-roots');
+
+			expect(IACA_ROOTS.WV).toBeDefined();
+			expect(Array.isArray(IACA_ROOTS.WV)).toBe(true);
+			expect(IACA_ROOTS.WV.length).toBeGreaterThan(0);
+
+			const wvRoot = IACA_ROOTS.WV[0];
+			expect(wvRoot.state).toBe('WV');
+			expect(wvRoot.issuer).toBeTruthy();
+
+			// certificateB64 must be valid base64
+			const decoded = atob(wvRoot.certificateB64);
+			expect(decoded.length).toBeGreaterThan(0);
+			// DER starts with SEQUENCE tag (0x30)
+			expect(decoded.charCodeAt(0)).toBe(0x30);
+
+			// expiresAt must be a future date
+			const expiry = new Date(wvRoot.expiresAt);
+			expect(expiry.getTime()).toBeGreaterThan(Date.now());
+		});
+
 		it('should return 422 for missing_fields error', async () => {
 			mockProcessCredentialResponse.mockResolvedValue({
 				success: false,
