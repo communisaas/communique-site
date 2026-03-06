@@ -4,7 +4,19 @@
 
 15 states/territories in IACA trust store: **AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA**
 
-Source: `src/lib/core/identity/iaca-roots.ts` (updated 2026-03-04, parsed from AAMVA VICAL vc-2026-03-04)
+Source: `src/lib/core/identity/iaca-roots.ts` (static, updated 2026-03-04)
+
+### Runtime Coverage (VICAL Service)
+
+In addition to the 15 static IACA roots, the runtime VICAL service (`src/lib/core/identity/vical-service.ts`) dynamically fetches and caches IACA roots from the AAMVA VICAL at verification time. Any state published to the VICAL is automatically covered without code changes.
+
+| Coverage Layer | States | Mechanism |
+|----------------|--------|-----------|
+| **Static trust store** | 15 (AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA) | Hardcoded in `iaca-roots.ts` |
+| **Runtime VICAL** | 10 (AK, AZ, CO, GA, IL, MD, MT, ND, UT, VA) | Fetched from AAMVA, KV-cached |
+| **Unique coverage** | 15 | 5 states only via static (.gov downloads): CA, HI, NM, OH, PR |
+
+Note: Runtime VICAL overlaps with static for 10 states. The 5 .gov-download states (CA, HI, NM, OH, PR) are not in the VICAL — they remain static-only.
 
 ---
 
@@ -53,8 +65,44 @@ Source: `src/lib/core/identity/iaca-roots.ts` (updated 2026-03-04, parsed from A
 |----------|-------|
 | TSA-accepted jurisdictions | 22 (21 states + PR) |
 | ISO 18013-5 compliant of those | 21 (all except Louisiana) |
-| In our trust store | 15 |
+| In our trust store (static) | 15 |
+| Runtime VICAL coverage | 10 (subset of static 15) |
 | **Gap to close** | **6** (AR, DE, IA, KY, NY, WV) |
+
+---
+
+## VICAL Re-parse Results (2026-03-05)
+
+Latest VICAL version: `vc-2026-03-05-1772747750907`
+
+### Findings
+
+Re-parsed the AAMVA VICAL to check whether the 6 gap states had been added since our initial trust store build.
+
+**Result: 0 of 6 gap states found.**
+
+| Gap State | In VICAL? | IACA Source |
+|-----------|-----------|-------------|
+| **Arkansas** | No | IDEMIA — requires direct acquisition |
+| **Delaware** | No | IDEMIA — requires direct acquisition |
+| **Iowa** | No | IDEMIA — requires direct acquisition |
+| **Kentucky** | No | IDEMIA — requires direct acquisition |
+| **New York** | No | IDEMIA — requires direct acquisition |
+| **West Virginia** | No | IDEMIA — requires direct acquisition |
+
+### VICAL Contents (20 certs, 10 states)
+
+AK, AZ, CO, GA, IL, MD, MT, ND, UT, VA — includes both P-256 and P-384 certs where applicable (commit `53358be2` fixed P-384 parsing).
+
+### Root Cause: IDEMIA Vendor Distribution Gap
+
+All 6 gap states use **IDEMIA** as their mDL vendor. IDEMIA does not publish IACA roots through the AAMVA VICAL. This is a vendor distribution choice, not a technical limitation:
+
+- **Thales states** (AK, CO, GA, MD): all in VICAL
+- **IDEMIA states** (AR, DE, IA, KY, NY, WV): none in VICAL
+- **Other vendors** (SpruceID/CA, GET/UT, CBN/VA): mixed (UT, VA in VICAL; CA not)
+
+The runtime VICAL service (`vical-service.ts`) will automatically pick up IDEMIA states if/when IDEMIA begins publishing to the VICAL. Until then, direct acquisition is required.
 
 ---
 
@@ -176,35 +224,39 @@ As of Oct 2025: ~21 states live, **17 different wallet implementations**. 9 stat
 - **Political diversity:** Need red, blue, purple for credibility
 - **ISO compliance:** Must be 18013-5 (skip Louisiana)
 
-### Priority Ranking
+### Priority Ranking (revised post-VICAL re-parse)
+
+VICAL re-parse confirmed all 6 gap states are IDEMIA and NOT in VICAL. IACA source column updated accordingly — all require direct acquisition.
 
 | Priority | State | Pop. | Political Lean | IACA Source | mDL Status | Rationale |
 |----------|-------|------|---------------|-------------|------------|-----------|
-| **P0** | **New York** | 20.2M | Blue | AAMVA VICAL / IDEMIA | Live, 246K users, growing fast | Largest uncovered state. Blue state balance. |
-| **P0** | **Iowa** | 3.2M | Red/Purple | AAMVA VICAL / IDEMIA | Live, multi-wallet | Purple state. All major wallets. |
-| **P0** | **Arkansas** | 3.0M | Red | AAMVA VICAL / IDEMIA | Live since Mar 2025 | Deep red state. Balance for credibility. |
-| **P1** | **West Virginia** | 1.8M | Red | AAMVA VICAL / IDEMIA | Live, multi-wallet | Red state. Small but easy (IDEMIA = VICAL). |
-| **P1** | **Kentucky** | 4.5M | Red | AAMVA VICAL / IDEMIA | Live since Jan 2026 | Red state. IDEMIA platform. |
-| **P2** | **Delaware** | 1.0M | Blue | IDEMIA SDK (may need request) | Live since 2021 | Oldest US mDL. Small pop. IACA acquisition uncertain. |
+| **P0** | **New York** | 20.2M | Blue | Direct acquisition (IDEMIA) | Live, 246K users, growing fast | Largest uncovered state. Blue state balance. |
+| **P0** | **Iowa** | 3.2M | Red/Purple | Direct acquisition (IDEMIA) | Live, multi-wallet | Purple state. All major wallets. Outreach email drafted (`docs/outreach/`). |
+| **P0** | **Arkansas** | 3.0M | Red | Direct acquisition (IDEMIA) | Live since Mar 2025 | Deep red state. Balance for credibility. Outreach email drafted (`docs/outreach/`). |
+| **P1** | **Kentucky** | 4.5M | Red | Direct acquisition (IDEMIA) | Live since Jan 2026 | Red state. IDEMIA platform. Larger pop than WV. |
+| **P1** | **West Virginia** | 1.8M | Red | Direct acquisition (IDEMIA) | Live, multi-wallet | Red state. Small but completes the set. |
+| **P2** | **Delaware** | 1.0M | Blue | Direct acquisition (IDEMIA) | Live since 2021 | Oldest US mDL. Small pop. Not TSA-accepted. |
 | **P2** | **Texas** | 30.0M | Red | TBD (not yet launched) | HB 3426 signed, DPS procurement | Largest prize. Not live yet — monitor for RFP/launch. |
 | **P2** | **North Carolina** | 10.7M | Purple | TBD (not yet launched) | Vendor procurement active | Large purple state. Watch for 2026 launch. |
 
-### Recommended Action Plan
+### Recommended Action Plan (revised)
 
 **Immediate (this quarter):**
-1. Re-run `scripts/parse-vical.ts` against latest VICAL — NY, IA, AR, WV, KY may already be in the VICAL
-2. If found in VICAL, add to trust store (zero acquisition effort)
-3. If not in VICAL, check IDEMIA's Trinsic partnership for cert access
+1. ~~Re-run VICAL parse~~ — DONE (2026-03-05). Zero IDEMIA states found. VICAL path eliminated.
+2. Send outreach emails for AR and IA (drafts in `docs/outreach/`). Request IACA root certificates from state DMV contacts.
+3. Explore IDEMIA's Trinsic partnership (announced Feb 2026) as alternate acquisition channel — Trinsic may distribute IACA roots for remote verification.
+4. Contact NY DMV directly — largest gap state, highest priority.
 
 **Near-term (Q2 2026):**
-4. Monitor Texas DPS for RFP announcement and mDL launch timeline
-5. Monitor North Carolina vendor selection
-6. Assess Delaware IACA availability (may require IDEMIA contact)
+5. Monitor Texas DPS for RFP announcement and mDL launch timeline
+6. Monitor North Carolina vendor selection
+7. Request KY and WV IACA roots (same IDEMIA template as AR/IA outreach)
+8. Assess Delaware — not TSA-accepted, lowest priority, but oldest program
 
 **Ongoing:**
-7. Re-parse VICAL monthly during expansion phase
-8. Track ISO 18013-5 2nd edition (DIS ballot closes March 26, 2026; final expected July 2026)
-9. Watch ISO/IEC TS 18013-7 (online mDL) adoption — affects our OpenID4VP flow
+9. Runtime VICAL service auto-covers any IDEMIA state that starts publishing — no code changes needed
+10. Track ISO 18013-5 2nd edition (DIS ballot closes March 26, 2026; final expected July 2026)
+11. Watch ISO/IEC TS 18013-7 (online mDL) adoption — affects our OpenID4VP flow
 
 ---
 
