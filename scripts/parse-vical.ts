@@ -385,22 +385,22 @@ async function parseVICAL(vicalBytes: Uint8Array): Promise<void> {
 		}
 	}
 
-	// Separate P-256 (supported) from others
-	const p256Certs = extracted.filter(c => c.curve === 'P-256');
-	const otherCerts = extracted.filter(c => c.curve !== 'P-256');
+	// Separate supported curves (P-256, P-384) from unsupported
+	const supportedCerts = extracted.filter(c => c.curve === 'P-256' || c.curve === 'P-384');
+	const unsupportedCerts = extracted.filter(c => c.curve !== 'P-256' && c.curve !== 'P-384');
 
-	console.log(`\nP-256 certificates: ${p256Certs.length}`);
-	if (otherCerts.length > 0) {
-		console.log(`Non-P-256 certificates (skipping):`);
-		for (const c of otherCerts) {
+	console.log(`\nSupported certificates (P-256 + P-384): ${supportedCerts.length}`);
+	if (unsupportedCerts.length > 0) {
+		console.log(`Unsupported curve certificates (skipping):`);
+		for (const c of unsupportedCerts) {
 			console.log(`  - ${c.state} (${c.issuer}): ${c.curve}`);
 		}
 	}
 
 	// Print list of states
-	console.log('\nStates with P-256 IACA roots:');
-	for (const c of p256Certs.sort((a, b) => a.state.localeCompare(b.state))) {
-		console.log(`  ${c.state}: ${c.issuer} (expires ${c.expiresAt.slice(0, 10)}, ${c.certSize} bytes DER)`);
+	console.log('\nStates with supported IACA roots:');
+	for (const c of supportedCerts.sort((a, b) => a.state.localeCompare(b.state))) {
+		console.log(`  ${c.state}: ${c.issuer} (${c.curve}, expires ${c.expiresAt.slice(0, 10)}, ${c.certSize} bytes DER)`);
 	}
 
 	// ---------------------------------------------------------------------------
@@ -413,14 +413,14 @@ async function parseVICAL(vicalBytes: Uint8Array): Promise<void> {
 	console.log(`// Generated: ${new Date().toISOString()}`);
 	console.log('// =========================================================================\n');
 
-	for (const cert of p256Certs.sort((a, b) => a.state.localeCompare(b.state))) {
+	for (const cert of supportedCerts.sort((a, b) => a.state.localeCompare(b.state))) {
 		// Split base64 into ~76-char chunks for readability, joined with string concatenation
 		const chunks = splitBase64(cert.certB64, 64);
 
 		console.log(`\t/**`);
 		console.log(`\t * ${cert.state} — ${cert.issuer}`);
 		console.log(`\t * Source: AAMVA VICAL`);
-		console.log(`\t * Key: ECDSA P-256`);
+		console.log(`\t * Key: ECDSA ${cert.curve}`);
 		console.log(`\t * Expires: ${cert.expiresAt.slice(0, 10)}`);
 		console.log(`\t */`);
 		console.log(`\t${cert.state}: {`);
