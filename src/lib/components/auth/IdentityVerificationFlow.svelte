@@ -43,6 +43,8 @@
 	let registrationInProgress = $state(false);
 	let registrationComplete = $state(false);
 	let registrationError = $state<string | null>(null);
+	let oncompletePending = $state(false);
+	let savedCellId = $state<string | null>(null);
 	let verificationData = $state<{
 		verified: boolean;
 		method: string;
@@ -96,22 +98,27 @@
 			}
 		}
 
-		// Trigger Shadow Atlas three-tree registration (non-blocking)
+		// Trigger Shadow Atlas three-tree registration (blocking)
 		// This registers the user's leaf hash in Tree 1 and fetches Tree 2/3 proofs,
 		// enabling ZK proof generation for congressional submissions.
 		// cellId sources: mDL Census geocoding (data.cell_id) > parent prop (cellId)
 		const resolvedCellId = data.cell_id ?? cellId;
 		if (resolvedCellId) {
-			triggerShadowAtlasRegistration(resolvedCellId);
+			savedCellId = resolvedCellId;
+			await triggerShadowAtlasRegistration(resolvedCellId);
+
+			// If registration succeeded, fire oncomplete immediately
+			if (registrationComplete) {
+				oncomplete?.({ ...data, userId });
+			} else {
+				// Registration failed — defer oncomplete to manual Continue button
+				oncompletePending = true;
+			}
 		} else {
 			console.warn('[Verification] No cellId available — Shadow Atlas registration deferred');
+			// No cell ID means no registration possible — fire oncomplete directly
+			oncomplete?.({ ...data, userId });
 		}
-
-		// Notify parent component
-		oncomplete?.({
-			...data,
-			userId
-		});
 	}
 
 	/**
@@ -174,6 +181,11 @@
 					districts: result.sessionCredential?.districts?.length ?? 0,
 					engagementTier: result.sessionCredential?.engagementTier ?? 0
 				});
+				// If oncomplete was deferred (retry after initial failure), fire it now
+				if (oncompletePending && verificationData) {
+					oncompletePending = false;
+					oncomplete?.({ ...verificationData, userId });
+				}
 			} else {
 				console.error('[Verification] Shadow Atlas registration failed:', result.error);
 				registrationError = result.error ?? 'Registration failed';
@@ -310,7 +322,7 @@
 					</div>
 				</div>
 
-				<!-- Shadow Atlas registration status (non-blocking) -->
+				<!-- Shadow Atlas registration status -->
 				{#if registrationInProgress}
 					<div class="mx-auto mb-6 max-w-md rounded-lg border border-blue-200 bg-blue-50 p-3">
 						<div class="flex items-center gap-2 text-sm text-blue-700">
@@ -322,8 +334,22 @@
 					<div class="mx-auto mb-6 max-w-md rounded-lg border border-amber-200 bg-amber-50 p-3">
 						<div class="flex items-center gap-2 text-sm text-amber-700">
 							<AlertTriangle class="h-4 w-4" />
-							<span>Proof setup pending -- you can still submit messages</span>
+							<span>Proof setup failed — your messages won't include cryptographic proof. You can retry or continue.</span>
 						</div>
+						{#if savedCellId}
+							<button
+								type="button"
+								onclick={() => triggerShadowAtlasRegistration(savedCellId!)}
+								disabled={registrationInProgress}
+								class="mt-2 rounded-md border border-amber-300 bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-200 disabled:opacity-50"
+							>
+								{#if registrationInProgress}
+									Retrying...
+								{:else}
+									Retry Proof Setup
+								{/if}
+							</button>
+						{/if}
 					</div>
 				{:else if registrationComplete}
 					<div class="mx-auto mb-6 max-w-md rounded-lg border border-green-200 bg-green-50 p-3">
@@ -337,7 +363,10 @@
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 					<button
 						type="button"
-						onclick={() => oncomplete?.({ ...verificationData!, userId })}
+						onclick={() => {
+							oncompletePending = false;
+							oncomplete?.({ ...verificationData!, userId });
+						}}
 						class="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-base font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
 					>
 						Continue to Message Submission
