@@ -678,6 +678,93 @@ describe('POST /api/identity/verify-mdl/verify', () => {
 			expect(response.status).toBe(422);
 		});
 
+		it('should return unsupported_state error with supportedStates when issuer not in trust store', async () => {
+			mockProcessCredentialResponse.mockResolvedValue({
+				success: false,
+				error: 'unsupported_state',
+				message: 'This mDL was issued by a state not yet in our trust store. Supported states: CA, NM, AK, AZ',
+				supportedStates: ['CA', 'NM', 'AK', 'AZ', 'CO', 'GA', 'HI', 'IL', 'MD', 'MT', 'ND', 'OH', 'PR', 'UT', 'VA']
+			});
+
+			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
+			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
+			const event = makeRequestEvent({
+				platform: {
+					env: {
+						DC_SESSION_KV: { get: mockKvGet, delete: mockKvDelete, put: vi.fn() }
+					}
+				}
+			});
+
+			const response = await POST(event);
+			expect(response.status).toBe(422);
+
+			const body = await response.json();
+			expect(body.error).toBe('unsupported_state');
+			expect(body.supportedStates).toBeDefined();
+			expect(Array.isArray(body.supportedStates)).toBe(true);
+			expect(body.supportedStates.length).toBeGreaterThan(0);
+			expect(body.supportedStates).toContain('CA');
+			expect(body.supportedStates).toContain('NM');
+		});
+
+		it('should NOT include supportedStates for signature_invalid errors (non-regression)', async () => {
+			mockProcessCredentialResponse.mockResolvedValue({
+				success: false,
+				error: 'signature_invalid',
+				message: 'ECDSA signature verification failed'
+			});
+
+			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
+			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
+			const event = makeRequestEvent({
+				platform: {
+					env: {
+						DC_SESSION_KV: { get: mockKvGet, delete: mockKvDelete, put: vi.fn() }
+					}
+				}
+			});
+
+			const response = await POST(event);
+			expect(response.status).toBe(422);
+
+			const body = await response.json();
+			expect(body.error).toBe('signature_invalid');
+			expect(body.supportedStates).toBeUndefined();
+		});
+
+		it('supportedStates should match supportedIACAStates() output', async () => {
+			const { supportedIACAStates } = await import('$lib/core/identity/iaca-roots');
+			const expected = supportedIACAStates();
+
+			mockProcessCredentialResponse.mockResolvedValue({
+				success: false,
+				error: 'unsupported_state',
+				message: 'Unsupported state',
+				supportedStates: expected
+			});
+
+			const mockKvGet = vi.fn().mockResolvedValue(MOCK_SESSION_DATA);
+			const mockKvDelete = vi.fn().mockResolvedValue(undefined);
+			const event = makeRequestEvent({
+				platform: {
+					env: {
+						DC_SESSION_KV: { get: mockKvGet, delete: mockKvDelete, put: vi.fn() }
+					}
+				}
+			});
+
+			const response = await POST(event);
+			const body = await response.json();
+
+			expect(body.supportedStates).toEqual(expected);
+			expect(body.supportedStates.length).toBe(expected.length);
+			// Every state in the response must be a valid 2-letter code
+			for (const state of body.supportedStates) {
+				expect(state).toMatch(/^[A-Z]{2}$/);
+			}
+		});
+
 		it('should return 422 for missing_fields error', async () => {
 			mockProcessCredentialResponse.mockResolvedValue({
 				success: false,
