@@ -1,9 +1,9 @@
 # IACA Gap State Tracker
 
 Last updated: 2026-03-05
-Current coverage: 15 states/territories (AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA)
-Pending: WV (cipher downloading cert — will bring total to 16)
-Gap: 6 IDEMIA-vendor states (AR, DE, IA, KY, NY, WV)
+Current coverage: 16 states/territories (AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA, WV)
+Gap: 5 IDEMIA-vendor states (AR, DE, IA, KY, NY)
+IDEMIA portal: account created, awaiting approval
 
 ---
 
@@ -11,11 +11,11 @@ Gap: 6 IDEMIA-vendor states (AR, DE, IA, KY, NY, WV)
 
 | State | Pop (M) | Vendor | Status | Action | Contact | Next Step |
 |-------|---------|--------|--------|--------|---------|-----------:|
-| NY | 20.2 | IDEMIA | DRAFT READY | IDEMIA portal preferred | dmv.ny.gov/contact-us (form only) | Register IDEMIA Experience Portal |
-| KY | 4.5 | IDEMIA | DRAFT READY | Email/contact form | drive.ky.gov contact page | Submit via form |
+| NY | 20.2 | IDEMIA | BLOCKED ON IDEMIA | IDEMIA portal (preferred) | dmv.ny.gov/contact-us (form only) | Awaiting IDEMIA portal approval |
+| KY | 4.5 | IDEMIA | BLOCKED ON IDEMIA | IDEMIA portal or contact form | drive.ky.gov contact page | Awaiting IDEMIA portal approval |
 | IA | 3.2 | IDEMIA | DRAFT READY | Email outreach | OMV@iowadot.us | Send email |
 | AR | 3.0 | IDEMIA | DRAFT READY | Email outreach | info.dfa@dfa.arkansas.gov | Send email |
-| WV | 1.8 | IDEMIA | **IN PROGRESS** | Direct .gov download | transportation.wv.gov/DMV/MiD | cipher downloading "WV mID Root.zip" |
+| WV | 1.8 | IDEMIA | **DONE** | Direct .gov download | transportation.wv.gov/DMV/MiD | Merged — commit 1910f1bd |
 | DE | 1.0 | IDEMIA | DRAFT READY | Email outreach | DMVCustomerService@delaware.gov | Send email |
 
 Sorted by population (descending) — NY is the highest-impact gap.
@@ -42,11 +42,12 @@ Email drafts are ready in [`docs/outreach/iaca-request-emails.md`](./iaca-reques
 The single highest-leverage action. IDEMIA bundles IACA certs for all their states in the Verify SDK.
 
 - **Portal:** [experience.idemia.com](https://experience.idemia.com/)
-- **Signup:** [experience.idemia.com/auth/signup](https://experience.idemia.com/auth/signup/) (free trial)
-- **Process:** Register → IDEMIA contacts within 24h → approve trial → SDK access with IACA certs
-- **Formats:** `.pem`, `.crt`, `.der` — all supported
-- **Coverage:** All IDEMIA-backed states (NY, KY, IA, AR, DE, WV, plus MT, AK, PR already covered via VICAL)
-- **Contact (alternative):** MobileIDHelp@us.idemia.com (technical), info@ps-idemia.com (general)
+- **Status:** Account created 2026-03-05. **Awaiting IDEMIA approval.**
+- **Navigate (once approved):** Mobile ID → Develop → Verify SDKs → download SDK → extract Production IACA certs
+- **Formats:** `.pem`, `.crt`, `.der` — all supported by our trust store
+- **Coverage:** All IDEMIA-backed states (NY, KY, IA, AR, DE, plus WV already done via .gov)
+- **Cost:** Free evaluation tier is sufficient. We only need the certificate files, not the SDK itself.
+- **Contact (if approval stalls):** MobileIDHelp@us.idemia.com (technical), info@ps-idemia.com (general)
 
 **Why this is the best path for NY:** New York (20.2M pop) explicitly delegates all verification to IDEMIA. The state DMV will not provide certs directly. The IDEMIA portal is the intended acquisition channel.
 
@@ -73,14 +74,17 @@ The runtime `vical-service.ts` + `parse-vical.ts` pipeline auto-ingests any stat
    - KY → [drive.ky.gov/Pages/Contact-Us.aspx](https://drive.ky.gov/Pages/Contact-Us.aspx)
    - NY → [dmv.ny.gov/contact-us](https://dmv.ny.gov/contact-us)
 
-3. **Register for IDEMIA Experience Portal** — [experience.idemia.com/auth/signup](https://experience.idemia.com/auth/signup/)
-   - This is the single action most likely to resolve all 5 remaining gaps
-   - Use project email, select "Relying Party" role
-   - IDEMIA contacts within 24h to approve trial
+3. ~~**Register for IDEMIA Experience Portal**~~ — **DONE** (2026-03-05)
+   - Account created at experience.idemia.com
+   - Awaiting IDEMIA approval to access Verify SDK + IACA certs
+   - Once approved: Mobile ID → Develop → Verify SDKs → download → extract Production certs
+   - If no approval within 48h, email MobileIDHelp@us.idemia.com
 
-### On Completion (cipher)
+### Completed
 
-4. **Merge WV cert** — cipher is downloading "WV mID Root.zip" from transportation.wv.gov/DMV/MiD. Once parsed and added to `iaca-roots.ts`, coverage goes to 16.
+4. ~~**Merge WV cert**~~ — **DONE** (2026-03-05, commit 1910f1bd)
+   - WV IACA root added to iaca-roots.ts (P-256, expires 2033-12-09)
+   - First IDEMIA-vendor state in trust store. Coverage: 16 states.
 
 ### Follow-up (2 weeks)
 
@@ -94,8 +98,7 @@ The runtime `vical-service.ts` + `parse-vical.ts` pipeline auto-ingests any stat
 
 | Scenario | States Covered | US Pop Coverage (est.) |
 |----------|---------------|----------------------|
-| Current (15 states) | AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA | ~42% |
-| +WV (in progress) | +WV | ~43% |
+| Current (16 states) | AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA, WV | ~43% |
 | +IDEMIA portal (all 5) | +AR, DE, IA, KY, NY | ~52% |
 | +NY alone | +NY | ~49% |
 
