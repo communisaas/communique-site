@@ -58,12 +58,14 @@
 		| 'verifying'
 		| 'complete'
 		| 'error'
-		| 'unsupported';
+		| 'unsupported'
+		| 'unsupported_state';
 
 	let verificationState = $state<VerificationState>(
 		isDigitalCredentialsSupported() ? 'idle' : 'unsupported'
 	);
 	let errorMessage = $state<string | null>(null);
+	let supportedStates = $state<string[]>([]);
 	let verificationResult = $state<{
 		district?: string;
 		state?: string;
@@ -123,6 +125,11 @@
 
 			if (!verifyResponse.ok) {
 				const err = await verifyResponse.json();
+				if (err.error === 'unsupported_state' && err.supportedStates) {
+					supportedStates = err.supportedStates;
+					verificationState = 'unsupported_state';
+					return;
+				}
 				throw new Error(err.message || 'Verification failed');
 			}
 
@@ -411,6 +418,56 @@
 					<span>Try Again</span>
 				</span>
 			</button>
+		</div>
+	{:else if verificationState === 'unsupported_state'}
+		<!-- Unsupported State -->
+		<div class="space-y-4">
+			<div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+				<div class="flex items-start gap-3">
+					<Info class="h-5 w-5 flex-shrink-0 text-amber-600" />
+					<div class="flex-1">
+						<p class="text-sm font-medium text-amber-900">
+							Your state isn't supported yet
+						</p>
+						<p class="mt-1 text-sm text-amber-700">
+							Your digital ID was issued by a state we can't verify yet.
+							We're working to add more states. Check back soon.
+						</p>
+					</div>
+				</div>
+			</div>
+
+			{#if supportedStates.length > 0}
+				<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+					<p class="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+						Currently supported ({supportedStates.length})
+					</p>
+					<div class="flex flex-wrap gap-1.5">
+						{#each supportedStates.sort() as state}
+							<span class="rounded bg-white px-2 py-0.5 text-xs font-medium text-slate-700 shadow-sm ring-1 ring-slate-200">
+								{state}
+							</span>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<a
+				href="/help/verification"
+				class="block w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-center text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-50"
+			>
+				Learn more about verification
+			</a>
+
+			{#if oncancel}
+				<button
+					type="button"
+					onclick={oncancel}
+					class="w-full rounded-lg border-2 border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+				>
+					Go Back
+				</button>
+			{/if}
 		</div>
 	{:else if verificationState === 'unsupported'}
 		<!-- Unsupported Browser — Mobile QR Fallback -->
