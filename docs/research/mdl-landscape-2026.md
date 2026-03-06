@@ -2,21 +2,21 @@
 
 ## Our Current Coverage
 
-15 states/territories in IACA trust store: **AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA**
+16 states/territories in IACA trust store: **AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA, WV**
 
-Source: `src/lib/core/identity/iaca-roots.ts` (static, updated 2026-03-04)
+Source: `src/lib/core/identity/iaca-roots.ts` (static, updated 2026-03-05)
 
 ### Runtime Coverage (VICAL Service)
 
-In addition to the 15 static IACA roots, the runtime VICAL service (`src/lib/core/identity/vical-service.ts`) dynamically fetches and caches IACA roots from the AAMVA VICAL at verification time. Any state published to the VICAL is automatically covered without code changes.
+In addition to the 16 static IACA roots, the runtime VICAL service (`src/lib/core/identity/vical-service.ts`) dynamically fetches and caches IACA roots from the AAMVA VICAL at verification time. Any state published to the VICAL is automatically covered without code changes.
 
 | Coverage Layer | States | Mechanism |
 |----------------|--------|-----------|
-| **Static trust store** | 15 (AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA) | Hardcoded in `iaca-roots.ts` |
+| **Static trust store** | 16 (AK, AZ, CA, CO, GA, HI, IL, MD, MT, ND, NM, OH, PR, UT, VA, WV) | Hardcoded in `iaca-roots.ts` |
 | **Runtime VICAL** | 10 (AK, AZ, CO, GA, IL, MD, MT, ND, UT, VA) | Fetched from AAMVA, KV-cached |
-| **Unique coverage** | 15 | 5 states only via static (.gov downloads): CA, HI, NM, OH, PR |
+| **Unique coverage** | 16 | 6 states only via static (.gov downloads): CA, HI, NM, OH, PR, WV |
 
-Note: Runtime VICAL overlaps with static for 10 states. The 5 .gov-download states (CA, HI, NM, OH, PR) are not in the VICAL — they remain static-only.
+Note: Runtime VICAL overlaps with static for 10 states. The 6 .gov-download states (CA, HI, NM, OH, PR, WV) are not in the VICAL — they remain static-only.
 
 ---
 
@@ -46,10 +46,10 @@ Note: Runtime VICAL overlaps with static for 10 states. The 5 .gov-download stat
 | 18 | **Puerto Rico** | PR Movil, Apple, Google | — | Yes | ✅ |
 | 19 | **Utah** | GET Mobile ID | GET Group NA | Yes (UL-certified) | ✅ |
 | 20 | **Virginia** | VA Mobile ID (CBN) | Canadian Bank Note | Yes | ✅ |
-| 21 | **West Virginia** | State app, Apple, Samsung | IDEMIA | Yes | ❌ |
+| 21 | **West Virginia** | State app, Apple, Samsung | IDEMIA | Yes | ✅ |
 
-**Our gap: 5 TSA-accepted ISO 18013-5 states NOT in our trust store:**
-- Arkansas, Iowa, Kentucky, New York, West Virginia
+**Our gap: 4 TSA-accepted ISO 18013-5 states NOT in our trust store:**
+- Arkansas, Iowa, Kentucky, New York
 
 **Louisiana is NOT verifiable** via ISO 18013-5 — proprietary Envoc format. Skip for now.
 
@@ -65,9 +65,9 @@ Note: Runtime VICAL overlaps with static for 10 states. The 5 .gov-download stat
 |----------|-------|
 | TSA-accepted jurisdictions | 22 (21 states + PR) |
 | ISO 18013-5 compliant of those | 21 (all except Louisiana) |
-| In our trust store (static) | 15 |
-| Runtime VICAL coverage | 10 (subset of static 15) |
-| **Gap to close** | **6** (AR, DE, IA, KY, NY, WV) |
+| In our trust store (static) | 16 |
+| Runtime VICAL coverage | 10 (subset of static 16) |
+| **Gap to close** | **5** (AR, DE, IA, KY, NY) |
 
 ---
 
@@ -88,7 +88,7 @@ Re-parsed the AAMVA VICAL to check whether the 6 gap states had been added since
 | **Iowa** | No | IDEMIA — requires direct acquisition |
 | **Kentucky** | No | IDEMIA — requires direct acquisition |
 | **New York** | No | IDEMIA — requires direct acquisition |
-| **West Virginia** | No | IDEMIA — requires direct acquisition |
+| **West Virginia** | No | **ACQUIRED** — direct .gov download, added to static trust store |
 
 ### VICAL Contents (20 certs, 10 states)
 
@@ -103,6 +103,58 @@ All 6 gap states use **IDEMIA** as their mDL vendor. IDEMIA does not publish IAC
 - **Other vendors** (SpruceID/CA, GET/UT, CBN/VA): mixed (UT, VA in VICAL; CA not)
 
 The runtime VICAL service (`vical-service.ts`) will automatically pick up IDEMIA states if/when IDEMIA begins publishing to the VICAL. Until then, direct acquisition is required.
+
+---
+
+## Current Acquisition Pipeline (2026-03-05)
+
+Three strategies running in parallel to close the remaining 5-state IDEMIA gap:
+
+### Strategy Status
+
+| Strategy | Channel | States Targeted | Status | Expected Timeline |
+|----------|---------|----------------|--------|-------------------|
+| **Direct state outreach** | Email to state DMV/DOT | AR, IA, DE, KY, NY | Outreach emails drafted (`docs/outreach/`), not yet sent | 1-4 weeks after sending |
+| **IDEMIA Experience Portal** | Vendor portal registration | All IDEMIA states | Identified as acquisition channel, not yet registered | Unknown — requires account |
+| **VICAL monitoring** | Runtime `vical-service.ts` | Any future IDEMIA additions | Automatic — zero code changes needed | Ongoing, no action required |
+
+### Per-State Acquisition Status
+
+| State | Pop. | Status | Acquisition Path | Next Step |
+|-------|------|--------|-----------------|-----------|
+| **WV** | 1.8M | **DONE** | Direct .gov download | Merged to static trust store |
+| **AR** | 3.0M | Outreach drafted | Email to AR DFA | Send email |
+| **IA** | 3.2M | Outreach drafted | Email to IA DOT | Send email |
+| **DE** | 1.0M | Outreach drafted | Email to DE DMV | Send email |
+| **KY** | 4.5M | Pending | Contact form submission | Draft and submit KY contact form |
+| **NY** | 20.2M | Pending | Contact form submission | Draft and submit NY DMV contact form |
+
+### Human Actions Required
+
+These steps require a person — they cannot be automated:
+
+1. **Send 3 outreach emails** (drafts ready in `docs/outreach/`):
+   - Arkansas Department of Finance and Administration
+   - Iowa Department of Transportation
+   - Delaware Division of Motor Vehicles
+
+2. **Submit 2 contact forms** (drafts needed):
+   - Kentucky Transportation Cabinet — mDL contact form
+   - New York DMV — NY Mobile ID program contact
+
+3. **Register for IDEMIA Experience Portal** — potential parallel channel for all IDEMIA state IACA roots. Requires organizational account registration.
+
+### Coverage Trajectory
+
+| Milestone | Static States | Gap | When |
+|-----------|--------------|-----|------|
+| Pre-expansion | 15 | 6 | 2026-03-04 |
+| **Current** | **16** (+ WV) | **5** | **2026-03-05** |
+| After outreach responses | 17-19 (+ AR, IA, DE) | 2-4 | Est. Q1-Q2 2026 |
+| After contact form responses | 20-21 (+ KY, NY) | 0-2 | Est. Q2 2026 |
+| **Full IDEMIA closure** | **21** | **0** | Target: end of Q2 2026 |
+
+Note: Runtime VICAL service provides automatic expansion for any IDEMIA state that begins publishing — coverage gains with zero code changes.
 
 ---
 
@@ -226,7 +278,7 @@ As of Oct 2025: ~21 states live, **17 different wallet implementations**. 9 stat
 
 ### Priority Ranking (revised post-VICAL re-parse)
 
-VICAL re-parse confirmed all 6 gap states are IDEMIA and NOT in VICAL. IACA source column updated accordingly — all require direct acquisition.
+VICAL re-parse confirmed all 6 gap states are IDEMIA and NOT in VICAL. WV acquired via direct .gov download (2026-03-05). 5 remaining require outreach.
 
 | Priority | State | Pop. | Political Lean | IACA Source | mDL Status | Rationale |
 |----------|-------|------|---------------|-------------|------------|-----------|
@@ -234,24 +286,24 @@ VICAL re-parse confirmed all 6 gap states are IDEMIA and NOT in VICAL. IACA sour
 | **P0** | **Iowa** | 3.2M | Red/Purple | Direct acquisition (IDEMIA) | Live, multi-wallet | Purple state. All major wallets. Outreach email drafted (`docs/outreach/`). |
 | **P0** | **Arkansas** | 3.0M | Red | Direct acquisition (IDEMIA) | Live since Mar 2025 | Deep red state. Balance for credibility. Outreach email drafted (`docs/outreach/`). |
 | **P1** | **Kentucky** | 4.5M | Red | Direct acquisition (IDEMIA) | Live since Jan 2026 | Red state. IDEMIA platform. Larger pop than WV. |
-| **P1** | **West Virginia** | 1.8M | Red | Direct acquisition (IDEMIA) | Live, multi-wallet | Red state. Small but completes the set. |
+| ~~P1~~ | ~~**West Virginia**~~ | ~~1.8M~~ | ~~Red~~ | ~~Direct acquisition~~ | ~~Live~~ | **DONE** — direct .gov download, added to trust store 2026-03-05. |
 | **P2** | **Delaware** | 1.0M | Blue | Direct acquisition (IDEMIA) | Live since 2021 | Oldest US mDL. Small pop. Not TSA-accepted. |
 | **P2** | **Texas** | 30.0M | Red | TBD (not yet launched) | HB 3426 signed, DPS procurement | Largest prize. Not live yet — monitor for RFP/launch. |
 | **P2** | **North Carolina** | 10.7M | Purple | TBD (not yet launched) | Vendor procurement active | Large purple state. Watch for 2026 launch. |
 
-### Recommended Action Plan (revised)
+### Recommended Action Plan (revised 2026-03-05)
 
-**Immediate (this quarter):**
-1. ~~Re-run VICAL parse~~ — DONE (2026-03-05). Zero IDEMIA states found. VICAL path eliminated.
-2. Send outreach emails for AR and IA (drafts in `docs/outreach/`). Request IACA root certificates from state DMV contacts.
-3. Explore IDEMIA's Trinsic partnership (announced Feb 2026) as alternate acquisition channel — Trinsic may distribute IACA roots for remote verification.
-4. Contact NY DMV directly — largest gap state, highest priority.
+**Immediate — human actions needed (see "Current Acquisition Pipeline" above):**
+1. ~~Re-run VICAL parse~~ — DONE. Zero IDEMIA states. VICAL path eliminated.
+2. ~~Acquire WV IACA root~~ — DONE. Direct .gov download. Trust store now 16 states.
+3. **Send 3 outreach emails** for AR, IA, DE (drafts in `docs/outreach/`).
+4. **Submit 2 contact forms** for KY and NY DMV.
+5. **Register for IDEMIA Experience Portal** — parallel acquisition channel.
 
 **Near-term (Q2 2026):**
-5. Monitor Texas DPS for RFP announcement and mDL launch timeline
-6. Monitor North Carolina vendor selection
-7. Request KY and WV IACA roots (same IDEMIA template as AR/IA outreach)
-8. Assess Delaware — not TSA-accepted, lowest priority, but oldest program
+6. Monitor Texas DPS for RFP announcement and mDL launch timeline
+7. Monitor North Carolina vendor selection
+8. Follow up on outreach responses — escalate if no reply within 3 weeks
 
 **Ongoing:**
 9. Runtime VICAL service auto-covers any IDEMIA state that starts publishing — no code changes needed
