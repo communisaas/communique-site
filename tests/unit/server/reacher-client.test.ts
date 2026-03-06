@@ -41,7 +41,7 @@ describe('reacher-client', () => {
 			const [url, opts] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
 			expect(url).toBe('https://reacher.test/v0/check_email');
 			expect(opts.method).toBe('POST');
-			expect(opts.headers.Authorization).toBe('test-key');
+			expect(opts.headers['x-reacher-secret']).toBe('test-key');
 			expect(opts.body).toBe(JSON.stringify({ to_email: 'good@example.com' }));
 		});
 

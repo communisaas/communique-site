@@ -58,7 +58,7 @@ export async function checkEmail(
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				Authorization: config.apiKey
+				'x-reacher-secret': config.apiKey
 			},
 			body: JSON.stringify({ to_email: email }),
 			signal: AbortSignal.timeout(15_000)
