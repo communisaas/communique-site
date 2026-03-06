@@ -1,0 +1,45 @@
+# Reacher — self-hosted SMTP email verification service
+# https://github.com/reacherhq/backend
+#
+# Deploy:
+#   cd infra/reacher
+#   fly launch --copy-config --no-deploy
+#   fly secrets set RCH__HEADER_SECRET="<generate-a-secret>"
+#   fly deploy
+#
+# Then on CF Workers side:
+#   wrangler secret put REACHER_URL    # https://communique-reacher.fly.dev
+#   wrangler secret put REACHER_API_KEY # same value as RCH__HEADER_SECRET
+
+app = "communique-reacher"
+primary_region = "iad"
+
+[build]
+  image = "reacherhq/backend:latest"
+
+[env]
+  # Rate limiting — prevent abuse / IP reputation damage
+  RCH__THROTTLE__MAX_REQUESTS_PER_SECOND = "5"
+  RCH__THROTTLE__MAX_REQUESTS_PER_MINUTE = "50"
+  # SMTP probe timeouts
+  RCH__SMTP_TIMEOUT = "15"
+  # Bind to Fly's internal port
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  path = "/"
+  timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
