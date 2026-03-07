@@ -31,6 +31,7 @@ import { ThoughtEmitter } from '$lib/core/thoughts/emitter';
 import { decisionMakerRouter } from '../providers';
 import { sumTokenUsage } from '../types';
 import { verifyEmailBatch, type EmailVerdict } from '$lib/server/email-verification';
+import { upsertResolvedContacts } from '../utils/contact-cache';
 import { generateAccountabilityOpeners } from './decision-maker-accountability';
 import {
 	documentToolDefinition,
@@ -641,6 +642,20 @@ export async function resolveDecisionMakers(
 				try {
 					const verificationResults = await verifyEmailBatch(emailsToVerify);
 
+					// Collect cache writeback entries for ALL verified emails (before filtering)
+					const cacheUpdates: Array<{ organization: string; title: string; verificationStatus: string }> = [];
+					for (const dm of result.decisionMakers) {
+						if (!dm.email) continue;
+						const vr = verificationResults.get(dm.email);
+						if (vr && dm.organization && dm.title) {
+							cacheUpdates.push({
+								organization: dm.organization,
+								title: dm.title,
+								verificationStatus: vr.verdict
+							});
+						}
+					}
+
 					let droppedByVerification = 0;
 					result.decisionMakers = result.decisionMakers.filter((dm) => {
 						if (!dm.email) return true; // no email to verify, keep
@@ -673,6 +688,13 @@ export async function resolveDecisionMakers(
 					if (droppedByVerification > 0) {
 						droppedCount += droppedByVerification;
 						console.debug(`[decision-maker] Phase 3.5: Dropped ${droppedByVerification} undeliverable email(s)`);
+					}
+
+					// Write verification status back to contact cache (awaited for ALS scope)
+					if (cacheUpdates.length > 0) {
+						await upsertResolvedContacts(cacheUpdates).catch((err) =>
+							console.warn('[decision-maker] Phase 3.5 cache writeback failed:', err)
+						);
 					}
 				} catch (err) {
 					console.warn('[decision-maker] Phase 3.5 failed (non-fatal):', err);
