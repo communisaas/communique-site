@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
 
@@ -34,6 +35,26 @@
 		}
 	}
 
+	// Debounced auto-recount when filters change
+	let isFirstRun = true;
+	let countDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+	$effect(() => {
+		const _v = verifiedFilter;
+		const _t = selectedTagIds;
+
+		if (isFirstRun) {
+			isFirstRun = false;
+			return;
+		}
+
+		if (countDebounceTimer) clearTimeout(countDebounceTimer);
+		countDebounceTimer = setTimeout(() => {
+			const countForm = document.querySelector('form[action="?/count"]') as HTMLFormElement;
+			if (countForm) countForm.requestSubmit();
+		}, 500);
+	});
+
 	const mergeFieldHints = [
 		{ field: '{{firstName}}', desc: 'First name' },
 		{ field: '{{lastName}}', desc: 'Last name' },
@@ -42,7 +63,18 @@
 	];
 
 	function insertMergeField(field: string) {
-		bodyHtml += field;
+		const textarea = document.getElementById('bodyHtml') as HTMLTextAreaElement;
+		if (!textarea) {
+			bodyHtml += field;
+			return;
+		}
+		const start = textarea.selectionStart;
+		const end = textarea.selectionEnd;
+		bodyHtml = bodyHtml.slice(0, start) + field + bodyHtml.slice(end);
+		tick().then(() => {
+			textarea.selectionStart = textarea.selectionEnd = start + field.length;
+			textarea.focus();
+		});
 	}
 </script>
 
