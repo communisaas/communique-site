@@ -95,7 +95,7 @@ export const actions: Actions = {
 			tierSummary: '3 Pillars, 12 Veterans, 30 Established'
 		};
 
-		const compiledHtml = compileEmail(bodyHtml, sampleMerge, sampleVerification);
+		const compiledHtml = compileEmail(bodyHtml, sampleMerge, sampleVerification, 'https://commons.email/unsubscribe/sample/token');
 
 		return { previewHtml: compiledHtml, previewSubject: subject };
 	},
