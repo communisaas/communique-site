@@ -111,17 +111,13 @@ export const actions: Actions = {
 		const subject = formData.get('subject')?.toString().trim();
 		const rawBodyHtml = formData.get('bodyHtml')?.toString();
 		const rawFromName = formData.get('fromName')?.toString().trim() || org.name;
-		// Strip control characters (CRLF injection prevention) and limit length
-		const fromName = rawFromName.replace(/[\x00-\x1f\x7f]/g, '').slice(0, 64);
+		// Strip control characters (CRLF injection) and angle brackets (display name spoofing)
+		const fromName = rawFromName.replace(/[\x00-\x1f\x7f<>"]/g, '').slice(0, 64);
 		if (!fromName) {
 			return fail(400, { error: 'From name is required' });
 		}
-		const fromEmail = formData.get('fromEmail')?.toString().trim() || `${org.slug}@commons.email`;
-
-		// Validate from email domain — only @commons.email allowed
-		if (!fromEmail.endsWith('@commons.email')) {
-			return fail(400, { error: 'From email must use @commons.email domain' });
-		}
+		// Force from email to org slug — prevent local-part spoofing
+		const fromEmail = `${org.slug}@commons.email`;
 		const campaignId = formData.get('campaignId')?.toString() || null;
 
 		if (!subject) {

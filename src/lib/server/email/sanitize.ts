@@ -47,9 +47,34 @@ export function sanitizeEmailBody(html: string): string {
 			'blockquote': ['style']
 		},
 		allowedStyles: {
-			'*': Object.fromEntries(
-				ALLOWED_STYLE_PROPERTIES.map((prop) => [prop, [/^.*$/]])
-			) as Record<string, RegExp[]>
+			'*': {
+				'color': [/^#[0-9a-fA-F]{3,8}$/, /^rgb\(/, /^[a-zA-Z]+$/],
+				'background-color': [/^#[0-9a-fA-F]{3,8}$/, /^rgb\(/, /^[a-zA-Z]+$/, /^transparent$/],
+				'font-size': [/^(?:[1-9]\d?|1[0-4]\d|150)px$/, /^(?:0?\.\d+|[1-9]\d?)(?:\.\d+)?(?:em|rem)$/],
+				'font-weight': [/^(?:normal|bold|bolder|lighter|[1-9]00)$/],
+				'font-style': [/^(?:normal|italic|oblique)$/],
+				'text-align': [/^(?:left|center|right|justify)$/],
+				'text-decoration': [/^(?:none|underline|overline|line-through)$/],
+				'margin': [/^(?:\d{1,3}(?:px|em|rem|%)?\s*){1,4}$/],
+				'margin-top': [/^\d{1,3}(?:px|em|rem|%)$/],
+				'margin-bottom': [/^\d{1,3}(?:px|em|rem|%)$/],
+				'margin-left': [/^\d{1,3}(?:px|em|rem|%)$/],
+				'margin-right': [/^\d{1,3}(?:px|em|rem|%)$/],
+				'padding': [/^(?:\d{1,3}(?:px|em|rem|%)?\s*){1,4}$/],
+				'padding-top': [/^\d{1,3}(?:px|em|rem|%)$/],
+				'padding-bottom': [/^\d{1,3}(?:px|em|rem|%)$/],
+				'padding-left': [/^\d{1,3}(?:px|em|rem|%)$/],
+				'padding-right': [/^\d{1,3}(?:px|em|rem|%)$/],
+				'border': [/^[^;]{1,50}$/],
+				'border-radius': [/^\d{1,3}(?:px|em|rem|%)$/],
+				'border-color': [/^#[0-9a-fA-F]{3,8}$/, /^[a-zA-Z]+$/],
+				'border-width': [/^\d{1,3}px$/],
+				'border-style': [/^(?:none|solid|dashed|dotted|double)$/],
+				'width': [/^\d{1,4}(?:px|em|rem|%)$/],
+				'max-width': [/^[1-9]\d{0,3}(?:px|em|rem|%)$/],
+				'line-height': [/^(?:[1-9](?:\.\d{1,2})?|0?\.\d{1,2})(?:em|rem)?$/, /^(?:normal|[1-9]\d{0,2}(?:\.\d{1,2})?)$/],
+				'letter-spacing': [/^-?[0-2](?:\.\d{1,2})?(?:px|em)$/, /^normal$/]
+			}
 		},
 		// Strip disallowed tags entirely (not just their content)
 		disallowedTagsMode: 'discard',
