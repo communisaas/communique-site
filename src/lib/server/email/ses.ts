@@ -5,12 +5,14 @@ let client: SESv2Client | null = null;
 
 function getClient(): SESv2Client {
 	if (!client) {
+		const accessKeyId = env.AWS_ACCESS_KEY_ID;
+		const secretAccessKey = env.AWS_SECRET_ACCESS_KEY;
+		if (!accessKeyId || !secretAccessKey) {
+			throw new Error('AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars are required');
+		}
 		client = new SESv2Client({
 			region: env.AWS_REGION ?? 'us-east-1',
-			credentials: {
-				accessKeyId: env.AWS_ACCESS_KEY_ID ?? '',
-				secretAccessKey: env.AWS_SECRET_ACCESS_KEY ?? ''
-			}
+			credentials: { accessKeyId, secretAccessKey }
 		});
 	}
 	return client;

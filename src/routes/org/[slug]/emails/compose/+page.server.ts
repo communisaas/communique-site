@@ -100,7 +100,7 @@ export const actions: Actions = {
 		return { previewHtml: compiledHtml, previewSubject: subject };
 	},
 
-	send: async ({ request, params, locals }) => {
+	send: async ({ request, params, locals, platform }) => {
 		if (!locals.user) {
 			throw redirect(302, `/auth/google?returnTo=/org/${params.slug}/emails/compose`);
 		}
@@ -162,10 +162,13 @@ export const actions: Actions = {
 			}
 		});
 
-		// Fire and forget -- send pipeline runs async
-		sendBlast(blast.id).catch((err) => {
+		// Send pipeline runs async -- use waitUntil on CF Workers to keep alive
+		const blastPromise = sendBlast(blast.id).catch((err) => {
 			console.error(`[email-engine] Blast ${blast.id} async error:`, err);
 		});
+		if (platform?.ctx?.waitUntil) {
+			platform.ctx.waitUntil(blastPromise);
+		}
 
 		throw redirect(302, `/org/${params.slug}/emails`);
 	}
