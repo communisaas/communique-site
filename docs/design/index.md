@@ -20,6 +20,14 @@ Start here. Everything else references this.
 
 **Satoshi + JetBrains Mono.** Font loading, Tailwind classes, migration guide.
 
+### [PERCEPTUAL-BRIDGE.md](PERCEPTUAL-BRIDGE.md) — Person Layer / Org Layer Bridge
+
+**How one verified action appears in three worlds.** The design philosophy connecting the person-facing experience (built) to the org-facing experience (building). Read this before designing any org-layer surface.
+
+### [jurisdiction-ux-strategy.md](jurisdiction-ux-strategy.md) — Jurisdiction UX
+
+**Plain language to structured geospatial data.** Agent-assisted jurisdiction assignment for template creators.
+
 ---
 
 ## UX Patterns
