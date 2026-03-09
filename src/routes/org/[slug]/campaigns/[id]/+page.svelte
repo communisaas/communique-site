@@ -286,6 +286,91 @@
 		showDebate={data.campaign.debateEnabled}
 	/>
 
+	<!-- Decision-Maker Targets -->
+	<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
+		<h3 class="text-sm font-medium text-zinc-300">Decision-Maker Targets</h3>
+
+		{#if Array.isArray(data.campaign.targets) && data.campaign.targets.length > 0}
+			<div class="overflow-x-auto">
+				<table class="w-full text-left">
+					<thead>
+						<tr class="border-b border-zinc-800/60">
+							<th class="pb-2 text-xs font-medium text-zinc-500">Name</th>
+							<th class="pb-2 text-xs font-medium text-zinc-500">Email</th>
+							<th class="pb-2 text-xs font-medium text-zinc-500">Title</th>
+							<th class="pb-2 text-xs font-medium text-zinc-500">District</th>
+							{#if canEdit}
+								<th class="pb-2 text-xs font-medium text-zinc-500"></th>
+							{/if}
+						</tr>
+					</thead>
+					<tbody>
+						{#each data.campaign.targets as target}
+							<tr class="border-b border-zinc-800/60">
+								<td class="py-2 pr-4 text-sm text-zinc-300">{target.name}</td>
+								<td class="py-2 pr-4 text-sm text-zinc-400 font-mono">{target.email}</td>
+								<td class="py-2 pr-4 text-sm text-zinc-400">{target.title ?? '—'}</td>
+								<td class="py-2 pr-4 text-sm text-zinc-400">{target.district ?? '—'}</td>
+								{#if canEdit}
+									<td class="py-2 text-right">
+										<form method="POST" action="?/removeTarget" use:enhance class="inline">
+											<input type="hidden" name="email" value={target.email} />
+											<button type="submit" class="text-xs text-red-400 hover:text-red-300 transition-colors">
+												Remove
+											</button>
+										</form>
+									</td>
+								{/if}
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{:else}
+			<p class="text-sm text-zinc-500">No targets added. Add decision-makers to enable report delivery.</p>
+		{/if}
+
+		{#if canEdit}
+			<form method="POST" action="?/addTarget" use:enhance class="space-y-3 border-t border-zinc-800/60 pt-4">
+				<p class="text-xs font-medium text-zinc-400">Add Target</p>
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+					<input
+						type="text"
+						name="name"
+						required
+						placeholder="Name (required)"
+						class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+					/>
+					<input
+						type="email"
+						name="email"
+						required
+						placeholder="Email (required)"
+						class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+					/>
+					<input
+						type="text"
+						name="title"
+						placeholder="Title (optional)"
+						class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+					/>
+					<input
+						type="text"
+						name="district"
+						placeholder="District (optional)"
+						class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+					/>
+				</div>
+				<button
+					type="submit"
+					class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500 transition-colors"
+				>
+					Add Target
+				</button>
+			</form>
+		{/if}
+	</div>
+
 	<!-- Report delivery link -->
 	{#if data.campaign.status === 'ACTIVE' || data.campaign.status === 'PAUSED' || data.campaign.status === 'COMPLETE'}
 		<div class="flex items-center">

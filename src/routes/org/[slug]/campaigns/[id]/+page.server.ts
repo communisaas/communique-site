@@ -123,6 +123,85 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
+	addTarget: async ({ request, params, locals }) => {
+		if (!locals.user) {
+			throw redirect(302, `/auth/google?returnTo=/org/${params.slug}/campaigns/${params.id}`);
+		}
+		const { org, membership } = await loadOrgContext(params.slug, locals.user.id);
+		requireRole(membership.role, 'editor');
+
+		const formData = await request.formData();
+		const name = formData.get('name')?.toString().trim();
+		const email = formData.get('email')?.toString().trim().toLowerCase();
+		const title = formData.get('title')?.toString().trim() || undefined;
+		const district = formData.get('district')?.toString().trim() || undefined;
+
+		if (!name) {
+			return fail(400, { error: 'Target name is required' });
+		}
+		if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+			return fail(400, { error: 'A valid email address is required' });
+		}
+
+		const campaign = await db.campaign.findFirst({
+			where: { id: params.id, orgId: org.id }
+		});
+		if (!campaign) {
+			throw error(404, 'Campaign not found');
+		}
+
+		const targets = Array.isArray(campaign.targets) ? (campaign.targets as Array<{ name: string; email: string; title?: string; district?: string }>) : [];
+
+		if (targets.length >= 50) {
+			return fail(400, { error: 'Maximum of 50 targets per campaign' });
+		}
+
+		if (targets.some((t) => t.email === email)) {
+			return fail(400, { error: 'A target with this email already exists' });
+		}
+
+		targets.push({ name, email, title, district });
+
+		await db.campaign.update({
+			where: { id: params.id },
+			data: { targets }
+		});
+
+		return { success: true };
+	},
+
+	removeTarget: async ({ request, params, locals }) => {
+		if (!locals.user) {
+			throw redirect(302, `/auth/google?returnTo=/org/${params.slug}/campaigns/${params.id}`);
+		}
+		const { org, membership } = await loadOrgContext(params.slug, locals.user.id);
+		requireRole(membership.role, 'editor');
+
+		const formData = await request.formData();
+		const email = formData.get('email')?.toString().trim().toLowerCase();
+
+		if (!email) {
+			return fail(400, { error: 'Target email is required' });
+		}
+
+		const campaign = await db.campaign.findFirst({
+			where: { id: params.id, orgId: org.id }
+		});
+		if (!campaign) {
+			throw error(404, 'Campaign not found');
+		}
+
+		const targets = Array.isArray(campaign.targets) ? (campaign.targets as Array<{ name: string; email: string; title?: string; district?: string }>) : [];
+		const filtered = targets.filter((t) => t.email !== email);
+
+		await db.campaign.update({
+			where: { id: params.id },
+			data: { targets: filtered }
+		});
+
+		return { success: true };
+	},
+
 	updateStatus: async ({ request, params, locals }) => {
 		if (!locals.user) {
 			throw redirect(302, `/auth/google?returnTo=/org/${params.slug}/campaigns/${params.id}`);
