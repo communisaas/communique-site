@@ -124,6 +124,7 @@ export const actions: Actions = {
 		const { org, membership } = await loadOrgContext(params.slug, locals.user.id);
 		requireRole(membership.role, 'editor');
 
+		// NOTE: Rate limit is per-isolate on CF Workers without Redis. Configure REDIS_URL for global enforcement.
 		const sendLimit = await getRateLimiter().check(`ratelimit:compose:send:org:${org.id}`, {
 			maxRequests: 5,
 			windowMs: 60 * 60_000
@@ -193,6 +194,9 @@ export const actions: Actions = {
 		});
 		if (platform?.context?.waitUntil) {
 			platform.context.waitUntil(blastPromise);
+		} else {
+			// Non-CF: await inline so the blast actually runs (blocks redirect but doesn't silently drop)
+			await blastPromise;
 		}
 
 		throw redirect(302, `/org/${params.slug}/emails`);

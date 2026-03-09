@@ -3,46 +3,45 @@ import { verifyUnsubscribeToken } from '$lib/server/email/unsubscribe';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
-	const { supporterId, token } = params;
+	const { supporterId, orgId, token } = params;
 
-	// Find the supporter to get their orgId
+	// Verify HMAC token FIRST — no DB query needed, prevents DoS
+	if (!verifyUnsubscribeToken(supporterId, orgId, token)) {
+		return { status: 'invalid' as const, verified: false };
+	}
+
+	// Token valid — check supporter status
 	const supporter = await db.supporter.findUnique({
 		where: { id: supporterId },
 		select: { id: true, orgId: true, emailStatus: true }
 	});
 
-	if (!supporter) {
+	if (!supporter || supporter.orgId !== orgId) {
 		return { status: 'invalid' as const, verified: false };
 	}
 
-	// Verify HMAC token
-	if (!verifyUnsubscribeToken(supporterId, supporter.orgId, token)) {
-		return { status: 'invalid' as const, verified: false };
-	}
-
-	// Already unsubscribed?
 	if (supporter.emailStatus === 'unsubscribed') {
 		return { status: 'already' as const, verified: true };
 	}
 
-	// Token is valid — show confirmation form (do NOT mutate on GET)
 	return { status: 'confirm' as const, verified: true };
 };
 
 export const actions: Actions = {
 	default: async ({ params }) => {
-		const { supporterId, token } = params;
+		const { supporterId, orgId, token } = params;
+
+		// Verify token first
+		if (!verifyUnsubscribeToken(supporterId, orgId, token)) {
+			return { done: false, error: 'Invalid unsubscribe link.' };
+		}
 
 		const supporter = await db.supporter.findUnique({
 			where: { id: supporterId },
 			select: { id: true, orgId: true, emailStatus: true }
 		});
 
-		if (!supporter) {
-			return { done: false, error: 'Invalid unsubscribe link.' };
-		}
-
-		if (!verifyUnsubscribeToken(supporterId, supporter.orgId, token)) {
+		if (!supporter || supporter.orgId !== orgId) {
 			return { done: false, error: 'Invalid unsubscribe link.' };
 		}
 

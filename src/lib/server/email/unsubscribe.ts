@@ -20,7 +20,7 @@ export function generateUnsubscribeToken(supporterId: string, orgId: string): st
 export function buildUnsubscribeUrl(supporterId: string, orgId: string): string {
 	const token = generateUnsubscribeToken(supporterId, orgId);
 	const baseUrl = env.PUBLIC_BASE_URL || 'https://commons.email';
-	return `${baseUrl}/unsubscribe/${supporterId}/${token}`;
+	return `${baseUrl}/unsubscribe/${supporterId}/${orgId}/${token}`;
 }
 
 /**

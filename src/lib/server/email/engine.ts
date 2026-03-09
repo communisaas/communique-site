@@ -217,6 +217,15 @@ async function compileAndSendToRecipient(
 	blast: { fromEmail: string; fromName: string; subject: string; bodyHtml: string; orgId: string },
 	verificationBlock: VerificationBlock
 ): Promise<{ success: boolean; error?: string }> {
+	// Re-check status to avoid sending to newly bounced/complained addresses
+	const currentStatus = await db.supporter.findUnique({
+		where: { id: recipient.id },
+		select: { emailStatus: true }
+	});
+	if (!currentStatus || currentStatus.emailStatus !== 'subscribed') {
+		return { success: false, error: `Skipped: status is ${currentStatus?.emailStatus ?? 'unknown'}` };
+	}
+
 	const { firstName, lastName } = splitName(recipient.name);
 	const verificationStatus = deriveVerificationStatus(
 		recipient.verified,
@@ -255,15 +264,16 @@ async function compileAndSendToRecipient(
  * compile per-recipient emails, send via SES with controlled parallelism.
  */
 export async function sendBlast(blastId: string): Promise<void> {
-	// 1. Load blast
-	const blast = await db.emailBlast.findUnique({ where: { id: blastId } });
-	if (!blast || blast.status !== 'draft') return;
-
-	// Mark as sending
-	await db.emailBlast.update({
-		where: { id: blastId },
+	// Atomic: only proceed if we're the one who transitions draft → sending
+	const { count } = await db.emailBlast.updateMany({
+		where: { id: blastId, status: 'draft' },
 		data: { status: 'sending' }
 	});
+	if (count === 0) return; // Already sending/sent or doesn't exist
+
+	// Load the blast (now guaranteed status='sending' by us)
+	const blast = await db.emailBlast.findUnique({ where: { id: blastId } });
+	if (!blast) return;
 
 	try {
 		const filter = blast.recipientFilter as RecipientFilter | null;

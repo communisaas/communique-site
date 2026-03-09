@@ -1,4 +1,5 @@
 import { db } from '$lib/core/db';
+import { Prisma } from '@prisma/client';
 
 export interface TierCount {
 	tier: number; // 0=New, 1=Active, 2=Established, 3=Veteran, 4=Pillar
@@ -67,24 +68,16 @@ function computeALD(messageStats: { total: number; unique: number }): number | n
 }
 
 /**
- * Compute temporal entropy H(t) from action timestamps.
- * Bin into hourly buckets, compute Shannon entropy.
+ * Compute temporal entropy H(t) from hourly bin counts.
+ * Shannon entropy over hour-bucketed action counts.
  * Higher = more spread over time. Lower = bursty.
  */
-function computeTemporalEntropy(timestamps: Date[]): number | null {
-	if (timestamps.length < 3) return null;
+function computeTemporalEntropy(binCounts: number[], totalActions: number): number | null {
+	if (totalActions < 3 || binCounts.length === 0) return null;
 
-	// Bin into hourly buckets
-	const bins = new Map<number, number>();
-	for (const ts of timestamps) {
-		const hour = Math.floor(ts.getTime() / 3600000);
-		bins.set(hour, (bins.get(hour) ?? 0) + 1);
-	}
-
-	const total = timestamps.length;
 	let entropy = 0;
-	for (const count of bins.values()) {
-		const p = count / total;
+	for (const count of binCounts) {
+		const p = count / totalActions;
 		if (p > 0) entropy -= p * Math.log2(p);
 	}
 
@@ -95,23 +88,29 @@ function computeTemporalEntropy(timestamps: Date[]): number | null {
  * Compute Burst Velocity: peak hourly rate / average hourly rate.
  * Low BV = organic, high BV = coordinated surge.
  */
-function computeBurstVelocity(timestamps: Date[]): number | null {
-	if (timestamps.length < 3) return null;
+function computeBurstVelocity(binCounts: number[]): number | null {
+	if (binCounts.length < 2) return null;
 
-	const bins = new Map<number, number>();
-	for (const ts of timestamps) {
-		const hour = Math.floor(ts.getTime() / 3600000);
-		bins.set(hour, (bins.get(hour) ?? 0) + 1);
-	}
-
-	if (bins.size < 2) return null;
-
-	const counts = [...bins.values()];
-	const peak = Math.max(...counts);
-	const avg = counts.reduce((s, c) => s + c, 0) / counts.length;
+	const peak = Math.max(...binCounts);
+	const avg = binCounts.reduce((s, c) => s + c, 0) / binCounts.length;
 
 	if (avg === 0) return null;
 	return Math.round((peak / avg) * 100) / 100;
+}
+
+/**
+ * Query hourly bin counts for temporal calculations using SQL-side aggregation.
+ * Returns only the count per hour bucket — never loads individual timestamps.
+ */
+async function queryHourlyBins(whereClause: Prisma.Sql): Promise<number[]> {
+	const rows = await db.$queryRaw<Array<{ cnt: bigint }>>`
+		SELECT COUNT(*) AS cnt
+		FROM "campaign_action"
+		WHERE ${whereClause}
+		GROUP BY date_trunc('hour', "sent_at")
+		ORDER BY date_trunc('hour', "sent_at")
+	`;
+	return rows.map((r) => Number(r.cnt));
 }
 
 /**
@@ -154,7 +153,9 @@ export async function computeVerificationPacket(campaignId: string, orgId: strin
 		return emptyPacket();
 	}
 
-	const [totalCount, verifiedCount, tierGroups, districtGroups, messageStats, timestamps] =
+	const campaignWhere = Prisma.sql`"campaign_id" = ${campaignId}`;
+
+	const [totalCount, verifiedCount, tierGroups, districtGroups, messageStats, hourlyBins] =
 		await Promise.all([
 			db.campaignAction.count({ where: { campaignId } }),
 			db.campaignAction.count({ where: { campaignId, verified: true } }),
@@ -176,11 +177,7 @@ export async function computeVerificationPacket(campaignId: string, orgId: strin
 					distinct: ['messageHash']
 				})
 			]).then(([total, unique]) => ({ total, unique: unique.length })),
-			db.campaignAction.findMany({
-				where: { campaignId },
-				select: { sentAt: true },
-				orderBy: { sentAt: 'asc' }
-			})
+			queryHourlyBins(campaignWhere)
 		]);
 
 	const tiers: TierCount[] = [0, 1, 2, 3, 4].map((tier) => ({
@@ -200,7 +197,6 @@ export async function computeVerificationPacket(campaignId: string, orgId: strin
 		_count: g._count?.id ?? 0
 	}));
 
-	const ts = timestamps.map((t) => t.sentAt);
 	const rawDistrictCount = districtCounts.filter((d) => d.districtHash).length;
 
 	return {
@@ -209,8 +205,8 @@ export async function computeVerificationPacket(campaignId: string, orgId: strin
 		verifiedPct: totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 0,
 		gds: computeGDS(districtCounts),
 		ald: computeALD(messageStats),
-		temporalEntropy: computeTemporalEntropy(ts),
-		burstVelocity: computeBurstVelocity(ts),
+		temporalEntropy: computeTemporalEntropy(hourlyBins, totalCount),
+		burstVelocity: computeBurstVelocity(hourlyBins),
 		cai: computeCAI(tiers),
 		tiers: safeTiers,
 		districtCount: rawDistrictCount < K_THRESHOLD ? 0 : rawDistrictCount,
@@ -224,7 +220,7 @@ function assemblePacket(
 	tierGroups: Array<{ engagementTier: number; _count: { id: number } | null }>,
 	districtGroups: Array<{ districtHash: string | null; _count: { id: number } | null }>,
 	messageStats: { total: number; unique: number },
-	timestamps: Date[]
+	hourlyBins: number[]
 ): VerificationPacket {
 	const tiers: TierCount[] = [0, 1, 2, 3, 4].map((tier) => ({
 		tier, label: TIER_LABELS[tier],
@@ -241,8 +237,8 @@ function assemblePacket(
 		total: totalCount, verified: verifiedCount,
 		verifiedPct: totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 0,
 		gds: computeGDS(districtCounts), ald: computeALD(messageStats),
-		temporalEntropy: computeTemporalEntropy(timestamps),
-		burstVelocity: computeBurstVelocity(timestamps),
+		temporalEntropy: computeTemporalEntropy(hourlyBins, totalCount),
+		burstVelocity: computeBurstVelocity(hourlyBins),
 		cai: computeCAI(tiers), tiers: safeTiers,
 		districtCount: rawDistrictCount < K_THRESHOLD ? 0 : rawDistrictCount,
 		lastUpdated: new Date().toISOString()
@@ -261,7 +257,9 @@ export async function computeOrgVerificationPacket(orgId: string): Promise<Verif
 	if (campaignIds.length === 0) return emptyPacket();
 
 	const where = { campaignId: { in: campaignIds } };
-	const [totalCount, verifiedCount, tierGroups, districtGroups, messageStats, timestamps] =
+	const orgWhere = Prisma.sql`"campaign_id" IN (${Prisma.join(campaignIds)})`;
+
+	const [totalCount, verifiedCount, tierGroups, districtGroups, messageStats, hourlyBins] =
 		await Promise.all([
 			db.campaignAction.count({ where }),
 			db.campaignAction.count({ where: { ...where, verified: true } }),
@@ -274,8 +272,8 @@ export async function computeOrgVerificationPacket(orgId: string): Promise<Verif
 					select: { messageHash: true }, distinct: ['messageHash']
 				})
 			]).then(([total, unique]) => ({ total, unique: unique.length })),
-			db.campaignAction.findMany({ where, select: { sentAt: true }, orderBy: { sentAt: 'asc' } })
+			queryHourlyBins(orgWhere)
 		]);
 
-	return assemblePacket(totalCount, verifiedCount, tierGroups, districtGroups, messageStats, timestamps.map((t) => t.sentAt));
+	return assemblePacket(totalCount, verifiedCount, tierGroups, districtGroups, messageStats, hourlyBins);
 }

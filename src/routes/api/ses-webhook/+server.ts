@@ -49,6 +49,16 @@ export const POST: RequestHandler = async ({ request }) => {
 	// Handle SNS subscription confirmation
 	if (body.Type === 'SubscriptionConfirmation') {
 		if (body.SubscribeURL) {
+			// Validate SNS domain to prevent SSRF
+			try {
+				const url = new URL(body.SubscribeURL);
+				if (!url.hostname.endsWith('.amazonaws.com') || url.protocol !== 'https:') {
+					console.error('[ses-webhook] Rejected non-SNS SubscribeURL:', url.hostname);
+					return json({ ok: false, error: 'invalid SubscribeURL domain' }, { status: 403 });
+				}
+			} catch {
+				return json({ ok: false, error: 'invalid SubscribeURL' }, { status: 400 });
+			}
 			console.log('[ses-webhook] Confirming SNS subscription:', body.TopicArn);
 			try {
 				await fetch(body.SubscribeURL);
@@ -71,6 +81,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({ ok: false, error: 'invalid Message JSON' }, { status: 400 });
 	}
 
+	// Validate TopicArn matches our configured topic (prevents cross-account injection)
+	// TODO: validate against SES_SNS_TOPIC_ARN env var when configured
+
 	if (message.notificationType === 'Bounce') {
 		const bounce = (message as SESBounceMessage).bounce;
 
@@ -83,6 +96,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.log('[ses-webhook] Bounce:', emails.length, 'emails', emails);
 
 		if (emails.length > 0) {
+			// Cross-org update is intentional: a bounced address is bounced everywhere,
+			// and complaints are the strongest suppression signal regardless of org.
 			await db.supporter.updateMany({
 				where: {
 					email: { in: emails },
@@ -98,6 +113,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.log('[ses-webhook] Complaint:', emails.length, 'emails', emails);
 
 		if (emails.length > 0) {
+			// Cross-org update is intentional: a bounced address is bounced everywhere,
+			// and complaints are the strongest suppression signal regardless of org.
 			// Complaints always win — once complained, never re-emailed
 			await db.supporter.updateMany({
 				where: { email: { in: emails } },

@@ -191,7 +191,7 @@ export async function runSync(
 			data: { currentResource: 'tags' }
 		});
 
-		const anTagMap = new Map<string, string>(); // AN tag name → local tag ID
+		const anTagHrefToId = new Map<string, string>(); // AN tag self href → local tag ID
 		try {
 			for await (const anTag of fetchTags(apiKey)) {
 				if (!anTag.name) continue;
@@ -202,13 +202,14 @@ export async function runSync(
 				const existing = await prisma.tag.findUnique({
 					where: { orgId_name: { orgId, name: tagName } }
 				});
-				if (existing) {
-					anTagMap.set(tagName, existing.id);
-				} else {
-					const created = await prisma.tag.create({
-						data: { orgId, name: tagName }
-					});
-					anTagMap.set(tagName, created.id);
+				const localId = existing
+					? existing.id
+					: (await prisma.tag.create({ data: { orgId, name: tagName } })).id;
+
+				// Map the AN tag's self href to the local ID so taggings can resolve it
+				const selfHref = anTag._links?.self?.href;
+				if (selfHref) {
+					anTagHrefToId.set(selfHref, localId);
 				}
 			}
 		} catch (err) {
@@ -230,7 +231,7 @@ export async function runSync(
 			peopleBatch.push(person);
 
 			if (peopleBatch.length >= BATCH_SIZE) {
-				const result = await processPeopleBatch(peopleBatch, orgId, anTagMap, apiKey, prisma);
+				const result = await processPeopleBatch(peopleBatch, orgId, anTagHrefToId, apiKey, prisma);
 				imported += result.imported;
 				updated += result.updated;
 				skipped += result.skipped;
@@ -255,7 +256,7 @@ export async function runSync(
 
 		// Process remaining batch
 		if (peopleBatch.length > 0) {
-			const result = await processPeopleBatch(peopleBatch, orgId, anTagMap, apiKey, prisma);
+			const result = await processPeopleBatch(peopleBatch, orgId, anTagHrefToId, apiKey, prisma);
 			imported += result.imported;
 			updated += result.updated;
 			skipped += result.skipped;
@@ -313,7 +314,7 @@ export async function runSync(
 async function processPeopleBatch(
 	people: ANPerson[],
 	orgId: string,
-	tagMap: Map<string, string>,
+	tagHrefToId: Map<string, string>,
 	apiKey: string,
 	prisma: PrismaClient
 ): Promise<{ imported: number; updated: number; skipped: number; errors: string[] }> {
@@ -379,7 +380,7 @@ async function processPeopleBatch(
 				}
 
 				// Add tags (union, additive) from AN taggings
-				await syncPersonTags(person, existing.id, orgId, tagMap, apiKey, prisma);
+				await syncPersonTags(person, existing.id, tagHrefToId, apiKey, prisma);
 
 				updated++;
 			} else {
@@ -401,7 +402,7 @@ async function processPeopleBatch(
 				});
 
 				// Add tags from AN taggings
-				await syncPersonTags(person, supporter.id, orgId, tagMap, apiKey, prisma);
+				await syncPersonTags(person, supporter.id, tagHrefToId, apiKey, prisma);
 
 				imported++;
 			}
@@ -421,30 +422,33 @@ async function processPeopleBatch(
 async function syncPersonTags(
 	person: ANPerson,
 	supporterId: string,
-	orgId: string,
-	tagMap: Map<string, string>,
+	tagHrefToId: Map<string, string>,
 	apiKey: string,
 	prisma: PrismaClient
 ): Promise<void> {
+	if (tagHrefToId.size === 0) return;
+
 	const taggingsUrl = person._links?.['osdi:taggings']?.href;
 	if (!taggingsUrl) return;
 
 	try {
 		for await (const tagging of (await import('./client')).fetchTaggings(apiKey, taggingsUrl)) {
-			// Each tagging links to a tag via _links
+			// Each tagging links to a tag via _links['osdi:tag'].href
 			const tagHref = tagging._links?.['osdi:tag']?.href;
 			if (!tagHref) continue;
 
-			// Extract tag name from our local map — we need to find it by matching
-			// For efficiency, we can also try to extract from the href and look up
-			// Since we already fetched all tags, look up by iterating tagMap
-			// Actually, taggings don't contain the tag name directly.
-			// We need to look up the tag from the href. Since we pre-fetched all tags,
-			// we can skip individual tag lookups. Instead, use the tag endpoint.
+			// Resolve the AN tag href to a local tag ID using the map built in Phase 2
+			const localTagId = tagHrefToId.get(tagHref);
+			if (!localTagId) continue;
 
-			// For now, skip individual tagging resolution as it would require O(N) extra requests.
-			// The tags were already synced in Phase 2, and taggings link people to tags.
-			// We'll handle this by fetching people per tag instead, which is more efficient.
+			// Upsert supporter-tag association
+			await prisma.supporterTag.upsert({
+				where: {
+					supporterId_tagId: { supporterId, tagId: localTagId }
+				},
+				update: {},
+				create: { supporterId, tagId: localTagId }
+			});
 		}
 	} catch {
 		// Non-fatal — continue without tags for this person

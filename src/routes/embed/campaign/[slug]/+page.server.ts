@@ -1,5 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
+import { getRateLimiter } from '$lib/core/security/rate-limiter';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -29,7 +30,7 @@ export const load: PageServerLoad = async ({ params }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, params }) => {
+	default: async ({ request, params, getClientAddress }) => {
 		// Look up the campaign (must be ACTIVE)
 		const campaign = await db.campaign.findFirst({
 			where: { id: params.slug, status: 'ACTIVE' },
@@ -38,6 +39,14 @@ export const actions: Actions = {
 
 		if (!campaign) {
 			return fail(404, { error: 'Campaign not found or inactive' });
+		}
+
+		// Rate limit: 10 submissions per minute per IP per campaign
+		const ip = getClientAddress();
+		const rlKey = `ratelimit:embed:${params.slug}:${ip}`;
+		const rl = await getRateLimiter().check(rlKey, { maxRequests: 10, windowMs: 60_000 });
+		if (!rl.allowed) {
+			return fail(429, { error: 'Too many submissions. Please try again later.' });
 		}
 
 		const formData = await request.formData();
@@ -99,6 +108,19 @@ export const actions: Actions = {
 			const hashBuffer = await crypto.subtle.digest('SHA-256', data);
 			const hashArray = Array.from(new Uint8Array(hashBuffer));
 			messageHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+		}
+
+		// Deduplicate: one action per supporter per campaign
+		const existingAction = await db.campaignAction.findFirst({
+			where: { campaignId: campaign.id, supporterId: supporter.id }
+		});
+
+		if (existingAction) {
+			// Already submitted — return success without creating duplicate
+			const actionCount = await db.campaignAction.count({
+				where: { campaignId: campaign.id, verified: true }
+			});
+			return { success: true, actionCount, alreadySubmitted: true };
 		}
 
 		// Create the campaign action

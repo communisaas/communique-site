@@ -92,6 +92,9 @@ interface RateLimitStore {
 
 /**
  * In-memory storage backend for development
+ *
+ * NOTE: In-memory backend is per-isolate on CF Workers. Rate limits reset when
+ * isolate is recycled. For global rate limiting across isolates, configure REDIS_URL.
  */
 class InMemoryStore implements RateLimitStore {
 	private store = new Map<string, number[]>();
