@@ -63,6 +63,8 @@ export interface SourceDiscoveryResult {
 	latencyMs: number;
 	/** Token usage from the source discovery LLM call */
 	tokenUsage?: TokenUsage;
+	/** Number of Google Search grounding queries executed */
+	groundingSearches: number;
 }
 
 export interface SourceDiscoveryOptions {
@@ -225,6 +227,8 @@ Return the sources you find through search.`;
 		onThought
 	);
 
+	const groundingSearches = result.groundingMetadata?.webSearchQueries?.length ?? 0;
+
 	const extraction = extractJsonFromGroundingResponse<DiscoveryResponse>(result.rawText || '{}');
 
 	if (!isSuccessfulExtraction(extraction)) {
@@ -255,6 +259,7 @@ Return the sources you find through search.`;
 			searchQueries,
 			latencyMs: Date.now() - startTime,
 			tokenUsage: result.tokenUsage,
+			groundingSearches,
 		};
 	}
 
@@ -337,6 +342,7 @@ Return the sources you find through search.`;
 		searchQueries,
 		latencyMs,
 		tokenUsage: result.tokenUsage,
+		groundingSearches,
 	};
 }
 

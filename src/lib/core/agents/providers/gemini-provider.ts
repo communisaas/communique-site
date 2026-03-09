@@ -19,7 +19,7 @@
 
 import type { GenerateContentConfig, Content, Part } from '@google/genai';
 import { getGeminiClient, generateWithThoughts, GEMINI_CONFIG, extractTokenUsage } from '../gemini-client';
-import { sumTokenUsage, type TokenUsage } from '../types';
+import { sumTokenUsage, emptyExternalCounts, sumExternalCounts, type TokenUsage, type ExternalApiCounts } from '../types';
 import {
 	ROLE_DISCOVERY_PROMPT,
 	buildRoleDiscoveryPrompt,
@@ -407,7 +407,7 @@ async function resolveIdentitiesFromSearch(
 	roles: DiscoveredRole[],
 	streaming?: StreamingCallbacks,
 	signal?: AbortSignal
-): Promise<{ identities: ResolvedIdentity[]; tokenUsage?: TokenUsage }> {
+): Promise<{ identities: ResolvedIdentity[]; tokenUsage?: TokenUsage; exaSearchCount: number }> {
 	const currentYear = new Date().getFullYear().toString();
 	const currentDate = new Date().toLocaleDateString('en-US', {
 		year: 'numeric', month: 'long', day: 'numeric'
@@ -447,7 +447,7 @@ async function resolveIdentitiesFromSearch(
 		return { identities: roles.map(r => ({
 			position: r.position, name: 'UNKNOWN', title: r.position,
 			organization: r.organization, search_evidence: 'Aborted before extraction'
-		})) };
+		})), exaSearchCount: queries.length };
 	}
 
 	// 3. Single extraction call — generateWithThoughts, NOT agentic
@@ -476,7 +476,7 @@ async function resolveIdentitiesFromSearch(
 		const identities = extraction.data.identities;
 		console.debug(`[gemini-provider] Phase 2a extracted ${identities.length} identities:`,
 			identities.map(id => `${id.name} (${id.title} at ${id.organization})`));
-		return { identities, tokenUsage: extractionResult.tokenUsage };
+		return { identities, tokenUsage: extractionResult.tokenUsage, exaSearchCount: queries.length };
 	}
 
 	// Fallback: UNKNOWN identities from roles
@@ -489,7 +489,8 @@ async function resolveIdentitiesFromSearch(
 			organization: r.organization,
 			search_evidence: 'Identity extraction failed — using position from Phase 1'
 		})),
-		tokenUsage: extractionResult.tokenUsage
+		tokenUsage: extractionResult.tokenUsage,
+		exaSearchCount: queries.length
 	};
 }
 
@@ -639,12 +640,14 @@ async function huntContactsFanOutSynthesize(
 	candidates: Candidate[];
 	fetchedPages: Map<string, ExaPageContent>;
 	tokenUsage?: TokenUsage;
+	externalCounts: ExternalApiCounts;
 }> {
 	const currentYear = new Date().getFullYear().toString();
 	const currentDate = new Date().toLocaleDateString('en-US', {
 		year: 'numeric', month: 'long', day: 'numeric'
 	});
 	const tokenUsages: (TokenUsage | undefined)[] = [];
+	const extCounts = emptyExternalCounts();
 	const fetchedPages = new Map<string, ExaPageContent>();
 
 	// Streaming thought helper
@@ -704,7 +707,8 @@ async function huntContactsFanOutSynthesize(
 		return {
 			candidates: cachedCandidates,
 			fetchedPages,
-			tokenUsage: undefined
+			tokenUsage: undefined,
+			externalCounts: extCounts
 		};
 	}
 
@@ -713,7 +717,7 @@ async function huntContactsFanOutSynthesize(
 	// ================================================================
 
 	if (signal?.aborted) {
-		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
+		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages), externalCounts: extCounts };
 	}
 
 	onThought?.(`Searching for contact information across ${uncached.length} positions...`);
@@ -756,6 +760,7 @@ async function huntContactsFanOutSynthesize(
 		};
 	});
 
+	extCounts.exaSearches += searchQueries.length;
 	const totalHits = identitySearchResults.reduce((sum, isr) => sum + isr.hits.length, 0);
 	console.debug(`[gemini-provider] Stage 1 complete: ${totalHits} total hits across ${uncached.length} searches`);
 	onThought?.(`Found ${totalHits} potential sources. Selecting the most promising pages to read...`);
@@ -765,7 +770,7 @@ async function huntContactsFanOutSynthesize(
 	// ================================================================
 
 	if (signal?.aborted) {
-		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
+		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages), externalCounts: extCounts };
 	}
 
 	const MAX_PAGES_TOTAL = Math.min(uncached.length * 3, 20);
@@ -847,13 +852,14 @@ async function huntContactsFanOutSynthesize(
 	// ================================================================
 
 	if (signal?.aborted) {
-		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
+		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages), externalCounts: extCounts };
 	}
 
 	onThought?.(`Reading ${selectedUrls.length} pages for contact details...`);
 	console.debug(`[gemini-provider] Stage 3: ${selectedUrls.length} parallel page reads`);
 
 	// Full page content for grounding; prunePageContent() trims for Gemini.
+	extCounts.firecrawlReads += selectedUrls.length;
 	const pageReadResults = await Promise.allSettled(
 		selectedUrls.map(url => readPage(url))
 	);
@@ -932,7 +938,8 @@ async function huntContactsFanOutSynthesize(
 		return {
 			candidates: [...cachedCandidates, ...noEmailCandidates],
 			fetchedPages,
-			tokenUsage: sumTokenUsage(...tokenUsages)
+			tokenUsage: sumTokenUsage(...tokenUsages),
+			externalCounts: extCounts
 		};
 	}
 
@@ -941,7 +948,7 @@ async function huntContactsFanOutSynthesize(
 	// ================================================================
 
 	if (signal?.aborted) {
-		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages) };
+		return { candidates: cachedCandidates, fetchedPages, tokenUsage: sumTokenUsage(...tokenUsages), externalCounts: extCounts };
 	}
 
 	const domainContext = generateDomainContext(detectOrgTypes(uncached.map(u => u.identity.organization)));
@@ -1010,7 +1017,8 @@ async function huntContactsFanOutSynthesize(
 	return {
 		candidates: allCandidates,
 		fetchedPages,
-		tokenUsage: sumTokenUsage(...tokenUsages)
+		tokenUsage: sumTokenUsage(...tokenUsages),
+		externalCounts: extCounts
 	};
 }
 
@@ -1206,6 +1214,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 		const startTime = Date.now();
 		const { subjectLine, coreMessage, topics, voiceSample, streaming, audienceGuidance } = context;
 		const tokenUsages: (TokenUsage | undefined)[] = [];
+		const pipelineExtCounts = emptyExternalCounts();
 
 		console.debug('[gemini-provider] Starting parallel resolution...');
 
@@ -1288,6 +1297,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 			const identityResult = await resolveIdentitiesFromSearch(roles, streaming, context.signal);
 			tokenUsages.push(identityResult.tokenUsage);
+			pipelineExtCounts.exaSearches += identityResult.exaSearchCount;
 			const identities = identityResult.identities;
 
 			console.debug(`[gemini-provider] Phase 2a complete: ${identities.length} identities`);
@@ -1389,6 +1399,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				}
 			);
 			tokenUsages.push(contactResult.tokenUsage);
+			const merged = sumExternalCounts(pipelineExtCounts, contactResult.externalCounts);
+			Object.assign(pipelineExtCounts, merged);
 
 			const data: PersonLookupResponse = {
 				decision_makers: contactResult.candidates,
@@ -1533,7 +1545,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					candidatesFound: data.decision_makers?.length || 0,
 					verified: deduped.length,
 					withVerifiedEmail: withVerifiedEmail.length,
-					emailsFilteredOut: withUngroundedEmail.length
+					emailsFilteredOut: withUngroundedEmail.length,
+					externalCounts: pipelineExtCounts
 				},
 				tokenUsage: sumTokenUsage(...tokenUsages)
 			};

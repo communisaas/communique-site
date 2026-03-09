@@ -25,7 +25,7 @@ import {
 	logLLMOperation
 } from '$lib/server/llm-cost-protection';
 import { moderatePromptOnly } from '$lib/core/server/moderation';
-import { traceRequest } from '$lib/server/agent-trace';
+import { traceRequest, traceEvent } from '$lib/server/agent-trace';
 
 interface RequestBody {
 	subject_line: string;
@@ -231,6 +231,27 @@ export const POST: RequestHandler = async (event) => {
 				droppedEmailless: (result.metadata?.droppedEmailless as number) || 0,
 				latencyMs: Date.now() - startTime
 			});
+
+			// Trace resolution outcome — the data SSE streams vanish after delivery
+			traceEvent(traceId, 'decision-makers', 'result', {
+				decisionMakers: result.decisionMakers.map(dm => ({
+					name: dm.name,
+					title: dm.title,
+					organization: dm.organization,
+					email: dm.email || null,
+					emailGrounded: dm.emailGrounded ?? null,
+					emailSource: dm.emailSource || null,
+					emailVerified: dm.emailVerified ?? null,
+					discovered: dm.discovered || false,
+					source: dm.source || null,
+					reasoning: dm.reasoning?.slice(0, 300) || null,
+					contactNotes: dm.contactNotes || null,
+				})),
+				droppedEmailless: (result.metadata?.droppedEmailless as number) || 0,
+				provider: result.provider,
+				latencyMs: result.latencyMs,
+				metadata: result.metadata || null,
+			}, { userId, success: true, durationMs: Date.now() - startTime });
 		} catch (error) {
 			console.error('[stream-decision-makers] Resolution failed:', error);
 			emitter.error(error instanceof Error ? error.message : 'Resolution failed');

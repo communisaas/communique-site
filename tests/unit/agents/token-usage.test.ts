@@ -136,30 +136,33 @@ describe('computeCostUsd', () => {
 	});
 
 	it('computes cost from known token counts', () => {
-		// 1M input tokens at $0.075 + 1M output tokens at $0.30 = $0.375
-		const cost = computeCostUsd({
+		// 1M input at $0.50 + 1M output at $3.00 = $3.50
+		const breakdown = computeCostUsd({
 			promptTokens: 1_000_000,
-			candidatesTokens: 1_000_000
+			candidatesTokens: 1_000_000,
+			totalTokens: 2_000_000
 		});
-		expect(cost).toBeCloseTo(0.375, 6);
+		expect(breakdown!.totalCostUsd).toBeCloseTo(3.50, 6);
 	});
 
 	it('computes cost for small token counts', () => {
-		// 2000 input at $0.075/1M = $0.00015
-		// 1000 output at $0.30/1M = $0.0003
-		// Total = $0.00045
-		const cost = computeCostUsd({
+		// 2000 input at $0.50/1M = $0.001
+		// 1000 output at $3.00/1M = $0.003
+		// Total = $0.004
+		const breakdown = computeCostUsd({
 			promptTokens: 2000,
-			candidatesTokens: 1000
+			candidatesTokens: 1000,
+			totalTokens: 3000
 		});
-		expect(cost).toBeCloseTo(0.00045, 8);
+		expect(breakdown!.totalCostUsd).toBeCloseTo(0.004, 8);
 	});
 
 	it('returns 0 for zero tokens', () => {
-		const cost = computeCostUsd({
+		const breakdown = computeCostUsd({
 			promptTokens: 0,
-			candidatesTokens: 0
+			candidatesTokens: 0,
+			totalTokens: 0
 		});
-		expect(cost).toBe(0);
+		expect(breakdown!.totalCostUsd).toBe(0);
 	});
 });

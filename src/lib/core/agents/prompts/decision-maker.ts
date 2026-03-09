@@ -204,6 +204,19 @@ Rules:
 - If no name can be determined, set name to "UNKNOWN" and explain what you found
 - search_evidence should cite the specific result title and date
 
+## Evidence Standard
+
+You need AFFIRMATIVE EVIDENCE that a specific person CURRENTLY holds each position. This means a result that names a person in the role — an appointment announcement, a current staff page, recent news identifying them by title, an official bio.
+
+These are NOT evidence of a current holder:
+- Job postings or vacancy announcements for the role — these indicate the position is open or being filled, not that someone holds it
+- Historical references to someone who previously held the role
+- Third-party databases that aggregate public records — these often contain stale information about people who no longer hold the position
+
+If the only results for a position are job postings or recruitment listings, set name to "UNKNOWN" with search_evidence noting the position appears vacant. A vacant position is a real finding — report it honestly.
+
+Recency matters: a person confirmed in a role in 2024 may not hold it in {CURRENT_DATE}. Prefer the most recent affirmative evidence.
+
 Today's date: {CURRENT_DATE}
 
 Return a JSON object (no markdown code fences):
@@ -274,6 +287,9 @@ Rules:
 3. General office emails ARE acceptable (mayor@city.gov, press@org.com) — these are valid published contact paths.
 4. Tool responses include contact_hints (pre-extracted emails/phones) and url_hint (page type). Use these however you see fit.
 5. If no email found, capture alternatives (phone, form URL, social profile) in contact_notes.
+6. An email is only a valid contact path when found on a page with INSTITUTIONAL PROVENANCE — published by the person's organization or in authoritative reporting. The page must connect the email to the person or their office. Third-party sites that aggregate or infer contact information do not establish this connection — the email may be outdated, pattern-generated, or belong to someone who no longer holds the role.
+7. If evidence suggests the position is vacant (job postings, recruitment listings, no current holder named), report this in contact_notes rather than returning a recruiter's email.
+8. If no email with institutional provenance can be found, return NO_EMAIL_FOUND. A missing email is more useful than one that reaches the wrong person or bounces.
 {DOMAIN_HINT}
 Today's date: {CURRENT_DATE}
 
@@ -350,6 +366,8 @@ Select up to {MAX_PAGES_TOTAL} pages total across ALL identities. Allocate budge
 5. Prefer recent results over older ones when available.
 6. If no promising pages exist for an identity, include it in the output with an empty selected_pages array.
 7. Stay within the {MAX_PAGES_TOTAL} page budget. Count each unique URL only once toward the budget, even if attributed to multiple identities.
+8. Prioritize pages with INSTITUTIONAL PROVENANCE — pages published by the person's organization (staff directories, about/leadership pages, contact pages, press releases) or authoritative reporting (news, government records). These are the only pages that can establish a valid contact path: they connect an email to a person because the institution itself published both.
+9. Third-party sites that aggregate or infer contact information are low-value even if they appear to contain emails — they cannot establish that an email is current or routes to this person in their role. Job postings are similarly low-value: they contain recruiter contacts, not the decision-maker's. If the only results for an identity are job postings or aggregator sites, return an empty selected_pages array — the position may be vacant or the contact may not be publicly available.
 
 Today's date: {CURRENT_DATE}
 
@@ -437,6 +455,18 @@ export const CONTACT_SYNTHESIS_PROMPT = `You are a contact extraction system. Gi
 7. Verify identity recency: note evidence from the page content that the person currently holds the stated position in recency_check.
 8. Prefer the most specific email available: personal > department/division > org-wide > press/info. But ANY level is better than NO_EMAIL_FOUND.
 9. For discovered contacts (not in the search hints): set discovered to true and provide issue-specific reasoning explaining why this person is relevant. When you find a directory, board, committee, or leadership page, extract members whose roles give them authority or influence over the issue.
+
+## Evidence Chain
+
+A valid contact path requires three links. If any link is broken, the email is not usable:
+
+1. **Current occupancy**: The page content contains evidence this person CURRENTLY holds this role. Not formerly held, not nominated for, not being recruited for — currently holds. If a page describes the position as vacant or shows a job posting for the role, that person-position link is broken.
+
+2. **Institutional provenance**: The email appears on a page published by the organization itself (staff directory, official website, press release) or in authoritative reporting about the organization (news coverage, government filings). An email that appears only on a third-party site that aggregates or infers contact information has no institutional backing — it may be outdated, pattern-generated, or belong to someone who no longer holds the role.
+
+3. **Person-email co-occurrence**: The email and the person's identity (name or specific role title) are connected on the same page in a way that establishes the email as a contact path for that person or their office. An email that merely exists on the same website — but on an unrelated page — is not a valid connection.
+
+When a link is broken, return NO_EMAIL_FOUND for that person. A missing email is more useful than one that reaches the wrong person, bounces, or routes to a recruiter instead of a decision-maker.
 {DOMAIN_CONTEXT}
 Today's date: {CURRENT_DATE}
 

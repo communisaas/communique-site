@@ -13,10 +13,11 @@
  * - Authenticated: Reasonable quotas for genuine use
  * - Verified: Higher limits for proven constituents
  *
- * Cost Profile (Gemini 3 Flash + Grounding):
- * - Subject generation: 1-2 calls (~$0.003)
- * - Decision-maker resolution: 4-6 calls (~$0.015)
- * - Message generation: 2+ calls (~$0.006)
+ * Cost Profile (Gemini 3 Flash Preview + external APIs):
+ * - Subject generation: 1-2 Gemini calls (~$0.01-0.02)
+ * - Decision-maker resolution: 4-6 Gemini + Exa + Firecrawl (~$0.08-0.15)
+ * - Message generation: 2 Gemini + grounding (~$0.03-0.05)
+ * Canonical pricing in API_PRICING below. Update there when prices change.
  */
 
 import { rateLimiter } from './rate-limiter';
@@ -324,28 +325,67 @@ export function addRateLimitHeaders(headers: Headers, check: RateLimitCheck): vo
 // Cost Tracking
 // ============================================
 
-import type { TokenUsage } from '$lib/core/agents/types';
+import type { TokenUsage, ExternalApiCounts, CostBreakdown } from '$lib/core/agents/types';
+import { emptyExternalCounts } from '$lib/core/agents/types';
+import { traceCompletion } from '$lib/server/agent-trace';
 
 /**
- * Compute cost from actual token counts.
+ * Canonical pricing — single source of truth.
+ * Update this table when provider prices change; all cost calculations follow.
+ */
+const API_PRICING = {
+	gemini: {
+		inputPer1M: 0.50,
+		outputPer1M: 3.00,
+		thinkingPer1M: 3.00    // thinking tokens billed at output rate
+	},
+	exa: { searchPer1K: 7.00 },
+	firecrawl: { readPerCredit: 0.0053 },  // Hobby plan: ~$0.0053/scrape
+	grounding: { searchPer1K: 14.00, freeMonthly: 5000 },
+	groq: { moderationPerCall: 0 }         // free tier
+} as const;
+
+/**
+ * Compute full cost breakdown from token counts + external API counts.
  *
- * Gemini 3 Flash pricing:
- * - Input: $0.075 per 1M tokens
- * - Output: $0.30 per 1M tokens
+ * Gemini 3 Flash Preview pricing:
+ * - Input:    $0.50 per 1M tokens
+ * - Output:   $3.00 per 1M tokens (candidatesTokens, EXCLUSIVE of thinking)
+ * - Thinking: $3.00 per 1M tokens (thoughtsTokens, separate counter)
  *
- * Returns undefined if token counts are not available.
+ * Returns undefined if no data is available.
  */
 export function computeCostUsd(
-	tokenUsage?: { promptTokens: number; candidatesTokens: number }
-): number | undefined {
-	if (!tokenUsage) return undefined;
-	const inputCost = (tokenUsage.promptTokens / 1_000_000) * 0.075;
-	const outputCost = (tokenUsage.candidatesTokens / 1_000_000) * 0.3;
-	return inputCost + outputCost;
+	tokenUsage?: TokenUsage,
+	externalCounts?: ExternalApiCounts
+): CostBreakdown | undefined {
+	if (!tokenUsage && !externalCounts) return undefined;
+
+	const ext = externalCounts ?? emptyExternalCounts();
+
+	const geminiInput = tokenUsage
+		? (tokenUsage.promptTokens / 1_000_000) * API_PRICING.gemini.inputPer1M
+		: 0;
+	const geminiOutput = tokenUsage
+		? (tokenUsage.candidatesTokens / 1_000_000) * API_PRICING.gemini.outputPer1M
+		: 0;
+	const geminiThinking = tokenUsage?.thoughtsTokens
+		? (tokenUsage.thoughtsTokens / 1_000_000) * API_PRICING.gemini.thinkingPer1M
+		: 0;
+	const exaSearch = (ext.exaSearches / 1000) * API_PRICING.exa.searchPer1K;
+	const firecrawlRead = ext.firecrawlReads * API_PRICING.firecrawl.readPerCredit;
+	const groundingSearch = (ext.groundingSearches / 1000) * API_PRICING.grounding.searchPer1K;
+
+	return {
+		tokenUsage,
+		externalCounts: ext,
+		totalCostUsd: geminiInput + geminiOutput + geminiThinking + exaSearch + firecrawlRead + groundingSearch,
+		components: { geminiInput, geminiOutput, geminiThinking, exaSearch, firecrawlRead, groundingSearch }
+	};
 }
 
 /**
- * Log LLM operation with real token usage and persist via trace system.
+ * Log LLM operation with real token usage and persist cost via trace system.
  */
 export function logLLMOperation(
 	operation: string,
@@ -354,10 +394,11 @@ export function logLLMOperation(
 		durationMs: number;
 		success: boolean;
 		tokenUsage?: TokenUsage;
+		externalCounts?: ExternalApiCounts;
 	},
 	traceId?: string
 ): void {
-	const costUsd = computeCostUsd(details.tokenUsage);
+	const breakdown = computeCostUsd(details.tokenUsage, details.externalCounts);
 
 	console.log(`[LLM-Cost] ${operation}`, {
 		user: context.identifier,
@@ -367,8 +408,28 @@ export function logLLMOperation(
 		...(details.tokenUsage && {
 			inputTokens: details.tokenUsage.promptTokens,
 			outputTokens: details.tokenUsage.candidatesTokens,
+			thinkingTokens: details.tokenUsage.thoughtsTokens ?? 0,
 			totalTokens: details.tokenUsage.totalTokens
 		}),
-		costUsd: costUsd !== undefined ? `$${costUsd.toFixed(6)}` : 'no token data'
+		...(details.externalCounts && {
+			exaSearches: details.externalCounts.exaSearches,
+			firecrawlReads: details.externalCounts.firecrawlReads,
+			groundingSearches: details.externalCounts.groundingSearches
+		}),
+		costUsd: breakdown ? `$${breakdown.totalCostUsd.toFixed(6)}` : 'no token data'
 	});
+
+	// Persist to agent_trace (fire-and-forget)
+	if (traceId && breakdown) {
+		traceCompletion(traceId, operation, { components: breakdown.components, externalCounts: breakdown.externalCounts }, {
+			userId: context.userId,
+			durationMs: details.durationMs,
+			success: details.success,
+			costUsd: breakdown.totalCostUsd,
+			inputTokens: details.tokenUsage?.promptTokens,
+			outputTokens: details.tokenUsage?.candidatesTokens,
+			thoughtsTokens: details.tokenUsage?.thoughtsTokens,
+			totalTokens: details.tokenUsage?.totalTokens
+		});
+	}
 }

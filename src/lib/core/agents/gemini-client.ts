@@ -669,6 +669,7 @@ export async function interact(
 	return {
 		id,
 		outputs,
-		model: GEMINI_CONFIG.model
+		model: GEMINI_CONFIG.model,
+		tokenUsage: extractTokenUsage(response)
 	};
 }

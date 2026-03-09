@@ -155,6 +155,7 @@ export const POST: RequestHandler = async (event) => {
 	(async () => {
 		let streamSuccess = false;
 		let resultTokenUsage: import('$lib/core/agents/types').TokenUsage | undefined;
+		let resultExternalCounts: import('$lib/core/agents/types').ExternalApiCounts | undefined;
 
 		try {
 			const result = await generateMessage({
@@ -176,9 +177,10 @@ export const POST: RequestHandler = async (event) => {
 				}
 			});
 
-			// Strip tokenUsage from SSE payload (internal concern)
-			const { tokenUsage, ...clientResult } = result;
+			// Strip tokenUsage and externalCounts from SSE payload (internal concern)
+			const { tokenUsage, externalCounts, ...clientResult } = result;
 			resultTokenUsage = tokenUsage;
+			resultExternalCounts = externalCounts;
 
 			// Send final result
 			emitter.complete(clientResult);
@@ -200,7 +202,8 @@ export const POST: RequestHandler = async (event) => {
 				{
 					durationMs: Date.now() - startTime,
 					success: streamSuccess,
-					tokenUsage: resultTokenUsage
+					tokenUsage: resultTokenUsage,
+					externalCounts: resultExternalCounts
 				},
 				traceId
 			);

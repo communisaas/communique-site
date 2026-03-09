@@ -31,8 +31,15 @@ vi.mock('$lib/server/rate-limiter', () => ({
 	InMemoryRateLimiter: vi.fn()
 }));
 
-// Mock $lib/core/agents/types to avoid SvelteKit resolution issues
-vi.mock('$lib/core/agents/types', () => ({}));
+// Mock $lib/core/agents/types — passthrough functions used by computeCostUsd
+vi.mock('$lib/core/agents/types', () => ({
+	emptyExternalCounts: () => ({ exaSearches: 0, firecrawlReads: 0, groundingSearches: 0, groqModerations: 0 })
+}));
+
+// Mock agent-trace to avoid DB calls
+vi.mock('$lib/server/agent-trace', () => ({
+	traceCompletion: vi.fn()
+}));
 
 // ============================================================================
 // Import SUT (System Under Test) AFTER mocks
@@ -764,44 +771,58 @@ describe('llm-cost-protection', () => {
 
 		it('computes cost for typical subject-line generation', () => {
 			// ~1000 prompt tokens, ~100 output tokens
-			const cost = computeCostUsd({ promptTokens: 1000, candidatesTokens: 100 });
+			const breakdown = computeCostUsd({ promptTokens: 1000, candidatesTokens: 100, totalTokens: 1100 });
 
-			// Input: (1000 / 1M) * 0.075 = 0.000075
-			// Output: (100 / 1M) * 0.30 = 0.00003
-			// Total: 0.000105
-			expect(cost).toBeCloseTo(0.000105, 6);
+			// Input: (1000 / 1M) * 0.50 = 0.0005
+			// Output: (100 / 1M) * 3.00 = 0.0003
+			// Total: 0.0008
+			expect(breakdown!.totalCostUsd).toBeCloseTo(0.0008, 6);
 		});
 
 		it('computes cost for larger decision-maker resolution', () => {
 			// ~5000 prompt tokens, ~2000 output tokens
-			const cost = computeCostUsd({ promptTokens: 5000, candidatesTokens: 2000 });
+			const breakdown = computeCostUsd({ promptTokens: 5000, candidatesTokens: 2000, totalTokens: 7000 });
 
-			// Input: (5000 / 1M) * 0.075 = 0.000375
-			// Output: (2000 / 1M) * 0.30 = 0.0006
-			// Total: 0.000975
-			expect(cost).toBeCloseTo(0.000975, 6);
+			// Input: (5000 / 1M) * 0.50 = 0.0025
+			// Output: (2000 / 1M) * 3.00 = 0.006
+			// Total: 0.0085
+			expect(breakdown!.totalCostUsd).toBeCloseTo(0.0085, 6);
 		});
 
 		it('returns zero for zero tokens', () => {
-			const cost = computeCostUsd({ promptTokens: 0, candidatesTokens: 0 });
-			expect(cost).toBe(0);
+			const breakdown = computeCostUsd({ promptTokens: 0, candidatesTokens: 0, totalTokens: 0 });
+			expect(breakdown!.totalCostUsd).toBe(0);
 		});
 
 		it('handles very large token counts', () => {
-			const cost = computeCostUsd({ promptTokens: 1_000_000, candidatesTokens: 1_000_000 });
+			const breakdown = computeCostUsd({ promptTokens: 1_000_000, candidatesTokens: 1_000_000, totalTokens: 2_000_000 });
 
-			// Input: 1.0 * 0.075 = 0.075
-			// Output: 1.0 * 0.30 = 0.30
-			// Total: 0.375
-			expect(cost).toBeCloseTo(0.375, 4);
+			// Input: 1.0 * 0.50 = 0.50
+			// Output: 1.0 * 3.00 = 3.00
+			// Total: 3.50
+			expect(breakdown!.totalCostUsd).toBeCloseTo(3.50, 4);
 		});
 
-		it('output tokens are 4x more expensive than input tokens', () => {
-			const inputOnly = computeCostUsd({ promptTokens: 1000, candidatesTokens: 0 })!;
-			const outputOnly = computeCostUsd({ promptTokens: 0, candidatesTokens: 1000 })!;
+		it('output tokens are 6x more expensive than input tokens', () => {
+			const inputOnly = computeCostUsd({ promptTokens: 1000, candidatesTokens: 0, totalTokens: 1000 })!;
+			const outputOnly = computeCostUsd({ promptTokens: 0, candidatesTokens: 1000, totalTokens: 1000 })!;
 
-			// Output price (0.30) / Input price (0.075) = 4x
-			expect(outputOnly / inputOnly).toBeCloseTo(4, 1);
+			// Output price (3.00) / Input price (0.50) = 6x
+			expect(outputOnly.totalCostUsd / inputOnly.totalCostUsd).toBeCloseTo(6, 1);
+		});
+
+		it('includes thinking tokens in cost', () => {
+			const withThinking = computeCostUsd({
+				promptTokens: 1000, candidatesTokens: 500,
+				thoughtsTokens: 2000, totalTokens: 3500
+			});
+
+			// Input: (1000 / 1M) * 0.50 = 0.0005
+			// Output: (500 / 1M) * 3.00 = 0.0015
+			// Thinking: (2000 / 1M) * 3.00 = 0.006
+			// Total: 0.008
+			expect(withThinking!.totalCostUsd).toBeCloseTo(0.008, 6);
+			expect(withThinking!.components.geminiThinking).toBeCloseTo(0.006, 6);
 		});
 	});
 

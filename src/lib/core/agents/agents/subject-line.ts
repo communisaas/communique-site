@@ -17,8 +17,10 @@ import { SUBJECT_LINE_PROMPT } from '../prompts/subject-line';
 import type {
 	SubjectLineResponseWithClarification,
 	ClarificationAnswers,
-	ConversationContext
+	ConversationContext,
+	TokenUsage
 } from '../types';
+import { sumTokenUsage } from '../types';
 
 // ============================================================================
 // Zod Schema for Runtime Validation
@@ -80,6 +82,7 @@ export interface GenerateSubjectOptions {
 export interface GenerateSubjectResult {
 	data: SubjectLineResponseWithClarification;
 	interactionId: string;
+	tokenUsage?: TokenUsage;
 }
 
 /**
@@ -218,6 +221,8 @@ ${options.description}`;
 		previousInteractionId: options.previousInteractionId
 	});
 
+	let pipelineTokenUsage: TokenUsage | undefined = response.tokenUsage;
+
 	// Parse and validate the response
 	const parsed = JSON.parse(response.outputs);
 	const validationResult = SubjectLineResponseSchema.safeParse(parsed);
@@ -276,6 +281,7 @@ Generate the output with subject_line, core_message, topics, url_slug, and voice
 
 		data = retryValidation.data as SubjectLineResponseWithClarification;
 		currentInteractionId = retryResponse.id;
+		pipelineTokenUsage = sumTokenUsage(pipelineTokenUsage, retryResponse.tokenUsage);
 		data.needs_clarification = false; // Force no clarification on retry
 
 		console.debug('[subject-line] Retry result:', {
@@ -291,6 +297,7 @@ Generate the output with subject_line, core_message, topics, url_slug, and voice
 
 	return {
 		data,
-		interactionId: currentInteractionId
+		interactionId: currentInteractionId,
+		tokenUsage: pipelineTokenUsage
 	};
 }

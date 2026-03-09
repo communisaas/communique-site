@@ -8,10 +8,13 @@
 		X,
 		Link,
 		Check,
-		AlertCircle
+		AlertCircle,
+		ChevronRight
 	} from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
+	import { parseRecipientConfig } from '$lib/types/template';
 	import { supportsWebShare, copyToClipboard as clipboardCopy } from '$lib/utils/browserUtils';
+	import { generateShareMessage } from '$lib/utils/share-messages';
 
 	let {
 		template,
@@ -19,7 +22,8 @@
 		error = null,
 		onclose,
 		onretry,
-		ondashboard
+		ondashboard,
+		onsend
 	}: {
 		template: Template;
 		publishing?: boolean;
@@ -27,7 +31,29 @@
 		onclose?: () => void;
 		onretry?: () => void;
 		ondashboard?: () => void;
+		onsend?: () => void;
 	} = $props();
+
+	// Extract decision-maker names from recipient_config for the send preview
+	const recipientNames = $derived((() => {
+		const rc = parseRecipientConfig(template.recipient_config);
+		const dms = rc.decisionMakers ?? [];
+		return dms.map(dm => dm.name).filter(Boolean);
+	})());
+
+	// Build the contextual send preview label
+	const sendPreviewText = $derived((() => {
+		if (recipientNames.length === 0) {
+			// Fall back to a congressional framing if cwc, otherwise generic
+			return template.deliveryMethod === 'cwc'
+				? 'Send to your representatives'
+				: 'Send your message';
+		}
+		const [first, second, ...rest] = recipientNames;
+		if (recipientNames.length === 1) return `Send to ${first}`;
+		if (rest.length === 0) return `Send to ${first} and ${second}`;
+		return `Send to ${first}, ${second}, and ${rest.length} other${rest.length === 1 ? '' : 's'}`;
+	})());
 
 	let copied = $state(false);
 	let shareUrl = $derived(
@@ -35,10 +61,19 @@
 	);
 
 	let shareMessage = $derived(
-		(() => {
-			const category = template.category?.toLowerCase() || 'advocacy';
-			return `Coordinating on ${category}.\n\n"${template.title}"\n\nTakes 2 minutes: ${shareUrl}`;
-		})()
+		generateShareMessage(
+			{
+				template: {
+					title: template.title,
+					category: template.category || 'advocacy',
+					description: template.description || template.preview
+				},
+				contactedNames: [],
+				totalRecipients: 0,
+				shareUrl
+			},
+			'medium'
+		)
 	);
 
 	// State derivations
@@ -199,74 +234,118 @@
 		</div>
 
 		{#if showShareActions}
-			<!-- Primary action: device-adaptive -->
-			<div class="px-6 pb-2 pt-1">
-				{#if useNativeShare}
-					<!-- Mobile: native share sheet -->
+			{#if isPublished}
+				<!-- Beat 2: Decision-maker preview — fade+slide in at 800ms -->
+				<div class="beat-2 px-6 pb-3 pt-1">
+					<p class="text-center text-sm font-medium text-slate-700">
+						{sendPreviewText}
+					</p>
+				</div>
+
+				<!-- Beat 3: Primary action — "Send your message" -->
+				<div class="beat-3 px-6 pb-2">
 					<button
-						onclick={handleShare}
+						onclick={() => onsend?.()}
 						class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
 					>
-						<Share2 class="h-5 w-5" />
-						<span>Share</span>
+						<span>Send your message</span>
+						<ChevronRight class="h-5 w-5" />
 					</button>
-				{:else}
-					<!-- Desktop: copy link -->
-					<button
-						onclick={handleCopy}
-						class="flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 font-semibold shadow-sm transition-all active:scale-95 {copied
-							? 'bg-emerald-600 text-white'
-							: 'bg-participation-primary-600 text-white hover:bg-participation-primary-700'}"
-					>
+				</div>
+
+				<!-- Beat 4: Secondary share/copy — visually subordinate -->
+				<div class="beat-4 px-6 pb-3">
+					{#if useNativeShare}
+						<div class="flex justify-center">
+							<button
+								onclick={handleShare}
+								class="flex items-center gap-1.5 text-sm text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-slate-700 hover:decoration-slate-500"
+							>
+								<Share2 class="h-3.5 w-3.5" />
+								<span>Share link</span>
+							</button>
+						</div>
+					{:else}
+						<!-- URL bar — clickable copy surface -->
+						<button onclick={handleCopy} class="url-copy-bar" class:url-copy-bar--copied={copied}>
+							{#if copied}
+								<Check class="h-3.5 w-3.5 flex-shrink-0 text-emerald-600" />
+								<span class="flex-1 text-left text-sm font-medium text-emerald-600">
+									Link copied
+								</span>
+							{:else}
+								<Link class="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+								<span class="flex-1 truncate text-left font-mono text-xs text-slate-500">
+									{shareUrl}
+								</span>
+								<span class="flex-shrink-0 text-xs font-semibold text-participation-primary-600">
+									Copy link
+								</span>
+							{/if}
+						</button>
+					{/if}
+				</div>
+
+				<!-- Warm closing note -->
+				<div class="beat-4 px-6 pb-6 pt-0">
+					<p class="text-center text-sm leading-relaxed text-slate-500">
+						Share the link. Others send the same message.
+					</p>
+				</div>
+			{:else}
+				<!-- Publishing state: device-adaptive share surface (unchanged) -->
+				<div class="px-6 pb-2 pt-1">
+					{#if useNativeShare}
+						<button
+							onclick={handleShare}
+							class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
+						>
+							<Share2 class="h-5 w-5" />
+							<span>Share</span>
+						</button>
+					{:else}
+						<button
+							onclick={handleCopy}
+							class="flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 font-semibold shadow-sm transition-all active:scale-95 {copied
+								? 'bg-emerald-600 text-white'
+								: 'bg-participation-primary-600 text-white hover:bg-participation-primary-700'}"
+						>
+							{#if copied}
+								<Check class="h-5 w-5" />
+								<span>Copied!</span>
+							{:else}
+								<Link class="h-5 w-5" />
+								<span>Copy link</span>
+							{/if}
+						</button>
+					{/if}
+				</div>
+
+				<div class="px-6 pb-4">
+					<button onclick={handleCopy} class="url-copy-bar" class:url-copy-bar--copied={copied}>
 						{#if copied}
-							<Check class="h-5 w-5" />
-							<span>Copied!</span>
+							<Check class="h-3.5 w-3.5 flex-shrink-0 text-emerald-600" />
+							<span class="flex-1 text-left text-sm font-medium text-emerald-600">
+								Link copied
+							</span>
 						{:else}
-							<Link class="h-5 w-5" />
-							<span>Copy link</span>
+							<Link class="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+							<span class="flex-1 truncate text-left font-mono text-xs text-slate-500">
+								{shareUrl}
+							</span>
+							<span class="flex-shrink-0 text-xs font-semibold text-participation-primary-600">
+								Copy
+							</span>
 						{/if}
 					</button>
-				{/if}
-			</div>
+				</div>
 
-			<!-- URL display — clickable copy surface -->
-			<div class="px-6 pb-4">
-				<button onclick={handleCopy} class="url-copy-bar" class:url-copy-bar--copied={copied}>
-					{#if copied}
-						<Check class="h-3.5 w-3.5 flex-shrink-0 text-emerald-600" />
-						<span class="flex-1 text-left text-sm font-medium text-emerald-600">
-							Link copied
-						</span>
-					{:else}
-						<Link class="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
-						<span class="flex-1 truncate text-left font-mono text-xs text-slate-500">
-							{shareUrl}
-						</span>
-						<span
-							class="flex-shrink-0 text-xs font-semibold text-participation-primary-600"
-						>
-							Copy
-						</span>
-					{/if}
-				</button>
-			</div>
-
-			<!-- Warm closing note -->
-			<div class="px-6 pb-3 pt-1">
-				<p class="text-center text-sm leading-relaxed text-slate-500">
-					Share the link. Others send the same message.
-				</p>
-			</div>
-
-			<!-- View template -->
-			<div class="flex justify-center px-6 pb-6">
-				<button
-					onclick={handleViewTemplate}
-					class="text-sm text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-slate-700 hover:decoration-slate-500"
-				>
-					View template
-				</button>
-			</div>
+				<div class="px-6 pb-6 pt-1">
+					<p class="text-center text-sm leading-relaxed text-slate-500">
+						Share the link. Others send the same message.
+					</p>
+				</div>
+			{/if}
 		{:else if isDraft}
 			<!-- Draft: Explain what's happening -->
 			<div class="px-6 pb-4">
@@ -377,5 +456,38 @@
 	.url-copy-bar--copied {
 		border-color: oklch(0.78 0.12 155);
 		background: oklch(0.96 0.03 155);
+	}
+
+	@keyframes beat-enter {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.beat-2 {
+		animation: beat-enter 300ms ease-out 800ms both;
+	}
+
+	.beat-3 {
+		animation: beat-enter 250ms ease-out 1200ms both;
+	}
+
+	.beat-4 {
+		animation: beat-enter 200ms ease-out 1350ms both;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.beat-2,
+		.beat-3,
+		.beat-4 {
+			animation: none;
+			opacity: 1;
+			transform: none;
+		}
 	}
 </style>

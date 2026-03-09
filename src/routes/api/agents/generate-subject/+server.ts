@@ -94,7 +94,8 @@ export const POST: RequestHandler = async (event) => {
 
 		logLLMOperation('subject-line', userContext, {
 			durationMs,
-			success: true
+			success: true,
+			tokenUsage: result.tokenUsage
 		}, traceId);
 
 		return new Response(JSON.stringify(result.data), { headers });

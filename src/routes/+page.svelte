@@ -691,6 +691,13 @@
 		publishing={templatePublishing}
 		error={templatePublishError}
 		onretry={handlePublishRetry}
+		onsend={() => {
+			const slug = savedTemplate?.slug;
+			if (slug) {
+				showTemplateSuccess = false;
+				goto(`/s/${slug}`, { state: { fromPublish: true } });
+			}
+		}}
 		onclose={() => {
 			showTemplateSuccess = false;
 			savedTemplate = null;

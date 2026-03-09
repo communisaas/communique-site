@@ -18,8 +18,8 @@ import { generateWithThoughts } from '../gemini-client';
 import { MESSAGE_WRITER_PROMPT } from '../prompts/message-writer';
 import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
 import { discoverSources, formatSourcesForPrompt, type VerifiedSource } from './source-discovery';
-import type { MessageResponse, DecisionMaker, TokenUsage } from '../types';
-import { sumTokenUsage } from '../types';
+import type { MessageResponse, DecisionMaker, TokenUsage, ExternalApiCounts } from '../types';
+import { sumTokenUsage, emptyExternalCounts } from '../types';
 
 // ============================================================================
 // Zod Schema for Runtime Validation
@@ -81,6 +81,8 @@ export type PipelinePhase = 'sources' | 'message' | 'complete';
 export interface GenerateMessageResult extends MessageResponse {
 	/** Accumulated token usage across source discovery + message generation */
 	tokenUsage?: TokenUsage;
+	/** External API call counts for cost tracking */
+	externalCounts?: ExternalApiCounts;
 }
 
 export interface GenerateMessageOptions {
@@ -129,6 +131,7 @@ export async function generateMessage(options: GenerateMessageOptions): Promise<
 	let verifiedSources: VerifiedSource[] = options.verifiedSources || [];
 	let actualSearchQueries: string[] = []; // The REAL Google searches we ran
 	let sourceTokenUsage: TokenUsage | undefined;
+	const externalCounts = emptyExternalCounts();
 
 	if (verifiedSources.length === 0) {
 		onPhase?.('sources', 'Discovering and verifying sources...');
@@ -153,6 +156,7 @@ export async function generateMessage(options: GenerateMessageOptions): Promise<
 		verifiedSources = sourceResult.verified;
 		actualSearchQueries = sourceResult.searchQueries; // Capture REAL search queries
 		sourceTokenUsage = sourceResult.tokenUsage;
+		externalCounts.groundingSearches = sourceResult.groundingSearches;
 
 		console.debug('[message-writer] Phase 1 complete:', {
 			discovered: sourceResult.discovered.length,
@@ -315,6 +319,7 @@ The stranger who shares this link should think "I need to send that too." Every 
 		// Use ACTUAL search queries from source discovery, not model's fabricated "research steps"
 		research_log: actualSearchQueries.length > 0 ? actualSearchQueries : [],
 		tokenUsage: sumTokenUsage(sourceTokenUsage, messageTokenUsage),
+		externalCounts,
 	};
 
 	console.debug('[message-writer] Two-phase generation complete', {

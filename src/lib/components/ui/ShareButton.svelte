@@ -8,12 +8,15 @@
 	let {
 		url,
 		_title = 'Share',
+		message = '',
 		variant = 'primary',
 		size = 'default',
 		classNames = ''
 	}: {
 		url: string;
 		_title?: string;
+		/** Optional share text for navigator.share(). When provided, mobile triggers native share sheet instead of clipboard copy. */
+		message?: string;
 		variant?: 'primary' | 'secondary' | 'magical';
 		size?: 'sm' | 'default' | 'lg';
 		classNames?: string;
@@ -82,7 +85,19 @@
 	});
 
 	async function handleShare() {
-		// Copy to clipboard
+		// Native share sheet when message is provided and platform supports it
+		if (message && typeof navigator !== 'undefined' && navigator.share) {
+			const shareData = { title: _title, text: message, url };
+			try {
+				if (navigator.canShare?.(shareData)) {
+					await navigator.share(shareData);
+					return;
+				}
+			} catch (err) {
+				if (err instanceof Error && err.name === 'AbortError') return;
+				// Fall through to clipboard copy
+			}
+		}
 		await copyToClipboard();
 	}
 
