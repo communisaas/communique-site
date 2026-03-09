@@ -1,0 +1,122 @@
+import { error, fail } from '@sveltejs/kit';
+import { db } from '$lib/core/db';
+import type { PageServerLoad, Actions } from './$types';
+
+export const load: PageServerLoad = async ({ params }) => {
+	const campaign = await db.campaign.findFirst({
+		where: { id: params.slug, status: 'ACTIVE' },
+		include: {
+			org: { select: { name: true, slug: true } },
+			_count: { select: { actions: { where: { verified: true } } } }
+		}
+	});
+
+	if (!campaign) {
+		throw error(404, 'Campaign not found or inactive');
+	}
+
+	return {
+		campaign: {
+			id: campaign.id,
+			title: campaign.title,
+			body: campaign.body,
+			type: campaign.type,
+			orgName: campaign.org.name,
+			orgSlug: campaign.org.slug,
+			verifiedActions: campaign._count.actions
+		}
+	};
+};
+
+export const actions: Actions = {
+	default: async ({ request, params }) => {
+		// Look up the campaign (must be ACTIVE)
+		const campaign = await db.campaign.findFirst({
+			where: { id: params.slug, status: 'ACTIVE' },
+			select: { id: true, orgId: true, type: true, _count: { select: { actions: { where: { verified: true } } } } }
+		});
+
+		if (!campaign) {
+			return fail(404, { error: 'Campaign not found or inactive' });
+		}
+
+		const formData = await request.formData();
+		const email = formData.get('email')?.toString().trim().toLowerCase();
+		const name = formData.get('name')?.toString().trim();
+		const postalCode = formData.get('postalCode')?.toString().trim() || null;
+		const phone = formData.get('phone')?.toString().trim() || null;
+		const message = formData.get('message')?.toString().trim() || null;
+
+		if (!email) {
+			return fail(400, { error: 'Email is required' });
+		}
+
+		if (!name) {
+			return fail(400, { error: 'Name is required' });
+		}
+
+		// Basic email validation
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+			return fail(400, { error: 'Invalid email address' });
+		}
+
+		// Find or create supporter (dedup on orgId + email)
+		let supporter = await db.supporter.findUnique({
+			where: { orgId_email: { orgId: campaign.orgId, email } }
+		});
+
+		if (!supporter) {
+			supporter = await db.supporter.create({
+				data: {
+					orgId: campaign.orgId,
+					email,
+					name,
+					postalCode,
+					phone,
+					source: 'widget'
+				}
+			});
+		} else {
+			// Update name/postal/phone if provided and not already set
+			const updates: Record<string, string> = {};
+			if (name && !supporter.name) updates.name = name;
+			if (postalCode && !supporter.postalCode) updates.postalCode = postalCode;
+			if (phone && !supporter.phone) updates.phone = phone;
+
+			if (Object.keys(updates).length > 0) {
+				await db.supporter.update({
+					where: { id: supporter.id },
+					data: updates
+				});
+			}
+		}
+
+		// Compute messageHash if a message was provided (for ALD uniqueness)
+		let messageHash: string | null = null;
+		if (message) {
+			const encoder = new TextEncoder();
+			const data = encoder.encode(message);
+			const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+			const hashArray = Array.from(new Uint8Array(hashBuffer));
+			messageHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+		}
+
+		// Create the campaign action
+		await db.campaignAction.create({
+			data: {
+				campaignId: campaign.id,
+				supporterId: supporter.id,
+				verified: false,
+				engagementTier: 0,
+				messageHash
+			}
+		});
+
+		// Get updated verified action count
+		const actionCount = await db.campaignAction.count({
+			where: { campaignId: campaign.id, verified: true }
+		});
+
+		return { success: true, actionCount };
+	}
+};
