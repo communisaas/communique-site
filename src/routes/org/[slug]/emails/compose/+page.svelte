@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onDestroy } from 'svelte';
 	import { enhance } from '$app/forms';
+	import { browser } from '$app/environment';
 	import type { PageData, ActionData } from './$types';
+	import type { Editor as EditorType } from '@tiptap/core';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -16,6 +18,134 @@
 	let countLoading = $state(false);
 	let sending = $state(false);
 	let showPreview = $state(false);
+
+	// Draft auto-save
+	interface ComposeDraft {
+		subject: string;
+		bodyHtml: string;
+		fromName: string;
+		campaignId: string;
+		verifiedFilter: string;
+		selectedTagIds: string[];
+		savedAt: number;
+	}
+
+	let draftRestored = $state(false);
+	let saveTimer: ReturnType<typeof setTimeout> | undefined;
+	const draftKey = $derived(`draft:compose:${data.org.id}`);
+
+	// Restore draft on mount (runs once)
+	let hasRestoredDraft = false;
+	$effect(() => {
+		if (!browser || hasRestoredDraft) return;
+		hasRestoredDraft = true;
+		try {
+			const saved = localStorage.getItem(draftKey);
+			if (!saved) return;
+			const draft: ComposeDraft = JSON.parse(saved);
+			// Discard drafts older than 7 days
+			if (Date.now() - draft.savedAt > 7 * 24 * 60 * 60 * 1000) {
+				localStorage.removeItem(draftKey);
+				return;
+			}
+			// Only restore if current form is empty
+			if (subject || bodyHtml) return;
+			subject = draft.subject || '';
+			bodyHtml = draft.bodyHtml || '';
+			fromName = draft.fromName || data.org.name;
+			campaignId = draft.campaignId || '';
+			verifiedFilter = draft.verifiedFilter || 'any';
+			selectedTagIds = draft.selectedTagIds || [];
+			draftRestored = true;
+		} catch { /* corrupted data, ignore */ }
+	});
+
+	// Auto-save on change (debounced 2s)
+	$effect(() => {
+		// Track all saveable fields
+		const _s = subject; const _b = bodyHtml; const _f = fromName;
+		const _c = campaignId; const _v = verifiedFilter; const _t = selectedTagIds;
+
+		if (!browser) return;
+		if (saveTimer) clearTimeout(saveTimer);
+		saveTimer = setTimeout(() => {
+			// Don't save empty drafts
+			if (!subject && !bodyHtml) return;
+			const draft: ComposeDraft = { subject, bodyHtml, fromName, campaignId, verifiedFilter, selectedTagIds, savedAt: Date.now() };
+			try { localStorage.setItem(draftKey, JSON.stringify(draft)); } catch { /* quota exceeded, ignore */ }
+		}, 2000);
+	});
+
+	// Warn before unload if form has content
+	$effect(() => {
+		if (!browser) return;
+		function handleBeforeUnload(e: BeforeUnloadEvent) {
+			if (subject.trim() || bodyHtml.trim()) {
+				e.preventDefault();
+			}
+		}
+		window.addEventListener('beforeunload', handleBeforeUnload);
+		return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+	});
+
+	// Tiptap editor
+	let editorElement: HTMLElement | undefined = $state();
+	let editor: EditorType | undefined = $state();
+
+	$effect(() => {
+		if (!browser || !editorElement) return;
+
+		let editorInstance: EditorType;
+
+		(async () => {
+			const { Editor } = await import('@tiptap/core');
+			const { default: StarterKit } = await import('@tiptap/starter-kit');
+			const { default: Link } = await import('@tiptap/extension-link');
+			const { default: TextAlign } = await import('@tiptap/extension-text-align');
+			const { default: Underline } = await import('@tiptap/extension-underline');
+
+			// Guard: element may have been removed during async import
+			if (!editorElement) return;
+
+			editorInstance = new Editor({
+				element: editorElement,
+				extensions: [
+					StarterKit,
+					Link.configure({
+						openOnClick: false,
+						HTMLAttributes: { class: 'text-teal-400 underline' }
+					}),
+					TextAlign.configure({
+						types: ['heading', 'paragraph']
+					}),
+					Underline
+				],
+				content: bodyHtml || '',
+				editorProps: {
+					attributes: {
+						class: 'prose prose-invert prose-sm max-w-none px-4 py-3 min-h-[18rem] focus:outline-none text-zinc-100 leading-relaxed'
+					}
+				},
+				onUpdate: ({ editor: e }) => {
+					bodyHtml = e.getHTML();
+				}
+			});
+
+			editor = editorInstance;
+		})();
+
+		return () => {
+			if (editorInstance) {
+				editorInstance.destroy();
+			}
+		};
+	});
+
+	onDestroy(() => {
+		if (editor) {
+			editor.destroy();
+		}
+	});
 
 	const previewHtml = $derived(
 		form && 'previewHtml' in form ? (form as { previewHtml: string }).previewHtml : null
@@ -63,19 +193,44 @@
 	];
 
 	function insertMergeField(field: string) {
-		const textarea = document.getElementById('bodyHtml') as HTMLTextAreaElement;
-		if (!textarea) {
-			bodyHtml += field;
-			return;
+		if (editor) {
+			editor.chain().focus().insertContent(field).run();
 		}
-		const start = textarea.selectionStart;
-		const end = textarea.selectionEnd;
-		bodyHtml = bodyHtml.slice(0, start) + field + bodyHtml.slice(end);
-		tick().then(() => {
-			textarea.selectionStart = textarea.selectionEnd = start + field.length;
-			textarea.focus();
-		});
 	}
+
+	// Toolbar helpers
+	function setLink() {
+		if (!editor) return;
+		const previousUrl = editor.getAttributes('link').href || '';
+		const url = prompt('Enter URL:', previousUrl);
+		if (url === null) return; // cancelled
+		if (url === '') {
+			editor.chain().focus().extendMarkRange('link').unsetLink().run();
+		} else {
+			editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+		}
+	}
+
+	// Force reactivity for toolbar active states
+	let editorRevision = $state(0);
+	$effect(() => {
+		if (!editor) return;
+		const handler = () => { editorRevision++; };
+		editor.on('transaction', handler);
+		return () => { editor?.off('transaction', handler); };
+	});
+
+	function isActive(name: string | Record<string, unknown>, attrs?: Record<string, unknown>): boolean {
+		// read editorRevision to trigger reactivity
+		void editorRevision;
+		if (typeof name === 'object') {
+			return editor?.isActive(name) ?? false;
+		}
+		return editor?.isActive(name, attrs) ?? false;
+	}
+
+	// Tiptap outputs <p></p> for empty content, so check for real content
+	const hasBody = $derived(bodyHtml.replace(/<[^>]*>/g, '').trim().length > 0);
 </script>
 
 <div class="space-y-6">
@@ -99,6 +254,25 @@
 	{#if errorMsg}
 		<div class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
 			{errorMsg}
+		</div>
+	{/if}
+
+	{#if draftRestored}
+		<div class="flex items-center justify-between rounded-lg border border-teal-500/20 bg-teal-500/5 px-4 py-2.5">
+			<p class="text-sm text-teal-400">Draft restored from your last session</p>
+			<button
+				type="button"
+				class="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+				onclick={() => {
+					subject = ''; bodyHtml = ''; fromName = data.org.name;
+					campaignId = ''; verifiedFilter = 'any'; selectedTagIds = [];
+					if (editor) editor.commands.clearContent();
+					draftRestored = false;
+					if (browser) { try { localStorage.removeItem(draftKey); } catch {} }
+				}}
+			>
+				Discard
+			</button>
 		</div>
 	{/if}
 
@@ -198,7 +372,7 @@
 			<!-- Body editor -->
 			<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
 				<div class="flex items-center justify-between">
-					<label for="bodyHtml" class="block text-sm font-medium text-zinc-300">Email Body</label>
+					<label class="block text-sm font-medium text-zinc-300">Email Body</label>
 					<div class="flex items-center gap-1">
 						{#each mergeFieldHints as hint}
 							<button
@@ -212,13 +386,93 @@
 						{/each}
 					</div>
 				</div>
-				<textarea
-					id="bodyHtml"
-					bind:value={bodyHtml}
-					rows={12}
-					class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-600 font-mono leading-relaxed focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 resize-y"
-					placeholder={'Write your email content here. Use merge fields like {{firstName}} for personalization. HTML is supported.'}
-				></textarea>
+
+				<!-- Tiptap editor -->
+				<div class="tiptap-wrapper rounded-lg border border-zinc-700 bg-zinc-900 overflow-hidden focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500 transition-colors">
+					<!-- Toolbar -->
+					{#if editor}
+						<div class="flex flex-wrap items-center gap-0.5 border-b border-zinc-700 bg-zinc-800 px-2 py-1.5">
+							<!-- Bold -->
+							<button type="button" title="Bold" class="rounded p-1.5 transition-colors {isActive('bold') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleBold().run()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z" /></svg>
+							</button>
+							<!-- Italic -->
+							<button type="button" title="Italic" class="rounded p-1.5 transition-colors {isActive('italic') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleItalic().run()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 4h4m-2 0l-4 16m-2 0h4m4-16l-4 16" /></svg>
+							</button>
+							<!-- Underline -->
+							<button type="button" title="Underline" class="rounded p-1.5 transition-colors {isActive('underline') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleUnderline().run()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 4v7a5 5 0 0010 0V4M5 20h14" /></svg>
+							</button>
+							<!-- Strikethrough -->
+							<button type="button" title="Strikethrough" class="rounded p-1.5 transition-colors {isActive('strike') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleStrike().run()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 4c-.5-1.5-2.2-2-4-2-2.2 0-4 1.1-4 3 0 .8.3 1.5.8 2M4 12h16M8 20c.5 1.5 2.2 2 4 2 2.2 0 4-1.1 4-3 0-.8-.3-1.5-.8-2" /></svg>
+							</button>
+
+							<span class="w-px h-5 bg-zinc-700 mx-1"></span>
+
+							<!-- H1 -->
+							<button type="button" title="Heading 1" class="rounded px-1.5 py-1 text-xs font-bold transition-colors {isActive('heading', { level: 1 }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}>
+								H1
+							</button>
+							<!-- H2 -->
+							<button type="button" title="Heading 2" class="rounded px-1.5 py-1 text-xs font-bold transition-colors {isActive('heading', { level: 2 }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>
+								H2
+							</button>
+							<!-- H3 -->
+							<button type="button" title="Heading 3" class="rounded px-1.5 py-1 text-xs font-bold transition-colors {isActive('heading', { level: 3 }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>
+								H3
+							</button>
+
+							<span class="w-px h-5 bg-zinc-700 mx-1"></span>
+
+							<!-- Bullet list -->
+							<button type="button" title="Bullet list" class="rounded p-1.5 transition-colors {isActive('bulletList') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleBulletList().run()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
+							</button>
+							<!-- Ordered list -->
+							<button type="button" title="Ordered list" class="rounded p-1.5 transition-colors {isActive('orderedList') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleOrderedList().run()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6h11M10 12h11M10 18h11" /><text x="2" y="8" fill="currentColor" font-size="7" font-weight="bold" stroke="none">1</text><text x="2" y="14" fill="currentColor" font-size="7" font-weight="bold" stroke="none">2</text><text x="2" y="20" fill="currentColor" font-size="7" font-weight="bold" stroke="none">3</text></svg>
+							</button>
+
+							<span class="w-px h-5 bg-zinc-700 mx-1"></span>
+
+							<!-- Link -->
+							<button type="button" title="Link" class="rounded p-1.5 transition-colors {isActive('link') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => setLink()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+							</button>
+							<!-- Blockquote -->
+							<button type="button" title="Blockquote" class="rounded p-1.5 transition-colors {isActive('blockquote') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleBlockquote().run()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h4a1 1 0 011 1v4a1 1 0 01-1 1H3a1 1 0 01-1-1v-4a1 1 0 011-1zm0 0V7a4 4 0 014-4m7 7h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4a1 1 0 011-1zm0 0V7a4 4 0 014-4" /></svg>
+							</button>
+
+							<span class="w-px h-5 bg-zinc-700 mx-1"></span>
+
+							<!-- Align left -->
+							<button type="button" title="Align left" class="rounded p-1.5 transition-colors {isActive({ textAlign: 'left' }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().setTextAlign('left').run()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M3 12h12M3 18h18" /></svg>
+							</button>
+							<!-- Align center -->
+							<button type="button" title="Align center" class="rounded p-1.5 transition-colors {isActive({ textAlign: 'center' }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().setTextAlign('center').run()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M6 12h12M3 18h18" /></svg>
+							</button>
+							<!-- Align right -->
+							<button type="button" title="Align right" class="rounded p-1.5 transition-colors {isActive({ textAlign: 'right' }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().setTextAlign('right').run()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M6 12h18M3 18h18" /></svg>
+							</button>
+
+							<span class="w-px h-5 bg-zinc-700 mx-1"></span>
+
+							<!-- Clear formatting -->
+							<button type="button" title="Clear formatting" class="rounded p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30 transition-colors" onclick={() => editor?.chain().focus().clearNodes().unsetAllMarks().run()}>
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+							</button>
+						</div>
+					{/if}
+
+					<!-- Editor content area -->
+					<div bind:this={editorElement} class="tiptap-editor"></div>
+				</div>
 
 				<!-- Verification context notice -->
 				<div class="flex items-start gap-3 rounded-lg border border-zinc-700/50 bg-zinc-800/30 px-4 py-3">
@@ -332,7 +586,7 @@
 					<button
 						type="submit"
 						class="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm font-medium text-zinc-200 hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
-						disabled={!bodyHtml.trim()}
+						disabled={!hasBody}
 					>
 						Preview Email
 					</button>
@@ -348,6 +602,8 @@
 							return;
 						}
 						sending = true;
+						// Clear draft before redirect so it doesn't persist after send
+						if (browser) { try { localStorage.removeItem(draftKey); } catch {} }
 						return async ({ update }) => {
 							sending = false;
 							await update({ reset: false });
@@ -366,7 +622,7 @@
 					<button
 						type="submit"
 						class="w-full rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-						disabled={!subject.trim() || !bodyHtml.trim() || recipientCount === 0 || sending}
+						disabled={!subject.trim() || !hasBody || recipientCount === 0 || sending}
 					>
 						{#if sending}
 							Sending...
@@ -379,3 +635,114 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	/* Tiptap ProseMirror editor styles */
+	:global(.tiptap-editor .ProseMirror) {
+		min-height: 18rem;
+		padding: 0.75rem 1rem;
+		font-size: 0.875rem;
+		line-height: 1.625;
+		color: #f4f4f5; /* zinc-100 */
+		outline: none;
+	}
+
+	:global(.tiptap-editor .ProseMirror p) {
+		margin-bottom: 0.5rem;
+	}
+
+	:global(.tiptap-editor .ProseMirror h1) {
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: #fafafa; /* zinc-50 */
+		margin-bottom: 0.75rem;
+		margin-top: 1rem;
+		line-height: 1.25;
+	}
+
+	:global(.tiptap-editor .ProseMirror h2) {
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: #fafafa;
+		margin-bottom: 0.5rem;
+		margin-top: 0.75rem;
+		line-height: 1.3;
+	}
+
+	:global(.tiptap-editor .ProseMirror h3) {
+		font-size: 1.1rem;
+		font-weight: 600;
+		color: #e4e4e7; /* zinc-200 */
+		margin-bottom: 0.5rem;
+		margin-top: 0.75rem;
+		line-height: 1.4;
+	}
+
+	:global(.tiptap-editor .ProseMirror ul) {
+		list-style-type: disc;
+		padding-left: 1.5rem;
+		margin-bottom: 0.5rem;
+	}
+
+	:global(.tiptap-editor .ProseMirror ol) {
+		list-style-type: decimal;
+		padding-left: 1.5rem;
+		margin-bottom: 0.5rem;
+	}
+
+	:global(.tiptap-editor .ProseMirror li) {
+		margin-bottom: 0.25rem;
+	}
+
+	:global(.tiptap-editor .ProseMirror blockquote) {
+		border-left: 3px solid #3f3f46; /* zinc-700 */
+		padding-left: 1rem;
+		color: #a1a1aa; /* zinc-400 */
+		margin: 0.75rem 0;
+		font-style: italic;
+	}
+
+	:global(.tiptap-editor .ProseMirror a) {
+		color: #2dd4bf; /* teal-400 */
+		text-decoration: underline;
+	}
+
+	:global(.tiptap-editor .ProseMirror code) {
+		background: #27272a; /* zinc-800 */
+		border-radius: 0.25rem;
+		padding: 0.15rem 0.35rem;
+		font-size: 0.8em;
+		font-family: ui-monospace, monospace;
+		color: #d4d4d8; /* zinc-300 */
+	}
+
+	:global(.tiptap-editor .ProseMirror pre) {
+		background: #18181b; /* zinc-900 */
+		border: 1px solid #3f3f46;
+		border-radius: 0.5rem;
+		padding: 0.75rem 1rem;
+		margin: 0.75rem 0;
+		overflow-x: auto;
+	}
+
+	:global(.tiptap-editor .ProseMirror pre code) {
+		background: none;
+		padding: 0;
+		border-radius: 0;
+	}
+
+	:global(.tiptap-editor .ProseMirror hr) {
+		border: none;
+		border-top: 1px solid #3f3f46;
+		margin: 1rem 0;
+	}
+
+	/* Placeholder */
+	:global(.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before) {
+		content: 'Write your email content here...';
+		float: left;
+		color: #52525b; /* zinc-600 */
+		pointer-events: none;
+		height: 0;
+	}
+</style>
