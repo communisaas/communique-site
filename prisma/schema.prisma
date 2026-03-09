@@ -1302,6 +1302,8 @@ model Organization {
   supporters        Supporter[]
   campaigns         Campaign[]
   tags              Tag[]
+  blasts            EmailBlast[]
+  anSyncs           AnSync[]
 
   @@map("organization")
 }
@@ -1390,8 +1392,9 @@ model Supporter {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  org  Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  tags SupporterTag[]
+  org     Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  tags    SupporterTag[]
+  actions CampaignAction[]
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -1448,11 +1451,141 @@ model Campaign {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org        Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  actions    CampaignAction[]
+  deliveries CampaignDelivery[]
 
   @@index([orgId])
   @@index([status])
   @@map("campaign")
+}
+
+model CampaignAction {
+  id         String  @id @default(cuid())
+  campaignId String  @map("campaign_id")
+  supporterId String? @map("supporter_id")
+
+  verified       Boolean @default(false)
+  engagementTier Int     @default(0) @map("engagement_tier") // 0=New, 1=Active, 2=Established, 3=Veteran, 4=Pillar
+  districtHash   String? @map("district_hash") // SHA-256(district) for geographic aggregate
+  messageHash    String? @map("message_hash")  // SHA-256(message) for ALD uniqueness
+
+  sentAt    DateTime @default(now()) @map("sent_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  campaign  Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  supporter Supporter? @relation(fields: [supporterId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId])
+  @@index([campaignId, verified])
+  @@index([campaignId, districtHash])
+  @@map("campaign_action")
+}
+
+model CampaignDelivery {
+  id             String   @id @default(cuid())
+  campaignId     String   @map("campaign_id")
+  targetEmail    String   @map("target_email")
+  targetName     String?  @map("target_name")
+  targetTitle    String?  @map("target_title")
+  targetDistrict String?  @map("target_district")
+
+  status   String    @default("queued") // queued | sent | delivered | bounced | opened
+  sentAt   DateTime? @map("sent_at")
+
+  // Frozen verification packet at send time
+  packetSnapshot Json @map("packet_snapshot")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([campaignId, status])
+  @@map("campaign_delivery")
+}
+
+model EmailBlast {
+  id            String   @id @default(cuid())
+  orgId         String   @map("org_id")
+  campaignId    String?  @map("campaign_id") // optional campaign linkage
+
+  subject       String
+  bodyHtml      String   @map("body_html")
+  fromName      String   @map("from_name")
+  fromEmail     String   @map("from_email")
+
+  status        String   @default("draft") // draft | sending | sent | failed
+
+  // Recipient targeting
+  recipientFilter Json?  @map("recipient_filter") // tag/verification/tier filters
+  totalRecipients Int    @default(0) @map("total_recipients")
+
+  // Verification context (computed at send time, injected into every email)
+  verificationContext Json? @map("verification_context")
+
+  // Aggregate metrics
+  totalSent       Int    @default(0) @map("total_sent")
+  totalBounced    Int    @default(0) @map("total_bounced")
+
+  sentAt        DateTime? @map("sent_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  org           Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  batches       EmailBatch[]
+
+  @@index([orgId])
+  @@index([status])
+  @@map("email_blast")
+}
+
+model EmailBatch {
+  id            String   @id @default(cuid())
+  blastId       String   @map("blast_id")
+  batchIndex    Int      @map("batch_index")
+
+  status        String   @default("pending") // pending | sending | sent | failed
+  sentCount     Int      @default(0) @map("sent_count")
+  failedCount   Int      @default(0) @map("failed_count")
+  error         String?
+  sentAt        DateTime? @map("sent_at")
+
+  blast         EmailBlast @relation(fields: [blastId], references: [id], onDelete: Cascade)
+
+  @@index([blastId])
+  @@map("email_batch")
+}
+
+model AnSync {
+  id    String @id @default(cuid())
+  orgId String @map("org_id")
+
+  apiKey    String @map("api_key") // encrypted AN OSDI-API-Token
+  status    String @default("idle") // idle | running | completed | failed
+  syncType  String @map("sync_type") // 'full' | 'incremental'
+
+  // Progress tracking
+  totalResources     Int @default(0) @map("total_resources")
+  processedResources Int @default(0) @map("processed_resources")
+  currentResource    String? @map("current_resource") // 'people' | 'petitions' | 'events' etc.
+
+  // Results
+  imported   Int @default(0)
+  updated    Int @default(0)
+  skipped    Int @default(0)
+  errors     Json? // array of error strings
+
+  lastSyncAt  DateTime? @map("last_sync_at")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([status])
+  @@map("an_sync")
 }
 
 model Subscription {

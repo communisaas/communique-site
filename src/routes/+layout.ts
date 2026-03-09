@@ -23,12 +23,8 @@ if (browser) {
 	});
 }
 
-// Pass server data to client if needed
-/**
- * @param {{ data: Record<string, unknown> }} params
- */
-export async function load({ data }) {
-	return {
-		...data
-	};
-}
+import type { LayoutLoad } from './$types';
+
+export const load: LayoutLoad = async ({ data }) => {
+	return { ...data };
+};

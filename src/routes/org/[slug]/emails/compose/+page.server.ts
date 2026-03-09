@@ -166,8 +166,8 @@ export const actions: Actions = {
 		const blastPromise = sendBlast(blast.id).catch((err) => {
 			console.error(`[email-engine] Blast ${blast.id} async error:`, err);
 		});
-		if (platform?.ctx?.waitUntil) {
-			platform.ctx.waitUntil(blastPromise);
+		if (platform?.context?.waitUntil) {
+			platform.context.waitUntil(blastPromise);
 		}
 
 		throw redirect(302, `/org/${params.slug}/emails`);

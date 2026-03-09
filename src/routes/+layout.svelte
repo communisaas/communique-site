@@ -30,6 +30,8 @@
 	const isProfilePage = $derived($page.url?.pathname?.startsWith('/profile') ?? false);
 	const isHomepage = $derived($page.url?.pathname === '/');
 	const isTemplatePage = $derived($page.route?.id === '/s/[slug]');
+	const isOrgPage = $derived($page.url?.pathname?.startsWith('/org/') ?? false);
+	const isEmbedPage = $derived($page.url?.pathname?.startsWith('/embed/') ?? false);
 
 	let {
 		children,
@@ -72,44 +74,52 @@
 	}
 </script>
 
-<!-- HeaderSystem handles context-aware header rendering -->
-<!-- HeaderTemplate is a structural subset of Template — handler only reads common fields at runtime -->
-<HeaderSystem user={data.user as HeaderUser | null} template={data.template as HeaderTemplate | null} onTemplateUse={handleTemplateUse} />
-
-{#if (data.user as Record<string, unknown> | null)?.id === 'user-seed-1'}
-	<div class="pointer-events-none fixed top-0 left-0 right-0 z-[9999] bg-amber-500/10 text-amber-200 text-center text-xs py-1 font-mono tracking-wide">
-		DEMO MODE — commons.email
-	</div>
-{/if}
-
-{#if isProfilePage}
-	<!-- Profile pages: No header padding, full control -->
-	<div class="relative min-h-screen">
-		<ErrorBoundary fallback="detailed" showRetry={true}>
-			{@render children()}
-		</ErrorBoundary>
-		<Footer />
-	</div>
-{:else if isHomepage}
-	<!-- Homepage: No wrapper padding - page manages its own spacing for sticky behavior -->
-	<div class="relative min-h-screen">
-		<ErrorBoundary fallback="detailed" showRetry={true}>
-			{@render children()}
-		</ErrorBoundary>
-	</div>
+{#if isEmbedPage}
+	<!-- Embed pages: Completely bare, no chrome, no global UI -->
+	{@render children()}
 {:else}
-	<!-- Other pages: Header padding for fixed IdentityStrip -->
-	<div class="relative min-h-screen pt-[48px]">
-		<div class="p-6 md:p-10" class:pb-24={isTemplatePage} class:sm:pb-10={isTemplatePage} class:max-w-7xl={isTemplatePage} class:mx-auto={isTemplatePage}>
+	<!-- HeaderSystem handles context-aware header rendering -->
+	<!-- HeaderTemplate is a structural subset of Template — handler only reads common fields at runtime -->
+	<HeaderSystem user={data.user as HeaderUser | null} template={(data as Record<string, unknown>).template as HeaderTemplate | null} onTemplateUse={handleTemplateUse} />
+
+	{#if (data.user as Record<string, unknown> | null)?.id === 'user-seed-1'}
+		<div class="pointer-events-none fixed top-0 left-0 right-0 z-[9999] bg-amber-500/10 text-amber-200 text-center text-xs py-1 font-mono tracking-wide">
+			DEMO MODE — commons.email
+		</div>
+	{/if}
+
+	{#if isOrgPage}
+		<!-- Org pages: Own sidebar layout, no root chrome -->
+		{@render children()}
+	{:else if isProfilePage}
+		<!-- Profile pages: No header padding, full control -->
+		<div class="relative min-h-screen">
+			<ErrorBoundary fallback="detailed" showRetry={true}>
+				{@render children()}
+			</ErrorBoundary>
+			<Footer />
+		</div>
+	{:else if isHomepage}
+		<!-- Homepage: No wrapper padding - page manages its own spacing for sticky behavior -->
+		<div class="relative min-h-screen">
 			<ErrorBoundary fallback="detailed" showRetry={true}>
 				{@render children()}
 			</ErrorBoundary>
 		</div>
-		<Footer />
-	</div>
-{/if}
+	{:else}
+		<!-- Other pages: Header padding for fixed IdentityStrip -->
+		<div class="relative min-h-screen pt-[48px]">
+			<div class="p-6 md:p-10" class:pb-24={isTemplatePage} class:sm:pb-10={isTemplatePage} class:max-w-7xl={isTemplatePage} class:mx-auto={isTemplatePage}>
+				<ErrorBoundary fallback="detailed" showRetry={true}>
+					{@render children()}
+				</ErrorBoundary>
+			</div>
+			<Footer />
+		</div>
+	{/if}
 
-<!-- Global UI components (always present) -->
-<ToastContainer />
-<ModalRegistry />
+	<!-- Global UI components (always present for non-embed pages) -->
+	<ToastContainer />
+	<ModalRegistry />
+{/if}
 
