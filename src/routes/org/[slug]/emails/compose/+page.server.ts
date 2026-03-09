@@ -9,6 +9,7 @@ import {
 	type VerificationBlock
 } from '$lib/server/email/compiler';
 import { sanitizeEmailBody } from '$lib/server/email/sanitize';
+import { getRateLimiter } from '$lib/core/security/rate-limiter';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
@@ -58,6 +59,14 @@ export const actions: Actions = {
 		const { org, membership } = await loadOrgContext(params.slug, locals.user.id);
 		requireRole(membership.role, 'editor');
 
+		const countLimit = await getRateLimiter().check(`ratelimit:compose:count:org:${org.id}`, {
+			maxRequests: 30,
+			windowMs: 60_000
+		});
+		if (!countLimit.allowed) {
+			return fail(429, { error: 'Too many requests. Try again later.' });
+		}
+
 		const formData = await request.formData();
 		const filter = parseFilter(formData);
 		const count = await countRecipients(org.id, filter);
@@ -71,6 +80,14 @@ export const actions: Actions = {
 		}
 		const { org, membership } = await loadOrgContext(params.slug, locals.user.id);
 		requireRole(membership.role, 'editor');
+
+		const previewLimit = await getRateLimiter().check(`ratelimit:compose:preview:org:${org.id}`, {
+			maxRequests: 20,
+			windowMs: 60_000
+		});
+		if (!previewLimit.allowed) {
+			return fail(429, { error: 'Too many requests. Try again later.' });
+		}
 
 		const formData = await request.formData();
 		const subject = formData.get('subject')?.toString().trim() || '(No subject)';
@@ -106,6 +123,14 @@ export const actions: Actions = {
 		}
 		const { org, membership } = await loadOrgContext(params.slug, locals.user.id);
 		requireRole(membership.role, 'editor');
+
+		const sendLimit = await getRateLimiter().check(`ratelimit:compose:send:org:${org.id}`, {
+			maxRequests: 5,
+			windowMs: 60 * 60_000
+		});
+		if (!sendLimit.allowed) {
+			return fail(429, { error: 'Too many requests. Try again later.' });
+		}
 
 		const formData = await request.formData();
 		const subject = formData.get('subject')?.toString().trim();

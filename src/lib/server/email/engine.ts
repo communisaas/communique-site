@@ -10,6 +10,7 @@ import { buildUnsubscribeUrl } from './unsubscribe';
 import { computeVerificationPacket, computeOrgVerificationPacket } from '$lib/server/campaigns/verification';
 
 const BATCH_SIZE = 100;
+const SES_CONCURRENCY = 10;
 
 const TIER_LABELS: Record<number, string> = {
 	0: 'New',
@@ -22,27 +23,36 @@ const TIER_LABELS: Record<number, string> = {
 export interface RecipientFilter {
 	tagIds?: string[];
 	verified?: 'any' | 'verified' | 'unverified';
-	tierMinimum?: number; // CampaignAction engagement tier minimum
+	tierMinimum?: number;
 	emailStatus?: string;
 }
 
-/**
- * Query supporters matching the filter criteria.
- * Only includes supporters with emailStatus === 'subscribed'.
- */
-export async function resolveRecipients(
+type Recipient = {
+	id: string;
+	email: string;
+	name: string | null;
+	postalCode: string | null;
+	verified: boolean;
+	identityCommitment: string | null;
+};
+
+const RECIPIENT_SELECT = {
+	id: true,
+	email: true,
+	name: true,
+	postalCode: true,
+	verified: true,
+	identityCommitment: true
+} as const;
+
+// ---------------------------------------------------------------------------
+// Part 1: Shared filter builder (eliminates duplication between resolve/count)
+// ---------------------------------------------------------------------------
+
+function buildFilterWhere(
 	orgId: string,
 	filter: RecipientFilter | null
-): Promise<
-	Array<{
-		id: string;
-		email: string;
-		name: string | null;
-		postalCode: string | null;
-		verified: boolean;
-		identityCommitment: string | null;
-	}>
-> {
+): Record<string, unknown> {
 	const where: Record<string, unknown> = {
 		orgId,
 		emailStatus: 'subscribed'
@@ -61,21 +71,58 @@ export async function resolveRecipients(
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const supporters = await db.supporter.findMany({
-		where: where as any,
-		select: {
-			id: true,
-			email: true,
-			name: true,
-			postalCode: true,
-			verified: true,
-			identityCommitment: true
-		},
-		orderBy: { createdAt: 'asc' }
-	});
+	return where;
+}
 
-	return supporters;
+// ---------------------------------------------------------------------------
+// Part 2: Cursor-paginated recipient streaming
+// ---------------------------------------------------------------------------
+
+/**
+ * Yield supporters in cursor-paginated batches.
+ * Each yield is an array of up to `batchSize` recipients.
+ * Memory usage stays proportional to one batch, not the full result set.
+ */
+async function* streamRecipients(
+	orgId: string,
+	filter: RecipientFilter | null,
+	batchSize = BATCH_SIZE
+): AsyncGenerator<Recipient[], void, undefined> {
+	const where = buildFilterWhere(orgId, filter);
+	let cursor: string | undefined;
+
+	while (true) {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const batch: Recipient[] = await db.supporter.findMany({
+			where: where as any,
+			select: RECIPIENT_SELECT,
+			orderBy: { id: 'asc' },
+			take: batchSize,
+			...(cursor ? { skip: 1, cursor: { id: cursor } } : {})
+		});
+
+		if (batch.length === 0) break;
+		yield batch;
+		cursor = batch[batch.length - 1].id;
+	}
+}
+
+/**
+ * Query supporters matching the filter criteria.
+ * Only includes supporters with emailStatus === 'subscribed'.
+ *
+ * Backward-compatible convenience wrapper — collects all pages into a single
+ * array. For large result sets, prefer `streamRecipients` directly.
+ */
+export async function resolveRecipients(
+	orgId: string,
+	filter: RecipientFilter | null
+): Promise<Recipient[]> {
+	const all: Recipient[] = [];
+	for await (const batch of streamRecipients(orgId, filter)) {
+		all.push(...batch);
+	}
+	return all;
 }
 
 /**
@@ -85,27 +132,37 @@ export async function countRecipients(
 	orgId: string,
 	filter: RecipientFilter | null
 ): Promise<number> {
-	const where: Record<string, unknown> = {
-		orgId,
-		emailStatus: 'subscribed'
-	};
-
-	if (filter) {
-		if (filter.verified === 'verified') {
-			where.verified = true;
-			where.identityCommitment = { not: null };
-		} else if (filter.verified === 'unverified') {
-			where.OR = [{ verified: false }, { identityCommitment: null }];
-		}
-
-		if (filter.tagIds && filter.tagIds.length > 0) {
-			where.tags = { some: { tagId: { in: filter.tagIds } } };
-		}
-	}
-
+	const where = buildFilterWhere(orgId, filter);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	return db.supporter.count({ where: where as any });
 }
+
+// ---------------------------------------------------------------------------
+// Part 3: Inline concurrency limiter (no external dependency)
+// ---------------------------------------------------------------------------
+
+function pLimit(concurrency: number) {
+	let active = 0;
+	const queue: Array<() => void> = [];
+
+	return <T>(fn: () => Promise<T>): Promise<T> => {
+		return new Promise<T>((resolve, reject) => {
+			const run = () => {
+				active++;
+				fn().then(resolve, reject).finally(() => {
+					active--;
+					if (queue.length > 0) queue.shift()!();
+				});
+			};
+			if (active < concurrency) run();
+			else queue.push(run);
+		});
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Helper functions
+// ---------------------------------------------------------------------------
 
 /**
  * Build the verification block from a packet.
@@ -114,7 +171,6 @@ function buildVerificationBlock(
 	packet: { total: number; verified: number; verifiedPct: number; districtCount: number; tiers: Array<{ tier: number; label: string; count: number }> },
 	totalRecipients: number
 ): VerificationBlock {
-	// Build tier summary from non-zero, non-suppressed tiers (descending order by tier level)
 	const tierParts = [...packet.tiers]
 		.filter((t) => t.count > 0)
 		.sort((a, b) => b.tier - a.tier)
@@ -153,7 +209,50 @@ function splitName(name: string | null): { firstName: string; lastName: string }
 }
 
 /**
- * Send an email blast: load recipients, compile per-recipient emails, send via SES in batches.
+ * Compile and send a single email to one recipient.
+ * Returns { success, error? } consistent with SES send result.
+ */
+async function compileAndSendToRecipient(
+	recipient: Recipient,
+	blast: { fromEmail: string; fromName: string; subject: string; bodyHtml: string; orgId: string },
+	verificationBlock: VerificationBlock
+): Promise<{ success: boolean; error?: string }> {
+	const { firstName, lastName } = splitName(recipient.name);
+	const verificationStatus = deriveVerificationStatus(
+		recipient.verified,
+		recipient.identityCommitment,
+		recipient.postalCode
+	);
+
+	const merge: MergeContext = {
+		firstName,
+		lastName,
+		email: recipient.email,
+		postalCode: recipient.postalCode,
+		verificationStatus,
+		tierLabel: null,
+		tierContext: buildTierContext(verificationStatus)
+	};
+
+	const unsubscribeUrl = buildUnsubscribeUrl(recipient.id, blast.orgId);
+	const htmlBody = compileEmail(blast.bodyHtml, merge, verificationBlock, unsubscribeUrl);
+	return sendEmail(
+		recipient.email,
+		blast.fromEmail,
+		blast.fromName,
+		blast.subject,
+		htmlBody,
+		unsubscribeUrl
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Part 4: Streaming sendBlast with parallel SES sends
+// ---------------------------------------------------------------------------
+
+/**
+ * Send an email blast: stream recipients in cursor-paginated batches,
+ * compile per-recipient emails, send via SES with controlled parallelism.
  */
 export async function sendBlast(blastId: string): Promise<void> {
 	// 1. Load blast
@@ -167,17 +266,17 @@ export async function sendBlast(blastId: string): Promise<void> {
 	});
 
 	try {
-		// 2. Resolve recipients
 		const filter = blast.recipientFilter as RecipientFilter | null;
-		const recipients = await resolveRecipients(blast.orgId, filter);
 
-		// Update total recipients
+		// 2. Get total count up-front (cheap COUNT query, no OOM risk)
+		const totalRecipients = await countRecipients(blast.orgId, filter);
+
 		await db.emailBlast.update({
 			where: { id: blastId },
-			data: { totalRecipients: recipients.length }
+			data: { totalRecipients }
 		});
 
-		if (recipients.length === 0) {
+		if (totalRecipients === 0) {
 			await db.emailBlast.update({
 				where: { id: blastId },
 				data: { status: 'sent', sentAt: new Date(), totalSent: 0 }
@@ -193,7 +292,7 @@ export async function sendBlast(blastId: string): Promise<void> {
 			packet = await computeOrgVerificationPacket(blast.orgId);
 		}
 
-		const verificationBlock = buildVerificationBlock(packet, recipients.length);
+		const verificationBlock = buildVerificationBlock(packet, totalRecipients);
 
 		// Store verification context on blast
 		await db.emailBlast.update({
@@ -204,76 +303,45 @@ export async function sendBlast(blastId: string): Promise<void> {
 			}
 		});
 
-		// 4. Split into batches
-		const batches: typeof recipients[] = [];
-		for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-			batches.push(recipients.slice(i, i + BATCH_SIZE));
-		}
-
-		// 5. Create batch records
-		const batchRecords = await Promise.all(
-			batches.map((_, idx) =>
-				db.emailBatch.create({
-					data: {
-						blastId,
-						batchIndex: idx,
-						status: 'pending'
-					}
-				})
-			)
-		);
-
+		// 4. Stream recipients and process batches with parallel sends
+		const limit = pLimit(SES_CONCURRENCY);
 		let totalSent = 0;
 		let totalBounced = 0;
+		let batchIndex = 0;
 
-		// 6. Process each batch
-		for (let i = 0; i < batches.length; i++) {
-			const batch = batches[i];
-			const batchRecord = batchRecords[i];
-
-			await db.emailBatch.update({
-				where: { id: batchRecord.id },
-				data: { status: 'sending' }
+		for await (const batch of streamRecipients(blast.orgId, filter)) {
+			// Create batch record on-the-fly
+			const batchRecord = await db.emailBatch.create({
+				data: {
+					blastId,
+					batchIndex,
+					status: 'sending'
+				}
 			});
+
+			// Parallel sends within this batch
+			const results = await Promise.allSettled(
+				batch.map((recipient) =>
+					limit(() => compileAndSendToRecipient(recipient, blast, verificationBlock))
+				)
+			);
 
 			let batchSent = 0;
 			let batchFailed = 0;
 			let lastError: string | null = null;
 
-			for (const recipient of batch) {
-				const { firstName, lastName } = splitName(recipient.name);
-				const verificationStatus = deriveVerificationStatus(
-					recipient.verified,
-					recipient.identityCommitment,
-					recipient.postalCode
-				);
-
-				const merge: MergeContext = {
-					firstName,
-					lastName,
-					email: recipient.email,
-					postalCode: recipient.postalCode,
-					verificationStatus,
-					tierLabel: null,
-					tierContext: buildTierContext(verificationStatus)
-				};
-
-				const unsubscribeUrl = buildUnsubscribeUrl(recipient.id, blast.orgId);
-				const htmlBody = compileEmail(blast.bodyHtml, merge, verificationBlock, unsubscribeUrl);
-				const result = await sendEmail(
-					recipient.email,
-					blast.fromEmail,
-					blast.fromName,
-					blast.subject,
-					htmlBody,
-					unsubscribeUrl
-				);
-
-				if (result.success) {
+			for (const result of results) {
+				if (result.status === 'fulfilled' && result.value.success) {
 					batchSent++;
 				} else {
 					batchFailed++;
-					lastError = result.error ?? 'Unknown error';
+					if (result.status === 'fulfilled') {
+						lastError = result.value.error ?? 'Unknown error';
+					} else {
+						lastError = result.reason instanceof Error
+							? result.reason.message
+							: 'Unknown error';
+					}
 				}
 			}
 
@@ -290,9 +358,10 @@ export async function sendBlast(blastId: string): Promise<void> {
 
 			totalSent += batchSent;
 			totalBounced += batchFailed;
+			batchIndex++;
 		}
 
-		// 7. Finalize blast
+		// 5. Finalize blast
 		await db.emailBlast.update({
 			where: { id: blastId },
 			data: {
