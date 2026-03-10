@@ -114,6 +114,10 @@ export const load: PageServerLoad = async ({ depends }) => {
 				subject: template.title,
 				message_body: template.message_body,
 				preview: template.preview,
+				// Org endorsement: institutional provenance for the perceptual bridge
+				endorsingOrg: template.org
+					? { name: template.org.name, slug: template.org.slug, avatar: template.org.avatar }
+					: null,
 				coordinationScale,
 				isNew,
 				hasActiveDebate: activeDebateTemplateIds.has(template.id),

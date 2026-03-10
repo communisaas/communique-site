@@ -33,4 +33,5 @@ export const TEMPLATE_LIST_SELECT = {
 	updatedAt: true,
 	jurisdictions: true,
 	user: { select: { name: true, avatar: true } },
+	org: { select: { name: true, slug: true, avatar: true } },
 } as const;

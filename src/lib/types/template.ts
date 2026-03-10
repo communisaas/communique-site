@@ -72,6 +72,10 @@ export interface Template {
 	cwc_config?: unknown | null; // Json? field in database - was missing
 	recipient_config: unknown; // Json field in database
 
+	// === ORG ENDORSEMENT (Perceptual Bridge) ===
+	// When present, the template has organizational backing — institutional provenance
+	endorsingOrg?: { name: string; slug: string; avatar: string | null } | null;
+
 	// === PERCEPTUAL ENCODING PROPERTIES ===
 	// Visual weight encoding (0-1 scale for card size transformation)
 	// Logarithmic scale: 1 send = 0.0, 10 = 0.33, 100 = 0.67, 1000+ = 1.0

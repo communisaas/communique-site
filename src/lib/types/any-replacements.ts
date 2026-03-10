@@ -278,6 +278,19 @@ export interface TemplateUseEvent {
 	requiresAuth: boolean;
 }
 
+/**
+ * Org membership surfaced in the identity dropdown.
+ * The bridge between individual and org layers:
+ * you see your org as part of who you are, not a separate destination.
+ */
+export interface UserOrgMembership {
+	orgSlug: string;
+	orgName: string;
+	orgAvatar: string | null;
+	role: string; // 'owner' | 'editor' | 'member'
+	activeCampaignCount: number;
+}
+
 export interface HeaderUser {
 	id: string;
 	email: string;
@@ -297,6 +310,8 @@ export interface HeaderUser {
 	wallet_type?: string | null;
 	near_account_id?: string | null;
 	near_derived_scroll_address?: string | null;
+	// Org layer bridge — identity-integrated org membership
+	orgMemberships?: UserOrgMembership[];
 }
 
 // UI Component types
