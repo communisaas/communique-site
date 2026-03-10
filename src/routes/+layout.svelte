@@ -30,7 +30,7 @@
 	const isProfilePage = $derived($page.url?.pathname?.startsWith('/profile') ?? false);
 	const isHomepage = $derived($page.url?.pathname === '/');
 	const isTemplatePage = $derived($page.route?.id === '/s/[slug]');
-	const isOrgPage = $derived($page.url?.pathname?.startsWith('/org/') ?? false);
+	const isOrgPage = $derived(($page.url?.pathname === '/org' || $page.url?.pathname?.startsWith('/org/')) ?? false);
 	const isEmbedPage = $derived($page.url?.pathname?.startsWith('/embed/') ?? false);
 
 	let {

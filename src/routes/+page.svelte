@@ -473,6 +473,10 @@
 								<polyline points="12 5 19 12 12 19"></polyline>
 							</svg>
 						</a>
+						<span class="creation-footer__sep" aria-hidden="true"></span>
+						<a href="/org" class="contact-link contact-link--org">
+							<span class="link-text">For organizations</span>
+						</a>
 					</footer>
 				{/snippet}
 			</CreationSpark>
@@ -903,6 +907,25 @@
 	.creation-footer {
 		margin-top: auto;
 		padding-top: 1.5rem;
+		display: flex;
+		align-items: center;
+	}
+
+	.creation-footer__sep {
+		width: 3px;
+		height: 3px;
+		border-radius: 50%;
+		background: oklch(0.7 0.02 250);
+		margin: 0 12px;
+		flex-shrink: 0;
+	}
+
+	.contact-link--org {
+		color: oklch(0.5 0.04 180);
+	}
+
+	.contact-link--org:hover {
+		color: oklch(0.38 0.08 180);
 	}
 
 	.contact-link {

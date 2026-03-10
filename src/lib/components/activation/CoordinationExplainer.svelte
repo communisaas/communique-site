@@ -102,6 +102,16 @@
 					</div>
 				</div>
 			</div>
+
+			<!-- Org layer whisper — visible only in expanded state -->
+			<div class="org-whisper">
+				<p class="org-whisper__text">
+					Run campaigns. Track verified action. Deliver proof.
+				</p>
+				<a href="/org" class="org-whisper__link">
+					Organizations <span class="org-whisper__arrow" aria-hidden="true">→</span>
+				</a>
+			</div>
 		</div>
 	</div>
 </section>
@@ -307,6 +317,51 @@
 		font-size: 0.8125rem;
 		color: oklch(0.5 0.02 250);
 		line-height: 1.4;
+	}
+
+	/* Org whisper — atmospheric, not promotional.
+	 * Lower visual intensity than the 3 steps.
+	 * The teal accent links it to the org dashboard world. */
+	.org-whisper {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.875rem 1.5rem;
+		border-top: 1px solid oklch(0.92 0.01 250);
+		background: oklch(0.985 0.003 180 / 0.5);
+	}
+
+	.org-whisper__text {
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.75rem;
+		color: oklch(0.5 0.02 250);
+		line-height: 1.5;
+		margin: 0;
+	}
+
+	.org-whisper__link {
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: oklch(0.45 0.08 180);
+		text-decoration: none;
+		white-space: nowrap;
+		flex-shrink: 0;
+		transition: color 150ms ease-out;
+	}
+
+	.org-whisper__link:hover {
+		color: oklch(0.35 0.12 180);
+	}
+
+	.org-whisper__arrow {
+		display: inline-block;
+		transition: transform 150ms ease-out;
+	}
+
+	.org-whisper__link:hover .org-whisper__arrow {
+		transform: translateX(2px);
 	}
 
 	/* Reduced motion */

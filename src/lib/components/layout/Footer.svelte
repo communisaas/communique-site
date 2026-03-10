@@ -15,8 +15,12 @@
 		<!-- Brand closure: matches hero overture -->
 		<p class="footer-coda__brand">communiqué</p>
 
-		<!-- Contact: single recognizable element -->
-		<a href="mailto:hello@commons.email" class="footer-coda__contact"> hello@commons.email </a>
+		<!-- Contact row: individual + org surfaces -->
+		<div class="footer-coda__links">
+			<a href="mailto:hello@commons.email" class="footer-coda__contact">hello@commons.email</a>
+			<span class="footer-coda__sep" aria-hidden="true"></span>
+			<a href="/org" class="footer-coda__contact footer-coda__contact--org">For organizations</a>
+		</div>
 
 		<!-- Legal minimum -->
 		<p class="footer-coda__legal">© {new Date().getFullYear()} Communiqué PBC</p>
@@ -55,6 +59,13 @@
 		color: oklch(0.48 0.06 55); /* Same warm hue, lighter = coda whisper */
 	}
 
+	/* Links row */
+	.footer-coda__links {
+		display: flex;
+		align-items: center;
+		gap: 0;
+	}
+
 	/* Contact: simple, recognizable */
 	.footer-coda__contact {
 		font-family: 'Satoshi', system-ui, sans-serif;
@@ -66,6 +77,23 @@
 
 	.footer-coda__contact:hover {
 		color: oklch(0.35 0.02 250);
+	}
+
+	.footer-coda__contact--org {
+		color: oklch(0.5 0.04 180);
+	}
+
+	.footer-coda__contact--org:hover {
+		color: oklch(0.38 0.08 180);
+	}
+
+	.footer-coda__sep {
+		width: 3px;
+		height: 3px;
+		border-radius: 50%;
+		background: oklch(0.7 0.02 250);
+		margin: 0 12px;
+		flex-shrink: 0;
 	}
 
 	/* Legal: minimal presence */
