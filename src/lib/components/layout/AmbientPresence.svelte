@@ -24,6 +24,15 @@
 		isScrolled?: boolean;
 	} = $props();
 
+	// Org memberships — bridge from individual to org layer
+	const orgMemberships = $derived(user?.orgMemberships ?? []);
+
+	function handleOrgClick(event: MouseEvent, slug: string): void {
+		event.preventDefault();
+		isDropdownOpen = false;
+		goto(`/org/${slug}`);
+	}
+
 	let isVisible = $state(false);
 	let isDropdownOpen = $state(false);
 	let dropdownRef = $state<HTMLDivElement | null>(null);
@@ -147,6 +156,31 @@
 						<User class="ambient-dropdown-icon" />
 						<span>Profile</span>
 					</a>
+					{#if orgMemberships.length > 0}
+						<div class="ambient-dropdown-divider"></div>
+						{#each orgMemberships as org}
+							<a
+								href="/org/{org.orgSlug}"
+								class="ambient-dropdown-item ambient-dropdown-item--org"
+								role="menuitem"
+								onclick={(e) => handleOrgClick(e, org.orgSlug)}
+							>
+								{#if org.orgAvatar}
+									<img src={org.orgAvatar} alt="" class="ambient-org-avatar" />
+								{:else}
+									<div class="ambient-org-avatar ambient-org-avatar--fallback">
+										{org.orgName.charAt(0).toUpperCase()}
+									</div>
+								{/if}
+								<div class="ambient-org-info">
+									<span class="ambient-org-name">{org.orgName}</span>
+									<span class="ambient-org-meta">
+										{org.role}{#if org.activeCampaignCount > 0}<span class="ambient-org-dot"></span>{org.activeCampaignCount} campaign{org.activeCampaignCount !== 1 ? 's' : ''}{/if}
+									</span>
+								</div>
+							</a>
+						{/each}
+					{/if}
 					<div class="ambient-dropdown-divider"></div>
 					<button
 						type="button"
@@ -360,6 +394,65 @@
 		height: 1px;
 		margin: 6px 0;
 		background: var(--header-border);
+	}
+
+	/* Org bridge — identity-integrated org membership */
+	.ambient-dropdown-item--org {
+		gap: 10px;
+		padding: 8px 12px;
+	}
+
+	.ambient-org-avatar {
+		width: 28px;
+		height: 28px;
+		border-radius: 7px;
+		object-fit: cover;
+		flex-shrink: 0;
+	}
+
+	.ambient-org-avatar--fallback {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		/* Teal accent — chromatic preview of the org dashboard world */
+		background: oklch(0.92 0.06 180);
+		color: oklch(0.4 0.12 180);
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.75rem;
+		font-weight: 600;
+	}
+
+	.ambient-org-info {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		min-width: 0;
+	}
+
+	.ambient-org-name {
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: var(--header-text-primary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.ambient-org-meta {
+		font-size: 0.6875rem;
+		color: var(--header-text-muted);
+		white-space: nowrap;
+		text-transform: capitalize;
+	}
+
+	.ambient-org-dot {
+		display: inline-block;
+		width: 3px;
+		height: 3px;
+		border-radius: 50%;
+		background: oklch(0.65 0.02 250);
+		margin: 0 5px;
+		vertical-align: middle;
 	}
 
 	/* Reduced motion */

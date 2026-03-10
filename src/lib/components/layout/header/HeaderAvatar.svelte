@@ -12,6 +12,7 @@
 	import { walletState } from '$lib/stores/walletState.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { FEATURES } from '$lib/config/features';
+	import { goto } from '$app/navigation';
 
 	let { user }: { user: HeaderUser } = $props();
 
@@ -74,6 +75,15 @@
 		}
 		return parts[0][0]?.toUpperCase() ?? 'U';
 	});
+
+	// Org memberships — the bridge between individual and org layers
+	const orgMemberships = $derived(user.orgMemberships ?? []);
+
+	function handleOrgClick(event: MouseEvent, slug: string): void {
+		event.preventDefault();
+		isOpen = false;
+		goto(`/org/${slug}`);
+	}
 </script>
 
 <div class="header-avatar-container" bind:this={dropdownRef}>
@@ -101,6 +111,31 @@
 				<User class="header-dropdown-item-icon" />
 				<span>Profile</span>
 			</a>
+			{#if orgMemberships.length > 0}
+				<div class="header-dropdown-divider"></div>
+				{#each orgMemberships as org}
+					<a
+						href="/org/{org.orgSlug}"
+						class="header-dropdown-item header-dropdown-item--org"
+						role="menuitem"
+						onclick={(e) => handleOrgClick(e, org.orgSlug)}
+					>
+						{#if org.orgAvatar}
+							<img src={org.orgAvatar} alt="" class="header-org-avatar" />
+						{:else}
+							<div class="header-org-avatar header-org-avatar--fallback">
+								{org.orgName.charAt(0).toUpperCase()}
+							</div>
+						{/if}
+						<div class="header-org-info">
+							<span class="header-org-name">{org.orgName}</span>
+							<span class="header-org-meta">
+								{org.role}{#if org.activeCampaignCount > 0}<span class="header-org-dot"></span>{org.activeCampaignCount} campaign{org.activeCampaignCount !== 1 ? 's' : ''}{/if}
+							</span>
+						</div>
+					</a>
+				{/each}
+			{/if}
 			{#if FEATURES.WALLET}
 				<div class="header-dropdown-divider"></div>
 				{#if walletState.connected}
@@ -287,6 +322,65 @@
 		font-size: 0.75rem;
 		color: oklch(0.55 0.01 260);
 		font-family: 'Berkeley Mono', monospace;
+	}
+
+	/* Org bridge — identity-integrated org membership */
+	.header-dropdown-item--org {
+		gap: 10px;
+		padding: 8px 12px;
+	}
+
+	.header-org-avatar {
+		width: 28px;
+		height: 28px;
+		border-radius: 7px;
+		object-fit: cover;
+		flex-shrink: 0;
+	}
+
+	.header-org-avatar--fallback {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		/* Teal accent — chromatic preview of the org dashboard world */
+		background: oklch(0.92 0.06 180);
+		color: oklch(0.4 0.12 180);
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.75rem;
+		font-weight: 600;
+	}
+
+	.header-org-info {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		min-width: 0;
+	}
+
+	.header-org-name {
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: var(--header-text-primary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.header-org-meta {
+		font-size: 0.6875rem;
+		color: var(--header-text-muted);
+		white-space: nowrap;
+		text-transform: capitalize;
+	}
+
+	.header-org-dot {
+		display: inline-block;
+		width: 3px;
+		height: 3px;
+		border-radius: 50%;
+		background: oklch(0.65 0.02 250);
+		margin: 0 5px;
+		vertical-align: middle;
 	}
 
 	/* Reduced motion */
