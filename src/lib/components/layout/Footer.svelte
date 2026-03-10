@@ -63,7 +63,7 @@
 	.footer-coda__links {
 		display: flex;
 		align-items: center;
-		gap: 0;
+		gap: 1.25rem;
 	}
 
 	/* Contact: simple, recognizable */
@@ -92,7 +92,6 @@
 		height: 3px;
 		border-radius: 50%;
 		background: oklch(0.7 0.02 250);
-		margin: 0 12px;
 		flex-shrink: 0;
 	}
 
