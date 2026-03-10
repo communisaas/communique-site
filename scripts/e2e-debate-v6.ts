@@ -44,6 +44,8 @@
  *   DEBATE_ID             (reuse an existing debateId — skips proposeDebate)
  */
 
+import 'dotenv/config'; // Load .env file for contract addresses and keys
+
 import {
 	Contract,
 	JsonRpcProvider,
@@ -69,6 +71,7 @@ const STAKING_TOKEN_ADDRESS = process.env.STAKING_TOKEN_ADDRESS || '';
 const VERIFIER_DEPTH = parseInt(process.env.VERIFIER_DEPTH || '20', 10) as 20;
 const SKIP_WAIT = process.env.SKIP_WAIT === '1';
 const EXISTING_DEBATE_ID = process.env.DEBATE_ID || '';
+const WINNER_NULLIFIER_HEX = process.env.WINNER_NULLIFIER || ''; // bytes32 hex for claimSettlement on reuse
 
 // ─── Validation ──────────────────────────────────────────────────────────
 
@@ -76,17 +79,28 @@ if (!PRIVATE_KEY) {
 	console.error('ERROR: Set SCROLL_PRIVATE_KEY env var');
 	process.exit(1);
 }
+// Core addresses always required
 for (const [name, val] of [
 	['DEBATE_MARKET_ADDRESS', DEBATE_MARKET_ADDRESS],
 	['DISTRICT_GATE_ADDRESS', DISTRICT_GATE_ADDRESS],
 	['STAKING_TOKEN_ADDRESS', STAKING_TOKEN_ADDRESS],
-	['USER_ROOT_REGISTRY_ADDRESS', USER_ROOT_REGISTRY_ADDRESS],
-	['CELL_MAP_REGISTRY_ADDRESS', CELL_MAP_REGISTRY_ADDRESS],
-	['ENGAGEMENT_ROOT_REGISTRY_ADDRESS', ENGAGEMENT_ROOT_REGISTRY_ADDRESS]
 ]) {
 	if (!val) {
 		console.error(`ERROR: Set ${name} env var`);
 		process.exit(1);
+	}
+}
+// Registry addresses only required for full lifecycle (steps 2-6)
+if (!(EXISTING_DEBATE_ID && SKIP_WAIT)) {
+	for (const [name, val] of [
+		['USER_ROOT_REGISTRY_ADDRESS', USER_ROOT_REGISTRY_ADDRESS],
+		['CELL_MAP_REGISTRY_ADDRESS', CELL_MAP_REGISTRY_ADDRESS],
+		['ENGAGEMENT_ROOT_REGISTRY_ADDRESS', ENGAGEMENT_ROOT_REGISTRY_ADDRESS]
+	]) {
+		if (!val) {
+			console.error(`ERROR: Set ${name} env var (required for full lifecycle). For resolve-only, set DEBATE_ID + SKIP_WAIT=1.`);
+			process.exit(1);
+		}
 	}
 }
 
@@ -119,6 +133,9 @@ const DEBATE_MARKET_ABI = [
 	'function MIN_PROPOSER_BOND() view returns (uint256)',
 	'function MIN_ARGUMENT_STAKE() view returns (uint256)',
 	'function arguments(bytes32 debateId, uint256 argumentIndex) view returns (uint8 stance, bytes32 bodyHash, bytes32 amendmentHash, uint256 stakeAmount, uint8 engagementTier, uint256 weightedScore)',
+	'function debates(bytes32 debateId) view returns (bytes32 propositionHash, bytes32 actionDomain, uint256 deadline, uint256 argumentCount, uint256 uniqueParticipants, uint256 jurisdictionSizeHint, uint256 totalStake, uint256 winningArgumentIndex, uint8 winningStance, bytes32 winningBodyHash, bytes32 winningAmendmentHash, uint8 status, address proposer, uint256 proposerBond, bool bondClaimed, bool aiScoresSubmitted, uint256 resolutionDeadline, uint256 appealDeadline, bytes32 governanceJustification, uint8 resolutionMethod)',
+	'function stakeRecords(bytes32 debateId, bytes32 nullifier) view returns (uint256 argumentIndex, uint256 stakeAmount, uint8 engagementTier, bool claimed, address submitter, address beneficiary)',
+	'function resolutionExtension() view returns (uint256)',
 	// Events
 	'event DebateProposed(bytes32 indexed debateId, bytes32 indexed actionDomain, bytes32 propositionHash, uint256 deadline, bytes32 baseDomain)',
 	'event ArgumentSubmitted(bytes32 indexed debateId, uint256 indexed argumentIndex, uint8 stance, bytes32 bodyHash, uint8 engagementTier, uint256 weight)',
@@ -134,7 +151,9 @@ const DISTRICT_GATE_ABI = [
 	'function allowedActionDomains(bytes32) view returns (bool)',
 	'function authorizedDerivers(address) view returns (bool)',
 	'function registerActionDomainGenesis(bytes32 domain)',
-	'function DOMAIN_SEPARATOR() view returns (bytes32)'
+	'function DOMAIN_SEPARATOR() view returns (bytes32)',
+	// Events (for nullifier recovery on reuse)
+	'event ThreeTreeProofVerified(address indexed signer, address indexed submitter, bytes32 indexed userRoot, bytes32 cellMapRoot, bytes32 engagementRoot, bytes32 nullifier, bytes32 actionDomain, bytes32 authorityLevel, uint8 engagementTier, uint8 verifierDepth)'
 ];
 
 // Generic registry ABI covering UserRootRegistry, CellMapRegistry, EngagementRootRegistry
@@ -438,6 +457,80 @@ async function main() {
 	ok(`MIN_PROPOSER_BOND: ${Number(minBond) / 1e6} USDC`);
 	ok(`MIN_ARGUMENT_STAKE: ${Number(minArgStake) / 1e6} USDC`);
 
+	// ═══════════════════════════════════════════════════════════════
+	// FAST PATH: resolve-only mode (DEBATE_ID + SKIP_WAIT=1)
+	// Skips steps 1-9, goes straight to resolve + claim.
+	// ═══════════════════════════════════════════════════════════════
+	if (EXISTING_DEBATE_ID && SKIP_WAIT) {
+		console.log('');
+		console.log('  ╔══════════════════════════════════════════════════════╗');
+		console.log('  ║  RESOLVE-ONLY MODE (DEBATE_ID + SKIP_WAIT=1)       ║');
+		console.log('  ║  Skipping steps 1-9, jumping to resolve + claim    ║');
+		console.log('  ╚══════════════════════════════════════════════════════╝');
+
+		const debateId = EXISTING_DEBATE_ID;
+		const [status, deadline, argCount, totalStake, participants] =
+			await debateMarket.getDebateState(debateId);
+		ok(`Status: ${STATUS_NAMES[Number(status)] ?? status} (${status})`);
+		ok(`Deadline: ${new Date(Number(deadline) * 1000).toISOString()}`);
+		ok(`Arguments: ${argCount}, TotalStake: ${Number(totalStake) / 1e6} USDC, Participants: ${participants}`);
+
+		const debateDeadline = Number(deadline);
+
+		// Check resolution extension timing
+		const resExt = Number(await debateMarket.resolutionExtension());
+		const nowBlock = await provider.getBlock('latest');
+		const nowTs = nowBlock?.timestamp ?? Math.floor(Date.now() / 1000);
+		const communityResolveAt = debateDeadline + resExt;
+		ok(`resolutionExtension: ${resExt}s (${resExt / 3600}h)`);
+		ok(`Community resolve available after: ${new Date(communityResolveAt * 1000).toISOString()}`);
+		if (nowTs < communityResolveAt) {
+			warn(`Block timestamp (${nowTs}) < deadline + resolutionExtension (${communityResolveAt}). resolveDebate() will revert.`);
+			warn(`Either wait ${communityResolveAt - nowTs}s or use AI resolution path.`);
+		} else {
+			ok(`Block timestamp (${nowTs}) >= resolve threshold — ready for community resolution`);
+		}
+
+		// Recover nullifier for claimSettlement
+		let winnerNullifier: bigint;
+		if (WINNER_NULLIFIER_HEX) {
+			winnerNullifier = BigInt(WINNER_NULLIFIER_HEX);
+			ok(`Using provided WINNER_NULLIFIER: ${WINNER_NULLIFIER_HEX.slice(0, 18)}...`);
+		} else {
+			// Attempt recovery from DistrictGate ThreeTreeProofVerified events
+			console.log('  No WINNER_NULLIFIER provided — querying DistrictGate events for nullifier recovery...');
+			const filter = districtGate.filters.ThreeTreeProofVerified(
+				wallet.address, // signer
+				null, // submitter
+				null  // userRoot
+			);
+			try {
+				const events = await districtGate.queryFilter(filter, 0, 'latest');
+				ok(`Found ${events.length} ThreeTreeProofVerified events from wallet`);
+				if (events.length > 0) {
+					// Use the first event's nullifier (corresponds to argument #0, typically the SUPPORT side)
+					const firstEvent = events[0] as any;
+					const nullifierHex = firstEvent.args?.nullifier ?? firstEvent.args?.[5];
+					winnerNullifier = BigInt(nullifierHex);
+					ok(`Recovered nullifier from event: ${toBytes32(winnerNullifier).slice(0, 18)}...`);
+					// Verify this nullifier has a stake record
+					const [argIdx, stakeAmt, , claimed] = await debateMarket.stakeRecords(debateId, toBytes32(winnerNullifier));
+					ok(`Stake record: argumentIndex=${argIdx}, stake=${Number(stakeAmt) / 1e6} USDC, claimed=${claimed}`);
+				} else {
+					warn('No ThreeTreeProofVerified events found. Set WINNER_NULLIFIER env var manually.');
+					winnerNullifier = 0n;
+				}
+			} catch (err) {
+				warn(`Event query failed: ${extractRevertReason(err)}`);
+				warn('Set WINNER_NULLIFIER env var manually (bytes32 hex from original run output).');
+				winnerNullifier = 0n;
+			}
+		}
+
+		await runResolveAndClaim(debateId, debateDeadline, winnerNullifier, 0n, 0n);
+		return;
+	}
+
 	// ─────────────────────────────────────────────────────────────────
 	step(1, 'Check USDC balance');
 	// ─────────────────────────────────────────────────────────────────
@@ -625,7 +718,7 @@ async function main() {
 	}
 
 	// Ensure we have the action domain from on-chain state when reusing an existing debate
-	if (!debateActionDomain!) {
+	if (!debateActionDomain) {
 		const debateData = await debateMarket.debates(debateId!);
 		// debates(bytes32) returns the Debate struct fields — actionDomain is field [1]
 		debateActionDomain = BigInt(debateData[1]);
@@ -643,6 +736,8 @@ async function main() {
 	// Each argument needs a unique nullifier (public input [26]).
 	// We use wallet-address + stance + timestamp for determinism + uniqueness.
 	const nullifier1 = fieldElement(`${wallet.address}-support-${testRunId}-1`);
+	ok(`nullifier1 (SUPPORT): ${toBytes32(nullifier1)}`);
+	ok('  ↑ Save this value as WINNER_NULLIFIER for future resolve-only runs');
 	const bodyHash1 = keccak256(solidityPacked(['string'], [`Support argument body — ${testRunId}`]));
 	const deadlineSig = Math.floor(Date.now() / 1000) + 3600; // 1h from now
 
@@ -723,6 +818,7 @@ async function main() {
 	const ENGAGEMENT_TIER_2 = 1;
 
 	const nullifier2 = fieldElement(`${wallet.address}-oppose-${testRunId}-2`);
+	ok(`nullifier2 (OPPOSE): ${toBytes32(nullifier2)}`);
 	const bodyHash2 = keccak256(solidityPacked(['string'], [`Oppose argument body — ${testRunId}`]));
 
 	const publicInputs2 = buildPublicInputs({
@@ -1119,6 +1215,13 @@ async function runResolveAndClaim(
 	step(12, 'claimSettlement — claim winning position payout');
 	// ─────────────────────────────────────────────────────────────────
 
+	if (winnerNullifier === 0n) {
+		warn('No nullifier available — skipping claimSettlement.');
+		warn('Set WINNER_NULLIFIER env var to the nullifier from the original submitArgument.');
+		printSummary(debateId);
+		return;
+	}
+
 	// The nullifier used in submitArgument #1 is the key for the stake record.
 	// We convert it back to a bytes32 string for the contract call.
 	const nullifierBytes32 = toBytes32(winnerNullifier);
@@ -1194,8 +1297,10 @@ function printSummary(debateId: string) {
 	console.log('');
 	printGasTable();
 	console.log('');
-	console.log('  To re-run against this debate (skip proposeDebate):');
-	console.log(`    DEBATE_ID=${debateId} SKIP_WAIT=1 npx tsx scripts/e2e-debate-v6.ts`);
+	console.log('  To resolve and claim on this debate (steps 10-12 only):');
+	console.log(`    DEBATE_ID=${debateId} SKIP_WAIT=1 \\`);
+	console.log('    WINNER_NULLIFIER=<nullifier_from_step_5_output> \\');
+	console.log('    npx tsx scripts/e2e-debate-v6.ts');
 	console.log('');
 }
 
