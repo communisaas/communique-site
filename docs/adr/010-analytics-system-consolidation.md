@@ -8,7 +8,7 @@
 
 ## Context
 
-The Communiqué analytics system previously had TWO parallel subsystems for querying analytics data:
+The Commons analytics system previously had TWO parallel subsystems for querying analytics data:
 
 1. **Aggregate System** (`analytics_aggregate` table) - Raw counts with no noise
 2. **Snapshot System** (`analytics_snapshot` table) - Materialized daily with Laplace noise
@@ -268,21 +268,21 @@ For `SERVER_EPSILON = 1.0` and `SENSITIVITY = 1`:
 ### Files Modified
 
 1. **Environment Configuration**
-   - `/Users/noot/Documents/communique/.env.example`
+   - `.env.example`
    - Added `USE_SNAPSHOT_ONLY=true` flag
 
 2. **Core Analytics**
-   - `/Users/noot/Documents/communique/src/lib/core/analytics/index.ts`
+   - `src/lib/core/analytics/index.ts`
    - Added comprehensive DP architecture documentation
 
 3. **Aggregate System**
-   - `/Users/noot/Documents/communique/src/lib/core/analytics/aggregate.ts`
+   - `src/lib/core/analytics/aggregate.ts`
    - Added query routing wrapper
    - Added deprecation warnings
    - Updated `getHealthMetrics()` to use snapshots
 
 4. **Type Definitions**
-   - `/Users/noot/Documents/communique/src/lib/types/analytics/metrics.ts`
+   - `src/lib/types/analytics/metrics.ts`
    - Added detailed epsilon value documentation
    - Explained noise calibration and privacy theorem
 
@@ -359,17 +359,17 @@ For `SERVER_EPSILON = 1.0` and `SENSITIVITY = 1`:
 - Track deprecation warning frequency
 - Monitor privacy budget consumption
 
-### Phase 2: Enforcement (Q1 2025)
+### Phase 2: Enforcement (Future)
 - Make `USE_SNAPSHOT_ONLY=true` the only allowed value
 - Remove fallback to raw queries
 - Hard-block raw aggregate queries
 
-### Phase 3: API Consolidation (Q2 2025)
+### Phase 3: API Consolidation (Future)
 - Deprecate `queryAggregates()` entirely
 - Make `queryNoisySnapshots()` the canonical API
 - Remove dual-system documentation
 
-### Phase 4: Advanced DP Features (Q3 2025)
+### Phase 4: Advanced DP Features (Future)
 - Implement adaptive privacy budgets
 - Add DP histogram queries
 - Support private joins across tables
@@ -377,7 +377,7 @@ For `SERVER_EPSILON = 1.0` and `SENSITIVITY = 1`:
 ## References
 
 - **Work Package:** WP-010 - Consolidate Dual Analytics Systems
-- **Privacy Audit:** docs/architecture/TECHNICAL-DEBT-AUDIT-2025-01.md
+- **Privacy Audit:** `docs/archive/2026-03-documentation-audit/TECHNICAL-DEBT-AUDIT-2025-01.md` (archived)
 - **DP Theory:** Dwork & Roth, "The Algorithmic Foundations of Differential Privacy" (2014)
 - **Snapshot Architecture:** src/lib/core/analytics/SNAPSHOT-ARCHITECTURE.md
 - **Migration Guide:** docs/specs/analytics/migration.md

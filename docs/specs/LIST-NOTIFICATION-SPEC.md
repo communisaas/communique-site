@@ -1,6 +1,8 @@
 # List Management & Notification Layer
 
-**Status:** Design Spec
+> **STATUS: SHIPPED** — Supporter list management and notifications operational.
+
+**Status:** Shipped
 **Author:** Architecture
 **Created:** 2026-03-06
 **Depends on:** Org Data Model (`docs/architecture/org-data-model.md`), Platform Extension (`docs/architecture/platform-extension.md`), AN Migration Spec (`docs/specs/AN-MIGRATION-SPEC.md`), Reputation Architecture (`voter-protocol/specs/REPUTATION-ARCHITECTURE-SPEC.md`), Shadow Atlas

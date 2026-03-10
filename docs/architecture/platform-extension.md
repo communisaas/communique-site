@@ -1,5 +1,7 @@
 # Platform Extension Architecture
 
+> **STATUS: MIXED** — Person-facing foundation table reflects actual code. Org-facing file trees (src/lib/server/*) are **architectural targets** — some subsystems are built (campaigns, email, supporters, embeddable widgets), others are planned. Prisma schema below is aspirational and may not match `prisma/schema.prisma`. See `architecture/org-data-model.md` for actual org schema.
+
 > What exists, what needs building, and how the org layer connects to the person layer
 
 ---
@@ -12,7 +14,7 @@ The hard parts are built. This is the infrastructure no competitor can replicate
 |---|---|---|
 | ZK proof generation (browser) | `src/lib/core/zkp/` | Production |
 | mDL verification (ISO 18013-5) | `src/lib/core/identity/` | Production (37 tests) |
-| IACA root certificates | `src/lib/core/identity/iaca-roots.ts` | CA + NM, expandable via VICAL |
+| IACA root certificates | `src/lib/core/identity/iaca-roots.ts` | 16 states static + 10 via VICAL |
 | Postal Bubble (district resolution) | `src/lib/components/bubble/` | Production (1,965 lines) |
 | Power Landscape (decision-maker targeting) | `src/lib/components/action/` | Production |
 | Spatial Browse (3 views) | `src/routes/browse/` | Production |

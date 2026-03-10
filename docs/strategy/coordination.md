@@ -1,4 +1,6 @@
-# Communiqué: Coordination Platform
+# Commons: Coordination Platform
+
+> **STATUS: HISTORICAL** — January 2025 messaging and coordination strategy document. Implementation status table below is outdated. See [`product-roadmap.md`](product-roadmap.md) for current priorities and [`index.md`](index.md) for how Person Layer + Org Layer now structure the product.
 
 **Last Updated**: 2025-01-08
 **Status**: Pre-launch, active development
@@ -225,7 +227,9 @@ What type of decision-maker?
 
 ---
 
-## Implementation Status
+## Implementation Status (as of Jan 2025 — outdated)
+
+> **Note**: This status table reflects January 2025. Since then, OAuth authentication (Google, Facebook, LinkedIn, Coinbase), the full org layer (campaigns, supporters, email delivery), mDL identity verification, Action Network import, and the embeddable campaign widget have all shipped. See `product-roadmap.md` for current status.
 
 ### ✅ Complete:
 1. Template browsing & preview
@@ -234,13 +238,13 @@ What type of decision-maker?
 4. Universal voice (Congress, companies, school boards)
 5. Email provider OAuth component (stub)
 
-### 🚧 In Progress:
+### 🚧 In Progress (Jan 2025):
 1. Real send counters (no fake numbers)
 2. Geographic distribution tracking
 3. Momentum tracking (+127/hour)
 4. Template creator profiles
 
-### 📋 Planned:
+### 📋 Planned (Jan 2025):
 1. Smart routing (government vs company vs school)
 2. OAuth email verification (Gmail, Outlook, etc.)
 3. Multi-country support (UK, Canada, EU)
@@ -369,4 +373,4 @@ What type of decision-maker?
 
 ---
 
-**Status**: Pre-launch, documentation consolidated, ready for real data.
+**Status**: Pre-launch, documentation consolidated, ready for real data. *(Jan 2025 — see `product-roadmap.md` for current status.)*

@@ -1,5 +1,7 @@
 # Spatial Browse: From Template List to Civic Landscape
 
+> **STATUS: ASPIRATIONAL** — Design spec. Not yet implemented.
+
 **Status:** Design Spec — Active
 **Author:** Architecture / Perceptual Engineering
 **Created:** 2026-03-01

@@ -1,6 +1,8 @@
 # Legislative Abstraction Layer
 
-**Status**: ✅ IMPLEMENTED (US Congress) | 🔧 PARTIAL (UK Parliament) | 🔮 PLANNED (Global)
+> **STATUS: ASPIRATIONAL** — `src/lib/core/legislative/types.ts` foundation exists; adapter implementations (US Congress, UK Parliament, EU) are planned.
+
+**Status**: Design Spec — Adapter architecture planned
 
 ---
 
@@ -316,4 +318,4 @@ All data structures stored in Prisma schema:
 
 ---
 
-This abstraction layer enables Communique to scale globally while maintaining a simple, consistent user experience across all legislative systems.
+This abstraction layer enables Commons to scale globally while maintaining a simple, consistent user experience across all legislative systems.

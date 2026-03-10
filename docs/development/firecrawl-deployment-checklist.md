@@ -1,5 +1,7 @@
 # Firecrawl Provider Deployment Checklist
 
+> **STATUS: NEEDS REVISION** — This checklist references MongoDB for caching (~15 occurrences). The actual stack uses PostgreSQL + Prisma — no MongoDB. Cache implementation should use Prisma models, not MongoDB collections. Review all MongoDB references before deployment.
+
 **Implementation Date:** 2026-01-31
 **Target Deployment:** TBD
 **Engineer:** Distinguished Backend Engineer

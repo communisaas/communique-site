@@ -1,19 +1,113 @@
 # Rate Limiting Architecture
 
-Multi-instance rate limiting design for Communique, optimized for single-maintainer operations.
+Multi-layer rate limiting for Commons, covering API abuse prevention and differential privacy budget enforcement.
 
 ---
 
 ## TL;DR
 
-- **Current**: In-memory rate limiting (works for single instance)
-- **Upgrade path**: Postgres-based (works across Cloudflare Pages instances)
-- **No Redis**: Operational overhead not worth it for one person
+- **API layer**: Sliding window rate limits per route, integrated in `hooks.server.ts`
+- **Analytics layer**: DP contribution limits (in-memory or Postgres-backed)
+- **External API layer**: Circuit breakers with exponential backoff (Exa, Firecrawl)
+- **Agent layer**: Per-session and per-tier LLM quotas
+- **Backend**: In-memory per-isolate by default; Redis supported via `REDIS_URL` for distributed rate limiting
 - **Privacy note**: For differential privacy, exact rate limiting is NOT required
 
 ---
 
-## Why Exact Rate Limiting Doesn't Matter for DP
+## API Rate Limiting
+
+**Implementation**: `src/lib/core/security/rate-limiter.ts` + `src/hooks.server.ts`
+
+Sliding window log algorithm applied per route. Executes in the `handleRateLimit` hook after auth (so user ID is available for user-keyed limits).
+
+### Route Limits
+
+| Route Pattern | Limit | Window | Key | Purpose |
+|---|---|---|---|---|
+| `/api/identity/` | 10/min | 60s | IP | Verification abuse |
+| `/api/shadow-atlas/register` | 5/min | 60s | User | Registration abuse |
+| `/api/shadow-atlas/cell-proof` | 10/min | 60s | User | Cell ID enumeration |
+| `/api/congressional/submit` | 3/hr | 3600s | User | Congressional spam |
+| `/api/auth/passkey/register` | 5/min | 60s | User | Registration attempts |
+| `/api/auth/passkey/authenticate` | 10/min | 60s | IP | Authentication brute-force |
+| `/api/location/` | 5/min | 60s | IP | District lookup throttle |
+| `/api/submissions/` | 5/min | 60s | IP | CWC submission spam |
+| `/api/templates` | 10/day | 86400s | User | Template farming (anti-astroturf) |
+| `/api/moderation/` | 30/min | 60s | IP | Moderation abuse |
+| `/api/email/` | 10/min | 60s | User | Email send throttle |
+| `/api/emails/` | 5/min | 60s | User | Bounce report throttle |
+| `/api/email/confirm/` | 10/min | 60s | IP | Confirmation brute-force |
+| `/api/debates/` | 20/min | 60s | User | Debate market browsing |
+| `/api/wallet/nonce` | 10/min | 60s | IP | Nonce generation |
+| `/api/wallet/connect` | 5/min | 60s | User | Wallet binding |
+| `/api/wallet/near/sponsor` | 10/min | 60s | User | Meta-transaction relay |
+| `/api/wallet/balance` | 30/min | 60s | IP | Balance endpoint |
+
+**Exempt paths** (separately authenticated): `/api/identity/didit/webhook`, `/api/health`, `/api/cron/`
+
+### 429 Response
+
+```
+HTTP/1.1 429 Too Many Requests
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1741536000
+Retry-After: 45
+```
+
+### Hook Execution Order
+
+```
+handlePlatformEnv → handleAuth → handleRateLimit → handleCsrfGuard → handleSecurityHeaders → handleRejectionMonitoring
+```
+
+Rate limiting runs after auth so user-keyed limits can use the authenticated user ID. IP-keyed limits work for unauthenticated requests.
+
+### Storage
+
+- **Development**: In-memory Map (zero config, 5-minute cleanup interval)
+- **Production**: Per-isolate state on CF Workers (resets on isolate recycle — acceptable trade-off)
+- **Rejection monitoring**: Async webhook alerts when rejection rate exceeds threshold (`REJECTION_THRESHOLD_PERCENT`, default 1%)
+
+---
+
+## LLM Cost Protection
+
+**Implementation**: `src/lib/server/llm-cost-protection.ts`
+
+Per-user quotas for AI agent operations, tiered by trust level.
+
+| Operation | Guest | Authenticated | Verified |
+|---|---|---|---|
+| Subject line | 5/hr | 15/hr | 30/hr |
+| Decision makers | 0 (blocked) | 3/hr | 10/hr |
+| Message generation | 0 (blocked) | 10/hr | 30/hr |
+| Daily global | 10/day | 50/day | 150/day |
+
+Trust tiers: guest (no session), authenticated (logged in), verified (trust_tier ≥ 2, address attested).
+
+---
+
+## External API Circuit Breakers
+
+**Implementation**: `src/lib/server/exa/rate-limiter.ts`, `src/lib/server/firecrawl/rate-limiter.ts`
+
+Circuit breaker pattern (closed → open → half-open) with exponential backoff for external API calls.
+
+| Service | QPS Limit | Retries | Base Delay | Reset Timeout |
+|---|---|---|---|---|
+| Exa Search | 4 | 3 | 1s | 30s |
+| Exa Contents | 40 | 2 | 500ms | 15s |
+| Firecrawl | 10 | 2 | 1s | 30s |
+
+Backoff: `baseDelay × 2^(attempt-1) + jitter(0-200ms)`. Respects `Retry-After` headers.
+
+---
+
+## Analytics Rate Limiting (Differential Privacy)
+
+### Why Exact Rate Limiting Doesn't Matter for DP
 
 The analytics system uses differential privacy (DP) to protect user privacy. Rate limiting exists to **bound sensitivity** - the maximum impact any single user can have on aggregate statistics.
 
@@ -29,7 +123,7 @@ If someone sends 150 contributions instead of 100 due to multi-instance race con
 
 ---
 
-## Option 1: In-Memory (Current)
+### Option 1: In-Memory (Current)
 
 **Status**: Active in production
 
@@ -54,7 +148,7 @@ const rateLimits = new Map<string, { count: number; windowStart: number }>();
 
 ---
 
-## Option 2: Postgres-Based (Recommended Upgrade)
+### Option 2: Postgres-Based (Recommended Upgrade)
 
 **Status**: Implemented, behind feature flag
 
@@ -131,7 +225,7 @@ await cleanupOldRateLimits(2);
 
 ---
 
-## Option 3: Hybrid Approach
+### Option 3: Hybrid Approach
 
 **Status**: Implemented in `rate-limit-db.ts`
 
@@ -174,7 +268,7 @@ if (!result.allowed) {
 
 ---
 
-## Option 4: Accept Approximate (Simplest)
+### Option 4: Accept Approximate (Simplest)
 
 **Status**: Always an option
 
@@ -190,7 +284,7 @@ For privacy purposes, approximate rate limiting is actually fine. Document that 
 
 ---
 
-## Migration Path
+### Migration Path
 
 ### MVP (Now)
 1. Use in-memory rate limiting
@@ -209,9 +303,9 @@ For privacy purposes, approximate rate limiting is actually fine. Document that 
 
 ---
 
-## Configuration
+### Configuration
 
-### Environment Variables
+#### Environment Variables
 
 ```bash
 # Enable Postgres-based rate limiting
@@ -222,7 +316,7 @@ RATE_LIMIT_USE_DB=true
 # RATE_LIMIT_DELIVERY_ATTEMPT=10
 ```
 
-### Constants
+#### Constants
 
 From `src/lib/types/analytics/metrics.ts`:
 
@@ -235,9 +329,9 @@ export const PRIVACY = {
 
 ---
 
-## Monitoring
+### Monitoring
 
-### Stats Endpoint
+#### Stats Endpoint
 
 ```typescript
 import { getRateLimitStats } from '$lib/core/analytics/rate-limit-db';
@@ -246,7 +340,7 @@ const stats = await getRateLimitStats();
 // { activeEntries: 1234, todayEntries: 567, implementation: 'postgres' }
 ```
 
-### Logs
+#### Logs
 
 Rate limiting logs to console:
 - `[RateLimitDB] Cleanup: deleted N entries older than 2 days`
@@ -255,9 +349,9 @@ Rate limiting logs to console:
 
 ---
 
-## Error Handling
+### Error Handling
 
-### Graceful Degradation
+#### Graceful Degradation
 
 On any database error, rate limiting falls back to **permissive** (allowing the request):
 
@@ -272,7 +366,7 @@ try {
 
 **Rationale**: Privacy > availability. We'd rather let through a few extra contributions than block legitimate users due to a transient DB issue.
 
-### Result Source
+#### Result Source
 
 Every rate limit result includes `source` field:
 - `'db'`: Result from Postgres (authoritative)
@@ -280,9 +374,9 @@ Every rate limit result includes `source` field:
 
 ---
 
-## Security Considerations
+### Security Considerations
 
-### IP Hashing
+#### IP Hashing
 
 Client IPs are hashed before use as rate limit keys:
 
@@ -297,7 +391,7 @@ This prevents:
 - Correlation attacks via rate limit keys
 - PII leakage in logs
 
-### Rate Limit Keys
+#### Rate Limit Keys
 
 Format: `{hashed_ip}:{metric_name}`
 
@@ -305,9 +399,9 @@ Example: `a7f9b2c3d4e5f6...1234:template_view`
 
 ---
 
-## Performance Characteristics
+### Performance Characteristics
 
-### Postgres-Based
+#### Postgres-Based
 
 | Operation | Latency (Neon Serverless) |
 |-----------|---------------------------|
@@ -315,7 +409,7 @@ Example: `a7f9b2c3d4e5f6...1234:template_view`
 | Batch check (N keys) | 5-20ms |
 | Cleanup (1000 entries) | 50-100ms |
 
-### Connection Pool Impact
+#### Connection Pool Impact
 
 Each rate limit check uses one connection briefly. With Neon's connection pooling:
 - Serverless scales automatically
@@ -324,9 +418,9 @@ Each rate limit check uses one connection briefly. With Neon's connection poolin
 
 ---
 
-## Future Enhancements
+### Future Enhancements
 
-### Per-Metric Limits
+#### Per-Metric Limits
 
 ```typescript
 const METRIC_LIMITS: Record<Metric, number> = {
@@ -336,12 +430,12 @@ const METRIC_LIMITS: Record<Metric, number> = {
 };
 ```
 
-### Sliding Windows
+#### Sliding Windows
 
 Current: Fixed daily windows (midnight UTC to midnight UTC)
 Future: True sliding windows (past 24 hours) for smoother rate limiting
 
-### Distributed Caching
+#### Distributed Caching
 
 If Postgres becomes a bottleneck:
 1. Add Upstash Redis ($0.20/100K commands)
@@ -349,6 +443,21 @@ If Postgres becomes a bottleneck:
 3. Still simpler than self-hosted Redis
 
 ---
+
+---
+
+## Key Files
+
+| File | Purpose |
+|---|---|
+| `src/lib/core/security/rate-limiter.ts` | Sliding window API rate limiter |
+| `src/hooks.server.ts` | Hook integration (handleRateLimit) |
+| `src/lib/server/llm-cost-protection.ts` | LLM quota enforcement |
+| `src/lib/core/analytics/rate-limit-db.ts` | Postgres-backed DP rate limiting |
+| `src/lib/server/rate-limiter.ts` | In-memory rate limiter (internal APIs) |
+| `src/lib/server/exa/rate-limiter.ts` | Exa circuit breaker |
+| `src/lib/server/firecrawl/rate-limiter.ts` | Firecrawl circuit breaker |
+| `src/lib/services/ai/rate-limiter.ts` | Client-side AI suggestion limiter |
 
 ## Related Documents
 

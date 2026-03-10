@@ -1,5 +1,7 @@
 # Power Landscape: Directed Civic Address
 
+> **STATUS: ASPIRATIONAL** — Design spec. Not yet implemented.
+
 **Status:** Implementation Spec — Cycles 37-40
 **Author:** Architecture
 **Created:** 2026-02-27

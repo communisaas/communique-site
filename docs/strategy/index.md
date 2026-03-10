@@ -1,83 +1,93 @@
 # Strategic Documentation
 
-**Read these in order to understand Communiqué's strategic direction.**
+**Read these to understand Commons' strategic direction.**
 
 ---
 
-## Start Here: Core Strategy
+## Current Plan
 
-### 1. [launch.md](launch.md) - Phase 1 Launch Plan (3 months)
+### [product-roadmap.md](product-roadmap.md) — What We're Building Now
 
-Privacy-preserving constituent intelligence. Zero-knowledge proofs, aggregate tracking, viral mechanisms.
+The authoritative plan. Phase 1-3 feature sequence, key flows, competitive positioning. Updated March 2026.
 
-**Core insight**: Individual congressional messages are theater. 5,000 coordinated messages from verified constituents create leverage.
+- **Phase 1**: Verified Campaign Infrastructure (current)
+- **Phase 2**: Cancel Action Network
+- **Phase 3**: Transcend the Paradigm (debates, agentic delegation, coalitions)
 
-### 2. [coordination.md](coordination.md) - Coordination Mechanics
+### [economics.md](economics.md) — Unit Economics
 
-Why individual action fails, coordination works. Platform mechanics for collective power.
+Pricing tiers, revenue projections, cost structure. Verified actions as primary metered unit.
 
-**Evidence**: Congressional offices take meetings when 5,000+ constituents coordinate. One-off messages are ignored.
+### [competitive-analysis.md](../research/competitive-analysis.md) — Market Landscape
 
-### 3. [organizing.md](organizing.md) - Organizing Reality
+$191M grassroots segment. Commons occupies the only quadrant no competitor can reach: high verification at low cost.
+
+---
+
+## Two Product Layers
+
+Commons serves **two audiences** through shared verification infrastructure:
+
+**Person Layer** — Individual verified civic action
+- Send verified letters to decision-makers
+- Identity verification via mDL (browser-side ZK)
+- Engagement tiers (New → Pillar) through participation
+- Described in: `coordination.md`, `viral.md`
+
+**Org Layer** — Campaign management and advocacy infrastructure
+- Create campaigns, manage supporters, send mass email
+- Verification packets with constituent counts, tier distribution, coordination signals
+- Direct Action Network replacement
+- Described in: `product-roadmap.md`, `economics.md`
+
+Both layers ship in Phase 1. The org layer is what competes with AN/EveryAction/Quorum. The person layer is what makes it structurally different.
+
+---
+
+## Foundation Documents
+
+### [vision.md](vision.md) — North Star
+
+Civic communication infrastructure where every action carries proof. The design thesis that shapes everything.
+
+### [coordination.md](coordination.md) — Why Coordination Works
+
+Individual action fails. 5,000 coordinated messages from verified constituents create leverage. Platform mechanics for collective power.
+
+### [organizing.md](organizing.md) — Phase 2+ Organizing Infrastructure
+
+> This is forward-looking strategy for 12-18 months post-launch. Phase 1 focuses on verification infrastructure.
 
 What organizing victories look like, why organizing fails, class struggle infrastructure vs civic engagement theater.
 
-**What wins**: Rent strikes (247 days → rent caps), union drives (74% win rate), ballot initiatives ($15/hour in Missouri)
+---
 
-**Why it fails**: Free rider problem, fear of retaliation, surveillance/infiltration
+## Growth & Delivery
 
-**What we build**: Anonymous organizing tools, retaliation defense, counter-surveillance
+### [viral.md](viral.md) — Viral Growth Strategy
+
+Shareable impact cards, social proof, gamification. Phase 1 (shareable cards) partially shipped. Phases 2-4 are speculative.
+
+### [delivery-verification.md](delivery-verification.md) — Delivery Verification
+
+TEE-based email verification roadmap. Phase 1 (OAuth) implemented, Phase 2-4 planned.
 
 ---
 
-## Growth & Product Strategy
+## Historical
 
-### 4. [viral.md](viral.md) - Viral Growth Strategy
+### [launch.md](launch.md) — Jan 2025 Launch Planning
 
-Shareable impact cards, gamification, leaderboards, network visualization. Making civic action social currency.
+> Historical document. Superseded by `product-roadmap.md` for current timeline.
 
-**Implementation status**: Partial (social proof + shareable cards exist, full gamification not built)
-
-**Serves**: Mainstream users (NPR listeners, low-risk civic action)
-
-### 5. [roadmap.md](roadmap.md) - Product Roadmap
-
-Product milestones, timelines, feature releases.
-
-### 6. [delivery-verification.md](delivery-verification.md) - Delivery Verification Strategy
-
-TEE-based email verification roadmap, OAuth persistence, congressional signatures, browser-native proving.
-
-**What it covers**: 4-phase approach to verify congressional message delivery without violating cypherpunk privacy principles.
-
-**Phases**: OAuth persistence (Phase 1) → TEE verification (Phase 2) → Congressional signatures (Phase 3) → Browser-native (Phase 4)
-
-**Status**: Phase 1 implemented (OAuth), Phase 2-4 planned
+Original 3-month launch plan. Context for how the project started.
 
 ---
 
-## Strategic Clarity
+## Navigation
 
-**Communiqué serves two complementary audiences**:
-
-**Mainstream users** (viral.md):
-- Shareable impact cards, gamification, social proof
-- Low-risk, high-volume participation
-- Congressional message campaigns
-
-**Organizers** (organizing.md):
-- Anonymous union card signing, threshold signatures
-- Retaliation defense, mutual aid, legal support
-- High-risk, high-impact collective action
-- Rent strikes, union drives, ballot initiatives
-
-Both strategies are necessary. Viral growth builds user base (breadth). Organizing tools serve people taking real risk (depth).
-
----
-
-## Navigation Tips
-
-- **New to Communiqué?** Start with launch.md, then coordination.md
-- **Understanding product strategy?** Read viral.md
-- **Building organizing tools?** Read organizing.md
-- **Looking for timelines?** See roadmap.md
+- **Current plan?** → `product-roadmap.md`
+- **Market position?** → `../research/competitive-analysis.md`
+- **Pricing?** → `economics.md`
+- **Why we exist?** → `vision.md`
+- **How coordination works?** → `coordination.md`

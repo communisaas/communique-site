@@ -485,8 +485,8 @@ npx prisma generate
 
 ## Related Documentation
 
-- **CYPHERPUNK-ARCHITECTURE.md:** Privacy-preserving design principles
-- **COMMUNIQUE-ZK-IMPLEMENTATION-SPEC.md:** ZK proof system architecture
+- **`docs/architecture.md`:** Privacy-preserving design principles
+- **`docs/specs/zk-proof-integration.md`:** ZK proof system architecture
 - **docs/adr/007-identity-schema-migration.md:** Identity verification design rationale
 
 ---

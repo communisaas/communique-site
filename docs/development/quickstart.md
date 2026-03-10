@@ -1,8 +1,8 @@
 # Development Guide
 
-**Communiqué's development workflow: testing, seeding, feature flags, deployment. Not blockchain—that's in [voter-protocol](https://github.com/communisaas/voter-protocol).**
+**Commons's development workflow: testing, seeding, feature flags, deployment. Not blockchain—that's in [voter-protocol](https://github.com/communisaas/voter-protocol).**
 
-This guide covers local development setup, testing strategies, database seeding, feature flag management, and deployment workflows. For blockchain integration, see `INTEGRATION-GUIDE.md`.
+This guide covers local development setup, testing strategies, database seeding, feature flag management, and deployment workflows. For blockchain integration, see `docs/integration.md`.
 
 ---
 
@@ -152,7 +152,7 @@ npx prisma migrate reset
 
 ### Philosophy: Integration-First
 
-**Communiqué uses an integration-first testing approach:**
+**Commons uses an integration-first testing approach:**
 
 - **Focus**: Realistic user workflows over isolated units
 - **Benefits**: Higher confidence, less maintenance, better bug detection
@@ -419,7 +419,7 @@ npm run test:integration -- address-save-api
 - ✅ Data pipeline contracts (verify → save → database)
 - ✅ Representative storage with real bioguide IDs
 
-See `docs/testing/address-flow-testing-strategy.md` for complete requirements.
+See `docs/development/testing.md` for test strategy and requirements.
 
 ---
 
@@ -578,7 +578,7 @@ npm run db:seed
 
 ### Feature Flag System
 
-Communiqué uses environment-based feature flags to control access to:
+Commons uses environment-based feature flags to control access to:
 
 - **Beta features** (`src/lib/features/`): AI suggestions, template intelligence
 - **Research features** (`src/lib/experimental/`): Cascade analytics, experimental UIs
@@ -853,7 +853,7 @@ if (process.env.NODE_ENV === 'production') {
 **Symptom:**
 
 ```
-Error: P1001: Can't reach database server at `db.supabase.co`
+Error: P1001: Can't reach database server at `<host>`
 ```
 
 **Solutions:**
@@ -944,20 +944,20 @@ echo $OAUTH_REDIRECT_BASE_URL
 **Resources:**
 
 - Test Suite: `tests/README.md`
-- Database Seeding: `docs/database-seeding.md`
-- Integrations: `docs/INTEGRATION-GUIDE.md`
-- Template System: `docs/TEMPLATE-SYSTEM.md`
+- Database Seeding: `docs/development/seeding.md`
+- Integrations: `docs/integration.md`
+- Template System: `docs/features/templates.md`
 
 ---
 
 ## Next Steps
 
 - **Testing**: See `tests/README.md` for comprehensive test suite documentation
-- **Frontend**: See `FRONTEND-ARCHITECTURE.md` for SvelteKit 5 patterns
-- **Templates**: See `TEMPLATE-SYSTEM.md` for variable system and moderation
-- **Integrations**: See `INTEGRATION-GUIDE.md` for CWC, OAuth, TEE setup
-- **Blockchain**: See [voter-protocol](https://github.com/communisaas/voter-protocol) for NEAR + Scroll integration
+- **Frontend**: See `docs/frontend.md` for SvelteKit 5 patterns
+- **Templates**: See `docs/features/templates.md` for variable system and moderation
+- **Integrations**: See `docs/integration.md` for CWC, OAuth, TEE setup
+- **Deployment**: See `docs/development/deployment.md` for Cloudflare Workers deployment
 
 ---
 
-*Communiqué PBC | Development Guide | 2025*
+*Commons PBC | Development Guide | 2025*

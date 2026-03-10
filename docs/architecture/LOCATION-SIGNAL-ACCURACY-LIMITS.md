@@ -254,9 +254,9 @@ describe('Location Filtering', () => {
 
 ## Documentation References
 
-- [Progressive Location Discovery](../archive/2025-11-location-progressive-discovery/PROGRESSIVE-LOCATION-DISCOVERY-SPEC.md)
-- [Location as Filter Principle](../design/LOCATION-AS-FILTER-PRINCIPLE.md)
-- [Census API Integration](../features/identity-verification.md)
+- [Location Privacy Architecture](location-privacy.md)
+- [Location Filtering UX](../design/patterns/location-filtering.md)
+- [Graduated Trust Architecture](graduated-trust.md)
 
 ## Related Commits
 

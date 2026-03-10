@@ -1,749 +1,275 @@
-# Template System: Variables, Editor, Moderation, Share Flows
+# Templates
 
-**How templates work in Communiqué. From creation to delivery.**
-
-Templates are the core unit of civic action in Communiqué. This document covers variable extraction, the CodeMirror editor, 3-layer content moderation, and share flows.
+**The core unit of civic action. Templates are reusable message structures that resolve with user context at send time.**
 
 ---
 
 ## Table of Contents
 
-1. [Template Lifecycle](#template-lifecycle)
-2. [Variable System](#variable-system)
-3. [Template Creator](#template-creator)
-4. [Content Moderation](#content-moderation)
-5. [Share Flows](#share-flows)
-6. [Template Resolution](#template-resolution)
-7. [Database Schema](#database-schema)
+1. [Data Model](#data-model)
+2. [CRUD Operations](#crud-operations)
+3. [Template Creation Flow](#template-creation-flow)
+4. [Rich Text Editor](#rich-text-editor)
+5. [Variable System](#variable-system)
+6. [Content Moderation](#content-moderation)
+7. [Jurisdiction Scoping](#jurisdiction-scoping)
+8. [Share URLs](#share-urls)
+9. [Draft System](#draft-system)
+10. [Search and Discovery](#search-and-discovery)
+11. [Key Files](#key-files)
 
 ---
 
-## Template Lifecycle
+## Data Model
 
-```
-1. CREATION
-   User writes template in CodeMirror editor
-   → Variables auto-detected: [Name], [Representative Name], [Personal Connection]
-   → Preview updates in real-time
+The `Template` model stores the message content, delivery configuration, moderation state, and aggregate community metrics.
 
-2. SUBMISSION
-   User submits for review
-   → 3-layer moderation: OpenAI + Gemini/Claude + human
-   → Grammar/clarity/toxicity scoring
-   → Approval/rejection/correction
+**Core fields:**
 
-3. PUBLICATION
-   Approved template becomes public
-   → Listed in template catalog (/templates)
-   → Accessible via shareable URL (/s/[slug])
-   → Search-indexed by category, topic
+| Field | Type | Purpose |
+|---|---|---|
+| `id` | `String @id` | CUID primary key |
+| `slug` | `String @unique` | URL path segment (`/s/[slug]`) |
+| `title` | `String` | Also used as email subject line |
+| `description` | `String` | Short summary (auto-derived from preview if omitted) |
+| `message_body` | `String` | Full message text with `[Variable]` placeholders |
+| `preview` | `String` | Short preview text (max 500 chars) |
+| `category` | `String` | Grouping category (default: "General") |
+| `topics` | `Json` | Topic tags for search/filtering (1-5 lowercase strings) |
+| `type` | `String` | Template type |
+| `deliveryMethod` | `String` | `'email'`, `'email_attested'`, `'certified'`, `'direct'`, `'cwc'` |
+| `sources` | `Json` | Citation sources from message generation agent |
+| `research_log` | `Json` | Agent's research process log |
+| `status` | `String` | `'draft'` or `'published'` (auto-set by moderation) |
+| `is_public` | `Boolean` | Visibility in template listing |
+| `content_hash` | `String?` | SHA-256(title + body) for deduplication |
 
-4. CUSTOMIZATION
-   User selects template
-   → Fills variables: [Personal Connection], custom fields
-   → Real-time preview with their data
-   → Address validation → congressional district lookup
+**Aggregate metrics (no individual user tracking):**
 
-5. DELIVERY
-   User sends message
-   → Template resolved with user context (name, address, representatives)
-   → Encrypted via XChaCha20-Poly1305
-   → Delivered via CWC API through GCP Confidential Space TEE
-   → On-chain reputation tracking (Phase 1)
-```
+| Field | Type | Purpose |
+|---|---|---|
+| `verified_sends` | `Int` | Total verified messages sent |
+| `unique_districts` | `Int` | Unique congressional districts reached |
+| `avg_reputation` | `Float?` | Average sender reputation |
+
+**Moderation fields:**
+
+| Field | Type | Purpose |
+|---|---|---|
+| `flagged_by_moderation` | `Boolean` | Whether content was flagged |
+| `consensus_approved` | `Boolean` | Multi-agent moderation passed |
+| `verification_status` | `String?` | `'pending'`, `'approved'`, `'rejected'` |
+
+**Semantic search:**
+
+| Field | Type | Purpose |
+|---|---|---|
+| `location_embedding` | `Json?` | Gemini embedding of location context |
+| `topic_embedding` | `Json?` | Gemini embedding of policy topic |
+
+**Relationships:**
+
+- `User` (author) -- dual ownership with `Organization`
+- `TemplateJurisdiction[]` -- structured US jurisdictions (federal, state, county, city, school district)
+- `TemplateScope[]` -- international geographic scope (agent-extracted, used for breadcrumb filtering)
+- `Message[]` -- verifiable sent messages (pseudonymous, no user linkage)
+- `Debate[]` -- staked deliberation threads (feature-gated)
+
+A unique constraint on `(userId, content_hash)` prevents the same author from publishing duplicate content. The POST endpoint returns the existing template idempotently if a duplicate is detected.
+
+---
+
+## CRUD Operations
+
+### `GET /api/templates`
+
+Returns all public templates (`is_public: true`), ordered by creation date descending.
+
+Response includes computed fields:
+- `coordinationScale` -- logarithmic 0-1 scale based on `verified_sends` (for visual weight in UI)
+- `isNew` -- true if created within the last 7 days
+- `hasActiveDebate` -- cross-referenced from the Debate table
+- `scopes` -- joined from `TemplateScope` table for hierarchical location filtering
+- `recipientEmails` -- extracted from `recipient_config` JSON
+
+### `POST /api/templates`
+
+Creates a new template. Requires authentication and either verified identity or trust score >= 100 (anti-astroturf gate).
+
+**Required fields:** `title`, `message_body`, `preview`, `type`, `deliveryMethod`
+
+**Pipeline on creation:**
+1. Validate request body (title max 200 chars, message_body max 10,000 chars, preview max 500 chars)
+2. Run 2-layer content moderation (see [Content Moderation](#content-moderation))
+3. Compute `content_hash` and check for duplicate by same author
+4. Check slug availability (auto-generated from title, or AI-provided)
+5. Create template + `TemplateScope` in a transaction
+6. If moderation passes: auto-publish (`status: 'published'`, `is_public: true`)
+7. Fire-and-forget: generate Gemini embeddings for search
+
+**No manual review step.** Templates that pass moderation are immediately public.
+
+### `GET /api/templates/check-slug?slug=...&title=...`
+
+Checks slug availability. If taken, returns up to 3 alternative suggestions (action-prefixed, year-suffixed, or shortened variants).
+
+---
+
+## Template Creation Flow
+
+Templates are created through a multi-step guided workflow, not a blank editor.
+
+**Steps:** Objective → Decision Makers → Message → Publish
+
+The `TemplateCreator.svelte` component orchestrates these steps:
+
+1. **UnifiedObjectiveEntry** -- User describes their goal in free text. An AI agent (Gemini) processes this into a structured subject line, topic tags, and URL slug.
+
+2. **DecisionMakerResolver** -- AI agent identifies relevant decision makers based on the objective. Users can add custom recipients with email addresses.
+
+3. **MessageGenerationResolver** -- AI agent (Gemini via SSE streaming) generates a full message body with citations, research log, and geographic scope extraction. The user reviews the result and can edit before publishing.
+
+The message writer agent generates `[Personal Connection]` placeholders, citation markers `[1]`, `[2]`, and positions variables strategically within the message body.
+
+---
+
+## Rich Text Editor
+
+The platform uses **Tiptap 3.x** (ProseMirror-based) for rich text editing, currently in the org-layer email compose flow (`/org/[slug]/emails/compose`).
+
+Tiptap extensions in use:
+- `@tiptap/starter-kit` -- basic formatting (bold, italic, headings, lists, code blocks)
+- `@tiptap/extension-link` -- clickable links
+- `@tiptap/extension-text-align` -- text alignment
+- `@tiptap/extension-underline` -- underline formatting
+
+Template creation itself uses AI-generated plain text with bracket variables, not a rich text editor. The message writer agent produces the body via SSE streaming, and users edit the result in a standard textarea before publishing.
+
+There is no CodeMirror in the codebase.
 
 ---
 
 ## Variable System
 
-### Variable Types
+Templates use bracket-notation variables (`[Name]`, `[Representative Name]`, `[Personal Connection]`) that are resolved at render/send time by `resolveTemplate()`.
 
-**Auto-Resolved (System Variables):**
-- `[Name]`, `[Your Name]` → User's full name
-- `[Address]`, `[Your Address]` → Full street address
-- `[City]`, `[State]`, `[ZIP]` → Address components
-- `[Representative Name]`, `[Rep Name]` → House member name
-- `[Senator Name]`, `[Senator]` → First senator
-- `[Senior Senator]`, `[Junior Senator]` → Both senators
+Two categories:
+- **System variables** -- auto-filled from user profile and congressional data
+- **User-editable variables** -- require manual input (e.g., `[Personal Connection]`)
 
-**Manual-Fill (User Variables):**
-- `[Personal Connection]` → Personal story/connection block
-- `[Phone]`, `[Phone Number]` → User's phone (optional)
-- `[Your Story]`, `[Personal Story]` → Personal experience block
-
-**Usage in templates:**
-
-```
-Subject: Tell [Representative Name] to support the [Issue] Act
-
-Dear [Representative],
-
-As your constituent from [City], I'm writing about [Issue].
-
-[Personal Connection]
-
-I urge you to support this legislation.
-
-Sincerely,
-[Name]
-[Address]
-```
-
-### Variable Extraction
-
-**Client-side variable detection:**
-
-```typescript
-// Regex pattern for block variables
-const VARIABLE_PATTERN = /\[([^\]]+)\]/g;
-
-function extractVariables(text: string): string[] {
-  const matches = text.matchAll(VARIABLE_PATTERN);
-  return [...new Set([...matches].map(m => `[${m[1]}]`))];
-}
-
-// Example usage
-const template = "Dear [Representative Name], I'm [Name] from [City]...";
-const variables = extractVariables(template);
-// → ['[Representative Name]', '[Name]', '[City]']
-```
-
-**Variable classification:**
-
-```typescript
-const SYSTEM_VARIABLES = [
-  '[Name]', '[Your Name]',
-  '[Address]', '[Your Address]',
-  '[City]', '[State]', '[ZIP]',
-  '[Representative Name]', '[Rep Name]', '[Representative]',
-  '[Senator Name]', '[Senator]',
-  '[Senior Senator]', '[Junior Senator]'
-];
-
-const MANUAL_VARIABLES = [
-  '[Personal Connection]',
-  '[Phone]', '[Phone Number]', '[Your Phone]',
-  '[Your Story]', '[Personal Story]', '[Your Experience]'
-];
-
-function isSystemVariable(variable: string): boolean {
-  return SYSTEM_VARIABLES.includes(variable);
-}
-
-function isManualVariable(variable: string): boolean {
-  return MANUAL_VARIABLES.includes(variable);
-}
-```
-
----
-
-## Template Creator
-
-### CodeMirror 6 Editor
-
-**Features:**
-- Syntax highlighting for variables (`[Name]` highlighted differently than body text)
-- Auto-completion for variables
-- Real-time preview with live variable resolution
-- Character count (CWC API has 10,000 char limit)
-- Auto-save to draft store
-
-**Implementation:**
-
-```svelte
-<script lang="ts">
-  import { EditorView, basicSetup } from 'codemirror';
-  import { Decoration, DecorationSet } from '@codemirror/view';
-  import { StateField, StateEffect } from '@codemirror/state';
-
-  let editorView: EditorView;
-  let messageBody = $state('');
-
-  // Variable highlighting extension
-  const variableHighlighter = StateField.define({
-    create() {
-      return Decoration.none;
-    },
-    update(decorations, tr) {
-      const text = tr.state.doc.toString();
-      const regex = /\[([^\]]+)\]/g;
-      const decs: Range<Decoration>[] = [];
-
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        decs.push({
-          from: match.index,
-          to: match.index + match[0].length,
-          value: Decoration.mark({
-            class: 'cm-variable'
-          })
-        });
-      }
-
-      return Decoration.set(decs);
-    }
-  });
-
-  onMount(() => {
-    editorView = new EditorView({
-      doc: messageBody,
-      extensions: [
-        basicSetup,
-        variableHighlighter,
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            messageBody = update.state.doc.toString();
-          }
-        })
-      ],
-      parent: editorElement
-    });
-  });
-</script>
-
-<div bind:this={editorElement} class="codemirror-editor"></div>
-
-<style>
-  :global(.cm-variable) {
-    background: #e0f2fe;
-    color: #0369a1;
-    font-weight: 500;
-    padding: 2px 4px;
-    border-radius: 3px;
-  }
-</style>
-```
-
-### Real-Time Preview
-
-**Live variable resolution as user types:**
-
-```svelte
-<script lang="ts">
-  import { resolveTemplate } from '$lib/utils/templateResolver';
-
-  let messageBody = $state('');
-  let userContext = $state({
-    name: 'Jane Doe',
-    city: 'San Francisco',
-    representatives: [
-      { name: 'Nancy Pelosi', chamber: 'house' }
-    ]
-  });
-
-  // Reactive preview
-  let preview = $derived.by(() => {
-    const template = {
-      id: 'draft',
-      title: 'Draft Template',
-      message_body: messageBody,
-      deliveryMethod: 'cwc'
-    };
-
-    return resolveTemplate(template, userContext, {
-      preserveVariables: true  // Keep unfilled variables in preview
-    });
-  });
-</script>
-
-<div class="split-editor">
-  <div class="editor">
-    <CodeMirrorEditor bind:value={messageBody} />
-  </div>
-
-  <div class="preview">
-    <h3>Preview</h3>
-    <div class="message-preview">
-      {@html preview.body.replace(/\n/g, '<br>')}
-    </div>
-  </div>
-</div>
-```
-
-### Draft Store
-
-**Auto-save to local storage:**
-
-```typescript
-// stores/templateDraft.ts
-interface TemplateDraft {
-  title: string;
-  description: string;
-  message_body: string;
-  category: string;
-  lastSaved: Date;
-}
-
-function createDraftStore() {
-  const STORAGE_KEY = 'communique-template-draft';
-
-  const state = $state<TemplateDraft>({
-    title: '',
-    description: '',
-    message_body: '',
-    category: 'general',
-    lastSaved: new Date()
-  });
-
-  // Load from localStorage on init
-  if (browser) {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      Object.assign(state, JSON.parse(saved));
-    }
-  }
-
-  // Auto-save on changes
-  $effect(() => {
-    if (browser) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      state.lastSaved = new Date();
-    }
-  });
-
-  return {
-    get draft() {
-      return state;
-    },
-
-    update(field: keyof TemplateDraft, value: string) {
-      state[field] = value;
-    },
-
-    reset() {
-      Object.assign(state, {
-        title: '',
-        description: '',
-        message_body: '',
-        category: 'general'
-      });
-      if (browser) {
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    }
-  };
-}
-
-export const draftStore = createDraftStore();
-```
+For the full variable reference, resolution logic, and UI rendering behavior, see **[Template Variables](template-variables.md)**.
 
 ---
 
 ## Content Moderation
 
-### 3-Layer Consensus System
+All templates pass through a 2-layer automated moderation pipeline before creation:
 
-**Phase 1 (active now):** 3 AI agents vote on template quality:
+1. **Llama Prompt Guard 2** (via Groq) -- prompt injection detection
+2. **Llama Guard 4 12B** (via Groq) -- content safety (MLCommons S1-S14 taxonomy)
 
-```
-Layer 1: OpenAI GPT-4
-Layer 2: Google Gemini 2.5 Flash OR Anthropic Claude 3.5 Haiku
-Layer 3: Human review (if consensus < 67%)
-```
+Only two hazard categories block content: S1 (violent crimes/threats) and S4 (CSAM). Political speech, defamation claims, and controversial opinions are explicitly allowed.
 
-**Consensus mechanism:**
+If moderation rejects: HTTP 400 with `CONTENT_FLAGGED` error. If Groq is unreachable: HTTP 503 with `MODERATION_FAILED` (fail-closed -- template is NOT created).
 
-```typescript
-interface AgentVote {
-  agent: 'openai' | 'gemini' | 'claude';
-  approved: boolean;
-  confidence: number;
-  reasoning: string;
-  toxicity_score?: number;
-  grammar_score?: number;
-  clarity_score?: number;
-}
+There is no human review, no admin dashboard, and no approval queue. This is by design.
 
-interface ConsensusResult {
-  approval: boolean;
-  consensusType: 'unanimous' | 'majority' | 'split';
-  confidence: number;
-  votes: AgentVote[];
-  corrections?: {
-    corrected_subject?: string;
-    corrected_body?: string;
-  };
-}
-
-async function getAgentConsensus(
-  template: Template
-): Promise<ConsensusResult> {
-  // Parallel agent calls
-  const [openai, gemini, claude] = await Promise.all([
-    callOpenAI(template),
-    callGemini(template),
-    callClaude(template)
-  ]);
-
-  const votes = [openai, gemini, claude];
-  const approvalCount = votes.filter(v => v.approved).length;
-
-  // Consensus threshold: 67% (2 out of 3)
-  const approval = approvalCount >= 2;
-  const consensusType =
-    approvalCount === 3 ? 'unanimous' :
-    approvalCount === 2 ? 'majority' :
-    'split';
-
-  return {
-    approval,
-    consensusType,
-    confidence: approvalCount / 3,
-    votes
-  };
-}
-```
-
-### Moderation Criteria
-
-**Auto-reject if:**
-- Toxicity score > 0.7 (hate speech, threats, harassment)
-- Grammar score < 0.4 (incomprehensible)
-- Contains forbidden words (profanity, slurs)
-- Spam patterns detected
-
-**Auto-approve if:**
-- All 3 agents approve unanimously
-- Toxicity score < 0.2
-- Grammar score > 0.8
-- Clarity score > 0.7
-
-**Human review if:**
-- Split decision (1-2 or 2-1 vote)
-- Confidence < 0.67
-- Borderline toxicity (0.4-0.7)
-- Complex policy questions
-
-### AI Corrections
-
-**Grammar and clarity improvements:**
-
-```typescript
-interface CorrectionLog {
-  original_subject: string;
-  corrected_subject: string;
-  original_body: string;
-  corrected_body: string;
-  changes: {
-    type: 'grammar' | 'clarity' | 'tone';
-    description: string;
-    location: { line: number; column: number };
-  }[];
-}
-
-// AI can suggest corrections without changing intent
-const result = await agentConsensus.processTemplate(template);
-
-if (result.corrections) {
-  // Show user corrections with diff view
-  showCorrectionsDiff({
-    original: template.message_body,
-    corrected: result.corrections.corrected_body,
-    changes: result.corrections.changes
-  });
-}
-```
+For the full moderation architecture, hazard taxonomy, and integration points, see **[Content Moderation](../development/moderation.md)**.
 
 ---
 
-## Share Flows
+## Jurisdiction Scoping
 
-### Template URLs
+Templates have two complementary geographic scoping systems:
 
-**Shareable URL structure:**
+### TemplateJurisdiction (US-specific)
 
-```
-https://commons.email/s/[slug]
-```
+Structured US jurisdictions with fields for congressional district, senate class, state code, county FIPS, city FIPS, and school district ID. Supports geospatial data (lat/lng) and population estimates.
 
-**Example:**
-```
-https://commons.email/s/support-healthcare-reform
-```
+### TemplateScope (international)
 
-**Slug generation:**
+Universal semantic hierarchy: `country → region → locality → district`. Works internationally with ISO 3166-1 country codes. Key fields:
 
-```typescript
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 50);
-}
+- `scope_level` -- `'country'`, `'region'`, `'locality'`, `'district'`
+- `display_text` -- human-readable label (e.g., "California", "CA-12", "London")
+- `power_structure_type` -- open-ended (government, corporate, housing, labor, etc.)
+- `audience_filter` -- target audience (renters, workers, shareholders, etc.)
+- `confidence` + `extraction_method` -- tracks how the scope was determined (`'regex'`, `'fuzzy'`, `'geocoder'`, `'llm'`, `'user_confirmed'`)
 
-// "Support the Healthcare Reform Act" → "support-the-healthcare-reform-act"
-```
-
-### Social Sharing
-
-**Open Graph tags (SSR):**
-
-```typescript
-// +page.ts
-export const load: PageLoad = async ({ params, fetch }) => {
-  const template = await fetch(`/api/templates/${params.slug}`).then(r => r.json());
-
-  return {
-    template,
-    meta: {
-      title: `Take Action: ${template.title}`,
-      description: template.description,
-      image: `/og-images/template-${template.id}.png`,
-      url: `https://commons.email/s/${template.slug}`
-    }
-  };
-};
-```
-
-```svelte
-<!-- +page.svelte -->
-<svelte:head>
-  <title>{data.meta.title}</title>
-  <meta property="og:title" content={data.meta.title} />
-  <meta property="og:description" content={data.meta.description} />
-  <meta property="og:image" content={data.meta.image} />
-  <meta property="og:url" content={data.meta.url} />
-  <meta name="twitter:card" content="summary_large_image" />
-</svelte:head>
-```
-
-### Share Button Component
-
-**One-click sharing to social platforms:**
-
-```svelte
-<script lang="ts">
-  let { template }: { template: Template } = $props();
-
-  const shareUrl = `https://commons.email/s/${template.slug}`;
-  const shareText = `Take action: ${template.title}`;
-
-  function shareTwitter() {
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
-    window.open(url, '_blank');
-  }
-
-  function shareFacebook() {
-    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
-    window.open(url, '_blank');
-  }
-
-  async function shareNative() {
-    if (navigator.share) {
-      await navigator.share({
-        title: template.title,
-        text: template.description,
-        url: shareUrl
-      });
-    }
-  }
-</script>
-
-<div class="share-buttons">
-  {#if navigator.share}
-    <button onclick={shareNative}>
-      <ShareIcon /> Share
-    </button>
-  {:else}
-    <button onclick={shareTwitter}>
-      <TwitterIcon /> Twitter
-    </button>
-    <button onclick={shareFacebook}>
-      <FacebookIcon /> Facebook
-    </button>
-  {/if}
-</div>
-```
+During template creation, the message writer agent extracts geographic scope from the content and creates a `TemplateScope` row in the same transaction. Users can edit the scope via `GeographicScopeEditor.svelte` before publishing.
 
 ---
 
-## Template Resolution
+## Share URLs
 
-**The core engine that transforms templates into personalized messages.**
+Published templates are accessible at `/s/[slug]`. The slug is auto-generated from the title (lowercase, alphanumeric + hyphens, max 100 chars) or provided by the AI subject line agent.
 
-### Resolution Phases
+The share page (`src/routes/s/[slug]/+page.server.ts`) loads the template along with:
+- District-level message delivery data
+- Active debates and argument scores
+- Position registration counts (support/oppose)
+- User's district officials (from Shadow Atlas)
+- Engagement heatmap by district
 
-**1. Variable Extraction**
-
-```typescript
-const variables = extractVariables(template.message_body);
-// → ['[Name]', '[Representative Name]', '[Personal Connection]']
-```
-
-**2. User Context Gathering**
-
-```typescript
-const userContext = {
-  name: user.name,
-  street: user.street,
-  city: user.city,
-  state: user.state,
-  zip: user.zip,
-  representatives: user.representatives // From Census Bureau + CWC lookup
-};
-```
-
-**3. Variable Resolution**
-
-```typescript
-const resolved = resolveTemplate(template, userContext, {
-  preserveVariables: false // Remove unfilled variables
-});
-
-// Input:
-// "Dear [Representative Name], I'm [Name] from [City]. [Personal Connection]"
-
-// Output (with user context):
-// "Dear Nancy Pelosi, I'm Jane Doe from San Francisco."
-// (Personal Connection removed if not filled)
-```
-
-### Resolution Rules
-
-**System variables** (auto-resolved):
-- If data available: Replace with actual value
-- If data missing: Remove variable + surrounding context
-
-**Manual variables** (user-filled):
-- If filled: Replace with user's text
-- If not filled: Remove entire line/paragraph
-
-**Smart context removal:**
-
-```typescript
-// Input: "I live at [Address] in [City]."
-// If address missing but city present:
-// → "I live in San Francisco."
-
-// Input: "from [Address]"
-// If address missing:
-// → "" (remove "from" + placeholder)
-```
-
-### Preview vs Send Mode
-
-```typescript
-// PREVIEW MODE (preserveVariables: true)
-resolveTemplate(template, user, { preserveVariables: true });
-// → Keeps unfilled variables: "[Personal Connection]" → interactive button
-
-// SEND MODE (preserveVariables: false)
-resolveTemplate(template, user, { preserveVariables: false });
-// → Removes unfilled variables completely
-```
+Debate threads live at `/s/[slug]/debate/[debateId]`.
 
 ---
 
-## Database Schema
+## Draft System
 
-**Template model (Prisma):**
+The `templateDraftStore` persists work-in-progress templates to localStorage.
 
-```prisma
-model Template {
-  id                  String   @id @default(cuid())
-  slug                String   @unique
-  title               String
-  description         String
-  category            String
-  type                String
-  deliveryMethod      String   // 'cwc' | 'email'
-  subject             String?
-  preview             String
-  message_body        String
-  delivery_config     Json
-  cwc_config          Json?
-  recipient_config    Json
-  metrics             Json
-
-  // Status & moderation
-  status              String   @default("draft")  // 'draft', 'pending', 'approved', 'rejected'
-  is_public           Boolean  @default(false)
-
-  verification_status String   @default("pending") // 'pending', 'approved', 'rejected'
-  quality_score       Int?
-  grammar_score       Int?
-  clarity_score       Int?
-  toxicity_classification Int?
-
-  // Agent consensus data
-  agent_votes         Json?
-  consensus_score     Float?
-  corrected_subject   String?
-  corrected_body      String?
-
-  // Usage tracking
-  send_count          Int      @default(0)
-  last_sent_at        DateTime?
-
-  // Geographic scope
-  applicable_countries String[] @default([])
-  jurisdiction_level   String?  // 'federal', 'state', 'municipal'
-  specific_locations   String[] @default([])
-
-  // Timestamps
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  submitted_at        DateTime?
-  reviewed_at         DateTime?
-
-  // Relations
-  userId              String?
-  user                User?    @relation(fields: [userId], references: [id])
-  civic_actions       CivicAction[]
-
-  @@index([verification_status])
-  @@index([quality_score])
-  @@index([userId])
-}
-```
+Key behaviors:
+- Auto-save every 30 seconds (if meaningful content exists)
+- Drafts expire after 7 days
+- Keyed by generated draft IDs (supports multiple concurrent drafts)
+- Saves all form state: objective, audience (decision makers + custom recipients), content (message, sources, research log, geographic scope), and current step
+- Strips Svelte reactive proxies via `structuredClone()` before serializing
+- On successful publish: draft is deleted. On failure: draft is preserved.
+- Supports OAuth resumption -- draft ID is passed through the auth flow so work is recoverable.
 
 ---
 
-## Key Design Decisions
+## Search and Discovery
 
-### Why Block Variables?
+Templates support two search vectors via Gemini embeddings:
 
-**Alternative considered:** Rich text editor with structured fields.
+- **Location embedding** -- generated from `title + description + category`
+- **Topic embedding** -- generated from `title + description + message_body`
 
-**Chosen approach:** Simple `[Variable]` syntax in plain text editor.
+Embeddings are generated asynchronously (fire-and-forget) after template creation. The `embedding_version` field tracks the embedding model version for future migrations.
 
-**Reasoning:**
-- Lower barrier to entry (no complex UI)
-- Easy to understand (`[Name]` is self-documenting)
-- Copy-paste friendly (share template text anywhere)
-- Migration-friendly (can export/import easily)
+Client-side filtering uses `TemplateScope` data for hierarchical location matching (country → region → locality → district).
 
-### Why 3-Layer Moderation?
-
-**Alternative considered:** Single AI agent + human review.
-
-**Chosen approach:** 3 AI agents + consensus threshold + human escalation.
-
-**Reasoning:**
-- Single agent can have biases or hallucinations
-- Consensus (2 out of 3) reduces false positives/negatives
-- Human review only for edge cases (saves cost)
-- Different models catch different issues (toxicity vs grammar)
-
-### Why CodeMirror over Monaco/Quill?
-
-**Chosen:** CodeMirror 6
-
-**Reasoning:**
-- Lightweight (40KB vs 500KB for Monaco)
-- Extensible (easy custom syntax highlighting)
-- Mobile-friendly (touch support)
-- Open source (MIT license)
+The `GET /api/templates` endpoint returns `topics` tags (1-5 lowercase strings) extracted by the AI agent, enabling category and keyword filtering.
 
 ---
 
-## Next Steps
+## Key Files
 
-- **Frontend Architecture**: See `FRONTEND-ARCHITECTURE.md` for SvelteKit 5 patterns
-- **Integrations**: See `INTEGRATION-GUIDE.md` for CWC API, OAuth, geocoding
-- **Development**: See `DEVELOPMENT.md` for testing, deployment
+| File | Purpose |
+|---|---|
+| `prisma/schema.prisma` | Template, TemplateJurisdiction, TemplateScope, Message models |
+| `src/routes/api/templates/+server.ts` | GET (list) and POST (create) endpoints |
+| `src/routes/api/templates/check-slug/+server.ts` | Slug availability check with suggestions |
+| `src/lib/core/db/template-select.ts` | Shared Prisma select clause for list views |
+| `src/lib/utils/templateResolver.ts` | Variable resolution engine |
+| `src/lib/components/template/TemplateCreator.svelte` | Multi-step creation orchestrator |
+| `src/lib/components/template/creator/UnifiedObjectiveEntry.svelte` | Step 1: objective + AI subject line |
+| `src/lib/components/template/creator/DecisionMakerResolver.svelte` | Step 2: AI decision maker discovery |
+| `src/lib/components/template/creator/MessageGenerationResolver.svelte` | Step 3: AI message generation + review |
+| `src/lib/components/template/creator/MessageResults.svelte` | Generated message display with citations |
+| `src/lib/components/template/creator/SlugCustomizer.svelte` | URL slug editor with availability check |
+| `src/lib/components/template/creator/GeographicScopeEditor.svelte` | Geographic scope editing UI |
+| `src/lib/components/template/TemplateCard.svelte` | Template listing card component |
+| `src/lib/stores/templateDraft.ts` | localStorage draft persistence |
+| `src/lib/core/server/moderation/index.ts` | Moderation pipeline orchestration |
+| `src/routes/s/[slug]/+page.server.ts` | Share page data loading |
 
 ---
 
-*Communiqué PBC | Frontend for VOTER Protocol | 2025*
+**See also:**
+- [Template Variables](template-variables.md) -- variable types, resolution logic, UI rendering
+- [Content Moderation](../development/moderation.md) -- full moderation architecture and hazard taxonomy
+- [Template Creator](creator.md) -- detailed creator component architecture
+- [Agents](../development/agents.md) -- AI agent system (subject line, message writer, decision maker)

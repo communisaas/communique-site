@@ -1,10 +1,10 @@
-# Communiqué Growth Strategy: From Civic Tool to Viral Movement
+# Commons Growth Strategy: From Civic Tool to Viral Movement
 
 **Date**: 2025-01-08
-**Status**: Strategic Planning (Phase 1 Complete, Phases 2-4 Future)
+**Status**: Strategic Planning (All Phases Future)
 **Goal**: Transform grassroots civic action into self-sustaining viral growth
 
-> **Implementation Status**: Only Phase 1 (shareable impact cards) is currently implemented. Phases 2-4 (template discovery, gamification, network visualization) are strategic planning documents for future development.
+> **STATUS: ASPIRATIONAL** — No viral growth features are currently implemented. ShareableCard model does not exist in schema. All phases (1-4) are strategic planning for future development.
 
 ---
 
@@ -39,14 +39,14 @@ User sends message
   → Gets shareable card: "I just told my rep about rent prices 📊"
   → Posts to Twitter/Instagram/TikTok
   → Friends see: "Oh, I can do that too" + template link
-  → Friends click, land on Communiqué
+  → Friends click, land on Commons
   → New users send messages
   → Repeat
 ```
 
 ---
 
-## Phase 1: Shareable Impact Cards ✅ IMPLEMENTED
+## Phase 1: Shareable Impact Cards — DESIGN COMPLETE, NOT YET IMPLEMENTED
 
 ### What We Build
 
@@ -146,7 +146,9 @@ model ShareableCard {
 
 ---
 
-## Phase 2: Template Discovery via Social 🔮 PLANNED (Future Strategy)
+## Phase 2: Template Discovery via Social 🔮 SPECULATIVE
+
+> **STATUS: SPECULATIVE** — Not implemented. No timeline commitment. Included as strategic exploration, not a roadmap item.
 
 ### The Problem: Template Discovery Sucks
 
@@ -253,7 +255,9 @@ const trending = await prisma.template.findMany({
 
 ---
 
-## Phase 3: Gamification & Leaderboards 🔮 PLANNED (Future Strategy)
+## Phase 3: Gamification & Leaderboards 🔮 SPECULATIVE
+
+> **STATUS: SPECULATIVE** — Not implemented. No timeline commitment. Included as strategic exploration, not a roadmap item.
 
 ### The Hook: Civic Engagement as Competition
 
@@ -269,7 +273,7 @@ const trending = await prisma.template.findMany({
 
 **Global leaderboards**:
 1. **Top organizers** (by referrals):
-   - "Sarah brought 47 people to Communiqué"
+   - "Sarah brought 47 people to Commons"
    - "Unlock 'Community Organizer' badge at 50 referrals"
 
 2. **Top cities** (by per-capita action):
@@ -367,7 +371,9 @@ model Badge {
 
 ---
 
-## Phase 4: Network Visualization 🔮 PLANNED (Future Strategy)
+## Phase 4: Network Visualization 🔮 SPECULATIVE
+
+> **STATUS: SPECULATIVE** — Not implemented. No timeline commitment. Included as strategic exploration, not a roadmap item.
 
 ### The Vision: See Your Impact Ripple Out
 
@@ -384,7 +390,7 @@ model Badge {
 
 **Features**:
 1. **Your network tree**:
-   - See everyone you brought to Communiqué
+   - See everyone you brought to Commons
    - See everyone they brought
    - 3 levels deep (you → friends → friends-of-friends)
 
@@ -427,7 +433,7 @@ model Badge {
 
 ---
 
-## Growth Model Projections
+## Growth Model Projections (Speculative)
 
 ### Viral Coefficient Calculation
 
@@ -497,7 +503,7 @@ Still not viral, but sustainable growth.
 
 ---
 
-## Implementation Roadmap
+## Implementation Roadmap (Speculative — no timeline commitment)
 
 ### Phase 1: Shareable Cards (Weeks 1-2)
 
@@ -721,7 +727,7 @@ Still not viral, but sustainable growth.
 
 **Civic action doesn't have to be invisible.**
 
-By making every action shareable, we transform Communiqué from a tool into a movement.
+By making every action shareable, we transform Commons from a tool into a movement.
 
 **The flywheel**:
 1. User sends message
@@ -732,7 +738,7 @@ By making every action shareable, we transform Communiqué from a tool into a mo
 6. Civic action becomes status symbol
 
 **The vision**:
-- 1M Americans using Communiqué
+- 1M Americans using Commons
 - 100K civic messages sent per month
 - Reputation as trusted civic infrastructure
 - Foundation for token-based governance (Phase 2)

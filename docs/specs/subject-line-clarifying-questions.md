@@ -1,5 +1,7 @@
 # Subject-Line Agent: Minimal Clarifying Questions
 
+> **STATUS: SHIPPED** — Clarification UX is live in the subject-line agent pipeline.
+
 ## Design Philosophy
 
 The subject-line agent is the gateway to the agentic pipeline. When input is ambiguous in ways that significantly affect downstream targeting, the agent should ask **minimal, effortless clarifying questions** rather than guessing wrong.

@@ -1,5 +1,7 @@
 # Differential Privacy Hardening Guide
 
+> **STATUS: ASPIRATIONAL** — Differential privacy hardening guide. Partial implementation.
+
 > **Status**: Implementation Guide for Expert Subagents
 > **Created**: 2026-01-12
 > **Context**: Post-brutalist audit of `src/lib/core/analytics/`

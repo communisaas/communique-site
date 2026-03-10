@@ -2,7 +2,7 @@
 
 **Pragmatic Cypherpunk Energy**
 
-This document defines how Communiqué communicates. We cut through bullshit. We tell users exactly what's happening. We're transparent about trade-offs. We don't hide behind corporate-speak or defensive language.
+This document defines how Commons communicates. We cut through bullshit. We tell users exactly what's happening. We're transparent about trade-offs. We don't hide behind corporate-speak or defensive language.
 
 ---
 
@@ -153,7 +153,7 @@ This document defines how Communiqué communicates. We cut through bullshit. We 
 
 **Example 1: Content moderation**
 - Primary: "Agent-reviewed templates"
-- Popover: "3 AI agents vote (OpenAI, Gemini, Claude). 2/3 consensus required."
+- Popover: "Automated 2-layer pipeline: Llama Prompt Guard (injection) + Llama Guard 4 (safety) via Groq."
 
 **Example 2: Reputation tracking**
 - Primary: "Earn reputation"
@@ -173,8 +173,8 @@ This document defines how Communiqué communicates. We cut through bullshit. We 
 - Popover: "Browser location service took >10s to respond."
 
 **Example 2: Verification failed**
-- Primary: "NFC read failed. Hold passport against phone for 3-5s."
-- Popover: "NFC must be enabled. Works best with phone case removed."
+- Primary: "Verification failed. Tap 'Try again' or use a different document."
+- Popover: "mDL verification requires a supported state digital wallet. See supported states."
 
 **Example 3: Database corruption**
 - Primary: "Reloading to fix database schema."
@@ -472,7 +472,7 @@ immediately without permissions. You can upgrade to browser location anytime.
 ```
 OAuth login links your Google/Facebook account to your session.
 We store the OAuth token but never see your password.
-Alternative: Use passkey authentication (Phase 2).
+Alternative: Use passkey authentication for phishing-resistant login.
 ```
 
 **CORRECT (confident primary + optional details):**

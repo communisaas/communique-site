@@ -162,4 +162,4 @@ const PRIVACY = {
 
 ---
 
-*Communique Analytics Architecture | 2026-01*
+*Commons Analytics Architecture | 2026-01*

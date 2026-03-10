@@ -1,5 +1,7 @@
 # Location Picker: Perceptual Engineering Specification
 
+> **STATUS: ASPIRATIONAL** — Design spec. Not yet implemented.
+
 **Status**: In Progress
 **Author**: Distinguished Engineering
 **Date**: 2026-01-28

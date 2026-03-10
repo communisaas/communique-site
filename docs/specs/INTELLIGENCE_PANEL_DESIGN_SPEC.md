@@ -368,4 +368,4 @@ Prepared color tokens for dark mode:
 
 ## License
 
-Part of Communiqué - MIT License
+Part of Commons - MIT License

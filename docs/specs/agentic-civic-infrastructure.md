@@ -1,6 +1,8 @@
 # Agentic Civic Infrastructure
 
-**Status:** Specification
+> **STATUS: VISION** — Architectural vision document. Guides long-term design direction.
+
+**Status:** Vision
 **Author:** Architecture
 **Created:** 2026-03-05
 **Depends on:** Agent system (Cycle 35+), Shadow Atlas, Engagement Tiers, Debate Markets, ZK Identity

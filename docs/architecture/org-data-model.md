@@ -8,7 +8,7 @@
 
 ## Premise
 
-Communique lets anyone send a substantive, personalized message to any decision-maker. For an individual, that's powerful. For an organization — a tenant union, a Sierra Club chapter, a parent coalition — it's infrastructure.
+Commons lets anyone send a substantive, personalized message to any decision-maker. For an individual, that's powerful. For an organization — a tenant union, a Sierra Club chapter, a parent coalition — it's infrastructure.
 
 Organizations need:
 - Multiple people creating and managing templates under a shared identity
@@ -282,7 +282,7 @@ The default. Credit card, bank transfer, invoicing for orgs. Handles tax receipt
 You're already on Scroll. You already have wallet connect. No new chain integration needed.
 
 - User or org registers a `paying_address` (the wallet they'll pay from)
-- Payment is a standard ERC-20 transfer: send USDC to Communique's payment address
+- Payment is a standard ERC-20 transfer: send USDC to Commons's payment address
 - Verification is on-chain: did `paying_address` send ≥ X USDC to the payment address within the billing window?
 - No smart contract required for v1. An indexer or periodic RPC check (`eth_getLogs` filtering for USDC Transfer events to the payment address, from the paying address) confirms payment.
 - `Subscription.status` and `current_period_end` updated when payment is verified
@@ -346,9 +346,9 @@ model Subscription {
 
 ### Privacy properties of crypto payments
 
-- **No KYC for the payer.** A wallet address is pseudonymous. Communique verifies that USDC arrived from the registered address — it doesn't know who controls that address.
+- **No KYC for the payer.** A wallet address is pseudonymous. Commons verifies that USDC arrived from the registered address — it doesn't know who controls that address.
 - **No billing address.** Stripe requires name + billing address. Crypto requires nothing.
-- **On-chain transparency cuts both ways.** The payment is visible on-chain — anyone can see that wallet X paid wallet Y. But wallet X is pseudonymous. The link from wallet X to a real person exists only if the user has connected that wallet to their Communique account, and that connection is never exposed publicly.
+- **On-chain transparency cuts both ways.** The payment is visible on-chain — anyone can see that wallet X paid wallet Y. But wallet X is pseudonymous. The link from wallet X to a real person exists only if the user has connected that wallet to their Commons account, and that connection is never exposed publicly.
 - **Payment address separation.** A user's `paying_address` does NOT have to be the same as their `wallet_address` (used for debate markets / position registration). They can pay from a completely separate wallet. Encourage this.
 
 ### Feature gating

@@ -1,5 +1,7 @@
 # Interactive Location Breadcrumb Navigation - Implementation Spec
 
+> **STATUS: ASPIRATIONAL** — Design spec. Not yet implemented.
+
 **Status:** Planning
 **Created:** 2025-11-15
 **Owner:** Frontend Team
@@ -241,7 +243,7 @@ export async function searchLocations(
     `https://nominatim.openstreetmap.org/search?${params}`,
     {
       headers: {
-        'User-Agent': 'Communique/1.0' // Required by Nominatim usage policy
+        'User-Agent': 'Commons/1.0' // Required by Nominatim usage policy
       }
     }
   );

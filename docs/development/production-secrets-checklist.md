@@ -1,6 +1,6 @@
 # Production Secrets Checklist
 
-This document provides a comprehensive checklist of all environment variables required for the Communique production deployment on Cloudflare Pages.
+This document provides a comprehensive checklist of all environment variables required for the Commons production deployment on Cloudflare Pages.
 
 ## Quick Reference: Critical vs Optional
 
@@ -133,7 +133,7 @@ openssl rand -base64 32
 ```bash
 CWC_CAMPAIGN_ID=communique-2025
 CWC_DELIVERY_AGENT_ID=COMMUNIQUE_PBC
-CWC_DELIVERY_AGENT_NAME="Communique PBC"
+CWC_DELIVERY_AGENT_NAME="Commons PBC"
 CWC_DELIVERY_AGENT_CONTACT=hello@commons.email
 CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL=noreply@commons.email
 CWC_DELIVERY_AGENT_ACK=Y

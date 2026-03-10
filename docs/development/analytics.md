@@ -6,7 +6,7 @@
 
 ## Architecture
 
-Communique uses differential privacy for analytics. No events, no sessions, no user tracking.
+Commons uses differential privacy for analytics. No events, no sessions, no user tracking.
 
 ```
 User Action → increment(metric, dims) → k-ary RR (ε=2.0) → Server → Aggregate DB
@@ -81,8 +81,8 @@ npm run test:run -- analytics-  # Run analytics tests
 ## References
 
 - [DP Hardening Guide](../specs/analytics/dp-hardening-guide.md)
-- [k-ary RR Implementation](../implementation/k-ary-randomized-response.md)
+- [k-ary RR Implementation](../specs/analytics/k-ary-randomized-response.md)
 
 ---
 
-*Communique Analytics | Privacy-Preserving Aggregation-Only | 2026-01*
+*Commons Analytics | Privacy-Preserving Aggregation-Only | 2026-01*

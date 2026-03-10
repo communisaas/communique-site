@@ -415,8 +415,8 @@ The new endpoint coexists with the existing submission endpoint:
 
 ## Related Documentation
 
-- [COMMUNIQUE-ZK-IMPLEMENTATION-SPEC.md](../specs/COMMUNIQUE-ZK-IMPLEMENTATION-SPEC.md)
-- [CYPHERPUNK-ARCHITECTURE.md](../specs/CYPHERPUNK-ARCHITECTURE.md)
+- [ZK Proof Integration](../specs/zk-proof-integration.md)
+- [Architecture](../architecture.md)
 - [Submission Model](../prisma/schema.prisma) (lines 1037-1092)
 - [Existing Submission Endpoint](../src/routes/api/submissions/create/+server.ts)
 

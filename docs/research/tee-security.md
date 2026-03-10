@@ -466,7 +466,7 @@ const manager = new TEEManager({
 
 ## Conclusion
 
-**AWS Nitro Enclaves on ARM Graviton processors** is the best choice for Communiqué's TEE infrastructure:
+**AWS Nitro Enclaves on ARM Graviton processors** is the best choice for Commons's TEE infrastructure:
 
 - ✅ **No Intel ME or AMD PSP** - ARM avoids x86 management engines
 - ✅ **Independently audited** - Third-party verification (Aug 2025)

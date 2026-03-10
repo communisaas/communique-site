@@ -143,10 +143,9 @@ if (template.jurisdiction_level === 'federal') {
 
 ### Current Agent Infrastructure
 
-**Content Moderation Agents** (`src/lib/agents/content/`):
-- ✅ Multi-agent consensus (OpenAI, Gemini, Claude)
+**Content Moderation** (`src/lib/core/server/moderation/`):
+- ✅ Automated 2-layer pipeline via Groq (Llama Prompt Guard 2 + Llama Guard 4)
 - ✅ Template quality assessment
-- ✅ LangGraph orchestration
 
 **Jurisdiction Assignment**: **NOT YET IMPLEMENTED**
 
@@ -326,12 +325,12 @@ STEP 3 (Address → District): "TX-25"
 1. **Entity Recognition Service**
    - Input: Template content (title, target, body)
    - Output: Extracted locations, organizations, jurisdiction types
-   - Tech: OpenAI/Gemini entity extraction
+   - Tech: Gemini entity extraction
 
 2. **Geospatial Resolution Service**
    - Input: Location name ("San Francisco", "Travis County", "TX-25")
    - Output: Structured jurisdiction data (FIPS codes, district overlaps, population)
-   - Tech: Census API, Google Civic API, cached geospatial database
+   - Tech: Census API, cached geospatial database
 
 3. **Multi-Agent Consensus**
    - Input: Ambiguous jurisdiction ("affects commuters?")
@@ -348,8 +347,8 @@ STEP 3 (Address → District): "TX-25"
 
 **Already in schema** (`prisma/schema.prisma:170-174`):
 ```prisma
-location_embedding        Json?     // OpenAI embedding of location context
-topic_embedding           Json?     // OpenAI embedding of policy topic
+location_embedding        Json?     // Gemini embedding of location context
+topic_embedding           Json?     // Gemini embedding of policy topic
 embedding_version         String    @default("v1")
 embeddings_updated_at     DateTime?
 ```
@@ -419,12 +418,12 @@ embeddings_updated_at     DateTime?
 
 ### The Agentic Unlock
 
-**Current agents**: Content moderation only
-**Next agents**: Jurisdiction assignment, geospatial reasoning, semantic search
+**Current agents**: Content moderation (Llama Guard via Groq), subject line generation, decision-maker resolution, message writing (all Gemini)
+**Next agents**: Jurisdiction assignment, geospatial reasoning
 
 **Architecture exists**:
-- Multi-agent consensus ✅
-- LangGraph orchestration ✅
+- Gemini agent pipeline ✅
+- SSE streaming ✅
 - Agent performance tracking ✅
 
 **Just need**: Jurisdiction Intelligence Agent implementing the pattern above.

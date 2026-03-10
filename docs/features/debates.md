@@ -1,5 +1,7 @@
 # Staked Deliberation (Debates)
 
+> **STATUS: FEATURE-GATED** — Fully implemented, activation pending. `FEATURES.DEBATE = false`
+
 **Status:** Deployed to Scroll Sepolia testnet. Frontend, API, and on-chain contract integration wired end-to-end. AI evaluation pipeline operational via `@voter-protocol/ai-evaluator`. Automated daily resolution cron at 02:00 UTC.
 **Tier Requirement:** 3+ (ZK-verified identity)
 **Contract:** `voter-protocol/contracts/src/DebateMarket.sol` (1897 lines, 193 tests across 4 test files)
@@ -15,7 +17,7 @@ When a user disagrees with a template's framing, they can open a *deliberation* 
 
 This is NOT a prediction market (bet on what will happen) or a vote (count heads). It is a *debate market*: stake on the quality of reasoning, weighted by earned credibility. The market uses LMSR (Logarithmic Market Scoring Rule) for continuous price discovery with commit-reveal privacy, and resolves via a hybrid of AI evaluation (40%) and tier-weighted community signal (60%).
 
-The user on Communique sees two numbers side-by-side: **847 people sent this** and **the leading counter-argument (AMEND) holds 62% market share.** That changes the calculus for user 848.
+The user on Commons sees two numbers side-by-side: **847 people sent this** and **the leading counter-argument (AMEND) holds 62% market share.** That changes the calculus for user 848.
 
 ---
 

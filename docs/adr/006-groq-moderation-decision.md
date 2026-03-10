@@ -11,7 +11,7 @@
 
 **Decision: Prioritize PROMPT INJECTION protection over content moderation.**
 
-Communiqué is a multi-stakeholder civic engagement platform serving ANY decision-maker (Congress, corporations, HOAs, universities, hospitals). Political speech, strong criticism, and controversial opinions are ALLOWED.
+Commons is a multi-stakeholder civic engagement platform serving ANY decision-maker (Congress, corporations, HOAs, universities, hospitals). Political speech, strong criticism, and controversial opinions are ALLOWED.
 
 The architecture uses:
 1. **Llama Prompt Guard 2** (REQUIRED) - Protects AI agents from manipulation

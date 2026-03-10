@@ -3,7 +3,7 @@
 **Status:** Design Philosophy
 **Created:** 2026-03-06
 **Depends on:** design-system.md, voice.md, platform-extension.md, org-data-model.md
-**Context:** The person-facing layer is deeply built (Postal Bubble, Power Landscape, RelayLoom, trust journey, three-zone template flow). The org-facing layer does not exist yet. This document defines how they connect — not as two products stitched together, but as two perspectives on one event.
+**Context:** Both layers are now shipping. The person-facing layer is deeply built (Postal Bubble, Power Landscape, RelayLoom, trust journey, three-zone template flow). The org-facing layer is operational (campaigns, supporter management, email delivery, RBAC, embeddable widgets). This document defines how they connect — not as two products stitched together, but as two perspectives on one event.
 
 ---
 

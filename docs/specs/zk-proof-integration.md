@@ -1,5 +1,7 @@
 # Phase 1: Browser-Native Zero-Knowledge Proof Integration
 
+> **STATUS: FEATURE-GATED** — Browser prover complete, broader ZK infrastructure gated behind feature flags.
+
 > **Updated 2026-02-02**: Reflects Wave 2.3 browser prover integration completion.
 
 **Status**: ✅ **COMPLETE** - Browser prover fully integrated with Svelte 5 reactive store
@@ -9,9 +11,9 @@
 ## Wave 2.3 Implementation Summary
 
 **Files Created:**
-- `src/lib/core/zkp/prover-client.ts` - Low-level prover wrapper
-- `src/lib/core/zkp/witness-builder.ts` - Circuit witness construction
-- `src/lib/stores/proof-generation.svelte.ts` - Svelte 5 reactive store
+- `src/lib/core/zkp/prover-client.ts` - Low-level prover wrapper ✅ exists
+- `src/lib/core/zkp/witness-builder.ts` - Circuit witness construction ❌ not created
+- `src/lib/stores/proof-generation.svelte.ts` - Svelte 5 reactive store ❌ not created (proof state managed in prover-client)
 - `src/lib/core/zkp/README.md` - Integration documentation
 
 **Key Features:**
@@ -37,7 +39,7 @@
 
 **Privacy Guarantees**:
 - Congressional offices: See message, NOT identity (anonymous constituent)
-- Communique platform: See encrypted blob, NOT message or identity
+- Commons platform: See encrypted blob, NOT message or identity
 - TEE (AWS Nitro Enclave): Sees message + address only during delivery (ephemeral, no logging)
 - Blockchain: Sees nullifier (prevents double-voting), NOT identity or message
 
@@ -117,10 +119,10 @@
 │ │   algorithm: 'XChaCha20-Poly1305'                                ││
 │ │ );                                                               ││
 │ │                                                                  ││
-│ │ // Only TEE can decrypt this - not Communique, not blockchain   ││
+│ │ // Only TEE can decrypt this - not Commons, not blockchain   ││
 │ └─────────────────────────────────────────────────────────────────┘│
 │           ↓                                                          │
-│ STEP 6: Submit to Communique Backend                                │
+│ STEP 6: Submit to Commons Backend                                │
 │ ┌─────────────────────────────────────────────────────────────────┐│
 │ │ POST /api/congressional/submit                                   ││
 │ │ {                                                                ││
@@ -158,7 +160,7 @@
 │ │   @@unique([nullifier, action_id]) // Prevent double-action     ││
 │ │ }                                                                ││
 │ │                                                                  ││
-│ │ // Communique CANNOT read encrypted data - only TEE can         ││
+│ │ // Commons CANNOT read encrypted data - only TEE can         ││
 │ └─────────────────────────────────────────────────────────────────┘│
 │           ↓                                                          │
 │ STEP 8: Submit ZK Proof to Scroll L2                                │
@@ -282,9 +284,9 @@
 
 ## Technical Implementation
 
-### 1. WASM Prover Integration (Communique Frontend)
+### 1. WASM Prover Integration (Commons Frontend)
 
-**Location**: `src/lib/core/zkp/prover-client.ts` (TO BE CREATED)
+**Location**: `src/lib/core/zkp/prover-client.ts`
 
 ```typescript
 /**
@@ -477,9 +479,9 @@ export async function verifyProofLocally(
 {/if}
 ```
 
-### 2. Shadow Atlas Data Storage (Communique Backend)
+### 2. Shadow Atlas Data Storage (Commons Backend)
 
-**Location**: `src/routes/api/shadow-atlas/register/+server.ts` (TO BE CREATED)
+**Location**: `src/routes/api/shadow-atlas/register/+server.ts`
 
 ```typescript
 /**
@@ -646,9 +648,9 @@ function generateMerklePath(leaves: string[], leafIndex: number, depth: number):
 }
 ```
 
-### 3. Submission Endpoint (Communique Backend)
+### 3. Submission Endpoint (Commons Backend)
 
-**Location**: `src/routes/api/congressional/submit/+server.ts` (TO BE UPDATED)
+**Location**: `src/routes/api/congressional/submit/+server.ts`
 
 ```typescript
 /**
@@ -762,7 +764,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 ### 4. Database Schema Updates
 
-**Location**: `prisma/schema.prisma` (ADD THESE MODELS)
+**Location**: `prisma/schema.prisma`
 
 ```prisma
 // Shadow Atlas: District Merkle Trees (size depends on circuit depth)
@@ -850,7 +852,7 @@ model Submission {
 | **Reputation Update** | 50-80k gas | $0.003-0.005 | <1s |
 | **Total** | ~2.3M gas | $0.013-0.035 | ~3-4s |
 
-**Platform Coverage**: Communique pays all gas fees (user-side gas-free)
+**Platform Coverage**: Commons pays all gas fees (user-side gas-free)
 
 ---
 
@@ -860,14 +862,14 @@ model Submission {
 
 1. **Identity Privacy**:
    - Congressional offices: See encrypted message + district, NOT identity
-   - Communique platform: See encrypted blobs, NOT message or identity
+   - Commons platform: See encrypted blobs, NOT message or identity
    - TEE: Sees address + message only during delivery (ephemeral, no logging)
    - Blockchain: Sees nullifier (anonymous identifier), NOT identity
 
 2. **Message Privacy**:
    - Encrypted with XChaCha20-Poly1305 AEAD to TEE public key
    - Only TEE (AWS Nitro Enclave) can decrypt
-   - Communique backend stores encrypted blobs (cannot read plaintext)
+   - Commons backend stores encrypted blobs (cannot read plaintext)
 
 3. **Double-Action Prevention**:
    - Nullifier = hash(userSecret, actionDomain)
@@ -889,7 +891,7 @@ model Submission {
 ### Threat Model
 
 **Protects Against**:
-- ✅ Platform surveillance (Communique cannot read messages/identities)
+- ✅ Platform surveillance (Commons cannot read messages/identities)
 - ✅ Congressional office profiling (cannot link messages to specific constituents)
 - ✅ Double-voting (nullifier prevents action reuse)
 - ✅ Non-residents (ZK proof verifies district membership)
@@ -907,7 +909,7 @@ model Submission {
 
 ### Phase 1.1: WASM Prover Integration (COMPLETE - Wave 2.3)
 
-- [x] Install `@voter-protocol/noir-prover` package in Communique
+- [x] Install `@voter-protocol/noir-prover` package in Commons
 - [x] Create `src/lib/core/zkp/prover-client.ts`
 - [x] Add prover initialization to app layout
 - [x] Build UI progress indicators for proof generation (8-15s)
@@ -964,7 +966,7 @@ model Submission {
 
 ### Privacy Metrics
 
-- **Target**: 0 plaintext leaks from Communique database
+- **Target**: 0 plaintext leaks from Commons database
 - **Target**: 0 identity linkages in congressional office deliveries
 - **Target**: 100% nullifier enforcement (no double-actions)
 
@@ -978,14 +980,14 @@ model Submission {
 
 ## References
 
-- **voter-protocol Noir Prover**: `/Users/noot/Documents/voter-protocol/packages/noir-prover/src/`
-- **Circuit Types**: `/Users/noot/Documents/voter-protocol/packages/noir-prover/src/types.ts`
-- **Progressive Verification**: `/Users/noot/Documents/communique/docs/PROGRESSIVE-VERIFICATION-ARCHITECTURE.md`
-- **Cypherpunk Architecture**: `/Users/noot/Documents/communique/docs/CYPHERPUNK-ARCHITECTURE.md`
-- **Reputation System**: `/Users/noot/Documents/communique/docs/UNIVERSAL-CREDIBILITY-SYSTEM.md`
+- **voter-protocol Noir Prover**: `voter-protocol/packages/noir-prover/src/` (sibling repo)
+- **Circuit Types**: `voter-protocol/packages/noir-prover/src/types.ts` (sibling repo)
+- **Progressive Verification**: `docs/architecture/graduated-trust.md`
+- **Architecture**: `docs/architecture.md`
+- **Reputation System**: `docs/specs/universal-credibility.md`
 
 ---
 
-**Implementation Status**: ⏳ **voter-protocol prover COMPLETE | Communique integration PENDING**
+**Implementation Status**: Browser prover integrated (`prover-client.ts`). Witness builder and reactive store not yet created.
 **Timeline**: 10 weeks (identity verification + WASM integration + Shadow Atlas + submission flow + testing)
 **Cost Savings**: $0 (no server-side proving infrastructure needed - browser-native only)

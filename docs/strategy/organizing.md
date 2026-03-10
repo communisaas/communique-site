@@ -120,7 +120,7 @@
 
 ---
 
-## Part 3: What Communiqué Should Actually Be
+## Part 3: What Commons Should Actually Be
 
 ### Not Civic Engagement Theater
 

@@ -1,4 +1,4 @@
-# Communique ↔ Voter-Protocol Integration Remediation Plan
+# Commons ↔ Voter-Protocol Integration Remediation Plan
 
 **Date:** 2026-02-02 (Updated)
 **Author:** Distinguished Engineering Review
@@ -98,10 +98,10 @@ Week 3:
 
 | Workstream | Agent | Outcome | Key Files |
 |------------|-------|---------|-----------|
-| WS2.1: Alien Protocol Research | `aa83958` | Research complete (no SDK available) | `communique/docs/specs/ALIEN-PROTOCOL-INTEGRATION-RESEARCH.md` (715 lines) |
+| WS2.1: Alien Protocol Research | `aa83958` | Research complete (no SDK available) | Archived: `docs/archive/2026-03-documentation-audit/ALIEN-PROTOCOL-INTEGRATION-RESEARCH.md` |
 | WS2.2: ~~Didit.me SDK~~ (removed Cycle 15; replaced by mDL) | `ad25c30` | Didit.me integration removed; mDL via Digital Credentials API is sole provider | `communique/src/lib/core/identity/didit-client.ts` removed |
-| WS2.3: Browser WASM Prover | `a572e80` | Complete prover integration | `communique/src/lib/core/zkp/` (1,106 lines), `ZK-PROVER-INTEGRATION-SUMMARY.md` |
-| WS2.4: Congressional Submit | `aedd846` | Full endpoint + blockchain client | `communique/src/routes/api/congressional/submit/+server.ts`, `CONGRESSIONAL-SUBMIT-IMPLEMENTATION.md` |
+| WS2.3: Browser WASM Prover | `a572e80` | Complete prover integration | `communique/src/lib/core/zkp/` (1,106 lines), `docs/architecture/zk-prover-integration.md` |
+| WS2.4: Congressional Submit | `aedd846` | Full endpoint + blockchain client | `communique/src/routes/api/congressional/submit/+server.ts`, `docs/congressional/congressional-submit.md` |
 | WS2.5: Security SA-004/005/006/007 | `a3cfaa0` | All fixes verified | `voter-protocol/SECURITY-FIXES-SA-004-007.md`, 101 tests pass |
 
 ### Wave 2 Key Achievements
@@ -193,7 +193,7 @@ src/lib/components/ProofGenerationUI.svelte # Modify: wire to prover
 ```markdown
 ## MISSION: Wire Browser WASM Prover for ZK Proof Generation
 
-You are connecting the existing NoirProver package to the Communique frontend
+You are connecting the existing NoirProver package to the Commons frontend
 so users can generate ZK proofs in their browser.
 
 ### DOMAIN CONTEXT
@@ -811,4 +811,4 @@ await Task({ subagent_type: "software-architect-mcp", description: "WS2.4 Congre
 
 ---
 
-*Communique PBC | Integration Remediation Plan | Last Updated: 2026-02-02*
+*Commons PBC | Integration Remediation Plan | Last Updated: 2026-02-02*

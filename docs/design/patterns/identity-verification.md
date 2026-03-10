@@ -2,7 +2,7 @@
 
 ## Overview
 
-This suite of components handles identity verification for Communiqué's congressional advocacy platform. The design balances **civic credibility** with **digital sovereignty**, making users feel empowered rather than surveilled.
+This suite of components handles identity verification for Commons's congressional advocacy platform. The design balances **civic credibility** with **digital sovereignty**, making users feel empowered rather than surveilled.
 
 ## Design Philosophy: "Stealthily Cypherpunk"
 

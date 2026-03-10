@@ -1,5 +1,7 @@
 # The Bubble: Geographic Identity as a Living Object
 
+> **STATUS: ASPIRATIONAL** — Design spec. Not yet implemented.
+
 **Status:** Design Spec — Active (Rev 2)
 **Author:** Architecture / Perceptual Engineering
 **Created:** 2026-03-01
@@ -1306,7 +1308,7 @@ for each district_a in layer:
 ```
 Spatial filtering via bbox overlap makes this O(n log n) rather than O(n²).
 
-### Phase 2: Communique bubble state + geometry engine
+### Phase 2: Commons bubble state + geometry engine
 
 **Goal**: Postal code → API call → client-side geometry → reactive bubble state with derived precision.
 

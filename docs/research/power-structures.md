@@ -1,5 +1,7 @@
 # Research Outline: All Power Structures That Need Accountability
 
+> **STATUS: RESEARCH AGENDA** — Phase 2+ exploration (12-18 months post-launch). Current Phase 1 focuses on verified campaign infrastructure and the org layer. See [`strategy/product-roadmap.md`](../strategy/product-roadmap.md) for current priorities.
+
 **Date**: 2025-01-08
 **Context**: Expanding beyond government/landlords to ALL decision-making bodies that affect communities
 **Purpose**: Map every power structure where cryptographic organizing tools could create accountability

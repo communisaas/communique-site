@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Successfully integrated `@voter-protocol/noir-prover` WASM package into the Communique frontend for in-browser zero-knowledge proof generation. The implementation provides a clean, type-safe API with Svelte 5 runes-based reactive state management.
+Successfully integrated `@voter-protocol/noir-prover` WASM package into the Commons frontend for in-browser zero-knowledge proof generation. The implementation provides a clean, type-safe API with Svelte 5 runes-based reactive state management.
 
 **Key Achievements:**
 - ✅ Lazy-initialized prover with singleton pattern (SA-006 compliant)
@@ -579,7 +579,7 @@ describe('Full Proof Flow', () => {
 │   └── README.md                  (6.3 KB)    - Documentation
 ├── src/lib/stores/
 │   └── proof-generation.svelte.ts (250 lines) - Reactive store
-└── ZK-PROVER-INTEGRATION-SUMMARY.md (this file)
+└── docs/architecture/zk-prover-integration.md (this file)
 ```
 
 **Total:** 1,106 lines of implementation code (excluding examples and docs)

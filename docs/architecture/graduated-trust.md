@@ -8,7 +8,7 @@
 
 ## Premise
 
-Communique currently presents users with a cliff: either you're unverified (email path, zero signal) or you've scanned your passport in a TEE-backed ceremony (CWC path, full ZK proof). There is nothing in between.
+Commons currently presents users with a cliff: either you're unverified (email path, zero signal) or you've scanned your passport in a TEE-backed ceremony (CWC path, full ZK proof). There is nothing in between.
 
 This is architecturally wrong. Trust is not binary. A constituent who provides their address and verifies it against civic data is more credible than an anonymous emailer, even without a passport scan. A user with a persistent passkey-bound identity is more credible than a throwaway session.
 
@@ -19,14 +19,32 @@ The graduated trust model replaces the cliff with a ramp. Each tier costs the us
 ## The Tiers
 
 ```
-Tier 0   Anonymous guest           No signal
-Tier 1   Passkey-bound identity    Persistent pseudonym, phishing-resistant
-Tier 2   Address-attested          District membership confirmed via civic data
-Tier 3   ZK-verified constituent   Cryptographic proof of district, anonymous delivery
-Tier 4   Government credential     mDL / EUDIW via Digital Credentials API
+Tier 0   Guest                     No account, anonymous browsing
+Tier 1   Authenticated             OAuth login, persistent pseudonym
+Tier 2   District Verified         Address-attested, district confirmed via civic data
+Tier 3   Identity Verified         ID card / drivers license verified
+Tier 4   Passport Verified         NFC passport (legacy — Didit/self.xyz providers)
+Tier 5   Government Verified       mDL / EUDIW via Digital Credentials API
 ```
 
-Each tier is strictly additive. A Tier 3 user has everything Tier 2 has, plus a ZK proof. A Tier 4 user has government backing on top of Tier 3's cryptographic guarantees. You never lose a tier — you level up.
+Each tier is strictly additive. A Tier 3 user has everything Tier 2 has, plus identity verification. A Tier 5 user has government-backed credential on top of everything below. You never lose a tier — you level up.
+
+> **Note**: Tier 4 (Passport Verified) exists for backward compatibility with users verified through removed providers (Didit, self.xyz). New users progress directly from Tier 3 to Tier 5 via mDL.
+
+### Authority Levels (ZK Circuit Input)
+
+Trust tiers (0-5) are the user-facing concept. Authority levels (1-5) are the on-chain/circuit concept — stored as `authorityLevel` in ZK proof inputs and validated by the circuit (`assert(authority_level >= 1 && authority_level <= 5)`).
+
+| Trust Tier | Authority Level | Derivation |
+|---|---|---|
+| 0 (Guest) | — | No circuit input (not authenticated) |
+| 1 (Authenticated) | 1 | OAuth login, no verification |
+| 2 (District Verified) | 2 | `trust_score >= 100` (verified email) |
+| 3 (Identity Verified) | 3 | `identity_commitment` present (ID card/license) |
+| 4 (Passport Verified) | 4 | `identity_commitment` + `document_type === 'passport'` (legacy) |
+| 5 (Government Verified) | 5 | `document_type === 'mdl'` + `identity_commitment` |
+
+**Implementation**: `deriveAuthorityLevel()` and `deriveTrustTier()` in `src/lib/core/identity/authority-level.ts`. Each action domain can require a minimum authority level via `DistrictGate.actionDomainMinAuthority` on-chain.
 
 ---
 
@@ -47,7 +65,8 @@ Tier 0 → Landing page → "Send" → mailto: opens mail app → "Did you send 
 Tier 1 → Landing page → "Send" → (congressional? address gate) → mailto: → celebration + "Verify address" CTA
 Tier 2 → Landing page → "Send" → email_attested (district attestation footer) → celebration + "Verify identity" CTA
 Tier 3 → Landing page → "Send as Verified Constituent" → ZK proof generation → CWC submission → delivery tracking
-Tier 4 → Same as Tier 3, with government-backed authority level
+Tier 4 → Same as Tier 3, passport-backed authority level (legacy providers only)
+Tier 5 → Same as Tier 3, government-backed authority level (mDL / EUDIW)
 ```
 
 ### The delta that matters
@@ -59,7 +78,7 @@ Congressional offices process thousands of messages. The signal hierarchy:
 | 0 | Raw email | Unknown sender, no verification | Bulk-counted or ignored |
 | 1 | Same email | Same — OAuth doesn't add signal | Same as Tier 0 |
 | 2 | Email + attestation | "Verified constituent of [District]" with verification link | Read by staff, logged as constituent contact |
-| 3+ | CWC official channel | Cryptographic proof of district, delivered through official intake | Highest priority, enters casework system |
+| 3-5 | CWC official channel | Cryptographic proof of district, delivered through official intake | Highest priority, enters casework system |
 
 The jump from Tier 0 to Tier 2 is the highest-ROI graduation. Address entry takes 10 seconds. The user goes from "unknown sender" to "verified constituent." Tier 3 adds cryptographic guarantees and anonymous delivery, but the recipient-facing signal improvement is smaller than 0→2.
 
@@ -406,7 +425,7 @@ User has verified their identity with a government credential (mDL / EUDIW via D
 
 **What's missing:**
 - ~~self.xyz NFC passport integration~~ (removed — Cycle 15; mDL is the sole verification path)
-- Browser-side ZK prover integration (voter-protocol has the prover, Communique hasn't wired it)
+- Browser-side ZK prover integration (voter-protocol has the prover, Commons hasn't wired it)
 - Browser-side witness encryption (XChaCha20-Poly1305 — no libsodium.js integration)
 - TEE infrastructure (AWS Nitro Enclave — provider interface exists, deployment missing)
 - CWC API submission (client code exists at `cwc-client.ts`, not connected to delivery pipeline)
@@ -417,7 +436,7 @@ User has verified their identity with a government credential (mDL / EUDIW via D
 
 **`src/lib/core/proof/nitro-enclave-demo.ts`** — Demo/stub code. Replace with real TEE attestation verification.
 
-**`src/lib/core/tee/providers/gcp.ts`** — GCP Confidential Computing provider. The architecture settled on AWS Nitro Enclaves. If GCP isn't being pursued, this is dead code. Decide: multi-cloud TEE or AWS-only.
+**`src/lib/core/tee/providers/gcp.ts`** — GCP Confidential Computing provider. **Decision: AWS Nitro Enclaves only.** This is dead code — remove when doing TEE implementation.
 
 **Schema consolidation: RESOLVED (2026-02-16)** — The three-schema problem has been eliminated. `schema.prisma` is the single canonical schema. `core.prisma` and `schema-production.prisma` have been deleted.
 
@@ -426,7 +445,7 @@ User has verified their identity with a government credential (mDL / EUDIW via D
 This is the largest tier. The work breaks into five workstreams:
 
 **Workstream A: Browser ZK Prover Integration**
-- Wire voter-protocol's WASM prover into Communique
+- Wire voter-protocol's WASM prover into Commons
 - Create Svelte 5 reactive proof generation store
 - Build witness construction from Shadow Atlas credentials
 - UX: progress indicator, error handling, retry
@@ -669,8 +688,8 @@ The `'email'` and `'certified'` values are ambiguous — replace with explicit n
 
 | Document | Issue |
 |----------|-------|
-| `docs/implementation-status.md` | Claims "Browser ZK Prover: INTEGRATED" — it is NOT integrated into Communique, only voter-protocol |
-| `docs/specs/zk-proof-integration.md` | Claims "Wave 2.3 integration COMPLETE" — the integration files don't exist in Communique |
+| `docs/implementation-status.md` | Claims "Browser ZK Prover: INTEGRATED" — it is NOT integrated into Commons, only voter-protocol |
+| `docs/specs/zk-proof-integration.md` | Claims "Wave 2.3 integration COMPLETE" — the integration files don't exist in Commons |
 | `docs/architecture.md` | Reads as current architecture but describes Phase 2+ aspirations as Phase 1 |
 
 ---
@@ -811,7 +830,7 @@ Each tier is an independent workstream. They should be implemented in order (Tie
 
 **Background needed:** Zero-knowledge proofs (UltraHonk/Noir circuits), Poseidon2 hash function, Merkle tree proofs, XChaCha20-Poly1305 witness encryption, AWS Nitro Enclaves, CWC API specification, Scroll zkEVM.
 
-**Key constraint:** The voter-protocol repo contains the actual prover. The integration is a bridge between repos — the Communique browser client must load the WASM prover, construct witnesses from Shadow Atlas credentials, and submit proofs. Do not reimplement the prover.
+**Key constraint:** The voter-protocol repo contains the actual prover. The integration is a bridge between repos — the Commons browser client must load the WASM prover, construct witnesses from Shadow Atlas credentials, and submit proofs. Do not reimplement the prover.
 
 **Test surface:** Proof generation round-trip, witness encryption/decryption, TEE attestation verification, CWC delivery, nullifier uniqueness enforcement, on-chain verification.
 
@@ -825,12 +844,36 @@ Each tier is an independent workstream. They should be implemented in order (Tie
 
 ---
 
+## Implementation Progress
+
+> Detailed cycle-by-cycle logs archived in `docs/archive/2026-03-documentation-audit/graduated-trust-implementation.md`.
+
+| Cycle | Focus | Status | Key Outcomes |
+|-------|-------|--------|--------------|
+| 1 | Cleanup + Foundation | ✅ | Unified schema, added `trust_tier` field + 8 supporting fields |
+| 2 | Tier 1 — Passkeys | ✅ | WebAuthn registration/authentication, `did:key` derivation, passkey UI |
+| 3 | Tier 2 — Address Attestation | ✅ | AddressVerificationFlow, district-credential (W3C VC 2.0), TrustSignal UI |
+| 4 | Tier 3 — Proof-Verified Delivery | ✅ | Real proof generation (WASM prover), XChaCha20-Poly1305 encryption |
+| 5 | E2E CWC Delivery | ✅ | Server-side witness decryption, CWC delivery pipeline via `waitUntil()` |
+| 6 | Status Tracking + Modals | ✅ | Submission status polling, retry endpoint, modal error states |
+| 7 | Security + Svelte 5 | ✅ | BR5-010 nullifier fix, trust tier propagation, event dispatch migration |
+| 8 | Production Hardening | ✅ | ALS safety, type safety (`as any` elimination), full Svelte 5 migration |
+| 9 | Tier 4 — Gov Credentials | ✅ | mDL via Digital Credentials API, COSE_Sign1, IACA trust store, OpenID4VP |
+| 10 | Production Readiness | ✅ | CF Workers build, final Svelte 5 migration, ~1,300 lines dead code removed |
+| 11 | Type Safety | ✅ | svelte-check 0 errors, libsodium eliminated from server |
+| 12 | Dead Code Purge | ✅ | ~8,700 lines removed, broken event wiring fixed |
+| 13 | Crypto Verification | ✅ | COSE_Sign1 ECDSA, Ed25519 credential signing, 47 new tests |
+| 14 | Security Tests | ✅ | 36 new security tests, debug logs removed, input limits tightened |
+| 15–19 | Final Hardening | 📋 Planned | Type safety purge, Workers infra, stub elimination |
+
+---
+
 ## Document Cross-References
 
 | Existing document | Relationship to this document |
 |------------------|-------------------------------|
 | `docs/authority-levels.md` | Mapped to tiers; extend with Tier 0 and Tier 4 |
-| `docs/shadow-atlas-integration.md` | Tier 3 implementation reference |
+| `docs/shadow-atlas-integration.md` | Shadow Atlas integration (Tier 3 proofs + officials resolution) |
 | `docs/specs/zk-proof-integration.md` | Tier 3 prover integration reference (note: status claims are overstated) |
 | `docs/design/patterns/identity-verification.md` | UX framing; update to reflect graduated model |
 | `docs/adr/007-identity-schema-migration.md` | Historical context for current schema design |
@@ -844,4 +887,4 @@ Each tier is an independent workstream. They should be implemented in order (Tie
 
 ---
 
-*Communique PBC | Graduated Trust Architecture | 2026-02-16*
+*Commons PBC | Graduated Trust Architecture | 2026-02-16*

@@ -1,5 +1,7 @@
 # Phase 1: Privacy-Preserving Civic Intelligence That Goes Viral
 
+> **STATUS: HISTORICAL** — January 2025 planning document. The product has evolved significantly since this was written. See [`product-roadmap.md`](product-roadmap.md) for current timeline and priorities, and [`index.md`](index.md) for how the Person Layer and Org Layer now structure the product.
+
 **Date**: 2025-01-08
 **Context**: Synthesis of brutalist critique + our actual implementation + social media virality
 **Timeline**: 3 months to launch

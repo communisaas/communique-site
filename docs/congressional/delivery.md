@@ -364,7 +364,7 @@ See `/docs/congressional/dashboard.md` for office dashboard setup (view messages
 
 ## Cross-References
 
-**District verification (voter-protocol)** → See `/docs/DISTRICT-VERIFICATION-RESPONSIBILITIES.md`
+**District verification (voter-protocol)** → See `/docs/integration.md`
 
 **Zero-knowledge proofs** → See `/docs/architecture/decision-record.md`
 
@@ -422,7 +422,7 @@ See `/docs/congressional/dashboard.md` for office dashboard setup (view messages
         <MessageId>comm_1234567890_tpl_abc123_rep_H001234</MessageId>
         <Timestamp>2025-10-12T19:35:00Z</Timestamp>
         <DeliveryAgent>
-            <Name>Communique Advocacy Platform</Name>
+            <Name>Commons Advocacy Platform</Name>
             <Email>cwc@communique.org</Email>
             <Phone>+1-555-CWC-MAIL</Phone>
         </DeliveryAgent>
@@ -464,7 +464,7 @@ Jane Constituent</Body>
 <CWC>
     <DeliveryId>comm_1234567890_tpl_abc123_sen_S000123</DeliveryId>
     <DeliveryAgent>
-        <Name>Communique Advocacy Platform</Name>
+        <Name>Commons Advocacy Platform</Name>
         <Email>cwc@communique.org</Email>
         <Phone>+1-555-CWC-MAIL</Phone>
     </DeliveryAgent>
@@ -497,7 +497,7 @@ Jane Constituent</ConstituentMessage>
 
 #### Constituent Data Mapping
 
-| Communiqué Field | CWC House Field | CWC Senate Field | Required |
+| Commons Field | CWC House Field | CWC Senate Field | Required |
 |------------------|-----------------|------------------|----------|
 | `user.name` | `ConstituentData.Name.First/Last` | `Constituent.FirstName/LastName` | Yes |
 | `user.email` | `ConstituentData.Email` | `Constituent.ConstituentEmail` | Yes |
@@ -509,7 +509,7 @@ Jane Constituent</ConstituentMessage>
 
 #### Message Data Mapping
 
-| Communiqué Field | CWC House Field | CWC Senate Field | Required |
+| Commons Field | CWC House Field | CWC Senate Field | Required |
 |------------------|-----------------|------------------|----------|
 | `template.title` | `MessageData.Subject` | `Message.Subject` | Yes |
 | `template.message_body` | `MessageData.Body` | `Message.ConstituentMessage` | Yes |
@@ -524,7 +524,7 @@ comm_1728764100_user_abc123_tpl_climate-action_H001234
 ```
 
 **Components**:
-- `comm_` - Communique identifier prefix
+- `comm_` - Commons identifier prefix
 - Unix timestamp
 - User ID (anonymized or hashed)
 - Template ID

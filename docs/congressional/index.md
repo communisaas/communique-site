@@ -46,7 +46,13 @@
 
 ---
 
-### 2. [dashboard.md](dashboard.md) - Congressional Office Dashboard
+### 2. [congressional-submit.md](congressional-submit.md) - Congressional Submit Implementation
+
+CWC API endpoint implementation, ZK proof verification, message delivery flow.
+
+---
+
+### 3. Congressional Office Dashboard (planned)
 
 Dashboard for congressional offices to view verified constituent messages.
 
@@ -144,7 +150,7 @@ CWC_API_BASE_URL=https://soapbox.senate.gov/api
 
 **Rate limits**:
 - 10 submissions per hour per user (prevents spam)
-- Tracked in DynamoDB (server-side)
+- Tracked via rate limiter (in-memory per-isolate; Redis via `REDIS_URL` in production)
 - User sees: "Rate limit reached, try again in X minutes"
 
 **Error handling**:
@@ -166,16 +172,14 @@ CWC_API_BASE_URL=... # Optional (defaults to production)
 AWS_NITRO_ENCLAVE_ENABLED=true # Production only
 TEE_PUBLIC_KEY=... # TEE enclave public key
 
-# Rate Limiting
-DYNAMO_TABLE_NAME=... # DynamoDB table for rate limits
-RATE_LIMIT_WINDOW_SECONDS=3600 # 1 hour window
-RATE_LIMIT_COUNT=10 # 10 messages per hour
+# Rate Limiting (optional — in-memory by default)
+REDIS_URL=... # Optional Redis for distributed rate limiting
 ```
 
 **Infrastructure**:
 - AWS Nitro Enclaves (ARM Graviton, hypervisor-isolated)
-- DynamoDB (rate limiting state)
-- SQS (message queue for retry logic)
+- Cloudflare Workers (application hosting)
+- PostgreSQL via Hyperdrive (data persistence)
 
 ---
 
@@ -196,7 +200,7 @@ npm run test:integration -- congressional-delivery.test.ts
 **Mocking**:
 - CWC API responses mocked
 - TEE proving mocked (use deterministic test proofs)
-- DynamoDB mocked (in-memory rate limit tracking)
+- Rate limiter mocked (in-memory tracking)
 
 ---
 
@@ -226,7 +230,7 @@ npm run test:integration -- congressional-delivery.test.ts
 ## For Congressional Staff
 
 **Setting up dashboard access**:
-1. Contact Communiqué team for dashboard credentials
+1. Contact Commons team for dashboard credentials
 2. Navigate to `/congressional/dashboard`
 3. View verified constituent messages
 4. Filter by issue category, date range
@@ -246,10 +250,10 @@ npm run test:integration -- congressional-delivery.test.ts
 
 ## Cross-References
 
-**TEE architecture** → See `/docs/architecture/tee.md`
+**TEE architecture** → See `/docs/architecture/tee-systems.md`
 
-**Zero-knowledge proofs** → See `/docs/architecture/zk-proofs.md`
+**Zero-knowledge proofs** → See `/docs/specs/zk-proof-integration.md`
 
-**VOTER Protocol integration** → See `/docs/INTEGRATION-GUIDE.md`
+**VOTER Protocol integration** → See `/docs/integration.md`
 
 **Message templates** → See `/docs/features/templates.md`

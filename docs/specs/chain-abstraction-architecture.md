@@ -1,10 +1,12 @@
 # Chain Abstraction Architecture
 
+> **STATUS: FEATURE-GATED** (`FEATURES.WALLET = false`) — Infrastructure built but gated behind wallet feature flag.
+
 > Canonical specification for the wallet, signing, gas, and funding layers.
 > Civic identity is wallet-agnostic. Every layer below it is interchangeable.
 
 **Status:** Implemented (Waves 1-6 complete, 2026-02-26)
-**Scope:** Communique frontend + voter-protocol contracts
+**Scope:** Commons frontend + voter-protocol contracts
 **Depends on:** [TWO-TREE-ARCHITECTURE-SPEC](../../../voter-protocol/specs/TWO-TREE-ARCHITECTURE-SPEC.md), [DEBATE-MARKET-SPEC](../../../voter-protocol/specs/DEBATE-MARKET-SPEC.md)
 
 ---

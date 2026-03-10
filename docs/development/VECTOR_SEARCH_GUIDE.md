@@ -22,7 +22,7 @@
 
 ## Overview
 
-Communique's vector search system enables semantic search across intelligence
+Commons's vector search system enables semantic search across intelligence
 items (news, legislation, regulatory filings, corporate disclosures) and
 template discovery. Unlike keyword search, semantic search understands meaning
 and context.
@@ -507,4 +507,4 @@ console.log(costTracker.getStats());
 
 ---
 
-*Communique PBC | Vector Search Guide | Updated 2026-02-05 (pgvector migration)*
+*Commons PBC | Vector Search Guide | Updated 2026-02-05 (pgvector migration)*

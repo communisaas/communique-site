@@ -1,4 +1,4 @@
-# Communiqué Design System
+# Commons Design System
 
 **The weight of numbers.**
 
@@ -6,7 +6,7 @@
 
 ## Philosophy
 
-Communiqué is infrastructure for organized pressure. One complaint gets buried. Five thousand coordinated messages force a response.
+Commons is infrastructure for organized pressure. One complaint gets buried. Five thousand coordinated messages force a response.
 
 The design system exists to make collective action feel inevitable.
 
@@ -18,7 +18,7 @@ Every pixel answers one question: **does this make coordination feel heavier?**
 
 We're not a SaaS product. We're not a "platform." We're not trying to look like Stripe or Linear or Vercel.
 
-Those are tools for individual productivity. Communiqué is a weapon for collective action.
+Those are tools for individual productivity. Commons is a weapon for collective action.
 
 **We don't design for "credibility." We design for momentum.**
 
@@ -26,7 +26,7 @@ Those are tools for individual productivity. Communiqué is a weapon for collect
 
 ## The Visual Identity: Coordination Graph
 
-The RelayLoom component defines our visual language. It shows what Communiqué actually does:
+The RelayLoom component defines our visual language. It shows what Commons actually does:
 
 - **Nodes** — People and targets, connected
 - **Edges** — Messages flowing from many senders to decision-makers
@@ -368,4 +368,4 @@ If it feels like a consumer app, it's wrong.
 
 ---
 
-*Communiqué PBC | Design System | 2025-11*
+*Commons PBC | Design System | 2025-11*

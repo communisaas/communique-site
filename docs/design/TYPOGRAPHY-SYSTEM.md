@@ -2,7 +2,7 @@
 
 **Words in Satoshi. Numbers in Mono.**
 
-This document provides detailed usage patterns and examples for Communiqué's typography system. For core rules and design tokens, see `docs/design/design-system.md`.
+This document provides detailed usage patterns and examples for Commons's typography system. For core rules and design tokens, see `docs/design/design-system.md`.
 
 ---
 
@@ -142,4 +142,4 @@ This document provides detailed usage patterns and examples for Communiqué's ty
 
 ---
 
-*Communiqué PBC | Typography System | 2025-11*
+*Commons PBC | Typography System | 2025-11*

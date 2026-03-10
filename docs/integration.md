@@ -1,6 +1,6 @@
 # Integration Guide: External Services & voter-protocol
 
-**How Communique integrates with external services and voter-protocol backend**
+**How Commons integrates with external services and voter-protocol backend**
 
 ---
 
@@ -18,7 +18,7 @@
 
 ### Separation of Concerns
 
-**Communique handles:**
+**Commons handles:**
 - UI/UX for address collection
 - Browser-side encryption (XChaCha20-Poly1305)
 - Calling voter-protocol APIs
@@ -59,7 +59,7 @@ Response:
   }
 ```
 
-**Communique proxy implementation:**
+**Commons proxy implementation:**
 ```typescript
 // src/routes/api/expertise/verify/+server.ts
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -84,7 +84,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const verificationResult = await verifyResponse.json();
 
-  // Store result in Communique database
+  // Store result in Commons database
   await db.userExpertise.create({
     data: {
       user_id: session.userId,
@@ -105,7 +105,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 **Status:** ✅ Complete (Wave 2.4)
 **Implementation:** `src/routes/api/congressional/submit/+server.ts`
-**Documentation:** `CONGRESSIONAL-SUBMIT-IMPLEMENTATION.md`
+**Documentation:** `docs/congressional/congressional-submit.md`
 
 ### Endpoint
 
@@ -169,7 +169,7 @@ Content-Type: application/json
 1. Nullifier uniqueness MUST be enforced before blockchain submission
 2. All submissions MUST be logged for audit trail
 3. Blockchain submission MUST be async (don't block response)
-4. Encrypted data stored but NEVER decrypted in Communique
+4. Encrypted data stored but NEVER decrypted in Commons
 
 ---
 
@@ -184,13 +184,13 @@ Content-Type: application/json
 CWC_API_KEY=your-cwc-api-key
 CWC_CAMPAIGN_ID=communique-2025
 CWC_DELIVERY_AGENT_ID=COMMUNIQUE_PBC
-CWC_DELIVERY_AGENT_NAME="Communiqué PBC"
+CWC_DELIVERY_AGENT_NAME="Commons PBC"
 CWC_DELIVERY_AGENT_CONTACT=contact@commons.email
 ```
 
 ### Delivery Flow (Inside TEE)
 
-**Critical:** CWC API called INSIDE AWS Nitro Enclave (not from Communique directly)
+**Critical:** CWC API called INSIDE AWS Nitro Enclave (not from Commons directly)
 
 ```
 1. User browser encrypts address to TEE public key
@@ -207,7 +207,7 @@ CWC_DELIVERY_AGENT_CONTACT=contact@commons.email
 ### CWC API Client (Inside TEE)
 
 ```typescript
-// voter-protocol TEE code (NOT in Communique)
+// voter-protocol TEE code (NOT in Commons)
 interface CWCSubmission {
   campaign_id: string;
   delivery_agent_id: string;
@@ -249,7 +249,7 @@ async function submitToCWC(submission: CWCSubmission): Promise<{ success: boolea
 - 10 requests per hour per user
 - 100 requests per hour per delivery agent
 
-**Communique enforces rate limits BEFORE calling TEE.**
+**Commons enforces rate limits BEFORE calling TEE.**
 
 ---
 
@@ -363,7 +363,7 @@ export async function GET({ url, cookies }) {
 
 **Single provider: mDL via W3C Digital Credentials API**
 
-As of Cycle 15 (2026-02-24), Communique uses a single identity verification provider: mobile driver's licenses (mDL) presented through the W3C Digital Credentials API. Previous providers (self.xyz NFC passport, Didit.me government ID) were removed to simplify the architecture and eliminate third-party trust dependencies.
+As of Cycle 15 (2026-02-24), Commons uses a single identity verification provider: mobile driver's licenses (mDL) presented through the W3C Digital Credentials API. Previous providers (self.xyz NFC passport, Didit.me government ID) were removed to simplify the architecture and eliminate third-party trust dependencies.
 
 ### Why mDL Only
 
@@ -452,7 +452,7 @@ POST /api/identity/verify-address
 Both protocols are supported via `digital-credentials-api.ts` dual-protocol implementation.
 
 **Production blockers:**
-1. IACA root certificates — **UNBLOCKED** (2026-03-01). VICAL freely downloadable at `vical.dts.aamva.org/currentVical`. CA/AZ/GA/NM/PR also publish on .gov domains. See REMAINING-GAPS.md Gap 1 for full research.
+1. IACA root certificates — **UNBLOCKED** (2026-03-01). VICAL freely downloadable at `vical.dts.aamva.org/currentVical`. CA/AZ/GA/NM/PR also publish on .gov domains. See `research/mdl-landscape-2026.md` for full research.
 2. Apple requires merchant registration via Apple Business Connect for mDL verification
 3. ~~Not all state DMVs publish IACA certificates through AAMVA VICAL~~ — 19+ states in VICAL + direct .gov downloads for CA, AZ, GA, NM, HI, PR, IA
 
@@ -480,7 +480,7 @@ Both protocols are supported via `digital-credentials-api.ts` dual-protocol impl
 └───────────────────────┼──────────────────────────────┘
                         ▼
               ┌─────────────────┐
-              │ Communique API  │
+              │ Commons API  │
               │ Receives:       │
               │  - district     │
               │  - state        │
@@ -517,7 +517,7 @@ Phase 2 (planned):
 
 ## TEE Encrypted Delivery
 
-**AWS Nitro Enclaves (voter-protocol deployment, NOT Communique)**
+**AWS Nitro Enclaves (voter-protocol deployment, NOT Commons)**
 
 ### Flow Overview
 
@@ -525,16 +525,16 @@ Phase 2 (planned):
 1. Browser encrypts address (XChaCha20-Poly1305 to TEE public key)
 2. Encrypted blob stored in Postgres
 3. Message delivery triggered
-4. Communique fetches encrypted blob from database
-5. Communique sends encrypted blob to voter-protocol TEE endpoint
+4. Commons fetches encrypted blob from database
+5. Commons sends encrypted blob to voter-protocol TEE endpoint
 6. TEE decrypts inside hardware enclave (ARM Graviton)
 7. TEE calls CWC API with plaintext address
 8. TEE returns delivery confirmation
 9. Address DESTROYED (zeroed from TEE memory)
-10. Communique creates Message record (PUBLIC content + verification proof)
+10. Commons creates Message record (PUBLIC content + verification proof)
 ```
 
-### Browser-Side Encryption (Communique)
+### Browser-Side Encryption (Commons)
 
 ```typescript
 // src/lib/core/identity/blob-encryption.ts
@@ -570,7 +570,7 @@ export async function encryptAddressBlob(
 }
 ```
 
-### TEE Decryption (voter-protocol, NOT Communique)
+### TEE Decryption (voter-protocol, NOT Commons)
 
 ```rust
 // voter-protocol TEE code (Rust inside AWS Nitro Enclave)
@@ -747,12 +747,12 @@ The `ActionDomainParams` TypeScript interface validates jurisdiction types at bu
 
 ## Next Steps
 
-- **Architecture:** See `docs/ARCHITECTURE.md` for Communique/voter-protocol separation
-- **Frontend:** See `docs/FRONTEND.md` for SvelteKit 5 patterns
-- **Identity Verification:** See `docs/features/identity-verification.md` for verification tiers and flows
+- **Architecture:** See `docs/architecture.md` for Commons/voter-protocol separation
+- **Frontend:** See `docs/frontend.md` for SvelteKit 5 patterns
+- **Identity Verification:** See `docs/architecture/graduated-trust.md` for verification tiers and flows
 - **Coordination Integrity:** See `voter-protocol/specs/COORDINATION-INTEGRITY-SPEC.md` for anti-astroturf architecture
 - **Implementation Gaps:** See `voter-protocol/specs/IMPLEMENTATION-GAP-ANALYSIS.md` Round 4 for CI-001 through CI-007
 
 ---
 
-*Communiqué PBC | Integration Guide | Last Updated: 2026-02-24*
+*Commons PBC | Integration Guide | Last Updated: 2026-02-24*

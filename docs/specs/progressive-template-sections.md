@@ -1,5 +1,7 @@
 # Progressive Template Sections: Implementation Spec
 
+> **STATUS: ASPIRATIONAL** — Design spec. Not yet implemented.
+
 **Status:** In Progress
 **Owner:** Engineering
 **Last Updated:** 2025-01-12

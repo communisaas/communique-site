@@ -1,6 +1,6 @@
 # Frontend Architecture: SvelteKit 5 + Runes
 
-**Communiqué's frontend implementation guide. Not blockchain—that's in [voter-protocol](https://github.com/communisaas/voter-protocol).**
+**Commons's frontend implementation guide. Not blockchain—that's in [voter-protocol](https://github.com/communisaas/voter-protocol).**
 
 This document covers SvelteKit 5 patterns, state management with runes, component architecture, and frontend-specific decisions. For blockchain integration, see `INTEGRATION-GUIDE.md`.
 
@@ -32,7 +32,7 @@ This document covers SvelteKit 5 patterns, state management with runes, componen
 - **Design System**: See `docs/design-system.md` for comprehensive design tokens
 
 **Database & Backend:**
-- **Supabase Postgres**: Database (accessed via Prisma ORM)
+- **PostgreSQL**: Database via Hyperdrive connection pooling (accessed via Prisma ORM)
 - **Prisma**: Type-safe database client
 - **@oslojs/crypto**: Cryptographic session management
 
@@ -677,7 +677,7 @@ const state = $state<TemplateState>({
 **What's actually happening:**
 > Browser generates Noir/UltraHonk zero-knowledge proof, encrypts witness to TEE public key, submits proof to Scroll L2 blockchain, sends encrypted blob to AWS Nitro Enclave for decryption and CWC API delivery, updates on-chain ERC-8004 reputation, and creates pseudonymous Message record in Postgres.
 
-**Communiqué's job:**
+**Commons's job:**
 > Make the second paragraph COMPLETELY INVISIBLE unless the user explicitly wants to see it.
 
 ### User Mental Model
@@ -807,11 +807,11 @@ Trust comes from transparency WHEN ASKED, not from forcing users to understand N
 
 ## Next Steps
 
-- **Template System**: See `TEMPLATE-SYSTEM.md` for variable extraction, editor, moderation
-- **Integrations**: See `INTEGRATION-GUIDE.md` for CWC API, OAuth, geocoding, mDL identity verification
-- **Development**: See `DEVELOPMENT.md` for testing, seeding, deployment
+- **Template System**: See `docs/features/templates.md` for variable extraction, editor, moderation
+- **Integrations**: See `docs/integration.md` for CWC API, OAuth, geocoding, mDL identity verification
+- **Development**: See `docs/development/` for testing, seeding, deployment
 - **Design System**: See `design-system.md` for comprehensive component library
 
 ---
 
-*Communiqué PBC | Frontend for VOTER Protocol | 2025*
+*Commons PBC | Frontend for VOTER Protocol | 2025*

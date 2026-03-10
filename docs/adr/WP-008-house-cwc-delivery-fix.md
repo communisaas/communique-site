@@ -124,7 +124,7 @@ if (!proxyUrl) {
 **Files Updated:**
 - `src/lib/core/congress/cwc-client.ts` - Header comments with IP whitelisting explanation
 - `.env.example` - Detailed comments about House CWC requirements
-- `docs/guides/production-secrets-checklist.md` - Updated proxy configuration section
+- `docs/development/production-secrets-checklist.md` - Updated proxy configuration section
 - `src/lib/core/legislative/adapters/cwc/cwcAdapter.ts` - Added implementation notes
 
 **Key Documentation Points:**
@@ -301,7 +301,7 @@ export GCP_PROXY_URL=http://invalid-proxy:9999
 - **Config:** `/.env.example`
 
 ### Technical Debt Audit
-- **Document:** `/docs/architecture/TECHNICAL-DEBT-AUDIT-2025-01.md`
+- **Document:** `/docs/archive/2026-03-documentation-audit/TECHNICAL-DEBT-AUDIT-2025-01.md` (archived)
 - **Section:** 3.2 Critical Implementation Gaps
 - **Line Reference:** Lines 190-199
 

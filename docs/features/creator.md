@@ -1,411 +1,176 @@
 # Template Creator
 
-**Status**: ✅ IMPLEMENTED | Multi-Step Template Authoring System
+**Status**: IMPLEMENTED | AI-Powered Multi-Step Campaign Authoring
 
 ---
 
-**Guided template creation workflow that helps users craft effective civic messages.**
+**Guided creation flow that transforms a raw civic concern into a research-backed, publishable campaign template with verified decision-maker contacts.**
 
 ## Overview
 
-The Template Creator is a progressive disclosure interface that guides users through creating reusable civic action templates. Templates created here become shareable links that viral-spread through social networks.
+The Template Creator is a three-step wizard rendered inside a modal on the homepage (`src/routes/+page.svelte`). Each step is powered by a Gemini AI agent that streams reasoning to the UI via SSE.
 
-**Flow**: Objective → Audience → Message → Slug → Review → Publish
+**Flow**: Objective --> Decision-Makers --> Message + Publish
 
-**Location**: `src/lib/components/template/creator/`
+**Steps**:
+1. **Objective** -- User describes their issue in free text. The subject-line agent crystallizes it into a title, description, topics, URL slug, and voice sample. May ask 1-2 clarifying questions first.
+2. **Decision-Makers** -- The decision-maker agent identifies people with structural power over the issue, then hunts for verified contact emails via web search.
+3. **Message + Publish** -- The message-writer agent researches the issue, discovers verified sources, and writes a citation-backed message. User reviews, edits, and publishes.
 
-## Architecture
+**State machine**: If the user changes the subject line and advances, all downstream state (decision-makers, message) is invalidated and re-generated.
 
-### Multi-Step Components (1,679 total lines)
+## Component Architecture
 
-1. **ObjectiveDefiner.svelte** (71 lines)
-   - Define template purpose and goal
-   - Free-text input with guidance
-   - Sets context for subsequent steps
+The orchestrator lives one level up from the `creator/` directory. All child components are in `src/lib/components/template/creator/`.
 
-2. **AudienceSelector.svelte** (137 lines)
-   - Choose target representatives (House, Senate, Both)
-   - Select delivery channel (Congressional, Direct Email, Both)
-   - Audience influences available variables
-
-3. **MessageEditor.svelte** (628 lines)
-   - Core message composition interface
-   - Variable auto-insertion system
-   - Real-time preview and variable extraction
-   - Personal connection tips
-   - Address inclusion toggle
-
-4. **CodeMirrorEditor.svelte** (509 lines)
-   - Syntax-highlighted markdown editing
-   - Variable highlighting with custom styling
-   - Auto-completion for variables
-   - Line numbers and formatting helpers
-
-5. **SlugCustomizer.svelte** (275 lines)
-   - URL slug generation and validation
-   - Real-time availability checking
-   - Auto-generation from template objective
-   - Manual override capability
-
-6. **SmartReview.svelte** (59 lines)
-   - Final template preview
-   - Variable validation
-   - Publish confirmation
-
-## Key Features
-
-### 1. Smart Variable System
-
-**Core Variables** (always included):
 ```
-[Name] - User's name
-[Personal Connection] - User's personalized story
-[Address] - User's residential address (for verification)
++page.svelte (homepage)
+  └─ TemplateCreator.svelte          Orchestrator: step state, draft persistence, validation, publish
+       ├─ UnifiedObjectiveEntry       Step 1: free-text input, AI suggestion panel, clarification
+       │    ├─ SlugCustomizer          URL slug generation, availability check, manual override
+       │    └─ ClarificationPanel      Conversational clarification UI (multiple-choice, location, open-text)
+       ├─ DecisionMakerResolver       Step 2: SSE streaming resolution, progressive card reveal
+       │    ├─ DecisionMakerResults    Editable results list with grouped display
+       │    │    ├─ DecisionMakerGrouped   Organization-grouped cards with inline email editing
+       │    │    ├─ DecisionMakerCard      Individual decision-maker card with provenance
+       │    │    └─ CustomDecisionMakerForm Manual recipient entry form
+       │    └─ AuthGateOverlay         Progressive auth prompt (preserves sunk-cost context)
+       └─ MessageGenerationResolver   Step 3: SSE streaming message generation + publish
+            ├─ MessageResults          Message display with citations, sources, geographic scope
+            │    ├─ SourceCard          Expandable citation card (domain, type badge)
+            │    ├─ ResearchLog         Collapsible log of agent's research steps
+            │    └─ GeographicScopeEditor  AI-inferred scope with manual override via LocationPicker
+            └─ AuthGateOverlay         (reused) Auth gate for unauthenticated users
 ```
 
-**Congressional Variables** (when channel is "certified"):
+### Component Roles
+
+| Component | Lines | Purpose |
+|---|---|---|
+| `TemplateCreator.svelte` | ~710 | Step navigation, draft auto-save (2s debounce), validation, publish flow, state machine invalidation |
+| `UnifiedObjectiveEntry.svelte` | ~550 | Free-text input, calls `POST /api/agents/stream-subject`, renders AI suggestion panel, handles clarification turns |
+| `DecisionMakerResolver.svelte` | ~670 | Calls `POST /api/agents/stream-decision-makers`, progressive card reveal during resolution, auth/rate-limit handling |
+| `MessageGenerationResolver.svelte` | ~480 | Calls `POST /api/agents/stream-message`, inline message editing, publish button with error display |
+| `DecisionMakerResults.svelte` | ~200 | Editable list of resolved decision-makers, custom recipient addition, "Include Congress" toggle |
+| `MessageResults.svelte` | ~200 | Rendered message with paragraph splitting, citation highlighting, source cards, research log, geographic scope |
+| `SlugCustomizer.svelte` | ~150 | Slug generation from title, availability check via `POST /api/templates/check-slug`, manual override |
+| `ClarificationPanel.svelte` | ~200 | Multiple-choice, location picker, and open-text question types; max 2 questions |
+| `AuthGateOverlay.svelte` | ~150 | Shows sunk-cost progress (subject, decision-makers) to motivate sign-in; preserves draft ID for OAuth resumption |
+| `DecisionMakerCard.svelte` | ~80 | Single decision-maker card with email, provenance toggle, remove action |
+| `DecisionMakerGrouped.svelte` | ~120 | Groups decision-makers by organization, inline email editing for missing addresses |
+| `CustomDecisionMakerForm.svelte` | ~60 | Manual email/name/org entry with validation |
+| `SourceCard.svelte` | ~60 | Expandable citation: domain, source type badge, formatted citation |
+| `ResearchLog.svelte` | ~40 | Collapsible list of agent research steps |
+| `GeographicScopeEditor.svelte` | ~40 | Displays AI-inferred geographic scope, editable via LocationPicker |
+
+## Agent Pipeline Integration
+
+Each step calls a streaming API endpoint that runs a Gemini agent. See [agents.md](../development/agents.md) for full agent documentation.
+
+### Step 1: Subject Line Agent
+
+**Endpoint**: `POST /api/agents/stream-subject`
+
+The `UnifiedObjectiveEntry` component sends the user's raw text and receives either clarification questions or a structured suggestion:
+
 ```
-[Representative] - Target representative's name
-[District] - Congressional district
-```
-
-**Variable Auto-Insertion**:
-- Automatically adds `[Name]` to signature
-- Inserts `[Personal Connection]` before closing
-- Adds `[Address]` when toggle enabled
-- Intelligently places variables in appropriate locations
-
-**Variable Tips**:
-```typescript
-const variableTips = {
-  '[Personal Connection]': 'Share a specific story or experience that makes this issue personal',
-  '[Name]': 'Will be filled with the sender\'s name',
-  '[Address]': 'Verifies you as a constituent',
-  '[Representative]': 'Dynamically filled with the recipient\'s name'
-};
-```
-
-### 2. CodeMirror Integration
-
-**Syntax Highlighting**:
-- Markdown formatting
-- Variable highlighting (distinct color)
-- Bracket matching
-- Line numbers
-
-**Editor Extensions**:
-- Autocomplete for variables
-- Real-time variable detection
-- Cursor position tracking
-- Multi-line editing support
-
-**Variable Insertion API**:
-```typescript
-interface CodeMirrorEditor {
-  insertVariable: (variable: string) => void;
-  appendToDocument: (text: string, preserveCursor?: boolean) => void;
-  getValue: () => string;
-  setValue: (text: string) => void;
-}
+{ subject_line, core_message, topics[], url_slug, voice_sample }
 ```
 
-### 3. Template Variable Detection
+Features client-side caching (`SuggestionCache`) and rate limiting (`SuggestionRateLimiter`) to avoid redundant API calls during typing.
 
-Automatically extracts variables from message text:
+### Step 2: Decision-Maker Agent
+
+**Endpoint**: `POST /api/agents/stream-decision-makers`
+
+The `DecisionMakerResolver` component sends the subject line, core message, topics, and voice sample. The server runs a 4-phase pipeline:
+
+1. Role discovery (structural power analysis)
+2. Identity extraction (parallel web searches)
+3. Contact hunting (agentic per-identity sessions with `search_web`, `read_page`, `analyze_document` tools)
+4. Accountability openers (per-person context for the message writer)
+
+**Progressive reveal**: Cards appear as `identity-found` events arrive, then animate to resolved/no-email states as `candidate-resolved` events stream in.
+
+### Step 3: Message Writer Agent
+
+**Endpoint**: `POST /api/agents/stream-message`
+
+The `MessageGenerationResolver` component sends subject, core message, topics, decision-maker names, and voice sample. Two-phase source-verified pipeline:
+
+1. **Source Discovery** -- Google Search grounding, URL validation
+2. **Message Generation** -- Writes using only verified sources, with `[1][2]` citation markers and `[Personal Connection]` placeholder
+
+The generated message includes `sources[]`, `research_log[]`, and `geographic_scope` (ISO 3166 GeoScope).
+
+## SSE Streaming
+
+All agent endpoints stream Server-Sent Events. The client uses `parseSSEStream()` from `src/lib/utils/sse-stream.ts`:
 
 ```typescript
-function extractVariables(messageText: string): string[] {
-  const variablePattern = /\[([^\]]+)\]/g;
-  const matches = messageText.matchAll(variablePattern);
-  return Array.from(new Set(Array.from(matches).map(m => m[0])));
-}
-```
-
-**Variable Classification**:
-- **System variables**: `[Name]`, `[Address]`, `[Representative]`
-- **User variables**: Everything else (e.g., `[Your City]`, `[Company Name]`)
-
-### 4. Real-Time Preview
-
-**Preview Generation**:
-```typescript
-import { resolveTemplate } from '$lib/utils/templateResolver';
-
-const previewContent = resolveTemplate({
-  template: messageText,
-  values: {
-    '[Name]': 'John Doe',
-    '[Personal Connection]': '[Your personal story goes here...]',
-    '[Representative]': 'Rep. Smith'
+for await (const event of parseSSEStream<Record<string, unknown>>(response)) {
+  switch (event.type) {
+    case 'segment':    // Thought/reasoning text
+    case 'identity-found':   // Decision-maker cards (phase 2a)
+    case 'candidate-resolved': // Contact resolution (phase 2b)
+    case 'complete':   // Final structured result
+    case 'error':      // Error with message
   }
-});
-```
-
-**Preview Features**:
-- Live updates as user types
-- Sample data for all variables
-- Full message rendering
-- Character count and readability metrics
-
-### 5. Slug Generation & Validation
-
-**Auto-Generation**:
-```typescript
-function generateSlug(objective: string): string {
-  return objective
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .substring(0, 50);
 }
 ```
 
-**Availability Check**:
-```typescript
-// POST /api/templates/check-slug
-const response = await fetch('/api/templates/check-slug', {
-  method: 'POST',
-  body: JSON.stringify({ slug: candidateSlug })
-});
+Thought streams are rendered by `AgentThinking` (`src/lib/components/ui/AgentThinking.svelte`), which shows the agent's live reasoning.
 
-const { available } = await response.json();
-```
+## Draft Persistence
 
-**Validation Rules**:
-- Lowercase letters, numbers, hyphens only
-- No consecutive hyphens
-- No leading/trailing hyphens
-- 3-50 characters long
-- Must be unique across all templates
+`TemplateCreator` auto-saves to localStorage via `templateDraftStore` every 2 seconds (debounced). Drafts persist across page reloads and OAuth redirects.
 
-### 6. Progressive Enhancement
+- On mount: checks for existing drafts, offers recovery modal
+- On destroy: saves if `draftCleanupMode === 'save'`, deletes if publish succeeded
+- Draft includes: `formData`, `currentStep`, `pendingSuggestion`
+- OAuth resumption: `draftId` and `onSaveDraft` passed to `AuthGateOverlay` so draft is saved before redirect
 
-**Spring Animations**:
-```typescript
-import { spring } from 'svelte/motion';
+## Publish Flow
 
-const buttonScale = spring(1, { stiffness: 0.4, damping: 0.7 });
-const tipScale = spring(0, { stiffness: 0.3, damping: 0.6 });
+When the user clicks "Publish" on the message step:
 
-// Apply scale on hover/interaction
-function handleHover() {
-  buttonScale.set(1.05);
-}
-```
+1. `MessageGenerationResolver` calls `onnext()`, which maps to `handleSave()` in `TemplateCreator`
+2. `handleSave()` validates, extracts recipient emails, appends source references to message body
+3. Fires `onsave(template)` to the parent (`+page.svelte`)
+4. Parent calls `POST /api/templates` with the template payload
+5. Server validates, runs 2-layer content moderation (Llama Guard + Gemini), creates DB record
+6. On success: draft is deleted, success modal shown, user redirected to `/s/{slug}`
 
-**Micro-Interactions**:
-- Variable insertion animations
-- Tooltip fade-in/fade-out
-- Preview slide transitions
-- Button hover effects
+**API endpoint**: `POST /api/templates` (not `/api/templates/create`)
 
-## Data Flow
+**Moderation**: Templates are auto-published if moderation passes. Rejected templates return a `CONTENT_FLAGGED` error with a human-readable summary.
 
-```typescript
-interface TemplateCreationContext {
-  objective: string;
-  audience: {
-    chamber: 'house' | 'senate' | 'both';
-    level: 'federal' | 'state' | 'local';
-  };
-  channelId: 'certified' | 'direct' | 'both';
-  message: {
-    preview: string;
-    variables: string[];
-  };
-  slug: string;
-  metadata?: {
-    category?: string;
-    tags?: string[];
-    visibility?: 'public' | 'unlisted' | 'private';
-  };
-}
-```
+**Anti-astroturf gate**: Requires verified identity or trust score >= 100.
 
-**Step-by-Step State**:
-1. **Objective Step**: Populate `context.objective`
-2. **Audience Step**: Populate `context.audience` and `context.channelId`
-3. **Message Step**: Populate `context.message.preview` and extract `context.message.variables`
-4. **Slug Step**: Populate `context.slug` (with validation)
-5. **Review Step**: Validate entire context, submit to API
+## Key Files
 
-## API Integration
-
-### Template Creation
-
-```typescript
-// POST /api/templates/create
-const response = await fetch('/api/templates/create', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    title: context.objective,
-    slug: context.slug,
-    message_body: context.message.preview,
-    variables: context.message.variables,
-    channel: context.channelId,
-    audience: context.audience,
-    visibility: 'public'
-  })
-});
-
-const { template_id, url } = await response.json();
-// Redirect to /s/{slug} for immediate preview
-```
-
-### Slug Availability Check
-
-```typescript
-// POST /api/templates/check-slug
-const checkAvailability = async (slug: string): Promise<boolean> => {
-  const res = await fetch('/api/templates/check-slug', {
-    method: 'POST',
-    body: JSON.stringify({ slug })
-  });
-  const data = await res.json();
-  return data.available;
-};
-```
-
-## User Experience Patterns
-
-### Variable Insertion Flow
-
-1. User types message
-2. System detects missing core variables (`[Name]`, `[Personal Connection]`)
-3. Auto-inserts at appropriate locations:
-   - `[Personal Connection]` before signature
-   - `[Name]` in signature block
-   - `[Address]` after name (if toggled)
-
-### Variable Tip Display
-
-1. User hovers over variable button
-2. Tip appears with brief explanation
-3. Tip disappears after 3 seconds or on mouse leave
-4. Clicking button inserts variable at cursor position
-
-### Preview Toggle
-
-1. User clicks "Preview" button
-2. Preview panel slides in from right
-3. Shows resolved template with sample data
-4. User can edit while preview stays open
-5. Preview updates in real-time
-
-## Component Props
-
-### MessageEditor
-
-```typescript
-interface MessageEditorProps {
-  data: {
-    preview: string;       // Current message text
-    variables: string[];   // Extracted variable list
-  };
-  context: TemplateCreationContext;  // Full creation context
-}
-```
-
-### CodeMirrorEditor
-
-```typescript
-interface CodeMirrorEditorProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  readonly?: boolean;
-  highlightVariables?: boolean;
-  onVariableInsert?: (variable: string) => void;
-}
-```
-
-### SlugCustomizer
-
-```typescript
-interface SlugCustomizerProps {
-  objective: string;      // Used for auto-generation
-  currentSlug: string;    // Current slug value
-  onSlugChange: (slug: string) => void;
-  onValidation: (valid: boolean) => void;
-}
-```
-
-## Validation Rules
-
-### Message Validation
-
-- **Minimum length**: 50 characters
-- **Required variables**: `[Name]`, `[Personal Connection]`
-- **Congressional templates**: Must include `[Representative]`
-- **No empty variables**: All `[...]` must be recognized
-
-### Slug Validation
-
-```typescript
-const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const minLength = 3;
-const maxLength = 50;
-
-function validateSlug(slug: string): { valid: boolean; error?: string } {
-  if (slug.length < minLength) {
-    return { valid: false, error: 'Slug must be at least 3 characters' };
-  }
-  if (slug.length > maxLength) {
-    return { valid: false, error: 'Slug must be less than 50 characters' };
-  }
-  if (!slugRegex.test(slug)) {
-    return { valid: false, error: 'Slug can only contain lowercase letters, numbers, and hyphens' };
-  }
-  return { valid: true };
-}
-```
-
-## Accessibility
-
-- **Keyboard navigation**: Tab through all form fields
-- **Screen reader support**: ARIA labels on all inputs
-- **Focus management**: Focus moves logically through steps
-- **Error announcements**: Validation errors announced to screen readers
-
-## Testing
-
-```bash
-# Integration tests
-npm run test:integration -- template-creator-ui.test.ts
-npm run test:integration -- template-creator-variables.test.ts
-
-# E2E tests
-npm run test:e2e -- template-creator-atomic.spec.ts
-```
-
-## Roadmap
-
-### Near Term
-- AI-powered message suggestions
-- Template quality scoring
-- Duplicate template detection
-- Collaborative template editing
-
-### Medium Term
-- Multi-language template support
-- Version history and rollback
-- A/B testing for templates
-- Template remix/forking
-
-### Long Term
-- Visual template builder (drag-and-drop)
-- Template marketplace
-- Automated personalization ML
-- Cross-platform template sharing
+| File | Purpose |
+|---|---|
+| `src/lib/components/template/TemplateCreator.svelte` | Orchestrator |
+| `src/lib/components/template/creator/` | All child components (14 files) |
+| `src/routes/+page.svelte` | Hosts creator in modal |
+| `src/routes/api/templates/+server.ts` | `POST /api/templates` -- create + validate + moderate |
+| `src/routes/api/templates/check-slug/+server.ts` | Slug availability check |
+| `src/routes/api/agents/stream-subject/+server.ts` | Subject line streaming endpoint |
+| `src/routes/api/agents/stream-decision-makers/+server.ts` | Decision-maker streaming endpoint |
+| `src/routes/api/agents/stream-message/+server.ts` | Message generation streaming endpoint |
+| `src/lib/core/agents/agents/subject-line.ts` | Subject line agent |
+| `src/lib/core/agents/agents/decision-maker.ts` | Decision-maker resolution agent |
+| `src/lib/core/agents/agents/message-writer.ts` | Message writer agent |
+| `src/lib/core/agents/agents/source-discovery.ts` | Source discovery (Phase 1 of message writer) |
+| `src/lib/utils/sse-stream.ts` | Client-side SSE parser (`parseSSEStream`) |
+| `src/lib/stores/templateDraft.ts` | Draft auto-save store (localStorage) |
+| `src/lib/types/template.ts` | `TemplateFormData`, `TemplateCreationContext`, `ProcessedDecisionMaker` |
+| `src/lib/utils/message-processing.ts` | `appendReferences`, `cleanHtmlFormatting`, `splitIntoParagraphs` |
+| `src/lib/utils/decision-maker-processing.ts` | `processDecisionMakers`, `extractRecipientEmails` |
 
 ## References
 
-- **Components**: `src/lib/components/template/creator/`
-- **Template Resolution**: `src/lib/utils/templateResolver.ts`
-- **Variable Styling**: `src/lib/utils/variable-styling.ts`
-- **Tests**: `tests/integration/template-creator-*.test.ts`
-
----
-
-The Template Creator transforms complex civic message authoring into a guided, intuitive process that encourages reusability and viral sharing.
+- [AI Agent System](../development/agents.md) -- full agent documentation, cost model, quotas
+- [Templates](templates.md) -- template data model and sending flow
+- [Template Variables](template-variables.md) -- variable system and resolution

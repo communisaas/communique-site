@@ -1,25 +1,502 @@
 # Competitive Analysis
 
 > commons.email vs. the advocacy software market
+> Last updated: 2026-03-07
 
 ---
 
-## The Structural Gap
+## Market Overview
 
-No platform in the advocacy software market verifies constituent identity. Every platform — Action Network, Quorum, EveryAction, Muster, NationBuilder — relies on self-reported addresses. This is not a missing feature. It is an architectural impossibility to retrofit: verification requires ZK circuits, on-chain nullifiers, government credential parsing, and a hierarchical district resolution system mapping every public boundary type (congressional through fire, water, transit, school, judicial — 24 slots per cell). Years of infrastructure work, not a sprint.
+### Market Size
+
+The advocacy software market is valued at approximately **$1.0–1.5B globally** (2025–2026), growing at ~10% CAGR toward $2.4–3.8B by 2035. The grassroots advocacy subsegment — the space Commons directly competes in — is approximately **$190M** (2026), growing toward $436M by 2035 at 9.2% CAGR.
+
+Sources vary by methodology:
+- Business Research Insights: $1.02B (2026) → $2.36B (2035), 9.9% CAGR
+- SNS Insider: $2.71B (2025) → $6.34B (2035), 8.87% CAGR (broader definition)
+- Market Growth Reports (grassroots-specific): $191.56M (2026) → $436.03M (2035), 9.2% CAGR
+
+### The Structural Gap
+
+No platform in the advocacy software market verifies constituent identity. Every platform — Action Network, Quorum, EveryAction, Muster, VoterVoice, NationBuilder — relies on self-reported addresses fed through third-party geocoding (Cicero API, formerly Google Civic Info). This is not a missing feature. It is an architectural impossibility to retrofit: verification requires ZK circuits, on-chain nullifiers, government credential parsing, and a hierarchical district resolution system mapping every public boundary type (congressional through fire, water, transit, school, judicial — 24 slots per cell). Years of infrastructure work, not a sprint.
+
+The astroturfing problem is worsening. AI-generated fake constituent messages at scale are now a documented threat ([Causes.com, 2025](https://www.causes.com/articles/55009-securing-advocacy-ai-world-understanding-authentication)). Washington state documented hundreds of phantom signatures inflating opposition to a tax bill ([WebProNews, 2025](https://www.webpronews.com/phantom-signatures-and-political-theatrics-how-fake-sign-ins-may-have-inflated-opposition-to-washington-states-millionaires-tax/)). Issue campaigns now account for 75–85% of incoming congressional mail — and offices have no tool to distinguish authentic grassroots from manufactured volume ([Congressional Management Foundation](https://www.congressfoundation.org/resources-for-congress/office-toolkit/improve-mail-operations-menu-item-new/writing-mail-home/terms/summary)).
+
+### The District Resolution Layer
+
+Every advocacy platform depends on **address → district → official** resolution. Two infrastructure providers dominate:
+
+| Provider | Status | Cost |
+|---|---|---|
+| **Google Civic Information API** | **Shut down April 2025** | Was free |
+| **Cicero (Melissa Data)** | Active; sole survivor for most platforms | ~$0.03/lookup, volume discounts; 1,000 free trial credits |
+| **USgeocoder** | Emerging alternative post-Google shutdown | Per-lookup pricing |
+| **BallotReady / Ballotpedia** | Officeholder data APIs | Custom pricing |
+
+Google Civic Info's shutdown forced every advocacy platform to either pay Cicero or scramble for alternatives. **Commons owns the district layer** — Shadow Atlas (94,166 districts, 24 boundary types, R-tree spatial indexing, <50ms p95). Zero marginal cost. No third-party dependency.
 
 ---
 
-## Market Landscape
+## Platform Profiles
 
-| Platform | Verification | Political Scope | Pricing | Key Limitation |
+### Tier 1: Enterprise ($10K+/year)
+
+#### Bonterra (EveryAction + Network for Good)
+
+**What they are:** The dominant force in nonprofit tech. 20,000+ organizations. Formed from the merger of EveryAction, Network for Good, Social Solutions, and CyberGrants under the Bonterra brand. Progressive-leaning but not explicitly restricted like AN.
+
+**Core capabilities:**
+- Full nonprofit CRM (donor management, fundraising, grants)
+- Grassroots advocacy: 99.6% message deliverability to legislators via web comment form navigation
+- Multichannel outreach (email, forms, events)
+- Bonterra Que: agentic AI platform (launched Oct 2025) — fundraising optimization, workflow automation, SMS/event creation, real-time campaign optimization. Currently focused on fundraising, not advocacy verification.
+
+**Pricing:** Custom enterprise quotes. "In line with market standards for nonprofit fundraising software." Historically criticized for opaque pricing and vendor lock-in during outbound migration.
+
+**Key limitations:**
+- No identity verification
+- No free/self-serve tier — enterprise sales only
+- Advocacy is a secondary feature to fundraising/CRM
+- Que AI is fundraising-focused, not advocacy-verification-focused
+- Progressive-leaning ecosystem (not explicitly restricted like AN, but brand perception limits conservative adoption)
+- Data hostage practices documented during outbound migration
+
+**Market share:** Claims 69.5% of the nonprofit tech market (by org count, includes fundraising — not pure advocacy).
+
+**Sources:** [Bonterra Product](https://www.bonterratech.com/product/everyaction), [Bonterra Que Launch](https://www.businesswire.com/news/home/20251001579571/en/), [GetApp Reviews](https://www.getapp.com/nonprofit-software/a/everyaction/)
+
+---
+
+#### Quorum (+ Capitol Canary)
+
+**What they are:** The bipartisan public affairs platform. Acquired Capitol Canary (Sept 2022) to combine legislative intelligence with grassroots mobilization. 2,000+ clients including 50%+ of the Fortune 100.
+
+**Core capabilities:**
+- 9 product modules: Federal, State, Local, School Board, Grassroots, PAC, Stakeholder, International, Professional Services
+- Legislative tracking: federal + all 50 states + local. Real-time bill alerts, vote tracking, amendment analysis
+- Quincy AI (v2.0, Jan 2025): natural language legislative search, bill summarization, amendment impact analysis, stakeholder insight surfacing. Trained specifically on legislative text.
+- Grassroots: email, text, social media advocacy campaigns. AI generates up to 300 message variants per campaign
+- Capitol Canary integration: patch-through calling, chatbot advocacy, social media targeting
+- Legislator scorecards and auto-updating vote datasheets
+- Stakeholder management with CRM-style tracking
+- PAC management and compliance
+
+**Pricing:** Enterprise only. Not publicly listed. Industry sources estimate $10K–$30K+/year depending on modules. 9 customizable plan configurations.
+
+**Key limitations:**
+- No identity verification — address-based district matching only (Cicero dependency)
+- Enterprise sales only — no self-serve, no small-org tier
+- Quincy AI analyzes legislation but doesn't verify the identity behind advocacy actions
+- No coordination integrity signals (GDS, ALD, temporal entropy)
+- Price excludes grassroots orgs, small nonprofits, and most conservative advocacy groups
+
+**Sources:** [Quorum Products](https://www.quorum.us/products/), [Quorum Acquires Capitol Canary](https://www.quorum.us/company-news/quorum-acquires-capitol-canary-public-affairs-software-leaders/), [Quincy 2.0 Launch](https://www.quorum.us/company-news/quorum-launches-quincy-2-0/), [Quorum Pricing](https://www.quorum.us/pricing/)
+
+---
+
+#### FiscalNote / VoterVoice
+
+**What they are:** Public affairs intelligence platform (FiscalNote) with integrated grassroots advocacy (VoterVoice). 2,000+ organizations. Parent company is publicly traded (NYSE: NOTE).
+
+**Core capabilities:**
+- VoterVoice: real-time advocate-to-legislator matching (local, state, federal). AI-optimized CTAs via ChatGPT integration (SmartCheck). Industry benchmarking. Email, text, push notification campaigns.
+- FiscalNote: federal + state legislative/regulatory tracking (CQ product). Global policy monitoring. Media monitoring.
+- 2025 Advocacy Benchmark Report: proprietary data from VoterVoice campaigns across industries.
+- Flexible API with integrations.
+
+**Pricing:** Not publicly listed. Enterprise custom quotes. Industry perception: expensive. Higher price point than most competitors.
+
+**Key limitations:**
+- No identity verification
+- Enterprise pricing excludes small/grassroots orgs
+- VoterVoice SmartCheck AI personalizes messages but doesn't verify senders
+- Primarily serves corporate advocacy (trade associations, chambers of commerce) — not grassroots organizing
+- Cicero-dependent for district matching
+
+**Sources:** [VoterVoice](https://info.votervoice.net/), [FiscalNote Grassroots](https://fiscalnote.com/solutions/grassroots-advocacy), [2025 Benchmark Report](https://www.businesswire.com/news/home/20250825284430/en/), [VoterVoice Capterra](https://www.capterra.com/p/185592/VoterVoice/)
+
+---
+
+#### CiviClick
+
+**What they are:** AI-powered grassroots advocacy platform serving businesses, associations, trade groups, nonprofits, and public affairs agencies. Bipartisan.
+
+**Core capabilities:**
+- AI-optimized multichannel outreach: email, text, phone, video, photo, social media
+- 89 pre-built policy interest tags for supporter segmentation
+- Gamification for supporter recruitment and participation
+- Real-time campaign analytics
+- Integrations: Salesforce, HubSpot, MailChimp
+- Mobile-optimized action pages
+- 24/7 support with dedicated community strategist
+
+**Pricing:** Starting at $7,500/year. Custom quotes.
+
+**Key limitations:**
+- No identity verification
+- High entry price ($7,500) still excludes small orgs
+- Self-reported interest tags (not verified district membership)
+- Smaller market presence than Quorum/VoterVoice
+
+**Sources:** [CiviClick](https://civiclick.com/), [CiviClick Capterra](https://www.capterra.com/p/10013448/CiviClick/), [CiviClick Solutions](https://civiclick.com/solutions/)
+
+---
+
+#### One Click Politics
+
+**What they are:** Digital advocacy platform focused on multi-channel legislator contact. 22,000+ campaigns managed. Bipartisan. Serves associations, corporations, nonprofits, agencies, chambers of commerce in US, Canada, Australia, UK.
+
+**Core capabilities:**
+- Prefilled web forms (20%+ conversion rate improvement)
+- Video messaging: advocates record and deliver personalized video to lawmakers
+- Email message rotator: multiple pre-recorded messages + subject lines auto-randomized (36 combinations) to bypass inbox filtering
+- Patch-through calling
+- SMS campaigns with mobile keywords
+- Embeddable iframes
+- Campaign activity and legislator reports
+- Advocate acquisition services
+
+**Pricing:** Starting at $3,500/month. Custom quotes.
+
+**Key limitations:**
+- No identity verification
+- Very expensive ($42K+/year) — enterprise clients only
+- Message rotator designed to bypass filtering rather than prove authenticity
+- No coordination integrity signals
+
+**Sources:** [One Click Politics](https://oneclickpolitics.com/), [GetApp Reviews](https://www.getapp.com/government-social-services-software/a/one-click-politics/), [One Click Capterra](https://www.capterra.com/p/163267/One-Click-Politics/)
+
+---
+
+#### PolicyEngage (formerly TrackBill)
+
+**What they are:** All-in-one public affairs software combining grassroots advocacy, legislative tracking, and media monitoring.
+
+**Core capabilities:**
+- State and federal legislative tracking with real-time bill updates
+- Traditional and social media monitoring
+- Contact management
+- Grassroots advocate engagement with legislators
+- Activity tracking and stakeholder reporting
+
+**Pricing:** Custom enterprise quotes. Not publicly listed.
+
+**Key limitations:**
+- No identity verification
+- Smaller market presence
+- Less grassroots-specific than dedicated advocacy platforms
+
+**Sources:** [PolicyEngage](https://policyengage.com/), [PolicyEngage Legislative Tracking](https://policyengage.com/legislative-tracking)
+
+---
+
+### Tier 2: Self-Serve ($15–$300/month)
+
+#### Action Network
+
+**What they are:** SaaS advocacy toolkit for progressive orgs. 12,000+ orgs, 55M+ letters sent, ~14 years in market. Built on OSDI specification. **Progressive-only** (501(c)(4) ToS).
+
+**Core capabilities:**
+- Mass email: WYSIWYG, A/B testing, scheduling, SES backend
+- Petitions, events, forms, surveys, fundraising pages, advocacy letter campaigns
+- List management: tags, CSV import/export, report builder, saved queries
+- Automation ladders (email drip sequences)
+- Embeddable action widgets (iframe/JS)
+- SMS/mobile messaging (newer)
+- Network tier: parent/child org relationships
+- OSDI API (4 req/s, 25 records/page, paid tiers only)
+
+**Pricing:**
+| Tier | Cost | Target |
+|---|---|---|
+| Free | $0 | Individual activists (no API) |
+| Movement | $15/mo min + usage | Small-midsize orgs |
+| Network | $125/mo min + usage | Federated multi-group |
+| Enterprise | Custom | 1M+ emails/month |
+
+Usage rates: $1.25–$2.50/1K emails. Action Builder add-on: ~$80/user. Boost (ML predictions): separate pricing.
+
+**Key limitations:**
+- **Progressive-only** — half the market excluded by policy
+- No identity verification. Petition signatures could be bots.
+- No API on free tier. 4 req/s cap on paid.
+- Action history exportable only one action at a time
+- No CRM beyond basic contact records
+- No coordination integrity signals
+- Automation ladders not exportable (migration lock-in)
+- Embedded page lock-in (iframes across org websites)
+
+**Sources:** [AN API Docs](https://actionnetwork.org/docs/v2/), [AN Pricing](https://actionnetwork.org/get-started/), [AN Pricing Blog](https://actionnetwork.blog/an-update-on-action-network-pricing/), [AN Help Center](https://help.actionnetwork.org/)
+
+---
+
+#### NationBuilder
+
+**What they are:** CMS + CRM + advocacy platform. Politically neutral ("for leaders"). Serves campaigns, nonprofits, advocacy groups across spectrum.
+
+**Core capabilities:**
+- Website builder (CMS-first approach)
+- People database (CRM) with tagging, segments, paths
+- Email blasts (unlimited on all plans)
+- Petitions, events, donations
+- ActionButton (advocacy widget)
+- Social media integration
+- Unlimited users on all plans
+
+**Pricing:**
+| Tier | Cost | Database Size |
+|---|---|---|
+| Starter | $29/mo | 1,000 people |
+| Pro | $99–$179/mo | 10,000 people |
+| Enterprise | Custom | 100,000+ people |
+
+14-day free trial.
+
+**Key limitations:**
+- CMS-first — advocacy tooling is weaker than dedicated platforms
+- No identity verification
+- No legislator matching/district resolution built in (relies on integrations)
+- No legislative tracking
+- Learning curve documented as steep
+- Database-size pricing model penalizes growing orgs
+
+**Sources:** [NationBuilder Pricing](https://nationbuilder.com/pricing), [NationBuilder GetApp](https://www.getapp.com/marketing-software/a/nationbuilder/), [NationBuilder vs AN](https://nationbuilder.com/how_is_nationbuilder_different_from_actionnetwork)
+
+---
+
+#### Muster
+
+**What they are:** Grassroots advocacy platform for associations, nonprofits, and advocacy groups. Bipartisan. Focused on ease-of-use.
+
+**Core capabilities:**
+- Advocacy CRM with auto-updating lists
+- Geographic targeting: advocate maps with heatmaps, district boundary overlays, individual pinpoints
+- Embeddable action forms (CSS-customizable)
+- Email and text marketing (or external tools: Mailchimp, Constant Contact, HubSpot)
+- Campaign creation with custom fields and audience segmentation
+- Real-time analytics dashboards
+- Exportable reports (Excel, PDF)
+- Salesforce AppExchange integration
+
+**Pricing:** Not publicly listed. Plans built for nonprofits/associations with flexibility to add tools.
+
+**Key limitations:**
+- No identity verification
+- Relies on external email tools for some orgs
+- No legislative tracking
+- No AI message personalization
+- Smaller feature set than enterprise platforms
+
+**Sources:** [Muster Platform](https://www.muster.com/product), [Muster for Associations](https://www.muster.com/solutions/associations), [Muster Campaigns](https://www.muster.com/product/advocacy-campaigns), [Muster Salesforce](https://appexchange.salesforce.com/appxListingDetail?listingId=a0N4V00000Jem1eUAB)
+
+---
+
+#### Ujoin
+
+**What they are:** Cloud-based advocacy management for NGOs, trade organizations, and advocacy groups. Grassroots policy advocacy at accessible price points.
+
+**Core capabilities:**
+- Custom action pages: email, tweet, or call legislators at any level
+- White-label, mobile-optimized action pages
+- Click-to-call
+- Custom action center displaying all org actions
+- District-based advocate visualization and list segmentation
+- Integrations: Neon CRM, Zapier, NationBuilder
+- Dedicated community strategist per customer
+
+**Pricing:** $99–$249/month. Free option available.
+
+**Key limitations:**
+- No identity verification
+- Small platform (limited market presence)
+- No legislative tracking
+- No AI features
+- Limited integration ecosystem
+
+**Sources:** [Ujoin](https://ujoin.co/), [Ujoin Capterra](https://www.capterra.com/p/182558/Ujoin/), [Ujoin GetApp](https://www.getapp.com/marketing-software/a/ujoin/)
+
+---
+
+#### Rally Congress (Congress Plus)
+
+**What they are:** Online advocacy platform for reaching Congress and all 50 state legislatures. Launched 2009.
+
+**Core capabilities:**
+- Campaign/petition creation for Congress and state lawmakers
+- Automatic legislator lookup and message delivery (email + web form intake)
+- Phone call campaigns connecting supporters to Congress
+- Auto-generated bill-tracking pages with status and cosponsor lists
+- Email to supporters with HTML templates and district-based segmentation
+- Reporting: traffic, supporter actions, legislator contacts (weekly/daily email reports)
+
+**Pricing:** Not publicly listed. All accounts include federal + state.
+
+**Key limitations:**
+- No identity verification
+- Smaller platform
+- No AI features
+- Limited multichannel (no SMS, no social, no video)
+
+**Sources:** [Rally Congress Features](https://www.rallycongress.com/marketing/features), [Rally Congress Pricing](https://www.rallycongress.com/marketing/pricing)
+
+---
+
+### Tier 3: Conservative / Republican Ecosystem
+
+The conservative advocacy tech landscape is fragmented and significantly weaker than the progressive side. No conservative-specific platform offers the equivalent of Action Network's organizing toolkit.
+
+#### i360 (Koch Network)
+
+**What they are:** Data analytics company with 250M+ adult records, including 190M registered voters. Built for Republican campaigns and conservative advocacy. Integrated suite of grassroots technology.
+
+**Core capabilities:**
+- Predictive voter models (data science-driven)
+- Walk (door-to-door canvassing app)
+- Call (phone banking)
+- Text (P2P texting)
+- Action management system
+- Digital/TV ad targeting
+- Real-time analytics
+- Integrations: WinRed, ActBlue, EveryAction, Anedot, NationBuilder
+
+**Pricing:** Not publicly listed. Enterprise/custom.
+
+**Key limitations:**
+- **Campaign tool, not advocacy/organizing tool** — voter contact, not constituent-to-legislator communication
+- No email advocacy campaigns
+- No petition/letter campaigns to officials
+- No embeddable action widgets
+- Koch-affiliated branding limits adoption outside conservative movement
+- No self-serve tier
+
+**Sources:** [i360](https://www.i-360.com/), [i360 SourceWatch](https://www.sourcewatch.org/index.php/I360), [i360 Capterra](https://www.capterra.com/p/193258/i360/)
+
+---
+
+#### RallyRight (Loeffler)
+
+**What they are:** Conservative tech company founded by former U.S. Senator Kelly Loeffler (R-GA). Three products for Republican campaigns.
+
+**Core capabilities:**
+- DonateRight: fundraising platform (3.5% fee — lowest published rate). Crypto, Apple Pay, Google Pay, one-click, video fundraisers.
+- FieldRight: gig-economy canvassing app. AI-optimized walkbook routes. Contractors matched to nearby campaigns.
+- RelayRight: P2P texting with real-time analytics.
+
+**Pricing:** DonateRight: 3.5% flat fee. FieldRight: custom quote per target universe.
+
+**Key limitations:**
+- **Campaign tool, not advocacy tool** — fundraising + canvassing + texting, not legislator contact
+- No email campaigns
+- No petition/letter campaigns
+- No legislator matching or district resolution
+- No embeddable widgets
+
+**Sources:** [RallyRight](https://rallyright.com/), [RallyRight DC Weekly](https://dcweekly.org/2024/01/14/rallyright-launches-innovative-technology-platforms-to-boost-fundraising-and-voter-turnout-for-conservative-candidates/), [Fox News](https://www.foxnews.com/politics/new-conservative-tech-company-inspired-swing-state-election-losses-aims-flip-script-democrats)
+
+---
+
+#### WinRed
+
+**What they are:** Republican fundraising platform (counterpart to ActBlue). Not an advocacy tool.
+
+**Key limitations:** Fundraising only. No advocacy campaigns, no legislator contact, no organizing tools.
+
+---
+
+#### RumbleUp
+
+**What they are:** P2P texting platform used by all GOP national committees and 3,500+ campaigns/organizations.
+
+**Key limitations:** Texting only. No advocacy campaigns, no legislator contact, no CRM.
+
+---
+
+### The Conservative Gap
+
+| Capability | Progressive Tools | Conservative Tools |
+|---|---|---|
+| Mass email + list management | Action Network ($15/mo) | None at comparable price |
+| Petitions + events + forms | Action Network, EveryAction | None |
+| Legislator letter campaigns | AN, EveryAction, Quorum | None (must use bipartisan enterprise platforms at $10K+) |
+| Self-serve advocacy ($15–$250/mo) | AN, NationBuilder, Ujoin | **Nothing** |
+| Fundraising | ActBlue | WinRed, RallyRight DonateRight |
+| Canvassing | MiniVAN (EveryAction) | i360 Walk, RallyRight FieldRight |
+| P2P texting | Hustle, ThruText | RumbleUp, RelayRight |
+| Voter data | TargetSmart, L2 | i360, Data Trust |
+
+Conservative orgs that need affordable advocacy tooling (email + petitions + letters to legislators) either:
+1. Pay enterprise prices (Quorum, VoterVoice) if they're large enough
+2. Cobble together Mailchimp + Google Forms + spreadsheets
+3. Use NationBuilder (mediocre advocacy features)
+4. Go without
+
+---
+
+## Universal Capability Comparison
+
+### What Every Platform Offers (Table Stakes)
+
+| Capability | How Competitors Do It | How Commons Does It | Commons Advantage |
+|---|---|---|---|
+| **District matching** | Full street address → Cicero API (~$0.03/lookup) | Postal code → Shadow Atlas (94,166 districts, 24 types, <50ms) | Zero marginal cost. No third-party dependency. 24 boundary types vs. competitors' ~3 (federal, state upper, state lower). |
+| **Official lookup** | Static database of ~500K officials (Cicero, Quorum, VoterVoice) | 3-phase agentic enrichment pipeline (identify → email enrich → validate) | More accurate for non-standard offices (water, transit, school board). Slower for standard offices — need caching. |
+| **Email campaigns** | WYSIWYG, A/B testing, scheduling, SES/Sendgrid | WYSIWYG, A/B, scheduling, SES. Segments by engagement tier + verified district. | Segments are mathematically provable. "Established-tier constituents in CA-12" is a cryptographic filter, not a self-reported tag. |
+| **Message personalization** | AI generates 100–300 variants (Quorum, CiviClick, VoterVoice SmartCheck) | Message Writer Agent: two-phase grounding-verified composition with citation validation | Every citation validated accessible. Content is grounding-verified AND sender is identity-verified. |
+| **Embeddable widgets** | iframe/JS drop-in (AN, Muster, One Click, Ujoin) | iframe + postMessage. Postal Bubble → verified action in browser. | Widget produces ZK-verified actions, not form submissions. |
+| **List management / CRM** | Email-keyed records, tags, self-reported geography, engagement scores | Email-keyed records, tags, identity commitment binding, engagement tiers (on-chain), district membership (24 types) | Tiers are non-fakeable. District membership is cryptographically proven, not self-reported. |
+| **Analytics** | Opens, clicks, bounces, geographic heatmaps, engagement scores | Opens, clicks, bounces + coordination integrity (GDS, ALD, temporal entropy, burst velocity) + tier distribution | Coordination integrity signals: the org can prove its campaign is grassroots. No competitor has this. |
+| **Advocate mapping** | District overlay on map (Muster, VoterVoice, Quorum). Typically federal + state legislative only. | Shadow Atlas: 24 boundary types per cell. H3-indexed. 94,166 districts. | Water districts, fire districts, school boards, transit authorities, judicial circuits — none of the competitors cover these. |
+
+### What Only Some Platforms Offer
+
+| Capability | Who Has It | Commons Status | Priority |
+|---|---|---|---|
+| **Patch-through calling** | Capitol Canary, CallHub, One Click | Not spec'd | P2 — Twilio extension. **Verified caller district** is a differentiator no one else has. |
+| **Web form navigation** | Quorum, Capitol Canary, VoterVoice (99.6% deliverability) | Not planned | Skip — fragile (forms change constantly). Verification packet sent directly is more impactful. |
+| **Legislative tracking / bill alerts** | Quorum, FiscalNote, FastDemocracy, PolicyEngage | Spec'd (agentic-civic-infrastructure, Phase 3) | P3 — Agent monitors bills affecting verified districts. ~$6.50/org/month. |
+| **Legislator scorecards** | Quorum, FastDemocracy, Legislative Scorecard | Not spec'd | P2 — Natural extension of campaign delivery + response tracking. |
+| **Video messages to officials** | CiviClick, One Click | Not planned | Skip — niche, low ROI. |
+| **Social media advocacy** | Quorum, Capitol Canary, CiviClick, Ujoin | Not planned | Skip — low ROI relative to engineering cost. |
+| **Fax to officials** | VoterVoice, legacy platforms | Not planned | Skip — legacy. |
+| **SMS campaigns** | Most platforms | Spec'd (Phase 3, Twilio) | P2/P3 |
+| **Gamification** | CiviClick | Not planned | Skip — engagement tiers are structural, not gamified. |
+| **Debate / quality signals** | Nobody | **Built** (LMSR + AI panel, 193 tests) | Structural advantage — no competitor has any mechanism for quality. |
+| **Coordination integrity** | Nobody | **Built** (GDS, ALD, temporal entropy, burst velocity) | Structural advantage — anti-astroturf proof that ships with every campaign. |
+| **Verified identity** | Nobody | **Built** (5 circuits, 4 depths, mDL parsing, browser ZK) | Structural advantage — years of infrastructure, zero marginal cost. |
+| **Portable reputation** | Nobody | **Built** (engagement tiers 0–4, on-chain, cross-org) | Structural advantage — protocol-level, not app-level. |
+
+---
+
+## AI Landscape
+
+Every major platform is shipping AI in 2025–2026. None of them verify the identity behind the AI action.
+
+| Platform | AI Product | Launch | Capabilities | Identity Verification |
 |---|---|---|---|---|
-| Bonterra EveryAction (69.5% share) | None | Progressive-leaning | Enterprise | Vendor lock-in, no API |
-| Quorum (+ Capitol Canary) | None | Bipartisan | Enterprise | $10K+ annual, enterprise sales only |
-| Action Network | None | Progressive-only | $15-$125/mo | No CRM, CSV-only analytics, 4 req/s API |
-| NationBuilder | None | All | $34-$199/mo | CMS-first, weak advocacy tooling |
-| Phone2Action (now Capitol Canary) | None | Bipartisan | Enterprise | Acquired by Quorum, consolidating |
-| **Commons** | **ZK-verified** | **All** | **$0-$200/mo** | New entrant, building org tooling |
+| **Bonterra** | Que | Oct 2025 | Agentic AI for fundraising: workflow automation, SMS/event creation, campaign optimization, report building. Human-led (approve/reject). | **None** |
+| **Quorum** | Quincy 2.0 | Jan 2025 | Legislative analysis: bill summarization, amendment tracking, natural language search, stakeholder insights. Trained on legislative text. | **None** |
+| **VoterVoice** | SmartCheck (ChatGPT) | 2024 | Subject line optimization, CTA tuning, message personalization. | **None** |
+| **CiviClick** | CiviClick Amplified | 2024 | AI-personalized outreach across channels, real-time analytics optimization. | **None** |
+| **Action Network** | None | — | No AI features. | **None** |
+| **Commons** | Message Writer, Subject Line, Decision-Maker Discovery agents + agentic delegation (spec'd) | Production (agents), spec'd (delegation) | Grounding-verified message composition, multi-turn subject line refinement, 3-phase decision-maker resolution. **Agentic delegation**: agents act on behalf of verified constituents, tier-gated authority, ZK proof on every action, privacy-preserving memory. | **ZK proof on every agent action** |
+
+The structural difference: Bonterra Que helps an org raise money faster. Quorum Quincy helps a lobbyist analyze bills faster. Commons agents help a verified constituent participate in democracy with the same ZK proof whether they act manually or delegate to an agent. The identity verification is on the action, not the platform.
+
+---
+
+## What Congressional Offices Receive
+
+Congressional staffers process 75–85% of incoming mail as form-generated advocacy campaigns. Personalized messages are 7x more effective than form letters. 90% of staff say individualized messages have "a lot of positive influence" on undecided Members; form messages score significantly lower ([Congressional Management Foundation](https://www.congressfoundation.org/blog/917-its-not-how-you-send-it-its-whats-inside)).
+
+| Signal | Current Platforms | Commons |
+|---|---|---|
+| Count | "847 people emailed" | "847 verified constituents in CA-12" |
+| Identity | Email address (self-reported) | ZK proof of government credential |
+| District | Self-reported ZIP → Cicero lookup (often wrong; 15–20% of ZIP codes span multiple CDs) | Merkle proof against hierarchical district tree (24 boundary types) |
+| Credibility | None | Engagement tier distribution (89 Pillars, 112 Established) |
+| Quality | None (Quorum: 300 AI message variants, but no quality signal) | Debate market signal (62% AMEND, market depth $247) |
+| Authenticity | None | GDS 0.91, ALD 0.87, temporal entropy 0.93 |
+| Privacy | Org has full PII, can be compelled to disclose | ZK — platform cannot link proof to person |
 
 ---
 
@@ -29,7 +506,7 @@ No platform in the advocacy software market verifies constituent identity. Every
 
 **What Commons is:** Not Action Network with verification bolted on. A different thing. Every feature — email, letters, list management, analytics — works differently when built on verified identity, because the atom of the system is a cryptographic proof, not an email address.
 
-### Unified Comparison
+### Unified Feature Comparison
 
 | Feature | Action Network | Commons |
 |---|---|---|
@@ -42,11 +519,11 @@ No platform in the advocacy software market verifies constituent identity. Every
 | **Pricing** | $15-$125/mo, no free tier | $0-$200/mo, free tier with full API |
 | **Political scope** | Progressive only (501(c)(4) ToS). Half the market excluded by policy. | All — protocol verifies proof, not politics. Verification is orthogonal to ideology. |
 | **API** | Paid plans only, 4 req/s cap | Free, all tiers, no cap |
-| **Reputation** | None. Every supporter is equally weightless. | Engagement tiers: New (0), Active (1), Established (2), Veteran (3), Pillar (4). Non-purchasable, on-chain, portable across orgs. A Pillar who built trust over years carries that weight into every campaign. |
-| **Privacy** | Plaintext PII. Fully subpoena-able. An org on a controversial issue exposes every supporter to legal discovery. | ZK proofs. Platform cannot link proof to person. Cannot be compelled to disclose what it doesn't possess. Privacy is structural, not policy. |
-| **Debate / quality** | None. Volume is the only metric. No mechanism to surface quality of reasoning. | LMSR market + AI panel. sqrt(stake) * 2^tier. Campaigns deliver not just count but quality — structured arguments, adversarial pricing, scored reasoning. |
-| **Agentic** | None. Bonterra Que does fundraising only. Quorum Quincy does legislative analysis at $10K+. Neither verifies the identity behind the agent. | Verified delegation. Tier-gated. Privacy-preserving memory. ZK proof on every agent action. An agent monitoring legislation across 24 district types on behalf of a Veteran-tier constituent is a categorically different thing than an unverified bot. |
-| **Portability** | Per-org silos. Reputation resets with every new org. | Protocol-level identity. A supporter's verification and reputation travel across every org on the protocol. |
+| **Reputation** | None. Every supporter is equally weightless. | Engagement tiers: New (0), Active (1), Established (2), Veteran (3), Pillar (4). Non-purchasable, on-chain, portable across orgs. |
+| **Privacy** | Plaintext PII. Fully subpoena-able. | ZK proofs. Platform cannot link proof to person. Cannot be compelled to disclose what it doesn't possess. Privacy is structural, not policy. |
+| **Debate / quality** | None. Volume is the only metric. | LMSR market + AI panel. sqrt(stake) * 2^tier. Quality of reasoning, not just count. |
+| **Agentic** | None. | Verified delegation. Tier-gated. Privacy-preserving memory. ZK proof on every agent action. |
+| **Portability** | Per-org silos. Reputation resets with every new org. | Protocol-level identity. Verification and reputation travel across every org on the protocol. |
 | **Custom domain** | Paid add-on | Included (Organization tier+) |
 | **SQL mirror** | +$200/month add-on | Included (Organization tier+) |
 
@@ -71,33 +548,123 @@ No platform in the advocacy software market verifies constituent identity. Every
 
 ---
 
-## What Congressional Offices Receive
+## Moats
 
-| Signal | Action Network | Commons |
+### Theirs
+
+| Platform | Moat | Durability |
 |---|---|---|
-| Count | "847 people emailed" | "847 verified constituents in CA-12" |
-| Identity | Email address (self-reported) | ZK proof of government credential |
-| District | Self-reported ZIP (often wrong) | Merkle proof against hierarchical district tree (24 boundary types) |
-| Credibility | None | Engagement tier distribution (89 Pillars, 112 Established) |
-| Quality | None | Debate market signal (62% AMEND, market depth $247) |
-| Authenticity | None | GDS 0.91, ALD 0.87, temporal entropy 0.93 |
-| Privacy | Org has full PII, can be compelled to disclose | ZK — platform cannot link proof to person |
+| **Bonterra/EveryAction** | 20K+ org installed base, full-stack nonprofit CRM, vendor lock-in during migration, progressive ecosystem entrenchment | **High** — CRM switching costs are massive. But advocacy is a secondary feature; orgs may use Commons for advocacy alongside EveryAction for fundraising. |
+| **Quorum** | Legislative data feeds (all 50 states + local), Quincy AI trained on legislative text, 50%+ Fortune 100 clients, 9-module bundling | **High** — data licensing + enterprise relationships. But price ($10K+) excludes most of the market. |
+| **VoterVoice** | FiscalNote parent (publicly traded, regulatory data), industry benchmarking data, 2,000+ org network | **Medium** — benchmark data is valuable but not defensible long-term. |
+| **Action Network** | 12K+ org base, coalition network effects, progressive brand, embedded page lock-in (iframes across org websites) | **Medium** — OSDI provides some portability; progressive-only restriction halves addressable market; brand doesn't help with deliverability problems. |
+| **i360** | 250M voter records, Koch network distribution, predictive models | **Medium-High** — data is valuable but siloed to conservative campaigns, not advocacy. |
+
+### Ours
+
+| Moat | Description | Replicability |
+|---|---|---|
+| **Cryptographic verification** | 5 circuits, 4 depths, 13 contracts, 7 audit rounds. Years of infrastructure. | **Very low** — requires deep expertise in ZK, mDL parsing, government credential standards, circuit design. No competitor has started. |
+| **Shadow Atlas (district layer)** | 94,166 districts, 24 boundary types, R-tree spatial index. Owned data, zero marginal cost. | **Low** — Cicero charges per lookup; Google shut down. Building a competing district layer at this scope is a multi-year effort. |
+| **Zero marginal cost verification** | ZK proofs generate in user's browser (noir_js + bb.js). Server cost: $0. | **Very low** — browser-side ZK proof generation is cutting-edge. Requires Noir circuit design, WASM compilation, mDL credential parsing. |
+| **Protocol composability** | Identity portable, reputation portable, network effects at protocol layer not app layer. | **Low** — requires on-chain infrastructure. App-layer competitors can't retrofit protocol-layer identity. |
+| **Political neutrality** | Verification is orthogonal to ideology. 2x addressable market vs. progressive-only competitors. | **Medium** — any new platform could be neutral, but incumbents' brand/ecosystem associations are hard to shed. |
+| **Anti-astroturf signals** | GDS, ALD, temporal entropy, burst velocity computed automatically from on-chain action data. Ships with every campaign. | **Low** — requires verified identity to be meaningful. Without ZK proof, these signals can be gamed. |
 
 ---
 
-## Moats
+## Pricing Comparison
 
-**Theirs (AN):** Switching cost (supporter lists locked in), coalition network effects (multi-org campaigns), brand recognition (14 years, progressive ecosystem). All eroding — OSDI provides some portability, brand doesn't help with spam reputation problems, progressive-only restriction halves addressable market.
-
-**Ours:** Cryptographic verification (5 circuits, 4 depths, 13 contracts, 7 audit rounds — years of work), zero marginal cost for verification (browser-side ZK), protocol composability (identity portable, reputation portable, network effects at protocol layer not app layer), political neutrality (2x addressable market), open source (trust through transparency).
-
-AN's moat is organizational inertia. Ours is mathematical proof. Inertia erodes. Math doesn't.
+| Platform | Entry Price | Full-Featured | Free Tier | Self-Serve |
+|---|---|---|---|---|
+| **Commons** | **$0/mo** | **$75–$200/mo** | **Yes (500 supporters, full API)** | **Yes** |
+| Action Network | $15/mo | $125/mo | Limited (no API) | Yes |
+| NationBuilder | $29/mo | $179/mo | No (14-day trial) | Yes |
+| Ujoin | $99/mo | $249/mo | Limited | Yes |
+| Muster | Not published | Not published | No | Likely |
+| CiviClick | $7,500/yr | Custom | No | No |
+| One Click Politics | $3,500/mo | Custom | No | No |
+| Rally Congress | Not published | Not published | No | Yes |
+| Quorum | ~$10K+/yr | ~$30K+/yr | No | No |
+| VoterVoice | Custom | Custom | No | No |
+| Bonterra | Custom | Custom | No | No |
+| i360 | Custom | Custom | No | No |
 
 ---
 
 ## Go-to-Market
 
+### Beachhead segments (Year 1–2)
+
 1. **Science/health advocacy** — credibility over volume. ALI, disease foundations, research coalitions. These orgs need staffers to *believe* the signers are real. Verification is the product.
-2. **Nonpartisan/conservative groups** — structurally excluded from AN (progressive-only ToS). Underserved market with no good tooling.
+2. **Nonpartisan/conservative groups** — structurally excluded from AN (progressive-only ToS) and priced out of enterprise platforms (Quorum, VoterVoice at $10K+). Underserved market with no good tooling at the $10–$200/mo price point.
 3. **Small orgs** — free tier vs AN's $15/month minimum. Full API access. No paywall on analytics.
-4. **Progressive orgs wanting proof** — run Commons alongside AN. Use AN for volume, Commons for verified actions. Migration path when they see the difference in staffer response rates.
+4. **Local government advocacy** — school boards, water districts, transit authorities, fire districts, judicial circuits. 21 of 24 Shadow Atlas boundary types have **zero** coverage from any competitor. Shadow Atlas resolves districts that Quorum and VoterVoice literally don't have in their databases.
+
+### Expansion (Year 2–4)
+
+5. **Progressive orgs wanting proof** — run Commons alongside AN. Use AN for volume, Commons for verified actions. Migration path when they see the difference in staffer response rates. AN API sync tool (spec'd in `docs/specs/AN-MIGRATION-SPEC.md`) reduces migration from 6 months to weeks.
+6. **Corporate advocacy / trade associations** — currently paying $10K–$30K+/year to Quorum/VoterVoice. Commons Organization tier at $75/mo ($900/yr) is 10–30x cheaper. Verification packet is more credible than volume metrics.
+
+### Differentiated capabilities by segment
+
+| Segment | What they need | What competitors offer | What Commons offers |
+|---|---|---|---|
+| Science/health | Credible constituent proof | Unverified email counts | ZK-verified counts + tier distribution + coordination integrity |
+| Conservative/nonpartisan | Affordable advocacy tooling | Nothing at <$7,500/yr | Full platform at $0–$200/mo |
+| Small orgs | Free/cheap, easy setup | AN $15/mo (no API), NationBuilder $29/mo | Free tier with full API |
+| Local government | Sub-state district targeting | Federal + state legislative only | 24 boundary types including school, water, fire, transit, judicial |
+| Progressive orgs | Better response rates from offices | Volume-based, unverified | Verified + unverified side-by-side. Migration tool. |
+| Corporate/trade | Legislative tracking + advocacy | Quorum/VoterVoice at $10K+/yr | $75/mo Organization tier + agentic bill monitoring (Phase 3) |
+
+---
+
+## Sources
+
+### Market Size
+- [Business Research Insights: Advocacy Software Market](https://www.businessresearchinsights.com/market-reports/advocacy-software-market-105020)
+- [SNS Insider: Advocacy Software Market](https://www.snsinsider.com/reports/advocacy-software-market-9352)
+- [Market Growth Reports: Grassroots Advocacy Software](https://www.marketgrowthreports.com/market-reports/grassroots-advocacy-software-market-120061)
+
+### Platforms
+- [Bonterra EveryAction](https://www.bonterratech.com/product/everyaction)
+- [Bonterra Que Launch (BusinessWire)](https://www.businesswire.com/news/home/20251001579571/en/)
+- [Bonterra Advocacy Software](https://www.bonterratech.com/solutions/advocacy-software)
+- [Quorum Products](https://www.quorum.us/products/)
+- [Quorum Acquires Capitol Canary](https://www.quorum.us/company-news/quorum-acquires-capitol-canary-public-affairs-software-leaders/)
+- [Quorum Quincy 2.0](https://www.quorum.us/company-news/quorum-launches-quincy-2-0/)
+- [Quorum Grassroots](https://www.quorum.us/products/grassroots/)
+- [VoterVoice Products](https://info.votervoice.net/)
+- [FiscalNote Grassroots Advocacy](https://fiscalnote.com/solutions/grassroots-advocacy)
+- [FiscalNote 2025 Benchmark Report](https://www.businesswire.com/news/home/20250825284430/en/)
+- [CiviClick](https://civiclick.com/)
+- [CiviClick Solutions](https://civiclick.com/solutions/)
+- [One Click Politics](https://oneclickpolitics.com/)
+- [PolicyEngage](https://policyengage.com/)
+- [Action Network API Docs](https://actionnetwork.org/docs/v2/)
+- [Action Network Pricing](https://actionnetwork.org/get-started/)
+- [Action Network Pricing Update](https://actionnetwork.blog/an-update-on-action-network-pricing/)
+- [NationBuilder Pricing](https://nationbuilder.com/pricing)
+- [NationBuilder vs AN](https://nationbuilder.com/how_is_nationbuilder_different_from_actionnetwork)
+- [Muster Platform](https://www.muster.com/product)
+- [Muster for Associations](https://www.muster.com/solutions/associations)
+- [Ujoin](https://ujoin.co/)
+- [Rally Congress Features](https://www.rallycongress.com/marketing/features)
+- [i360](https://www.i-360.com/)
+- [i360 SourceWatch](https://www.sourcewatch.org/index.php/I360)
+- [RallyRight](https://rallyright.com/)
+- [RallyRight Launch (DC Weekly)](https://dcweekly.org/2024/01/14/rallyright-launches-innovative-technology-platforms-to-boost-fundraising-and-voter-turnout-for-conservative-candidates/)
+
+### Infrastructure
+- [Cicero API](https://www.cicerodata.com/api/)
+- [Cicero Pricing](https://www.cicerodata.com/pricing/)
+- [Google Civic Info API Shutdown](https://groups.google.com/g/google-civicinfo-api/c/9fwFn-dhktA)
+- [USgeocoder (Google Civic alternative)](https://blog.usgeocoder.com/looking-for-a-google-civic-api-alternative-discover-usgeocoder-api/)
+
+### Effectiveness Research
+- [Congressional Management Foundation: Message Effectiveness](https://www.congressfoundation.org/blog/917-its-not-how-you-send-it-its-whats-inside)
+- [Causes.com: Securing Advocacy in an AI World](https://www.causes.com/articles/55009-securing-advocacy-ai-world-understanding-authentication)
+- [WebProNews: Phantom Signatures](https://www.webpronews.com/phantom-signatures-and-political-theatrics-how-fake-sign-ins-may-have-inflated-opposition-to-washington-states-millionaires-tax/)
+- [LegBranch: Managing Constituent Correspondence](https://www.legbranch.org/2018-7-25-managing-constituent-correspondence-effects-on-citizen-advocacy-and-congressional-learning/)
+- [VoterVoice: Advocacy 101](https://info.votervoice.net/resources/advocacy-101)
+- [Quorum: Emailing Capitol Hill](https://www.quorum.us/blog/emailing-capitol-hill/)

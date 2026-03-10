@@ -1,6 +1,6 @@
 # Design Documentation
 
-**Design system and voice for Communiqué.**
+**Design system and voice for Commons.**
 
 ---
 
@@ -14,7 +14,7 @@ Start here. Everything else references this.
 
 ### [voice.md](voice.md) — Voice & Language
 
-**How Communiqué speaks.** Pragmatic cypherpunk. Direct. No corporate speak.
+**How Commons speaks.** Pragmatic cypherpunk. Direct. No corporate speak.
 
 ### [TYPOGRAPHY-SYSTEM.md](TYPOGRAPHY-SYSTEM.md) — Typography Implementation
 
@@ -87,4 +87,4 @@ Identity verification flows. "Stealthily cypherpunk."
 
 ---
 
-*Communiqué PBC | Design Documentation | 2025-11*
+*Commons | Design Documentation | 2026-03*

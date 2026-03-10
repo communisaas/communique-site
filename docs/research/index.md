@@ -1,6 +1,6 @@
 # Research Documentation
 
-**Strategic research informing Communiqué's product direction and technical decisions.**
+**Strategic research informing Commons's product direction and technical decisions.**
 
 ---
 
@@ -17,7 +17,7 @@
 - **Healthcare**: Hospital consolidation, insurance denials, pharmaceutical pricing
 - **Finance**: Predatory lending, credit bureaus, debt collection
 
-**Why important**: Expands Communiqué's vision beyond congressional advocacy to ALL power structures.
+**Why important**: Expands Commons's vision beyond congressional advocacy to ALL power structures.
 
 **Use case**: Product roadmap (Phase 2+), organizing infrastructure for non-government decision-makers.
 
@@ -37,6 +37,28 @@
 **Decision made**: AWS Nitro Enclaves chosen (see `/docs/architecture/tee-systems.md`)
 
 **Use case**: Security audits, threat modeling, TEE provider evaluation.
+
+---
+
+### 3. [competitive-analysis.md](competitive-analysis.md) - Competitive Landscape
+
+**What it researches**: Action Network, EveryAction, Quorum, NationBuilder — pricing, features, market positioning.
+
+**Key findings**: $191M addressable market. Every competitor lacks verified identity. AN's progressive-only restriction creates opening.
+
+---
+
+### 4. [action-network-migration-research.md](action-network-migration-research.md) - AN Data Model & Migration
+
+**What it researches**: Action Network OSDI data model, import/export patterns, migration strategy.
+
+---
+
+### 5. [mdl-landscape-2026.md](mdl-landscape-2026.md) - US mDL Adoption Status
+
+**What it researches**: State-by-state mDL adoption, IACA root availability, Digital Credentials API support.
+
+**Key findings**: 16 states in static trust store + 10 via runtime VICAL. Coverage expanding rapidly.
 
 ---
 
@@ -60,7 +82,7 @@
 
 **Congressional delivery** → See `/docs/congressional/delivery.md` (TEE implementation)
 
-**Cypherpunk philosophy** → See `/docs/CYPHERPUNK-ARCHITECTURE.md` (McDonald 2018 research)
+**Cypherpunk philosophy** → See `/docs/architecture.md` (McDonald 2018 research)
 
 ---
 
@@ -92,7 +114,7 @@
 
 **Architecture decisions**: See `/docs/architecture/decision-record.md` (browser-native proving)
 
-**Deployment security**: See `/docs/development/aws-deployment.md` (AWS Nitro setup)
+**Deployment**: See `/docs/development/deployment.md` (Cloudflare Workers)
 
 ---
 

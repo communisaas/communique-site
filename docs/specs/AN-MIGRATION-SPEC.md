@@ -1,6 +1,8 @@
 # Action Network Migration Specification
 
-**Status:** Design Spec
+> **STATUS: SHIPPED** — OSDI sync and migration tooling operational.
+
+**Status:** Shipped
 **Author:** Architecture
 **Created:** 2026-03-06
 **Depends on:** Org Data Model, List Management, Campaign System, Shadow Atlas, ZK Identity

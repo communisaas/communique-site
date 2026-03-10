@@ -8,11 +8,11 @@
 
 ## TL;DR
 
-15 implementation cycles completed across Graduated Trust Architecture. The core identity verification, ZK proof generation, encrypted delivery, and congressional submission pipeline are implemented. Government credential (mDL) verification is the sole identity path (self.xyz + Didit.me removed in Cycle 15). Staked deliberation infrastructure added: 9 Svelte 5 components, 6 API routes, Prisma models, debate-scoped ZK proofs. Production deployment on Cloudflare Workers with Hyperdrive connection pooling. 7 P0 launch blockers remain — see [Launch Readiness Matrix](./architecture/REMAINING-GAPS.md#launch-readiness-matrix).
+15 implementation cycles completed across Graduated Trust Architecture. The core identity verification, ZK proof generation, encrypted delivery, and congressional submission pipeline are implemented. Government credential (mDL) verification is the sole identity path (self.xyz + Didit.me removed in Cycle 15). Staked deliberation infrastructure added: 9 Svelte 5 components, 6 API routes, Prisma models, debate-scoped ZK proofs. Production deployment on Cloudflare Workers with Hyperdrive connection pooling. See [`strategy/product-roadmap.md`](./strategy/product-roadmap.md) for current phase plan.
 
 **What works end-to-end:** User verifies identity (mDL via Digital Credentials API) → address encrypted client-side (XChaCha20-Poly1305) → ZK proof generated in browser (Noir/WASM) → submission created with nullifier uniqueness → encrypted witness decrypted server-side → CWC API delivery to congressional offices → status tracking with polling.
 
-**What doesn't work yet:** IACA root certificates loaded for CA and NM only; remaining states available via AAMVA VICAL parser (follow-up). TEE infrastructure (L-05) needed for production witness decryption.
+**What doesn't work yet:** IACA root certificates loaded for 16 states in static trust store + 10 via runtime VICAL parser; remaining states expanding. TEE infrastructure (L-05) needed for production witness decryption.
 
 ---
 
@@ -24,7 +24,8 @@
 | 1 | Passkey-bound | **IMPLEMENTED** | WebAuthn registration/authentication, did:key derivation, PasskeyRegistration/Login/Upgrade components |
 | 2 | Address-attested | **IMPLEMENTED** | AddressVerificationFlow, district credential (W3C VC 2.0), VerificationGate with tier-aware routing |
 | 3 | ZK-verified | **IMPLEMENTED** | Browser Noir prover, Shadow Atlas registration, ProofGenerator, encrypted witness, CWC delivery |
-| 4 | Government credential | **IMPLEMENTED** | W3C Digital Credentials API, mDL selective disclosure, privacy boundary function, ephemeral ECDH keys |
+| 4 | Passport Verified (legacy) | **IMPLEMENTED** | Legacy tier, retained for backward compatibility |
+| 5 | Government credential (mDL) | **IMPLEMENTED** | W3C Digital Credentials API, mDL selective disclosure, privacy boundary function, ephemeral ECDH keys |
 
 ---
 
@@ -32,10 +33,10 @@
 
 ### Identity & Authentication (Cycles 1-3, 9)
 - **Passkey registration/authentication** — @simplewebauthn/server + /browser, P-256 + Ed25519, did:key derivation
-- **Address verification** — AddressVerificationFlow, Google Civic API district lookup, DistrictCredential (W3C VC 2.0)
+- **Address verification** — AddressVerificationFlow, Census Bureau geocoding district lookup, DistrictCredential (W3C VC 2.0)
 - **Identity verification** — mDL via W3C Digital Credentials API (sole provider; self.xyz and Didit.me removed 2026-02-24)
 - **Session credential caching** — IndexedDB wallet with TTL, SSR-safe
-- **Trust tier computation** — `deriveTrustTier()` per-request in hooks.server.ts, 5-tier graduated model
+- **Trust tier computation** — `deriveTrustTier()` per-request in hooks.server.ts, 6-tier graduated model (0-5)
 - **Authority levels** — 0-5 scale, `trustTierToAuthorityLevel()` mapping
 - **Credential policy** — Action-based TTL (constituent_message: 30 days)
 
@@ -89,8 +90,7 @@
 
 ## What's NOT Production-Ready
 
-> **Canonical priority tracker:** [`docs/architecture/REMAINING-GAPS.md` → Launch Readiness Matrix](./architecture/REMAINING-GAPS.md#launch-readiness-matrix)
-> Items L-01 through L-20 with cross-repo ownership, status, and critical path diagram.
+> **Current plan:** See [`strategy/product-roadmap.md`](./strategy/product-roadmap.md) for phase sequence and priorities.
 
 ### Resolved (Cycles 1-15)
 
@@ -141,7 +141,7 @@ All P0 engineering gaps from Cycles 1-14 are resolved. Summary of what was fixed
 | 14 | Security-Critical Test Coverage + Production Hygiene | 4 | 36 new tests covering authority level, pseudonymous ID, user secret derivation, witness encrypt→decrypt round-trip. Debug console floods removed, HACKATHON limits tightened (title 200, body 10k), demo pages dev-gated, empty catches fixed |
 | 15 | Staked Deliberation + Identity Simplification | 4 | Debate infrastructure (9 components, 6 API routes, Prisma models, debate-scoped ZK proofs, DebateModal in ModalRegistry, deep link route, debate browse indicator). Identity simplified to mDL-only: self.xyz + Didit.me removed (8 files deleted, 16 files edited), VerificationChoice removed, single-path verification flow. |
 
-**Full cycle details:** `docs/architecture/graduated-trust-implementation.md`
+**Full cycle details:** `docs/architecture/graduated-trust.md` (Implementation Progress section)
 
 ---
 
@@ -181,7 +181,7 @@ All P0 engineering gaps from Cycles 1-14 are resolved. Summary of what was fixed
 
 Existing users with `verification_method = 'self.xyz'` or `verification_method = 'didit'` retain their verification status. The `deriveAuthorityLevel()` and `deriveTrustTier()` functions still recognize these values for backward compatibility. No database migration needed — the code simply no longer creates new records with these values.
 
-### Remaining mDL Gaps (see REMAINING-GAPS.md)
+### Remaining mDL Gaps
 
 1. **IACA root certificates** — **RESOLVED** (Cycle 41). DSC→IACA chain verification implemented (`verifyDscAgainstRoot()`). CA and NM roots loaded from .gov downloads. 37 tests including real CA cert self-signature verification and DSC validity period enforcement. Expansion to all states via AAMVA VICAL parser is follow-up.
 2. **Poseidon2 identity commitment** — mDL path uses SHA-256² mod BN254 (Phase 1); Poseidon2 planned for Phase 2
@@ -210,4 +210,4 @@ Existing users with `verification_method = 'self.xyz'` or `verification_method =
 
 ---
 
-*Communique PBC | Implementation Status | 2026-02-25*
+*Commons PBC | Implementation Status | 2026-02-25*

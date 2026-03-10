@@ -19,7 +19,7 @@
 
 ## Overview
 
-Communique uses passwordless OAuth authentication to reduce friction and maximize conversion. Users authenticate with existing social accounts, enabling instant civic action without signup forms.
+Commons uses passwordless OAuth authentication to reduce friction and maximize conversion. Users authenticate with existing social accounts, enabling instant civic action without signup forms.
 
 **Active Providers** (4 total, ordered by UI display):
 1. Google OAuth 2.0 (Featured provider)
@@ -539,7 +539,7 @@ try {
 - Account linking (merge multiple OAuth accounts)
 
 ### Long Term
-- Self-hosted OAuth provider (Communique SSO)
+- Self-hosted OAuth provider (Commons SSO)
 - OAuth for API access (external integrations)
 - Federated identity (cross-platform reputation)
 

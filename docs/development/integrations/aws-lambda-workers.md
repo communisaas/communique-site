@@ -1,12 +1,14 @@
 # AWS Lambda CWC Workers
 
+> **Note**: These are AWS Lambda functions for congressional message delivery — a separate backend component. The main Commons application runs on **Cloudflare Workers** (Pages). See [`../deployment.md`](../deployment.md) for app deployment.
+
 **Unified documentation for House and Senate Congressional Web Contact (CWC) Lambda workers.**
 
 ---
 
 ## Overview
 
-AWS Lambda functions for processing Congressional Web Contact submissions from SQS FIFO queues. These workers integrate with the Communique infrastructure to handle asynchronous message delivery to Congress with rate limiting, error handling, and job status tracking.
+AWS Lambda functions for processing Congressional Web Contact submissions from SQS FIFO queues. These workers integrate with the Commons infrastructure to handle asynchronous message delivery to Congress with rate limiting, error handling, and job status tracking.
 
 ### Architecture
 
@@ -26,7 +28,7 @@ SQS FIFO Queue → Lambda Function → CWC API / GCP Proxy → Congressional Off
 - **Comprehensive Monitoring**: CloudWatch metrics, alarms, and structured logging
 - **Partial Batch Failure Handling**: Selective message retry without full batch reprocessing
 - **Idempotency**: Duplicate message handling and retry protection
-- **Job Status Integration**: Real-time updates to Communique job status API
+- **Job Status Integration**: Real-time updates to Commons job status API
 
 ---
 
@@ -127,7 +129,7 @@ SQS FIFO Queue → Lambda Function → Senate CWC API → Senate Offices
 | `CWC_API_KEY`                | Senate CWC API key               | Yes      | -                                |
 | `CWC_API_BASE_URL`           | CWC API base URL                 | Yes      | `https://soapbox.senate.gov/api` |
 | `DYNAMO_TABLE_NAME`          | DynamoDB table for rate limiting | Yes      | `communique-rate-limits`         |
-| `JOB_STATUS_API_URL`         | Communique job status API URL    | Yes      | -                                |
+| `JOB_STATUS_API_URL`         | Commons job status API URL    | Yes      | -                                |
 | `LAMBDA_WEBHOOK_SECRET`      | Secret for job status API auth   | Yes      | -                                |
 | `MAX_RETRIES`                | Maximum retry attempts           | No       | `3`                              |
 | `RATE_LIMIT_WINDOW_SECONDS`  | Rate limit window in seconds     | No       | `3600`                           |
@@ -670,4 +672,4 @@ Messages in the DLQ require manual intervention:
 
 ---
 
-*AWS Lambda CWC Workers are part of the Communique advocacy platform's infrastructure for scalable congressional message delivery.*
+*AWS Lambda CWC Workers are part of the Commons advocacy platform's infrastructure for scalable congressional message delivery.*

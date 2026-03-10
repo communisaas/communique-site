@@ -18,13 +18,11 @@ Install dependencies, run dev server, common commands.
 - `npm run test` - Test suite
 - `npm run check` - Type checking
 
-### 2. [schema.md](schema.md) - Database Schema
+### 2. [database.md](database.md) - Database
 
-Prisma schema, zero-knowledge fields, relationships, migrations.
+PostgreSQL + Prisma 6.x + Hyperdrive connection pooling + pgvector.
 
-**What it documents**: User, Template, Submission, Analytics models.
-
-**Key insight**: We store commitment hashes, not plaintext location data.
+**What it documents**: Schema overview, connection architecture, migrations, seeding, Cloudflare Workers constraints.
 
 **Cross-reference**: `/prisma/schema.prisma`
 
@@ -59,22 +57,41 @@ Integration-first testing, smart mocks, test fixtures.
 
 ### 5. [flags.md](flags.md) - Feature Flags
 
-Beta feature toggles, environment-based configuration.
+Simple `FEATURES` object in `src/lib/config/features.ts` with boolean toggles.
 
-**Environment variables**:
-- `ENABLE_BETA=true` - Enable beta features
-- `NODE_ENV=production` - Production mode
+**Current flags**: DEBATE, CONGRESSIONAL, WALLET, STANCE_POSITIONS, ADDRESS_SPECIFICITY
 
-**Feature flags**:
-- AI template suggestions (beta)
-- Semantic search (beta)
-- Gamification/leaderboards (planned)
+---
+
+## AI & Moderation
+
+### 6. [agents.md](agents.md) - AI Agent System
+
+Three-agent pipeline for campaign creation: subject line generation, decision-maker resolution, message writing.
+
+**Architecture**: Gemini 3 Flash → SSE streaming → real-time UI feedback
+
+**Agents**:
+- Subject line generator (clarification + generation modes)
+- Decision-maker resolver (4-phase agentic pipeline with web search)
+- Message writer (two-phase verified source pipeline)
+
+**Key concepts**: LLM cost protection tiers, prompt injection defense, circuit breakers
+
+### 7. [moderation.md](moderation.md) - Content Moderation
+
+Automated two-layer pipeline via Groq (Llama Guard). No manual review by design.
+
+**Layer 0**: Prompt injection detection (Llama Prompt Guard 2)
+**Layer 1**: Content safety classification (Llama Guard 4, permissive for civic speech)
+
+**Policy**: Only S1 (violent crimes) and S4 (CSAM) block content. Political speech, defamation, and electoral opinions are allowed.
 
 ---
 
 ## Monitoring & Analytics
 
-### 6. [analytics.md](analytics.md) - Analytics Tracking
+### 8. [analytics.md](analytics.md) - Analytics Tracking
 
 Funnel tracking, event logging, database analytics.
 
@@ -86,7 +103,7 @@ Funnel tracking, event logging, database analytics.
 
 **Privacy**: All analytics are aggregate. No individual tracking without consent.
 
-### 7. [deployment.md](deployment.md) - Production Checklist
+### 9. [deployment.md](deployment.md) - Production Checklist
 
 Pre-deployment verification, production build, environment checks.
 
@@ -98,21 +115,43 @@ Pre-deployment verification, production build, environment checks.
 - [ ] Database migrations run
 - [ ] Feature flags configured
 
-### 8. [aws-deployment.md](aws-deployment.md) - AWS Nitro Enclaves Deployment
+---
 
-AWS-specific deployment guide for TEE infrastructure.
+## External Services
 
-**What it covers**: AWS Nitro Enclaves setup, security configuration, cost optimization.
+### 10. [firecrawl-deployment-checklist.md](firecrawl-deployment-checklist.md) - Firecrawl Provider
 
-**Why AWS**: No Intel ME/AMD PSP (ARM Graviton), hypervisor isolation, independently audited.
+Deployment checklist for Firecrawl web scraping provider integration.
 
-**Use case**: Deploying TEE for congressional message delivery (Phase 1).
+### 10b. [production-secrets-checklist.md](production-secrets-checklist.md) - Production Secrets
+
+Pre-production checklist for API keys, proxy configuration, CWC credentials.
+
+---
+
+## Testing Resources
+
+### 12. [e2e-testing-guide.md](e2e-testing-guide.md) - E2E Testing Guide
+
+End-to-end testing for voter-protocol integration: identity verification, ZK proofs, congressional submission.
+
+### 13. [ZK-PROOF-TESTING-STRATEGY.md](ZK-PROOF-TESTING-STRATEGY.md) - ZK Proof Testing
+
+Testing strategy for zero-knowledge proof generation and verification.
+
+### 14. [DATABASE-CLEARING-ISSUE.md](DATABASE-CLEARING-ISSUE.md) - Database Clearing Issue
+
+Known issue and resolution for database clearing in test environments.
+
+### 15. [VECTOR_SEARCH_GUIDE.md](VECTOR_SEARCH_GUIDE.md) - pgvector Usage Guide
+
+pgvector setup, embedding generation, similarity search patterns.
 
 ---
 
 ## Code Maintenance
 
-### 9. [maintenance.md](maintenance.md) - Code Health
+### 11. [maintenance.md](maintenance.md) - Code Health
 
 Linting, formatting, dependency updates, tech debt tracking.
 
@@ -127,27 +166,17 @@ Linting, formatting, dependency updates, tech debt tracking.
 - TypeScript strict mode
 - No `any` types (use proper types or `unknown`)
 
-### 10. [ownership.md](ownership.md) - Component Ownership
-
-Code ownership map, who maintains what, escalation paths.
-
-**Structure**:
-- `/src/lib/components/auth/` - Authentication team
-- `/src/lib/components/template/` - Template team
-- `/src/lib/core/` - Platform team
-- `/src/routes/` - Feature teams
-
 ---
 
 ## Architecture Cross-References
 
-**TEE systems** → See `/docs/architecture/tee.md`
+**TEE systems** → See `/docs/architecture/tee-systems.md`
 
-**VOTER Protocol integration** → See `/docs/INTEGRATION-GUIDE.md`
+**voter-protocol integration** → See `/docs/integration.md`
 
 **Congressional delivery** → See `/docs/congressional/`
 
-**Frontend architecture** → See `/docs/FRONTEND-ARCHITECTURE.md`
+**Frontend architecture** → See `/docs/frontend.md`
 
 ---
 
@@ -200,10 +229,10 @@ Code ownership map, who maintains what, escalation paths.
 5. Ship feature
 
 **First month**:
-1. Read FRONTEND-ARCHITECTURE.md (SvelteKit 5 patterns)
-2. Read CYPHERPUNK-ARCHITECTURE.md (product philosophy)
-3. Understand TEE architecture (`/docs/architecture/`)
-4. Take ownership of a component (see ownership.md)
+1. Read `docs/frontend.md` (SvelteKit 5 patterns)
+2. Read `docs/architecture.md` (product architecture)
+3. Understand TEE architecture (`docs/architecture/tee-systems.md`)
+4. Take ownership of a component area
 
 ---
 

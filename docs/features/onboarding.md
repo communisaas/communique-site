@@ -1,5 +1,7 @@
 # Progressive Onboarding - Agency-Driven Funnel
 
+> **STATUS: PARTIALLY IMPLEMENTED** — Decision-maker agent pipeline exists at `src/lib/core/agents/agents/decision-maker.ts` (3-phase: identification → enrichment → validation via Gemini). UX components below (DecisionMakerSearch, AddressOrLookup) are **design proposals not yet built**. Congressional address flow is implemented.
+
 **Date**: 2025-01-08 (Updated)
 **Goal**: Draw users in step-by-step, engaging their agency, minimizing friction
 
@@ -190,7 +192,7 @@ Results (from Hunter.io API):
 - **Tier 1**: Hunter.io API (50 free searches/month, then $0.025/email)
 - **Tier 2**: Apollo.io API ($59/month unlimited for creators)
 - **Tier 3**: Pattern guessing (firstname.lastname@company.com)
-- **Government**: Google Civic Information API (FREE)
+- **Government**: Census Bureau Geocoding API (FREE)
 
 **Agency engaged**: They're defining campaign targets.
 
@@ -655,13 +657,11 @@ Click "Send Now"
 3. ✅ CWC API delivery
 4. ⬜ Progressive onboarding (name first, address second)
 
-### Phase 2 (Next Week): Public Email Path + Lookup
-1. ✅ DecisionMakerSearch component (`src/lib/components/decision-maker/DecisionMakerSearch.svelte`)
-2. ✅ Hunter.io API integration (`src/routes/api/decision-makers/search/+server.ts`)
-3. ✅ Clearbit API fallback (in waterfall logic)
-4. ✅ Email pattern guessing (fallback tier)
-5. ✅ Confidence scoring (display in UI)
-6. ✅ AddressOrLookup router (`src/lib/components/decision-maker/AddressOrLookup.svelte`)
+### Phase 2 (Future): Public Email Path + Lookup
+1. ⬜ DecisionMakerSearch component (design only — component does not exist)
+2. ⬜ Dedicated search API route (decision-maker resolution uses Gemini agent pipeline, not a separate endpoint)
+3. ⬜ AddressOrLookup router (design only — component does not exist)
+4. ✅ Decision-maker agent pipeline (`src/lib/core/agents/agents/decision-maker.ts` — 3-phase Gemini agent with Google Search grounding)
 
 **Next Steps**:
 - Add environment variables: `HUNTER_IO_API_KEY`, `CLEARBIT_API_KEY` (optional)
@@ -692,7 +692,7 @@ Click "Send Now"
 4. Agency at every step (they choose, they send)
 
 **Lookup strategy**:
-1. Free APIs first (Hunter.io, Clearbit, Google Civic)
+1. Free APIs first (Census Bureau geocoding, Gemini agent pipeline)
 2. Web scraping second (company sites, LinkedIn)
 3. Pattern guessing last (with confidence scores)
 4. Always show verification status

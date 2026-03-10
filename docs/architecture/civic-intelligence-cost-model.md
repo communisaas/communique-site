@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Communique's intelligence system surfaces real-time civic context — legislation,
+Commons's intelligence system surfaces real-time civic context — legislation,
 regulatory filings, news, corporate disclosures — to help users craft informed
 advocacy messages. This document models the cost of tracking the US civic
 landscape at scale, evaluates build-vs-buy tradeoffs, and recommends a tiered
@@ -571,4 +571,4 @@ At scale, the intelligence pipeline costs half a cent per user per month.
 
 ---
 
-*Communique PBC | Civic Intelligence Cost Model | 2026-02-05*
+*Commons PBC | Civic Intelligence Cost Model | 2026-02-05*

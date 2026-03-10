@@ -1,12 +1,12 @@
 # Feature Documentation
 
-**Feature implementation guides - what Communiqué actually implements (thin client).**
+**Feature implementation guides - what Commons actually implements (thin client).**
 
 ---
 
 ## Responsibility Separation
 
-**Communiqué implements**:
+**Commons implements**:
 - ✅ Template system (create, customize, moderate)
 - ✅ OAuth authentication (Google, Facebook, Twitter, LinkedIn, Discord)
 - ✅ UI for address collection
@@ -14,13 +14,13 @@
 - ✅ Congressional email lookup (Hunter.io for template creators)
 - ✅ Universal sharing (navigator.share API)
 
-**voter-protocol owns** (Communiqué just calls as thin client):
+**voter-protocol owns** (Commons just calls as thin client):
 - ❌ District verification (Shadow Atlas, geocoding, Noir proofs)
 - ❌ Merkle trees (built off-chain, published to IPFS)
 - ❌ Smart contracts (Scroll zkEVM)
 - ❌ Reputation tracking (ERC-8004 on-chain)
 
-**See**: [DISTRICT-VERIFICATION-RESPONSIBILITIES.md](../DISTRICT-VERIFICATION-RESPONSIBILITIES.md) for complete architecture separation.
+**See**: [integration.md](../integration.md) for complete architecture separation.
 
 ---
 
@@ -34,11 +34,23 @@ Variable extraction, customization, multi-agent content moderation.
 
 **Dependencies**: None (core feature)
 
-**Implementation**: Communiqué feature (not voter-protocol)
+**Implementation**: Commons feature (not voter-protocol)
 
 ---
 
-### 2. [creator.md](creator.md) - Template Creator
+### 2. [template-variables.md](template-variables.md) - Template Variables
+
+Variable syntax, auto-fill system variables, user-editable personalization fields.
+
+**What it does**: `[Name]`, `[Representative]` auto-fill from profile; `[Personal Connection]` opens inline editor for user testimony.
+
+**Dependencies**: templates.md
+
+**Implementation**: Client-side resolution via `templateResolver.ts`
+
+---
+
+### 3. [creator.md](creator.md) - Template Creator
 
 CodeMirror editor, jurisdiction picker, variable extraction UI.
 
@@ -46,13 +58,13 @@ CodeMirror editor, jurisdiction picker, variable extraction UI.
 
 **Dependencies**: templates.md
 
-**Implementation**: Communiqué UI (calls congressional email lookup)
+**Implementation**: Commons UI (calls congressional email lookup)
 
 ---
 
 ## Authentication & Onboarding
 
-### 3. [oauth.md](oauth.md) - OAuth Integration
+### 4. [oauth.md](oauth.md) - OAuth Integration
 
 Google, Facebook, Twitter, LinkedIn, Discord authentication. Token persistence and management.
 
@@ -60,11 +72,11 @@ Google, Facebook, Twitter, LinkedIn, Discord authentication. Token persistence a
 
 **Dependencies**: None
 
-**Implementation**: Communiqué feature (token storage in database)
+**Implementation**: Commons feature (token storage in database)
 
 ---
 
-### 4. [onboarding.md](onboarding.md) - Progressive Onboarding
+### 5. [onboarding.md](onboarding.md) - Progressive Onboarding
 
 Progressive disclosure patterns, step-by-step user activation.
 
@@ -72,25 +84,25 @@ Progressive disclosure patterns, step-by-step user activation.
 
 **Dependencies**: oauth.md
 
-**Implementation**: Communiqué UI flow
+**Implementation**: Commons UI flow
 
 ---
 
 ## Discovery & Search
 
-### 5. [search.md](search.md) - Semantic Search
+### 6. [search.md](search.md) - Semantic Search
 
 Template discovery via semantic embeddings, natural language queries.
 
 **What it does**: "Find templates about housing" → relevant templates ranked by semantic similarity.
 
-**Dependencies**: embeddings.md
+**Dependencies**: Gemini embeddings (integrated)
 
-**Implementation**: Communiqué feature (Google Gemini API integration)
+**Implementation**: Commons feature (Google Gemini API integration)
 
 ---
 
-### 6. [jurisdiction.md](jurisdiction.md) - Jurisdiction Targeting
+### 7. [jurisdiction.md](jurisdiction.md) - Jurisdiction Targeting
 
 Geographic targeting for templates (city council, state legislature, congressional district).
 
@@ -98,27 +110,25 @@ Geographic targeting for templates (city council, state legislature, congression
 
 **Dependencies**: templates.md
 
-**Implementation**: Communiqué feature (TemplateJurisdiction database model)
+**Implementation**: Commons feature (TemplateJurisdiction database model)
 
 ---
 
 ## Advanced Features
 
-### 7. [embeddings.md](embeddings.md) - Gemini Embeddings
+### 8. Gemini Embeddings (integrated into search.md)
 
-Google Gemini integration for semantic search, template clustering, recommendation engine.
+Google Gemini integration for semantic search and template discovery.
 
-**What it does**: Generate vector embeddings for templates, enable semantic search.
+**What it does**: Generate vector embeddings for templates, enable semantic search via pgvector.
 
 **Dependencies**: None (standalone service)
 
-**Implementation**: Communiqué feature (API client for Google Gemini)
-
-**Roadmap**: See "Next Steps" section in embeddings.md
+**Implementation**: Commons feature (Google Gemini API). See [search.md](search.md) for the full search pipeline including embeddings.
 
 ---
 
-### 8. [sharing.md](sharing.md) - Universal Sharing
+### 9. [sharing.md](sharing.md) - Universal Sharing
 
 Native share API (mobile) + clipboard (desktop). Platform-agnostic sharing patterns.
 
@@ -126,11 +136,11 @@ Native share API (mobile) + clipboard (desktop). Platform-agnostic sharing patte
 
 **Dependencies**: templates.md
 
-**Implementation**: Communiqué UI feature (navigator.share API)
+**Implementation**: Commons UI feature (navigator.share API)
 
 ---
 
-### 9. [abstraction.md](abstraction.md) - Legislative Abstraction
+### 10. [abstraction.md](abstraction.md) - Legislative Abstraction
 
 Adapter pattern for different legislative bodies (US Congress, state legislatures, city councils).
 
@@ -138,25 +148,25 @@ Adapter pattern for different legislative bodies (US Congress, state legislature
 
 **Dependencies**: None (architecture pattern)
 
-**Implementation**: Communiqué adapter layer (US Congress implemented, UK/EU planned)
+**Implementation**: Commons adapter layer (US Congress implemented, UK/EU planned)
 
 ---
 
 ## What Features Are NOT Here
 
-**These are voter-protocol responsibilities** (NOT Communiqué features):
+**These are voter-protocol responsibilities** (NOT Commons features):
 
 ❌ **District verification** → voter-protocol provides `@voter-protocol/noir-prover`
 - Shadow Atlas (Merkle trees, district boundaries)
 - Geocoding services (Geocodio/Nominatim abstraction)
 - Noir WASM proving (browser-native ZK proofs)
-- See: `/docs/DISTRICT-VERIFICATION-RESPONSIBILITIES.md`
+- See: `/docs/integration.md`
 
 ❌ **Reputation tracking** → voter-protocol smart contracts
 - ERC-8004 on-chain reputation
 - Multi-agent treasury management (Phase 2)
 - Token rewards (Phase 2)
-- See: `/docs/INTEGRATION-GUIDE.md`
+- See: `/docs/integration.md`
 
 ❌ **Blockchain infrastructure** → voter-protocol contracts
 - Scroll zkEVM deployment
@@ -167,21 +177,17 @@ Adapter pattern for different legislative bodies (US Congress, state legislature
 
 ## Cross-References
 
-**Search UX patterns** → See `/docs/design/search-ux.md`
-
 **OAuth setup guide** → See `/docs/features/oauth.md`
 
-**Template design guidelines** → See `/docs/design/discovery.md`
-
-**Database schema** → See `/docs/development/schema.md`
+**Database schema** → See `/docs/development/database.md`
 
 **Congressional delivery** → See `/docs/congressional/delivery.md`
 
-**Decision-maker enrichment pipeline** → See `/docs/development/integrations/decision-maker-resolution-integration.md`
+**Decision-maker enrichment pipeline** → See `/docs/specs/decision-maker-enrichment-pipeline.md`
 
 **Privacy-preserving analytics** → See `/docs/specs/analytics/` (7 comprehensive docs)
 
-**District verification (voter-protocol)** → See `/docs/DISTRICT-VERIFICATION-RESPONSIBILITIES.md`
+**District verification (voter-protocol)** → See `/docs/integration.md`
 
 ---
 
@@ -189,18 +195,18 @@ Adapter pattern for different legislative bodies (US Congress, state legislature
 
 | Feature | Status | Priority | Owner |
 |---------|--------|----------|-------|
-| templates.md | ✅ Complete | P0 (core) | Communiqué |
-| creator.md | ✅ Complete | P0 (core) | Communiqué |
-| oauth.md | ✅ Complete | P0 (core) | Communiqué |
-| onboarding.md | ✅ Complete (includes decision-maker enrichment) | P0 (core) | Communiqué |
-| jurisdiction.md | ✅ Complete | P1 | Communiqué |
-| sharing.md | ✅ Complete | P1 | Communiqué |
-| abstraction.md | ✅ Complete (US) | P1 | Communiqué |
-| search.md | ✅ Complete | P2 | Communiqué |
-| embeddings.md | ✅ Complete | P2 | Communiqué |
-| **Decision-maker enrichment** | ✅ Complete (3-phase AI pipeline) | P0 (core) | Communiqué |
-| **Privacy-preserving analytics** | ✅ Complete | P1 | Communiqué |
-| **Multi-target delivery** | ✅ Complete | P0 (core) | Communiqué |
+| templates.md | ✅ Complete | P0 (core) | Commons |
+| creator.md | ✅ Complete | P0 (core) | Commons |
+| oauth.md | ✅ Complete | P0 (core) | Commons |
+| onboarding.md | ✅ Complete (includes decision-maker enrichment) | P0 (core) | Commons |
+| jurisdiction.md | ✅ Complete | P1 | Commons |
+| sharing.md | ✅ Complete | P1 | Commons |
+| abstraction.md | ✅ Complete (US) | P1 | Commons |
+| search.md | ✅ Complete | P2 | Commons |
+| ~~embeddings.md~~ (merged into search.md) | ✅ Complete | P2 | Commons |
+| **Decision-maker enrichment** | ✅ Complete (3-phase AI pipeline) | P0 (core) | Commons |
+| **Privacy-preserving analytics** | ✅ Complete | P1 | Commons |
+| **Multi-target delivery** | ✅ Complete | P0 (core) | Commons |
 | **District verification** | ✅ Complete | P0 | **voter-protocol** |
 | **Reputation tracking** | ✅ Complete | P0 | **voter-protocol** |
 
@@ -214,6 +220,6 @@ Adapter pattern for different legislative bodies (US Congress, state legislature
 
 **Backend engineers**: abstraction.md → embeddings.md → onboarding.md (decision-maker enrichment)
 
-**Understanding voter-protocol integration**: See `/docs/DISTRICT-VERIFICATION-RESPONSIBILITIES.md` first
+**Understanding voter-protocol integration**: See `/docs/integration.md` first
 
-**Understanding blockchain integration**: See `/docs/INTEGRATION-GUIDE.md`
+**Understanding blockchain integration**: See `/docs/integration.md`

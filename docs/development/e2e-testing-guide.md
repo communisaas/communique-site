@@ -1,6 +1,6 @@
-# E2E Testing Guide: Communique ↔ Voter Protocol Integration
+# E2E Testing Guide: Commons ↔ Voter Protocol Integration
 
-This guide covers the end-to-end testing suite for the Communique ↔ voter-protocol integration, including identity verification, ZK proof generation, and congressional submission.
+This guide covers the end-to-end testing suite for the Commons ↔ voter-protocol integration, including identity verification, ZK proof generation, and congressional submission.
 
 ## Overview
 
@@ -307,7 +307,5 @@ These tests run in CI on every PR:
 
 ## Related Documentation
 
-- [ZK Prover Integration](./ZK-PROVER-INTEGRATION-SUMMARY.md)
-- [Didit Implementation](./DIDIT-IMPLEMENTATION-SUMMARY.md)
-- [Congressional Submit Implementation](./CONGRESSIONAL-SUBMIT-IMPLEMENTATION.md)
-- [voter-protocol README](../voter-protocol/README.md)
+- [ZK Prover Integration](../architecture/zk-prover-integration.md)
+- [Congressional Submit Implementation](../congressional/congressional-submit.md)

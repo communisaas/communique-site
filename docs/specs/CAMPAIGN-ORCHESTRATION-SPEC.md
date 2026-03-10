@@ -1,6 +1,8 @@
 # Campaign Orchestration
 
-**Status:** Design Spec
+> **STATUS: SHIPPED** — Campaign lifecycle management operational.
+
+**Status:** Shipped
 **Author:** Architecture
 **Created:** 2026-03-06
 **Depends on:** org-data-model.md, platform-extension.md, DESIGN-004-COALITION-COORDINATION, POWER-LANDSCAPE-SPEC, decision-maker-enrichment-pipeline

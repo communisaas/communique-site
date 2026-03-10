@@ -70,7 +70,7 @@ await prisma.user.update({
 
 **Flow**:
 ```
-1. User submits message through Communiqué
+1. User submits message through Commons
    → Message ID stored in database
    → Expected delivery time recorded
 
@@ -191,8 +191,8 @@ const deliveryReceipt = {
   signature: sign(privateKey, hash(messageId + deliveredAt))
 };
 
-// User presents receipt to Communiqué
-// Communiqué verifies signature against congressional office public key
+// User presents receipt to Commons
+// Commons verifies signature against congressional office public key
 // No TEE needed, cryptographically verifiable delivery
 ```
 
@@ -326,7 +326,7 @@ const proof = await generateProofInBrowser({
 
 ### Phase 2: Verification Flow
 ```
-1. User sends congressional message via Communiqué
+1. User sends congressional message via Commons
 2. After 5-15 minutes, "Verify Delivery" button appears
 3. User clicks button → triggers TEE verification
 4. 5-10 second verification (TEE email search + proof generation)
@@ -339,7 +339,7 @@ const proof = await generateProofInBrowser({
 1. User sends message
 2. Congressional office email server auto-signs receipt
 3. User receives signed receipt in email
-4. User uploads receipt to Communiqué (or auto-detected)
+4. User uploads receipt to Commons (or auto-detected)
 5. Instant verification (signature check)
 6. Badge appears: "✅ Cryptographically Verified"
 ```
@@ -366,7 +366,7 @@ const proof = await generateProofInBrowser({
 - **Mitigation**: TEE attestation prevents proof forgery
 
 **Threat 4**: User email account compromise
-- **Mitigation**: OAuth revocation in Communiqué settings
+- **Mitigation**: OAuth revocation in Commons settings
 - **Mitigation**: Google account security (2FA, passkeys)
 - **Mitigation**: Email verification is reputation-gated (sybil resistance)
 
@@ -378,11 +378,11 @@ const proof = await generateProofInBrowser({
 
 **OAuth integration** → See `/docs/features/oauth.md`
 
-**Zero-knowledge proofs** → See `/docs/architecture/zk-proofs.md`
+**Zero-knowledge proofs** → See `/docs/specs/zk-proof-integration.md`
 
 **Congressional delivery** → See `/docs/congressional/delivery.md`
 
-**Reputation tracking** → See `/docs/INTEGRATION-GUIDE.md` (VOTER Protocol)
+**Reputation tracking** → See `/docs/integration.md` (VOTER Protocol)
 
 ---
 

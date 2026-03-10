@@ -1,9 +1,9 @@
-# Shadow Atlas API Integration
+# Shadow Atlas Integration
 
-**Last Updated:** 2026-02-02
-**Status:** ✅ API Client Implemented (Wave 1.2)
+**Last Updated:** 2026-02-22
+**Status:** ✅ API Client + Officials Endpoint Implemented
 
-Shadow Atlas provides district lookup and Merkle proof generation for ZK proofs.
+Shadow Atlas provides district lookup, Merkle proof generation for ZK proofs, and representative resolution. It replaces runtime dependencies on Congress.gov, Census Bureau client-side calls, and Google Civic API.
 
 **Cross-Repository References:**
 - voter-protocol implementation: [SHADOW-ATLAS-SPEC.md](/Users/noot/Documents/voter-protocol/specs/SHADOW-ATLAS-SPEC.md)
@@ -12,19 +12,52 @@ Shadow Atlas provides district lookup and Merkle proof generation for ZK proofs.
 
 ---
 
+## Problem Statement
+
+Commons's address verification pipeline had four structural defects:
+
+1. **Double Census API hit.** `api/address/verify/+server.ts` called Census Bureau directly, then `addressLookupService.lookupRepsByAddress()` called Census *again* internally. Every verification triggered two identical geocoding requests.
+
+2. **Uncached 535-member Congress roster fetch.** `fetchAllMembers()` paginated through ALL current Congress members on every representative lookup. Three paginated requests (250+250+35) to Congress.gov API per address verification.
+
+3. **Congress.gov API unreliable.** Infinite redirect loop August 22-25, 2025. ProPublica Congress API shut down July 2024. Google Civic Representatives API shut down April 2025.
+
+4. **Client-side government API calls.** `census-api.ts` called Census Bureau via JSONP from the browser.
+
+## Architecture Decision
+
+Shadow Atlas is the unified backend for district resolution AND representative data. No runtime calls to Congress.gov. No client-side calls to Census Bureau. Shadow Atlas serves pre-ingested, periodically refreshed data from its own SQLite database.
+
+### Data Flow
+
+```
+Browser                     Commons Server               Shadow Atlas
+───────                     ─────────────────               ────────────
+User enters address ──→  POST /api/address/verify
+                               │
+                               ├─→ Census Bureau geocoder (ONE call)
+                               │   Returns: lat/lng, cell_id, CD
+                               │
+                               └─→ Shadow Atlas GET /v1/officials?cell_id=XXX
+                                      │
+                                      ├─→ Federal + state reps (from SQLite)
+                                      ├─→ 24 district hex IDs
+                                      └─→ Human-readable district names
+
+                     ←── { district, cell_id, representatives[], zk_eligible }
+```
+
+### Privacy Model
+
+The privacy boundary is clean. Shadow Atlas sees: leaf hashes (Tree 1), cell_ids (Tree 2 queries), identity commitments (Tree 3). Representative metadata (names, parties, phones, CWC codes) maps hex IDs to human-readable data — never enters the ZK circuit.
+
+---
+
 ## Client Implementation
 
 **Location:** `src/lib/core/shadow-atlas/shadow-atlas-handler.ts`
 
-The Shadow Atlas client was implemented in Wave 1.2, replacing the mock implementation (-88 LOC deleted).
-
-### Key Changes (Wave 1.2)
-
-1. **Hash Unification:** SHA-256 → Poseidon2 for identity commitments
-2. **Depth Fix:** Removed mock depth-12 trees, API returns depth-20
-3. **API Client:** Created proper HTTP client for Shadow Atlas API
-
-### Client Usage
+### Core Client Usage
 
 ```typescript
 import { ShadowAtlasClient } from '$lib/core/shadow-atlas/shadow-atlas-handler';
@@ -48,6 +81,10 @@ const registration = await client.register({
   lng
 });
 // Returns: { leafIndex, merklePath, merkleRoot, districtId }
+
+// Look up officials by district
+const officials = await client.getOfficials('CA-12');
+// Returns: { officials: [...], specialStatus?: {...} }
 ```
 
 ---
@@ -91,7 +128,7 @@ Content-Type: application/json
 ```json
 {
   "leafIndex": 1234,
-  "merklePath": ["0x...", "0x...", ...],  // 20 siblings
+  "merklePath": ["0x...", "0x...", "..."],
   "merkleRoot": "0x...",
   "districtId": "CA-12",
   "depth": 20
@@ -106,12 +143,44 @@ GET /v1/proof?district={district_id}&leaf={leaf_hash}
 **Response:**
 ```json
 {
-  "path": ["0x...", "0x...", ...],
+  "path": ["0x...", "0x...", "..."],
   "index": 1234,
   "root": "0x...",
   "depth": 20
 }
 ```
+
+### Officials Lookup
+```
+GET /v1/officials?cell_id={cell_id}
+GET /v1/officials?district={district_code}
+```
+
+Resolves via Tree 2 district hex IDs → federal officials from SQLite.
+
+**Response:**
+```json
+{
+  "officials": [
+    {
+      "bioguide_id": "S001150",
+      "name": "Nancy Pelosi",
+      "party": "Democrat",
+      "chamber": "house",
+      "state": "CA",
+      "district": "12",
+      "cwc_code": "HCA12",
+      "office": "House Representative, CA-12",
+      "is_voting": true
+    }
+  ],
+  "specialStatus": null
+}
+```
+
+CWC codes are deterministic for House: `"H" + state + lpad(district, 2, '0')`. Senate requires `bioguide_id` + contact form URL mapping.
+
+**Cache-Control:** 1 hour (officials change infrequently). Returns 501 if officials DB not populated.
 
 ---
 
@@ -124,15 +193,12 @@ All Shadow Atlas URLs are validated against an allowlist before fetching:
 ```typescript
 import { validateURL } from '../security/input-validator';
 
-// Before any fetch
 if (!validateURL(url)) {
   throw new Error(`URL not in allowlist: ${url}`);
 }
 ```
 
 ### Rate Limiting (SA-010)
-
-The rate limiter `consume()` method now actually consumes tokens (fixed in Wave 3):
 
 ```typescript
 const limiter = new RateLimiter({ windowMs: 60000, maxRequests: 10 });
@@ -147,7 +213,6 @@ All incoming JSON is validated with Zod schemas:
 
 ```typescript
 import { DiscoveryResultSchema } from '../security/input-validator';
-
 const results = DiscoveryResultSchema.parse(JSON.parse(data));
 ```
 
@@ -162,26 +227,15 @@ const results = DiscoveryResultSchema.parse(JSON.parse(data));
 | 404 | District not found | Coordinates outside coverage |
 | 409 | Duplicate registration | Identity already registered |
 | 429 | Rate limited | Retry after cooldown |
+| 501 | Officials DB not populated | Graceful degradation |
 | 503 | Tree rebuilding | Retry in 30s |
-
----
-
-## Environment Configuration
-
-```bash
-# Shadow Atlas API
-SHADOW_ATLAS_API_URL=https://shadow-atlas.voter-protocol.org
-
-# For development
-SHADOW_ATLAS_API_URL=http://localhost:3001
-```
 
 ---
 
 ## Integration Flow
 
 ```
-1. User verifies identity (mDL via Digital Credentials API; self.xyz and Didit.me removed in Cycle 15)
+1. User verifies identity (mDL via Digital Credentials API)
    └→ Generates identity_commitment (Poseidon2 hash)
 
 2. User provides address
@@ -204,9 +258,59 @@ SHADOW_ATLAS_API_URL=http://localhost:3001
 
 ---
 
+## Data Sources
+
+| Source | Level | License | Status |
+|--------|-------|---------|--------|
+| `unitedstates/congress-legislators` (GitHub) | Federal (541) | CC0 | Primary federal source |
+| Open States (openstates.org) | State (~7,386) | CC0 | Primary state source (deferred) |
+| Census TIGER/Line shapefiles | Boundaries | Public domain | District geometry |
+| Municipal GIS Portals (716 cities) | Local | Public domain | City council wards |
+
+**Dead sources (do not use):** ProPublica Congress API (July 2024), Google Civic Representatives API (April 2025), Congress.gov API v3 (unreliable since Aug 2025).
+
+---
+
+## Implementation Status
+
+### Phase A: Fix Commons Pipeline — ✅ DONE
+- Member cache (5-min TTL with concurrent dedup)
+- Double Census call eliminated
+- Zero GEOID data logging
+
+### Phase B: Shadow Atlas Officials Endpoint — ✅ DONE (federal)
+- SQLite schema for officials (`federal_members`, `ingestion_log`)
+- Ingestion pipeline: congress-legislators YAML → 538 members
+- API endpoint: `/v1/officials` with Zod validation + rate limiting
+- 26 unit tests
+
+### Phase C: Commons Switchover — ✅ DONE (C1 + C2)
+- `getOfficials()` client method with full type support
+- Verify endpoint rewired: shadow-atlas primary, Congress.gov fallback
+- Dead code deletion (C3) and JSONP removal (C4) deferred until shadow-atlas is deployed
+
+### Open Questions
+1. Open States CSV column schema — needs validation before first state-level ingest
+2. Senate CWC code derivation — requires additional mapping beyond district data
+3. `/v1/districts/:hexId` enrichment — deferred (additive, backwards-compatible)
+
+---
+
+## Environment Configuration
+
+```bash
+# Shadow Atlas API
+SHADOW_ATLAS_API_URL=https://shadow-atlas.voter-protocol.org
+
+# For development
+SHADOW_ATLAS_API_URL=http://localhost:3001
+```
+
+---
+
 ## Testing
 
-The Shadow Atlas integration is covered by:
 - 84 security tests (input-validator, rate-limiter)
+- 26 unit tests (officials service + API response formatting)
 - Integration tests in `src/lib/core/shadow-atlas/__tests__/`
 - E2E proof generation tests in voter-protocol

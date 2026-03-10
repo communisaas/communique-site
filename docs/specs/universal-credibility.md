@@ -1,8 +1,10 @@
 # Universal Credibility System - Frontend Implementation
 
+> **STATUS: ASPIRATIONAL** — Frontend scaffolding exists; full credential verification system not yet implemented.
+
 **Status**: ✅ Frontend infrastructure complete (2025-11-09)
 **Phase**: Phase 1 (Reputation-only, no tokens)
-**Responsibility**: **Communique handles UI/UX and data storage. voter-protocol ReputationAgent handles verification logic.**
+**Responsibility**: **Commons handles UI/UX and data storage. voter-protocol ReputationAgent handles verification logic.**
 
 ## Executive Summary
 
@@ -12,7 +14,7 @@ We've implemented a flexible, agent-interpreted domain credibility system that w
 
 ## Separation of Concerns
 
-### Communique (this repo - Frontend):
+### Commons (this repo - Frontend):
 - **Database schema**: `UserExpertise` model for storing credentials
 - **API endpoints**: `/api/expertise/verify`, `/api/expertise/filter`
 - **UI components**: Credential input forms, decision-maker filtering interfaces
@@ -24,7 +26,7 @@ We've implemented a flexible, agent-interpreted domain credibility system that w
 - **Deterministic scoring**: Credibility multiplier calculation (2.0x → 1.0x)
 - **Agent consensus**: Cross-model validation for disputed credentials
 
-**Why this separation**: Per CLAUDE.md in voter-protocol, agents use **cheapest models** for economic efficiency. Communique's initial OpenAI GPT-4o implementation was correct for UI prototyping but belongs in voter-protocol's multi-agent architecture for production.
+**Why this separation**: Per CLAUDE.md in voter-protocol, agents use **cheapest models** for economic efficiency. Commons's initial OpenAI GPT-4o implementation was correct for UI prototyping but belongs in voter-protocol's multi-agent architecture for production.
 
 ## Architecture
 
@@ -395,7 +397,7 @@ if (template.related_bills) {
 
 ### API Endpoints
 - ⏳ `src/routes/api/expertise/verify/+server.ts` - **TO BE UPDATED** (proxy to voter-protocol ReputationAgent API)
-- ✅ `src/routes/api/expertise/filter/+server.ts` - Expert filtering API (queries Communique database)
+- ✅ `src/routes/api/expertise/filter/+server.ts` - Expert filtering API (queries Commons database)
 - ✅ `src/routes/api/reputation/user/[userId]/+server.ts` - Enhanced with domain_expertise
 
 ### Documentation
@@ -475,8 +477,8 @@ Allows decision-makers to set thresholds:
 - **McDonald 2018 Research**: Congressional staffers value concrete behaviors (professional credentials, bill tracking, niche expertise) - NOT abstract quality scores
 - **VOTER Protocol ReputationAgent Spec**: `/Users/noot/Documents/voter-protocol/specs/REPUTATION-AGENT-SPEC.md` (Gemini 2.5 Flash implementation)
 - **VOTER Protocol Reputation Registry**: `/Users/noot/Documents/voter-protocol/specs/REPUTATION-REGISTRY-SPEC.md` (Phase 2 on-chain attestations)
-- **Cypherpunk Architecture**: `docs/CYPHERPUNK-ARCHITECTURE.md`
-- **Phase 1 Implementation**: `docs/PHASE-1-REPUTATION-IMPLEMENTATION.md`
+- **Architecture**: `docs/architecture.md`
+- **Phase 1 Implementation**: See `docs/strategy/product-roadmap.md` (Phase 1 scope)
 
 ## Success Metrics
 
@@ -500,7 +502,7 @@ Allows decision-makers to set thresholds:
 **Implementation Status**: ⏳ Architecture refactored - verification logic moved to voter-protocol
 **Next Steps**:
 1. Deploy voter-protocol ReputationAgent API (Cloudflare Workers with Gemini 2.5 Flash)
-2. Update Communique `/api/expertise/verify` to call voter-protocol API
+2. Update Commons `/api/expertise/verify` to call voter-protocol API
 3. Remove local credential-verifier.ts (agent logic belongs in voter-protocol)
 4. Build UI components + congressional staffer filtering interface
 

@@ -1,21 +1,23 @@
-# Communique: Using Geographic Identity for Message Routing
+# Commons: Using Geographic Identity for Message Routing
+
+> **STATUS: FEATURE-GATED** — ZK district proofs built, gated behind feature flags.
 
 **Version:** 1.0.0
 **Date:** 2026-01-25
-**Status:** Draft
-**Context:** How Communique consumes geographic identity proofs
+**Status:** Feature-Gated
+**Context:** How Commons consumes geographic identity proofs
 
 ---
 
 ## 1. Relationship to Geographic Identity Proofs
 
-**The proof system provides geographic identity. Communique USES that identity for routing.**
+**The proof system provides geographic identity. Commons USES that identity for routing.**
 
 This is a key architectural separation:
 - **Proof system:** Proves "this verified user belongs to these 14 districts"
-- **Communique:** Uses district mapping to route messages to representatives
+- **Commons:** Uses district mapping to route messages to representatives
 
-Routing is Communique's concern, not the proof's concern. The proof answers "who is this user geographically?" - Communique decides what to do with that information.
+Routing is Commons's concern, not the proof's concern. The proof answers "who is this user geographically?" - Commons decides what to do with that information.
 
 ### 1.1 Core Principle
 
@@ -32,27 +34,27 @@ const campaign = {
 };
 ```
 
-**How Communique uses the proof:**
+**How Commons uses the proof:**
 1. User generates a geographic identity proof (reveals all 14 district memberships)
-2. Communique verifies the proof and checks the nullifier (sybil resistance)
-3. Communique reads the relevant district hashes based on campaign configuration
-4. Communique routes messages to representatives for those districts
+2. Commons verifies the proof and checks the nullifier (sybil resistance)
+3. Commons reads the relevant district hashes based on campaign configuration
+4. Commons routes messages to representatives for those districts
 
-**Key insight:** The proof establishes geographic identity (district-to-user mapping). Communique consumes this identity to decide where to route messages. This is Communique's application logic, not part of the proof system.
+**Key insight:** The proof establishes geographic identity (district-to-user mapping). Commons consumes this identity to decide where to route messages. This is Commons's application logic, not part of the proof system.
 
-The user never sees or chooses district levels - that's Communique's UX decision.
+The user never sees or chooses district levels - that's Commons's UX decision.
 
 ---
 
-## 2. Campaign Configuration (Communique-Specific)
+## 2. Campaign Configuration (Commons-Specific)
 
-This section describes how Communique configures campaigns. This is entirely Communique's concern - the proof system knows nothing about campaigns or routing.
+This section describes how Commons configures campaigns. This is entirely Commons's concern - the proof system knows nothing about campaigns or routing.
 
 ### 2.1 Campaign Schema
 
 ```typescript
-// This is Communique's data model, not part of the proof system
-interface CommuniqueCampaign {
+// This is Commons's data model, not part of the proof system
+interface CommonsCampaign {
   id: string;
   title: string;
   body: string;
@@ -64,7 +66,7 @@ interface CommuniqueCampaign {
   // e.g., "Contact your congressional rep AND your state senator"
   additionalDistricts?: AuthorityLevel[];
 
-  // Delivery configuration (Communique's responsibility)
+  // Delivery configuration (Commons's responsibility)
   delivery: {
     method: 'cwc' | 'email' | 'form';
     // ...
@@ -78,7 +80,7 @@ interface CommuniqueCampaign {
 
 ### 2.2 District Types (From Geographic Identity Proof)
 
-The proof outputs 14 district hashes. Communique references them by type:
+The proof outputs 14 district hashes. Commons references them by type:
 
 ```typescript
 // These correspond to the 14 districts in the geographic identity proof
@@ -115,8 +117,8 @@ enum AuthorityLevel {
 
 **Congressional Campaign:**
 ```typescript
-// Communique routes to congressional representative using district_hashes[0]
-const congressionalCampaign: CommuniqueCampaign = {
+// Commons routes to congressional representative using district_hashes[0]
+const congressionalCampaign: CommonsCampaign = {
   id: "clean-energy-act-2026",
   title: "Support the Clean Energy Act",
   targetDistrict: AuthorityLevel.CONGRESSIONAL,
@@ -129,8 +131,8 @@ I am writing as your constituent to urge you to support HR 1234...`,
 
 **State Legislature Campaign:**
 ```typescript
-// Communique routes using district_hashes[3] (state house)
-const stateLegCampaign: CommuniqueCampaign = {
+// Commons routes using district_hashes[3] (state house)
+const stateLegCampaign: CommonsCampaign = {
   id: "ca-housing-bill-2026",
   title: "Support California Housing Reform",
   targetDistrict: AuthorityLevel.STATE_HOUSE,
@@ -143,8 +145,8 @@ As a California resident in your district...`,
 
 **School Board Campaign:**
 ```typescript
-// Communique routes using district_hashes[7] (school unified)
-const schoolCampaign: CommuniqueCampaign = {
+// Commons routes using district_hashes[7] (school unified)
+const schoolCampaign: CommonsCampaign = {
   id: "sfusd-budget-concerns",
   title: "SFUSD Budget Priorities",
   targetDistrict: AuthorityLevel.SCHOOL_UNIFIED,
@@ -157,8 +159,8 @@ As a parent in the San Francisco Unified School District...`,
 
 **Multi-District Campaign:**
 ```typescript
-// Communique routes to 3 representatives using districts from the same proof
-const multiDistrictCampaign: CommuniqueCampaign = {
+// Commons routes to 3 representatives using districts from the same proof
+const multiDistrictCampaign: CommonsCampaign = {
   id: "climate-action-all-levels",
   title: "Climate Action at Every Level",
   targetDistrict: AuthorityLevel.CONGRESSIONAL,
@@ -171,19 +173,19 @@ const multiDistrictCampaign: CommuniqueCampaign = {
 I urge you to take action on climate...`,
   delivery: { method: 'cwc' },
 };
-// User proves identity once, Communique routes to 3 representatives
+// User proves identity once, Commons routes to 3 representatives
 ```
 
 ---
 
-## 3. Communique Submission Flow
+## 3. Commons Submission Flow
 
-This section describes how Communique processes submissions. The proof system provides geographic identity; Communique handles everything else.
+This section describes how Commons processes submissions. The proof system provides geographic identity; Commons handles everything else.
 
 ### 3.1 Flow Overview
 
 ```
-User clicks "Send" (Communique UI)
+User clicks "Send" (Commons UI)
         │
         ▼
 Frontend: Generate geographic identity proof
@@ -194,36 +196,36 @@ Frontend: Generate geographic identity proof
 Frontend: POST /api/submissions/create
         │
         ▼
-Communique Backend: Get campaign config → which districts to route to
+Commons Backend: Get campaign config → which districts to route to
         │
         ▼
-Communique Backend: Verify proof, check nullifier (has user already proven identity?)
+Commons Backend: Verify proof, check nullifier (has user already proven identity?)
         │
         ▼
-Communique Backend: Extract relevant districts from geographic identity
+Commons Backend: Extract relevant districts from geographic identity
          (based on campaign's targetDistrict + additionalDistricts)
         │
         ▼
-Communique Backend: Create submission record
+Commons Backend: Create submission record
         │
         ▼
-Communique Backend: Create delivery records for each target district
+Commons Backend: Create delivery records for each target district
         │
         ▼
-Communique Backend: Route messages to representatives (Communique's responsibility)
+Commons Backend: Route messages to representatives (Commons's responsibility)
 ```
 
-### 3.2 Implementation (Communique-Specific)
+### 3.2 Implementation (Commons-Specific)
 
 ```typescript
-// Communique's API endpoint: /api/submissions/create/+server.ts
-// This is Communique application code, not part of the proof system
+// Commons's API endpoint: /api/submissions/create/+server.ts
+// This is Commons application code, not part of the proof system
 
 export async function POST({ request, locals }) {
   const { campaignId, proof, publicInputs } = await request.json();
   const userId = locals.session.userId;
 
-  // 1. Get Communique campaign config (determines routing, not proof)
+  // 1. Get Commons campaign config (determines routing, not proof)
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId }
   });
@@ -252,7 +254,7 @@ export async function POST({ request, locals }) {
   // 5. Extract geographic identity (all 14 district hashes)
   const geographicIdentity = extractDistrictHashes(publicInputs);
 
-  // 6. Communique decides which districts to use for routing
+  // 6. Commons decides which districts to use for routing
   const targetDistricts = [
     campaign.targetDistrict,
     ...(campaign.additionalDistricts ?? [])
@@ -270,7 +272,7 @@ export async function POST({ request, locals }) {
     }
   });
 
-  // 8. Communique routes based on geographic identity
+  // 8. Commons routes based on geographic identity
   const deliveries = [];
   for (const districtType of targetDistricts) {
     const districtHash = geographicIdentity[districtType];
@@ -280,7 +282,7 @@ export async function POST({ request, locals }) {
       continue; // User not in coverage area for this district type
     }
 
-    // Communique creates delivery record (routing is Communique's concern)
+    // Commons creates delivery record (routing is Commons's concern)
     const delivery = await prisma.delivery.create({
       data: {
         submissionId: submission.id,
@@ -293,7 +295,7 @@ export async function POST({ request, locals }) {
     deliveries.push(delivery);
   }
 
-  // 9. Communique queues message delivery
+  // 9. Commons queues message delivery
   for (const delivery of deliveries) {
     await queueDelivery(delivery);
   }
@@ -455,7 +457,7 @@ nullifier = Poseidon(user_secret, campaign_id, epoch_id)
 | Scenario | Result |
 |----------|--------|
 | User proves geographic identity | ONE proof, ONE nullifier |
-| Communique routes to congress + state + city | Uses same proof's district hashes |
+| Commons routes to congress + state + city | Uses same proof's district hashes |
 | User tries to prove identity again (same epoch) | Blocked (same nullifier) |
 | User proves identity for different campaign | Allowed (different nullifier) |
 | Next epoch | New nullifier, can prove again |
@@ -475,7 +477,7 @@ const campaign = {
 // Nullifier: H(secret, "climate-2026", epoch)
 
 // Proof reveals user's complete geographic identity (all 14 districts)
-// Communique uses the 3 relevant ones for routing:
+// Commons uses the 3 relevant ones for routing:
 // → Congressional (CA-12)
 // → State Senate (CA-SD-11)
 // → City Council (SF-D5)
@@ -503,11 +505,11 @@ Applications know WHAT districts the user belongs to, not WHERE they live.
 
 ---
 
-## 6. UI Considerations (Communique-Specific)
+## 6. UI Considerations (Commons-Specific)
 
 ### 6.1 What Users See
 
-This describes Communique's UX decisions. Users:
+This describes Commons's UX decisions. Users:
 
 1. See **campaign page** showing title, body, target representative(s)
 2. Click **"Send"** - proves geographic identity once
@@ -516,13 +518,13 @@ This describes Communique's UX decisions. Users:
 ### 6.2 Campaign Display
 
 ```svelte
-<!-- CampaignPage.svelte - Communique's UI -->
+<!-- CampaignPage.svelte - Commons's UI -->
 
 <script>
   export let campaign;
   export let userDistricts; // From geographic identity (session credentials)
 
-  // Communique uses geographic identity to show target representative
+  // Commons uses geographic identity to show target representative
   $: targetDistrict = userDistricts[authorityToKey(campaign.targetDistrict)];
   $: representative = getRepresentative(targetDistrict);
 </script>
@@ -551,7 +553,7 @@ This describes Communique's UX decisions. Users:
 For campaigns routing to multiple districts:
 
 ```svelte
-<!-- MultiDistrictCampaign.svelte - Communique's UI -->
+<!-- MultiDistrictCampaign.svelte - Commons's UI -->
 
 <div class="recipients">
   <strong>This message will be sent to:</strong>
@@ -572,7 +574,7 @@ This message will be sent to:
 
 ---
 
-## 7. Error Handling (Communique-Specific)
+## 7. Error Handling (Commons-Specific)
 
 ### 7.1 Missing District Coverage
 
@@ -588,15 +590,15 @@ const geographicIdentity = {
   cityCouncil: undefined,      // No city council membership
 };
 
-// If Communique campaign routes to CITY_COUNCIL:
-// → Communique skips this district (user has no membership)
+// If Commons campaign routes to CITY_COUNCIL:
+// → Commons skips this district (user has no membership)
 // → User sees: "This campaign targets city council, but your geographic identity shows no city membership"
 ```
 
 ### 7.2 Error Messages
 
 ```typescript
-// Communique's error messages when geographic identity lacks a district
+// Commons's error messages when geographic identity lacks a district
 const COVERAGE_ERRORS: Record<AuthorityLevel, string> = {
   [AuthorityLevel.CITY_COUNCIL]:
     "Your geographic identity shows no city council membership. " +
@@ -611,11 +613,11 @@ const COVERAGE_ERRORS: Record<AuthorityLevel, string> = {
 
 ---
 
-## 8. Migration Notes (Communique-Specific)
+## 8. Migration Notes (Commons-Specific)
 
 ### 8.1 Campaign Updates
 
-Existing Communique campaigns need `targetDistrict` field:
+Existing Commons campaigns need `targetDistrict` field:
 
 ```sql
 -- Add column with default
@@ -671,7 +673,7 @@ async function migrateSessionCredentials(): Promise<void> {
 | Districts revealed | 1 (selected by authority_selector) | 14 (user's full district-to-user mapping) |
 | Proofs per campaign | N (one per district type) | **1** (proves entire geographic identity) |
 | Nullifier purpose | Per-authority submission tracking | **Sybil resistance** - one identity proof per campaign |
-| Routing responsibility | Mixed (proof + backend) | **Communique's concern** (uses proof data) |
+| Routing responsibility | Mixed (proof + backend) | **Commons's concern** (uses proof data) |
 | Privacy boundary | Address + districts hidden | Address hidden, **geographic identity public** |
 
 ### 9.1 Architecture: Proof vs. Application
@@ -702,8 +704,8 @@ COMMUNIQUE (downstream application):
 
 **Key Principles:**
 1. The proof establishes **geographic identity** (district-to-user mapping)
-2. Communique **consumes** this identity for message routing
-3. Routing is **Communique's concern**, not the proof's concern
+2. Commons **consumes** this identity for message routing
+3. Routing is **Commons's concern**, not the proof's concern
 4. One identity proof per campaign provides sybil resistance
 
 ---

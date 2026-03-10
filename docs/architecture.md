@@ -1,4 +1,4 @@
-# Current Architecture: Communique + voter-protocol
+# Current Architecture: Commons + voter-protocol
 
 **Date:** 2026-02-02 (Updated)
 **Status:** ✅ CURRENT - Authoritative architecture documentation
@@ -9,14 +9,14 @@
 
 ## Executive Summary
 
-**What Communique is:**
+**What Commons is:**
 Frontend application for VOTER Protocol's cryptographic democratic infrastructure. SvelteKit 5 UI/UX layer that orchestrates identity verification, template creation, message moderation, and congressional delivery.
 
 **What voter-protocol is:**
 Backend cryptographic infrastructure. Noir/UltraHonk zero-knowledge proofs, AWS Nitro Enclave encrypted delivery, ERC-8004 reputation tracking, multi-agent treasury management (Phase 2).
 
 **Separation of Concerns:**
-- **Communique** (this repo): UI/UX, OAuth, database, analytics, congressional office lookup
+- **Commons** (this repo): UI/UX, OAuth, database, analytics, congressional office lookup
 - **voter-protocol** (sibling repo): Cryptography, TEE deployment, blockchain, ZK proofs, ReputationAgent
 
 **Cost Savings (2025-11-09 refactor):**
@@ -39,9 +39,9 @@ Backend cryptographic infrastructure. Noir/UltraHonk zero-knowledge proofs, AWS 
 
 ## Separation of Concerns
 
-### Communique Responsibilities (Frontend/UI)
+### Commons Responsibilities (Frontend/UI)
 
-**What Communique handles:**
+**What Commons handles:**
 - ✅ **SvelteKit 5 Frontend** - Runes-based state, SSR, component architecture
 - ✅ **OAuth Authentication** - Google, Facebook, Twitter, LinkedIn, Discord
 - ✅ **Postgres Database** - User accounts, templates, messages, analytics
@@ -52,7 +52,7 @@ Backend cryptographic infrastructure. Noir/UltraHonk zero-knowledge proofs, AWS 
 - ✅ **Browser Encryption** - XChaCha20-Poly1305 address encryption to TEE public key
 - ✅ **API Proxies** - Calls to voter-protocol services (geocoding, district resolution, ZK proving)
 
-**What Communique does NOT handle:**
+**What Commons does NOT handle:**
 - ❌ Cryptographic primitives (voter-protocol Noir prover)
 - ❌ TEE deployment (AWS Nitro Enclaves in voter-protocol)
 - ❌ ZK circuit design (Noir circuits in voter-protocol)
@@ -76,10 +76,10 @@ Backend cryptographic infrastructure. Noir/UltraHonk zero-knowledge proofs, AWS 
 - ✅ **Multi-Agent Treasury** - Phase 2 token rewards, challenge markets
 
 **What voter-protocol does NOT handle:**
-- ❌ User authentication UI (Communique OAuth)
-- ❌ Template creation UI (Communique SvelteKit)
-- ❌ Analytics dashboards (Communique Postgres queries)
-- ❌ Congressional office directory (Communique database)
+- ❌ User authentication UI (Commons OAuth)
+- ❌ Template creation UI (Commons SvelteKit)
+- ❌ Analytics dashboards (Commons Postgres queries)
+- ❌ Congressional office directory (Commons database)
 
 ---
 
@@ -240,7 +240,7 @@ name, phone, address  // Only encrypted in TEE
 
 ### What Congressional Office Sees
 
-**Communique CMS shows:**
+**Commons CMS shows:**
 ```
 FROM: Verified Constituent (TX-07)
 REPUTATION: 8,740 in Healthcare Policy
@@ -292,10 +292,10 @@ CONTEXT:
 **Savings:** **$682.50/month** ($8,190/year)
 
 **What Changed:**
-- ❌ Removed 519 lines of OpenAI verification code from Communique
-- ✅ Communique now proxies to voter-protocol ReputationAgent API
+- ❌ Removed 519 lines of OpenAI verification code from Commons
+- ✅ Commons now proxies to voter-protocol ReputationAgent API
 - ✅ voter-protocol uses Gemini 2.5 Flash (FREE tier)
-- ✅ Proper separation: verification logic in voter-protocol, storage in Communique
+- ✅ Proper separation: verification logic in voter-protocol, storage in Commons
 
 ---
 
@@ -471,8 +471,7 @@ TOTAL COST:
 
 **Documentation:**
 - ✅ INTEGRATION-REMEDIATION-PLAN.md (comprehensive Wave 1-3 status)
-- ✅ DIDIT-IMPLEMENTATION-SUMMARY.md (identity verification)
-- ✅ ZK-PROVER-INTEGRATION-SUMMARY.md (browser prover)
+- ✅ `architecture/zk-prover-integration.md` (browser prover)
 
 ---
 
@@ -511,7 +510,7 @@ TOTAL COST:
 
 ## Deployment Checklist
 
-### Communique (Frontend) Deployment
+### Commons (Frontend) Deployment
 
 **Environment Variables:**
 ```bash
@@ -522,8 +521,8 @@ VOTER_API_KEY=<generated-api-key>
 # TEE Public Key (Phase 1 static, Phase 2 rotated)
 TEE_PUBLIC_KEY=<base64-encoded-X25519-public-key>
 
-# Database
-SUPABASE_DATABASE_URL=postgresql://user:password@db.supabase.co:5432/postgres
+# Database (Hyperdrive connection pooling on Cloudflare Workers)
+DATABASE_URL=postgresql://user:password@host:5432/postgres
 
 # OAuth Providers
 GOOGLE_CLIENT_ID=<google-oauth-client-id>
@@ -536,7 +535,7 @@ GOOGLE_CLIENT_SECRET=<google-oauth-secret>
 
 **Deployment Steps:**
 1. Set environment variables in production
-2. Deploy updated Communique to Cloudflare Pages
+2. Deploy updated Commons to Cloudflare Pages
 3. Verify `/api/expertise/verify` calls voter-protocol successfully
 4. Verify `/api/tee/public-key` returns valid key
 5. Test mDL identity verification flow (requires Chrome 141+ or Safari 26+)
@@ -554,14 +553,14 @@ GOOGLE_CLIENT_SECRET=<google-oauth-secret>
 2. **AWS Nitro Enclave** (TEE for encrypted delivery)
    - Deploy to EC2 c6g.large (ARM Graviton with Nitro Enclaves)
    - Build Rust decryption container
-   - Generate TEE keypair (share public key with Communique)
+   - Generate TEE keypair (share public key with Commons)
    - Implement CWC API integration inside enclave
 
 3. **Smart Contracts** (Scroll zkEVM)
    - Deploy UserRootRegistry.sol
    - Deploy NullifierRegistry.sol
    - Deploy DistrictGate.sol (UltraHonk verifier)
-   - Share contract addresses with Communique
+   - Share contract addresses with Commons
 
 **See:** voter-protocol/DEPLOYMENT.md for detailed instructions
 
@@ -650,4 +649,4 @@ GOOGLE_CLIENT_SECRET=<google-oauth-secret>
 
 ---
 
-*Last Updated: 2025-11-09 | Communiqué PBC | Frontend for VOTER Protocol*
+*Last Updated: 2025-11-09 | Commons PBC | Frontend for VOTER Protocol*

@@ -88,7 +88,7 @@ All templates follow "The Math Doesn't Work" format:
 
 Required for full functionality:
 
-- `SUPABASE_DATABASE_URL`
+- `DATABASE_URL` (PostgreSQL connection string)
 - `CWC_API_KEY` (for congressional delivery)
 
 ## Maintenance

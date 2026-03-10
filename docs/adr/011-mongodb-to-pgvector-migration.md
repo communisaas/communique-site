@@ -9,7 +9,7 @@
 
 ## Context
 
-Communique used MongoDB Atlas for two collections:
+Commons used MongoDB Atlas for two collections:
 
 1. **intelligence** — News, legislative, regulatory, corporate, and social
    intelligence items with 1024-dimensional Voyage AI embeddings for semantic
@@ -164,4 +164,4 @@ CREATE OR REPLACE FUNCTION hybrid_search_intelligence(...)
 
 ---
 
-*Communique PBC | Architecture Decision Record | 2026-02-05*
+*Commons PBC | Architecture Decision Record | 2026-02-05*
