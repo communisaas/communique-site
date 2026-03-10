@@ -103,9 +103,11 @@ export const load: PageServerLoad = async () => {
 				endorsingOrg: template.org
 					? { name: template.org.name, slug: template.org.slug, avatar: template.org.avatar }
 					: null,
-				endorsingOrgs: (template.endorsements ?? []).map((e: { org: { name: string; slug: string; avatar: string | null } }) => ({
-					name: e.org.name, slug: e.org.slug, avatar: e.org.avatar
-				})),
+				endorsingOrgs: (template.endorsements ?? [])
+					.filter((e: { org: { slug: string } }) => e.org.slug !== template.org?.slug)
+					.map((e: { org: { name: string; slug: string; avatar: string | null } }) => ({
+						name: e.org.name, slug: e.org.slug, avatar: e.org.avatar
+					})),
 
 				// === PERCEPTUAL ENCODING ===
 				hasActiveDebate: debateSummaryMap.has(template.id) &&
