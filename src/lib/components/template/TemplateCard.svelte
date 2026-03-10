@@ -162,6 +162,18 @@
 		<p class="line-clamp-3 font-brand text-sm text-gray-600 md:text-base">
 			{template.description}
 		</p>
+
+		<!-- Org Endorsement: Institutional provenance — felt before read -->
+		{#if template.endorsingOrg}
+			<div class="org-provenance">
+				{#if template.endorsingOrg.avatar}
+					<img src={template.endorsingOrg.avatar} alt="" class="org-provenance-avatar" />
+				{:else}
+					<span class="org-provenance-initial">{template.endorsingOrg.name.charAt(0).toUpperCase()}</span>
+				{/if}
+				<span class="org-provenance-name">{template.endorsingOrg.name}</span>
+			</div>
+		{/if}
 	</div>
 
 	<!-- Footer Section: Action arrow always visible, metrics only when meaningful -->
@@ -298,5 +310,54 @@
 		50% {
 			opacity: 1;
 		}
+	}
+
+	/*
+	 * Org Provenance — the chromatic bridge on the card.
+	 *
+	 * Teal accent connects three surfaces:
+	 *   card endorsement → identity dropdown → org dashboard
+	 * Same hue family (oklch hue 180), lower intensity here = atmospheric.
+	 * Felt as "institutional backing" before consciously parsed.
+	 */
+	.org-provenance {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		margin-top: 0.25rem;
+	}
+
+	.org-provenance-avatar {
+		width: 1rem;
+		height: 1rem;
+		border-radius: 3px;
+		object-fit: cover;
+		flex-shrink: 0;
+	}
+
+	.org-provenance-initial {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 1rem;
+		height: 1rem;
+		border-radius: 3px;
+		flex-shrink: 0;
+		/* Teal chromatic preview — same family as dropdown bridge */
+		background: oklch(0.92 0.06 180);
+		color: oklch(0.4 0.12 180);
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.5625rem;
+		font-weight: 700;
+	}
+
+	.org-provenance-name {
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: oklch(0.48 0.06 180);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 </style>
