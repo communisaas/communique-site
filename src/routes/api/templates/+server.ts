@@ -740,15 +740,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 									{ taskType: 'RETRIEVAL_DOCUMENT' }
 								);
 
-								await db.template.update({
-									where: { id: templateId },
-									data: {
-										location_embedding: embeddings[0],
-										topic_embedding: embeddings[1],
-										embedding_version: 'v1',
-										embeddings_updated_at: new Date()
-									}
-								});
+								const locationVec = `[${embeddings[0].join(',')}]`;
+								const topicVec = `[${embeddings[1].join(',')}]`;
+
+								await db.$executeRaw`
+									UPDATE "Template"
+									SET location_embedding = ${locationVec}::vector,
+										topic_embedding = ${topicVec}::vector,
+										embedding_version = 'v1',
+										embeddings_updated_at = NOW()
+									WHERE id = ${templateId}
+								`;
 
 								console.log(`[deferred] Embeddings generated for template ${templateId}`);
 							} catch (embeddingError) {

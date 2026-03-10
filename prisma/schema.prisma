@@ -175,9 +175,10 @@ model Template {
   unique_districts Int    @default(0) @map("unique_districts") // Unique districts reached
   avg_reputation   Float? @map("avg_reputation") // Average sender reputation
 
-  // NEW: Semantic embeddings for multi-dimensional search
-  location_embedding    Json?     @map("location_embedding") // OpenAI embedding of location context
-  topic_embedding       Json?     @map("topic_embedding") // OpenAI embedding of policy topic
+  // Semantic embeddings for pgvector HNSW search (768-dim Gemini vectors)
+  // Indexes: HNSW on topic_embedding + location_embedding — added via raw SQL
+  location_embedding    Unsupported("vector(768)")?     @map("location_embedding")
+  topic_embedding       Unsupported("vector(768)")?     @map("topic_embedding")
   embedding_version     String    @default("v1") @map("embedding_version")
   embeddings_updated_at DateTime? @map("embeddings_updated_at")
 

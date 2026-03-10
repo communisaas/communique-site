@@ -3,29 +3,18 @@ import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
 import { generateEmbedding } from '$lib/core/search/gemini-embeddings';
 
-function cosineSimilarity(a: number[], b: number[]): number {
-	let dot = 0, magA = 0, magB = 0;
-	for (let i = 0; i < a.length; i++) {
-		dot += a[i] * b[i];
-		magA += a[i] * a[i];
-		magB += b[i] * b[i];
-	}
-	magA = Math.sqrt(magA);
-	magB = Math.sqrt(magB);
-	return magA === 0 || magB === 0 ? 0 : dot / (magA * magB);
-}
-
 /**
- * Server-side semantic template search.
+ * Server-side semantic template search using pgvector HNSW index.
  *
  * POST { query, limit?, excludeIds? }
  *
  * Requires authentication. Rate limited to prevent Gemini quota abuse.
  *
  * Pipeline:
- *   1. Generate query embedding + fetch templates in parallel
- *   2. Rank by cosine similarity (70% topic + 30% location)
- *   3. Return top N results
+ *   1. Generate query embedding via Gemini
+ *   2. pgvector cosine search with HNSW index (O(log N))
+ *   3. Blend 70% topic + 30% location similarity, apply 0.35 floor
+ *   4. Return top N results
  *
  * Fallback: keyword search via Prisma contains when embeddings unavailable.
  */
@@ -41,7 +30,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	// Cap excludeIds to prevent memory bomb (S-3)
 	const rawExcludeIds = Array.isArray(body.excludeIds) ? body.excludeIds.slice(0, 50) : [];
-	const excludeIds = new Set<string>(rawExcludeIds);
+	const excludeIds = rawExcludeIds as string[];
 
 	if (!query || query.length < 2) {
 		throw error(400, 'Query must be at least 2 characters');
@@ -53,30 +42,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	// Attempt semantic search first, fall back to keyword
 	try {
-		// Parallelize: Gemini embedding + DB fetch are independent (A-1/F8 fix)
-		const [queryEmbedding, candidates] = await Promise.all([
-			generateEmbedding(query, { taskType: 'RETRIEVAL_QUERY' }),
-			db.template.findMany({
-				where: {
-					is_public: true,
-					status: 'published',
-					topic_embedding: { not: null }
-				},
-				select: {
-					id: true,
-					slug: true,
-					title: true,
-					description: true,
-					verified_sends: true,
-					unique_districts: true,
-					topic_embedding: true,
-					location_embedding: true
-				}
-			})
-		]);
+		const queryEmbedding = await generateEmbedding(query, { taskType: 'RETRIEVAL_QUERY' });
+		const vectorStr = `[${queryEmbedding.join(',')}]`;
 
-		// Score and rank
-		const scored: Array<{
+		// Fetch candidates with pgvector cosine distance, blending 70% topic + 30% location.
+		// <=> returns cosine distance (0 = identical, 2 = opposite), similarity = 1 - distance.
+		// Pull more candidates than needed so the 0.35 floor and excludeIds don't starve results.
+		const candidateLimit = limit + excludeIds.length + 10;
+
+		type SearchRow = {
 			id: string;
 			slug: string;
 			title: string;
@@ -84,40 +58,55 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			verified_sends: number;
 			unique_districts: number;
 			similarity: number;
-		}> = [];
+		};
 
-		for (const t of candidates) {
-			if (excludeIds.has(t.id)) continue;
+		let results: SearchRow[];
 
-			const topicEmb = t.topic_embedding as number[] | null;
-			if (!topicEmb || topicEmb.length === 0) continue;
-
-			const topicSim = cosineSimilarity(queryEmbedding, topicEmb);
-
-			let locationSim = 0;
-			const locEmb = t.location_embedding as number[] | null;
-			if (locEmb && locEmb.length > 0) {
-				locationSim = cosineSimilarity(queryEmbedding, locEmb);
-			}
-
-			const similarity = topicSim * 0.7 + locationSim * 0.3;
-			if (similarity < 0.35) continue;
-
-			scored.push({
-				id: t.id,
-				slug: t.slug,
-				title: t.title,
-				description: t.description ?? '',
-				verified_sends: t.verified_sends,
-				unique_districts: t.unique_districts,
-				similarity
-			});
+		if (excludeIds.length > 0) {
+			results = await db.$queryRaw<SearchRow[]>`
+				SELECT
+					id, slug, title, description, verified_sends, unique_districts,
+					(
+						0.7 * (1.0 - (topic_embedding <=> ${vectorStr}::vector))
+						+ 0.3 * COALESCE(1.0 - (location_embedding <=> ${vectorStr}::vector), 0)
+					) AS similarity
+				FROM "Template"
+				WHERE is_public = true
+					AND status = 'published'
+					AND topic_embedding IS NOT NULL
+					AND id != ALL(${excludeIds}::text[])
+				ORDER BY similarity DESC
+				LIMIT ${candidateLimit}
+			`;
+		} else {
+			results = await db.$queryRaw<SearchRow[]>`
+				SELECT
+					id, slug, title, description, verified_sends, unique_districts,
+					(
+						0.7 * (1.0 - (topic_embedding <=> ${vectorStr}::vector))
+						+ 0.3 * COALESCE(1.0 - (location_embedding <=> ${vectorStr}::vector), 0)
+					) AS similarity
+				FROM "Template"
+				WHERE is_public = true
+					AND status = 'published'
+					AND topic_embedding IS NOT NULL
+				ORDER BY similarity DESC
+				LIMIT ${candidateLimit}
+			`;
 		}
 
-		scored.sort((a, b) => b.similarity - a.similarity);
+		// Apply 0.35 similarity floor and take requested limit
+		const filtered = results
+			.filter((r) => r.similarity >= 0.35)
+			.slice(0, limit)
+			.map((r) => ({
+				...r,
+				description: r.description ?? '',
+				similarity: Number(r.similarity)
+			}));
 
 		return json({
-			templates: scored.slice(0, limit),
+			templates: filtered,
 			method: 'semantic'
 		});
 	} catch (embeddingError) {
@@ -127,7 +116,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			where: {
 				is_public: true,
 				status: 'published',
-				id: { notIn: [...excludeIds] },
+				id: { notIn: excludeIds },
 				OR: [
 					{ title: { contains: query, mode: 'insensitive' } },
 					{ description: { contains: query, mode: 'insensitive' } }
