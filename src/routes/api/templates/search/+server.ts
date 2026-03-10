@@ -95,15 +95,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			`;
 		}
 
+		// Validate raw SQL result shape (Prisma $queryRaw returns unknown[] at runtime)
+		if (results.length > 0) {
+			const first = results[0];
+			if (typeof first.id !== 'string' || (typeof first.similarity !== 'number' && typeof first.similarity !== 'string')) {
+				throw new Error('pgvector query returned unexpected shape');
+			}
+		}
+
 		// Apply 0.35 similarity floor and take requested limit
+		// Number() conversion must precede filter — some pg drivers return numeric as string
 		const filtered = results
-			.filter((r) => r.similarity >= 0.35)
-			.slice(0, limit)
 			.map((r) => ({
 				...r,
 				description: r.description ?? '',
 				similarity: Number(r.similarity)
-			}));
+			}))
+			.filter((r) => r.similarity >= 0.35)
+			.slice(0, limit);
 
 		return json({
 			templates: filtered,
