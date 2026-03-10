@@ -264,13 +264,14 @@
 					Press <kbd>⌘</kbd><kbd>Enter</kbd> to continue
 				</p>
 			{/if}
+
 		</div>
 	</div>
 
 	<!-- Or browse existing -->
 	<div class="spark-divider">
 		<span class="divider-line"></span>
-		<span class="divider-text">or join an existing campaign</span>
+		<span class="divider-text"><span class="divider-text--mobile">or scroll to join an existing campaign</span><span class="divider-text--desktop">or join an existing campaign</span></span>
 		<span class="divider-line"></span>
 	</div>
 
@@ -622,11 +623,20 @@
 		transform: translateX(2px);
 	}
 
+	/* Keyboard hint — desktop-only affordance.
+	 * On touch devices ⌘Enter doesn't exist; showing it is cognitive noise. */
 	.action-hint {
+		display: none;
 		font-size: 0.75rem;
 		color: oklch(0.55 0.02 250);
 		text-align: center;
 		margin: 0;
+	}
+
+	@media (min-width: 1024px) {
+		.action-hint {
+			display: block;
+		}
 	}
 
 	.action-hint kbd {
@@ -647,22 +657,22 @@
 	}
 
 	/*
-	 * Divider - transforms presentation based on layout context
+	 * Divider — perceptual bridge between creation and discovery.
 	 *
-	 * Perceptual Engineering:
-	 * - Mobile (stacked): Horizontal lines predict vertical flow → content below
-	 * - Desktop (side-by-side): Lines would contradict horizontal relationship
+	 * Mobile: The template stream below is the PRIMARY discovery path.
+	 * This should feel like an invitation downward, not a page-end ornament.
+	 * Tight spacing, muted lines, forward-leaning copy.
 	 *
-	 * Solution: Keep the semantic content, adapt visual treatment
+	 * Desktop: Spatial position already encodes the "or" relationship —
+	 * the divider becomes a gentle label pointing toward the right column.
 	 */
 	.spark-divider {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
-		margin-top: 0;
+		gap: 0.75rem;
+		margin-top: 0.25rem;
 	}
 
-	/* Desktop: Transform to directional label without misleading lines */
 	@media (min-width: 1280px) {
 		.spark-divider {
 			margin-top: 1rem;
@@ -676,10 +686,10 @@
 	.divider-line {
 		flex: 1;
 		height: 1px;
-		background: oklch(0.88 0.02 250);
+		background: oklch(0.91 0.01 250);
 	}
 
-	/* Hide horizontal lines on desktop - spatial positioning already encodes "or" */
+	/* Desktop: spatial positioning encodes "or" — lines are redundant */
 	@media (min-width: 1280px) {
 		.divider-line {
 			display: none;
@@ -688,12 +698,16 @@
 
 	.divider-text {
 		font-family: 'Satoshi', system-ui, sans-serif;
-		font-size: 0.8125rem;
-		color: oklch(0.55 0.02 250);
+		font-size: 0.75rem;
+		color: oklch(0.58 0.02 250);
 		white-space: nowrap;
+		letter-spacing: 0.01em;
 	}
 
-	/* Desktop: Style as a gentle pointer toward the right column */
+	.divider-text--desktop {
+		display: none;
+	}
+
 	@media (min-width: 1280px) {
 		.divider-text {
 			font-size: 0.875rem;
@@ -701,7 +715,14 @@
 			color: oklch(0.45 0.02 250);
 		}
 
-		/* Add subtle arrow to indicate horizontal direction */
+		.divider-text--mobile {
+			display: none;
+		}
+
+		.divider-text--desktop {
+			display: inline;
+		}
+
 		.divider-text::after {
 			content: ' →';
 			opacity: 0.5;

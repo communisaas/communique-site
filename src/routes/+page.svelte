@@ -458,8 +458,12 @@
 			<CreationSpark onactivate={handleSparkActivate}>
 				{#snippet context()}
 					<footer class="creation-footer">
-						<a href="mailto:hello@commons.email" class="contact-link">
+						<a href="mailto:hello@commons.email" class="contact-link contact-link--mailto">
 							<span class="link-text">hello@commons.email</span>
+						</a>
+						<span class="creation-footer__sep" aria-hidden="true"></span>
+						<a href="/org" class="contact-link contact-link--org">
+							<span class="link-text">Organization tools</span>
 							<svg
 								class="link-arrow"
 								viewBox="0 0 24 24"
@@ -472,10 +476,6 @@
 								<line x1="5" y1="12" x2="19" y2="12"></line>
 								<polyline points="12 5 19 12 12 19"></polyline>
 							</svg>
-						</a>
-						<span class="creation-footer__sep" aria-hidden="true"></span>
-						<a href="/org" class="contact-link contact-link--org">
-							<span class="link-text">For organizations</span>
 						</a>
 					</footer>
 				{/snippet}
@@ -592,6 +592,8 @@
 		<div class="h-full">
 			<TemplatePreview
 				template={selectedTemplate}
+				inModal={true}
+				context="modal"
 				user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
 				bind:personalConnectionValue
 				onSendMessage={async () => {
@@ -906,9 +908,17 @@
 	/* Creation Footer & Contact Link */
 	.creation-footer {
 		margin-top: auto;
-		padding-top: 1.5rem;
+		padding-top: 0.75rem;
 		display: flex;
 		align-items: center;
+		justify-content: center;
+	}
+
+	@media (min-width: 1280px) {
+		.creation-footer {
+			padding-top: 1.5rem;
+			justify-content: flex-start;
+		}
 	}
 
 	.creation-footer__sep {
@@ -920,6 +930,25 @@
 		flex-shrink: 0;
 	}
 
+	.contact-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		text-decoration: none;
+		color: oklch(0.55 0.02 250);
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		transition: color 200ms ease-out;
+	}
+
+	@media (min-width: 1280px) {
+		.contact-link {
+			font-size: 0.875rem;
+		}
+	}
+
+	/* Org link: teal, arrow reveals on hover */
 	.contact-link--org {
 		color: oklch(0.5 0.04 180);
 	}
@@ -928,34 +957,38 @@
 		color: oklch(0.38 0.08 180);
 	}
 
-	.contact-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		text-decoration: none;
-		color: oklch(0.55 0.02 250);
-		font-family: 'Satoshi', system-ui, sans-serif;
-		font-size: 0.875rem;
-		font-weight: 500;
-		transition: color 200ms ease-out;
-	}
-
 	.link-arrow {
-		width: 1em;
+		width: 0;
 		height: 1em;
 		opacity: 0;
 		transform: translateX(-4px);
 		transition:
 			opacity 200ms ease-out,
-			transform 200ms ease-out;
+			transform 200ms ease-out,
+			width 200ms ease-out;
+		overflow: hidden;
 	}
 
-	.contact-link:hover {
-		color: oklch(0.55 0.15 195); /* Cyan */
-	}
-
-	.contact-link:hover .link-arrow {
+	.contact-link--org:hover .link-arrow {
+		width: 1em;
 		opacity: 1;
 		transform: translateX(0);
+	}
+
+	/* Email link: underline reveals on hover */
+	.contact-link--mailto .link-text {
+		background-image: linear-gradient(currentColor, currentColor);
+		background-size: 0% 1px;
+		background-position: 0% 100%;
+		background-repeat: no-repeat;
+		transition: background-size 300ms ease-out;
+	}
+
+	.contact-link--mailto:hover {
+		color: oklch(0.45 0.02 250);
+	}
+
+	.contact-link--mailto:hover .link-text {
+		background-size: 100% 1px;
 	}
 </style>
