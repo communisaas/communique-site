@@ -209,7 +209,7 @@
 			role="region"
 			aria-label="Template preview navigation"
 			onkeydown={handleKeyboardNav}
-			class="flex flex-1 cursor-default flex-col overflow-visible border-0 bg-transparent text-left outline-none"
+			class="flex flex-1 cursor-default flex-col {inModal ? 'overflow-hidden' : 'overflow-visible'} border-0 bg-transparent text-left outline-none"
 		>
 			<PreviewContent
 				{template}

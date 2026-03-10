@@ -131,7 +131,7 @@
 			{moderationError}
 		</div>
 	{/if}
-	<div class="mt-4 flex flex-col items-center gap-2">
+	<div class="mt-4 flex shrink-0 flex-col items-center gap-2">
 		{#if isCwcTemplate}
 			<Button
 				variant={buttonVariant}
