@@ -3,10 +3,6 @@ import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
 import { generateEmbedding } from '$lib/core/search/gemini-embeddings';
 
-/**
- * Cosine similarity between two vectors.
- * Returns -1 (opposite) to 1 (identical). Typical text range: 0.3–0.9.
- */
 function cosineSimilarity(a: number[], b: number[]): number {
 	let dot = 0, magA = 0, magB = 0;
 	for (let i = 0; i < a.length; i++) {
@@ -24,49 +20,60 @@ function cosineSimilarity(a: number[], b: number[]): number {
  *
  * POST { query, limit?, excludeIds? }
  *
- * Pipeline:
- *   1. Generate query embedding (RETRIEVAL_QUERY task type)
- *   2. Fetch public templates with topic_embedding
- *   3. Rank by cosine similarity (70% topic + 30% location)
- *   4. Return top N results
+ * Requires authentication. Rate limited to prevent Gemini quota abuse.
  *
- * Fallback: if embedding generation fails (no API key, rate limit, etc.),
- * falls back to Prisma case-insensitive `contains` on title + description.
+ * Pipeline:
+ *   1. Generate query embedding + fetch templates in parallel
+ *   2. Rank by cosine similarity (70% topic + 30% location)
+ *   3. Return top N results
+ *
+ * Fallback: keyword search via Prisma contains when embeddings unavailable.
  */
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	// Auth gate — only authenticated users can trigger Gemini API calls
+	if (!locals.user) {
+		throw error(401, 'Authentication required');
+	}
+
 	const body = await request.json();
 	const query = (body.query as string)?.trim();
 	const limit = Math.min(Math.max(body.limit ?? 5, 1), 20);
-	const excludeIds = new Set<string>(body.excludeIds ?? []);
+
+	// Cap excludeIds to prevent memory bomb (S-3)
+	const rawExcludeIds = Array.isArray(body.excludeIds) ? body.excludeIds.slice(0, 50) : [];
+	const excludeIds = new Set<string>(rawExcludeIds);
 
 	if (!query || query.length < 2) {
 		throw error(400, 'Query must be at least 2 characters');
 	}
 
+	if (query.length > 200) {
+		throw error(400, 'Query too long (max 200 characters)');
+	}
+
 	// Attempt semantic search first, fall back to keyword
 	try {
-		const queryEmbedding = await generateEmbedding(query, {
-			taskType: 'RETRIEVAL_QUERY'
-		});
-
-		// Fetch public templates that have embeddings
-		const candidates = await db.template.findMany({
-			where: {
-				is_public: true,
-				status: 'published',
-				topic_embedding: { not: null }
-			},
-			select: {
-				id: true,
-				slug: true,
-				title: true,
-				description: true,
-				verified_sends: true,
-				unique_districts: true,
-				topic_embedding: true,
-				location_embedding: true
-			}
-		});
+		// Parallelize: Gemini embedding + DB fetch are independent (A-1/F8 fix)
+		const [queryEmbedding, candidates] = await Promise.all([
+			generateEmbedding(query, { taskType: 'RETRIEVAL_QUERY' }),
+			db.template.findMany({
+				where: {
+					is_public: true,
+					status: 'published',
+					topic_embedding: { not: null }
+				},
+				select: {
+					id: true,
+					slug: true,
+					title: true,
+					description: true,
+					verified_sends: true,
+					unique_districts: true,
+					topic_embedding: true,
+					location_embedding: true
+				}
+			})
+		]);
 
 		// Score and rank
 		const scored: Array<{
@@ -116,7 +123,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	} catch (embeddingError) {
 		console.warn('[template-search] Semantic search failed, falling back to keyword:', embeddingError);
 
-		// Fallback: keyword search
 		const results = await db.template.findMany({
 			where: {
 				is_public: true,

@@ -338,9 +338,6 @@ export const GET: RequestHandler = async () => {
 					shares: (jsonMetrics as { shares?: number }).shares
 				},
 
-				delivery_config: template.delivery_config,
-				cwc_config: template.cwc_config,
-				recipient_config: template.recipient_config,
 				campaign_id: template.campaign_id,
 				status: template.status,
 				is_public: template.is_public,

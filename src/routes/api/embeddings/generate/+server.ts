@@ -8,14 +8,18 @@ import { generateEmbedding } from '$lib/core/search/gemini-embeddings';
  * POST { text: string }
  * Returns { embedding: number[] }
  *
- * Uses RETRIEVAL_QUERY task type (optimized for search queries,
- * asymmetric to RETRIEVAL_DOCUMENT used for template embeddings).
+ * Requires authentication to prevent quota abuse —
+ * each call invokes Google Gemini API using server-side credentials.
  *
- * This endpoint completes the client-side semantic search pipeline
- * in $lib/core/search/ — EmbeddingSearch calls this to embed queries
- * before computing cosine similarity against cached template embeddings.
+ * Uses RETRIEVAL_QUERY task type (asymmetric to RETRIEVAL_DOCUMENT
+ * used for template embeddings at creation time).
  */
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	// Auth gate — prevent unauthenticated Gemini quota drain
+	if (!locals.user) {
+		throw error(401, 'Authentication required');
+	}
+
 	const body = await request.json();
 	const text = (body.text as string)?.trim();
 
