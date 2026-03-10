@@ -11,12 +11,23 @@
 	// Endorsement management state
 	let endorsedList = $state(data.endorsedTemplates ?? []);
 	let searchQuery = $state('');
-	let searchResults = $state<Array<{ id: string; slug: string; title: string; description: string; verified_sends: number }>>([]);
+	let searchResults = $state<Array<{
+		id: string; slug: string; title: string; description: string;
+		verified_sends: number; unique_districts: number; similarity: number | null;
+	}>>([]);
 	let searching = $state(false);
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+	let errorFlash = $state('');
+	let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Track endorsed template IDs for filtering search results
 	const endorsedIds = $derived(new Set(endorsedList.map(e => e.templateId)));
+
+	function showError(msg: string): void {
+		errorFlash = msg;
+		if (errorTimeout) clearTimeout(errorTimeout);
+		errorTimeout = setTimeout(() => { errorFlash = ''; }, 3000);
+	}
 
 	function handleSearchInput(e: Event): void {
 		const q = (e.target as HTMLInputElement).value;
@@ -29,12 +40,18 @@
 		searching = true;
 		searchTimeout = setTimeout(async () => {
 			try {
-				const res = await fetch(`/api/templates?q=${encodeURIComponent(q.trim())}&status=published&limit=5`);
+				const res = await fetch('/api/templates/search', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						query: q.trim(),
+						limit: 5,
+						excludeIds: [...endorsedIds]
+					})
+				});
 				if (res.ok) {
 					const json = await res.json();
-					searchResults = (json.templates ?? json).filter(
-						(t: { id: string }) => !endorsedIds.has(t.id)
-					);
+					searchResults = json.templates ?? [];
 				}
 			} catch { /* graceful */ }
 			searching = false;
@@ -42,37 +59,61 @@
 	}
 
 	async function endorseTemplate(templateId: string): Promise<void> {
-		const res = await fetch(`/api/org/${data.org.slug}/endorsements`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ templateId })
-		});
-		if (res.ok) {
-			const found = searchResults.find(t => t.id === templateId);
-			if (found) {
-				endorsedList = [{
-					id: crypto.randomUUID(),
-					templateId: found.id,
-					slug: found.slug,
-					title: found.title,
-					description: found.description,
-					sends: found.verified_sends,
-					districts: 0,
-					endorsedAt: new Date().toISOString()
-				}, ...endorsedList];
-				searchResults = searchResults.filter(t => t.id !== templateId);
+		const found = searchResults.find(t => t.id === templateId);
+		if (!found) return;
+
+		// Optimistic: move to endorsed list immediately
+		const optimisticEntry = {
+			id: crypto.randomUUID(),
+			templateId: found.id,
+			slug: found.slug,
+			title: found.title,
+			description: found.description,
+			sends: found.verified_sends,
+			districts: found.unique_districts ?? 0,
+			endorsedAt: new Date().toISOString()
+		};
+		endorsedList = [optimisticEntry, ...endorsedList];
+		searchResults = searchResults.filter(t => t.id !== templateId);
+
+		try {
+			const res = await fetch(`/api/org/${data.org.slug}/endorsements`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ templateId })
+			});
+			if (!res.ok) {
+				// Revert
+				endorsedList = endorsedList.filter(e => e.id !== optimisticEntry.id);
+				searchResults = [found, ...searchResults];
+				showError('Failed to endorse — try again');
 			}
+		} catch {
+			endorsedList = endorsedList.filter(e => e.id !== optimisticEntry.id);
+			searchResults = [found, ...searchResults];
+			showError('Network error — try again');
 		}
 	}
 
 	async function removeEndorsement(templateId: string): Promise<void> {
-		const res = await fetch(`/api/org/${data.org.slug}/endorsements`, {
-			method: 'DELETE',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ templateId })
-		});
-		if (res.ok) {
-			endorsedList = endorsedList.filter(e => e.templateId !== templateId);
+		// Optimistic: remove immediately
+		const removed = endorsedList.find(e => e.templateId === templateId);
+		const prevList = endorsedList;
+		endorsedList = endorsedList.filter(e => e.templateId !== templateId);
+
+		try {
+			const res = await fetch(`/api/org/${data.org.slug}/endorsements`, {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ templateId })
+			});
+			if (!res.ok) {
+				endorsedList = prevList;
+				showError('Failed to remove — try again');
+			}
+		} catch {
+			endorsedList = prevList;
+			showError('Network error — try again');
 		}
 	}
 </script>
@@ -111,6 +152,13 @@
 			<p class="font-mono text-sm text-zinc-300 mt-1">{data.membership.role}</p>
 		</div>
 	</div>
+
+	<!-- Error flash -->
+	{#if errorFlash}
+		<div class="rounded-lg border border-red-900/40 bg-red-950/30 px-4 py-2 text-xs text-red-400">
+			{errorFlash}
+		</div>
+	{/if}
 
 	<!-- Endorsed Templates — curation surface -->
 	<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6">
@@ -167,7 +215,13 @@
 						>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm text-zinc-200 line-clamp-1">{t.title}</p>
-								<p class="text-xs text-zinc-600 line-clamp-1 mt-0.5">{t.description}</p>
+								<p class="text-xs text-zinc-600 mt-0.5">
+									{fmt(t.verified_sends)} sends
+									{#if t.similarity != null}
+										<span class="text-zinc-700 mx-1">·</span>
+										<span class="text-teal-700">{Math.round(t.similarity * 100)}% match</span>
+									{/if}
+								</p>
 							</div>
 							<span class="text-xs font-medium text-teal-500 flex-shrink-0">Endorse</span>
 						</button>
