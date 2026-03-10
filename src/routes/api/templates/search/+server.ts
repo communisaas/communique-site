@@ -13,7 +13,7 @@ import { generateEmbedding } from '$lib/core/search/gemini-embeddings';
  * Pipeline:
  *   1. Generate query embedding via Gemini
  *   2. pgvector cosine search with HNSW index (O(log N))
- *   3. Blend 70% topic + 30% location similarity, apply 0.35 floor
+ *   3. Blend 70% topic + 30% location similarity, apply quality boost, 0.40 floor
  *   4. Return top N results
  *
  * Fallback: keyword search via Prisma contains when embeddings unavailable.
@@ -47,7 +47,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Fetch candidates with pgvector cosine distance, blending 70% topic + 30% location.
 		// <=> returns cosine distance (0 = identical, 2 = opposite), similarity = 1 - distance.
-		// Pull more candidates than needed so the 0.35 floor and excludeIds don't starve results.
+		// Pull more candidates than needed so the 0.40 floor and excludeIds don't starve results.
 		const candidateLimit = limit + excludeIds.length + 10;
 
 		type SearchRow = {
@@ -103,15 +103,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
-		// Apply 0.35 similarity floor and take requested limit
-		// Number() conversion must precede filter — some pg drivers return numeric as string
+		// Apply quality boost, 0.40 similarity floor, and take requested limit.
+		// Quality boost: templates with more verified sends get a boost (0.8x to 1.0x).
+		// This harmonizes with client-side ContextualBooster's impact scoring.
 		const filtered = results
-			.map((r) => ({
-				...r,
-				description: r.description ?? '',
-				similarity: Number(r.similarity)
-			}))
-			.filter((r) => r.similarity >= 0.35)
+			.map((r) => {
+				const rawSimilarity = Number(r.similarity);
+				const sends = Number(r.verified_sends) || 0;
+				const qualityBoost = 0.8 + 0.2 * Math.min(sends / 100, 1);
+				return {
+					...r,
+					description: r.description ?? '',
+					similarity: rawSimilarity * qualityBoost
+				};
+			})
+			.filter((r) => r.similarity >= 0.40)
+			.sort((a, b) => b.similarity - a.similarity)
 			.slice(0, limit);
 
 		return json({

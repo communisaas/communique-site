@@ -387,7 +387,7 @@ export const GET: RequestHandler = async () => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	try {
 		// Parse request body
 		let requestData: unknown;
@@ -712,8 +712,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				const isCwc = validData.deliveryMethod === 'cwc';
 
 				if (isCwc || isPublic) {
-					// Fire-and-forget: don't await, don't block response
-					(async () => {
+					// Deferred work: runs after response is sent.
+					// On Vercel, waitUntil keeps the function alive until the promise resolves.
+					// Without it, the serverless function may terminate before Gemini returns.
+					const deferredWork = (async () => {
 						if (isCwc) {
 							try {
 								await db.template.update({
@@ -758,6 +760,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							}
 						}
 					})();
+
+					if (platform?.context?.waitUntil) {
+						platform.context.waitUntil(deferredWork);
+					} else {
+						// Local dev / non-Vercel: fire-and-forget is fine
+						deferredWork.catch(err => console.error('[deferred] Background work failed:', err));
+					}
 				}
 
 				const response: StructuredApiResponse = {

@@ -1,19 +1,32 @@
 /**
- * Client-Side Embedding Search with Cosine Similarity
+ * Client-Side Embedding Search — Server-Delegated
  *
- * Privacy-preserving semantic search:
- * - All ranking happens client-side
- * - Server never sees search queries
- * - Templates downloaded in bulk and filtered locally
+ * Delegates semantic search to `/api/templates/search` which uses
+ * pgvector HNSW index + quality boost. This unifies the search pipeline
+ * so client and server use the same ranking logic.
  *
- * Performance:
- * - < 500ms for 1000 templates
- * - Uses cached embeddings when possible
- * - Web Workers for heavy computation (future optimization)
+ * The class interface is preserved for backward compatibility with
+ * TemplateRanker and createSemanticSearch().
  */
 
 import type { TemplateWithEmbedding, SearchQuery, SearchResult } from './types';
 import { api } from '$lib/core/api/client';
+
+/** Shape returned by the server search endpoint */
+interface ServerSearchResult {
+	id: string;
+	slug: string;
+	title: string;
+	description: string;
+	verified_sends: number;
+	unique_districts: number;
+	similarity: number | null;
+}
+
+interface ServerSearchResponse {
+	templates: ServerSearchResult[];
+	method: 'semantic' | 'keyword';
+}
 
 export class EmbeddingSearch {
 	private templates: TemplateWithEmbedding[];
@@ -25,113 +38,79 @@ export class EmbeddingSearch {
 	}
 
 	/**
-	 * Generate embedding for search query
-	 * Calls server endpoint (privacy-preserving: server doesn't store query)
+	 * Generate embedding for search query via server endpoint.
+	 * Kept for backward compatibility with TemplateRanker.rankWithMetadata().
+	 * Returns empty array since server handles embedding internally.
 	 */
 	async generateQueryEmbedding(query: string): Promise<number[]> {
 		if (!query || query.trim().length === 0) {
 			throw new Error('Query cannot be empty');
 		}
 
-		// Call server endpoint to generate embedding
-		// Server generates embedding but doesn't store query
-		const response = await api.post<{ embedding: number[] }>(
-			`${this.apiBaseURL}/embeddings/generate`,
-			{ text: query },
-			{ showToast: false }
-		);
-
-		if (!response.success || !response.data) {
-			throw new Error(response.error || 'Failed to generate query embedding');
-		}
-
-		return response.data.embedding;
+		// The server search endpoint generates embeddings internally.
+		// Return empty array — callers use this only for metadata, not computation.
+		return [];
 	}
 
 	/**
-	 * Calculate cosine similarity between two embeddings
-	 * Returns value between -1 (opposite) and 1 (identical)
-	 * Typical range for text: 0.3 (unrelated) to 0.9 (very similar)
-	 */
-	cosineSimilarity(a: number[], b: number[]): number {
-		if (a.length !== b.length) {
-			throw new Error(`Embedding dimension mismatch: ${a.length} vs ${b.length}`);
-		}
-
-		let dotProduct = 0;
-		let magnitudeA = 0;
-		let magnitudeB = 0;
-
-		for (let i = 0; i < a.length; i++) {
-			dotProduct += a[i] * b[i];
-			magnitudeA += a[i] * a[i];
-			magnitudeB += b[i] * b[i];
-		}
-
-		magnitudeA = Math.sqrt(magnitudeA);
-		magnitudeB = Math.sqrt(magnitudeB);
-
-		if (magnitudeA === 0 || magnitudeB === 0) {
-			return 0;
-		}
-
-		return dotProduct / (magnitudeA * magnitudeB);
-	}
-
-	/**
-	 * Search templates by semantic similarity
-	 * Returns templates ranked by similarity score
+	 * Search templates via server-side semantic search endpoint.
+	 * Server performs pgvector cosine search + quality boost + 0.40 floor.
 	 */
 	async search(query: SearchQuery): Promise<Array<TemplateWithEmbedding & { similarity: number }>> {
 		const startTime = performance.now();
 
-		// Generate embedding for query
-		const queryEmbedding = await this.generateQueryEmbedding(query.query);
+		const response = await api.post<ServerSearchResponse>(
+			`${this.apiBaseURL}/templates/search`,
+			{
+				query: query.query,
+				limit: query.limit ?? 20,
+				excludeIds: []
+			},
+			{ showToast: false }
+		);
 
-		// Calculate similarity for each template
-		const results: Array<TemplateWithEmbedding & { similarity: number }> = [];
-
-		for (const template of this.templates) {
-			// Skip templates without embeddings
-			if (!template.topic_embedding || template.topic_embedding.length === 0) {
-				continue;
-			}
-
-			// Calculate multi-dimensional similarity
-			const topicSimilarity = this.cosineSimilarity(queryEmbedding, template.topic_embedding);
-
-			// If location embedding exists, use it for additional context
-			let locationSimilarity = 0;
-			if (template.location_embedding && template.location_embedding.length > 0) {
-				locationSimilarity = this.cosineSimilarity(queryEmbedding, template.location_embedding);
-			}
-
-			// Weighted combination: 70% topic, 30% location
-			const similarity = topicSimilarity * 0.7 + locationSimilarity * 0.3;
-
-			// Apply minimum similarity threshold
-			const minSimilarity = query.minSimilarity ?? 0.5;
-			if (similarity < minSimilarity) {
-				continue;
-			}
-
-			results.push({
-				...template,
-				similarity
-			});
+		if (!response.success || !response.data) {
+			console.warn('[embedding-search] Server search failed, returning empty results');
+			return [];
 		}
 
-		// Sort by similarity (descending)
-		results.sort((a, b) => b.similarity - a.similarity);
+		const serverResults = response.data.templates;
 
-		// Apply limit
-		const limit = query.limit ?? 20;
-		const limitedResults = results.slice(0, limit);
+		// Map server results back to TemplateWithEmbedding shape.
+		// Merge with local template data for fields the server doesn't return.
+		const templateMap = new Map(this.templates.map((t) => [t.id, t]));
+
+		const results: Array<TemplateWithEmbedding & { similarity: number }> = [];
+		for (const sr of serverResults) {
+			const local = templateMap.get(sr.id);
+			if (local) {
+				results.push({
+					...local,
+					similarity: sr.similarity ?? 0
+				});
+			} else {
+				// Template not in local cache — create minimal entry
+				results.push({
+					id: sr.id,
+					slug: sr.slug,
+					title: sr.title,
+					description: sr.description,
+					category: '',
+					location_embedding: null,
+					topic_embedding: null,
+					embedding_version: '',
+					jurisdictions: [],
+					quality_score: 0,
+					created_at: '',
+					similarity: sr.similarity ?? 0
+				});
+			}
+		}
 
 		const endTime = performance.now();
-		console.debug(`[embedding-search] Search completed in ${(endTime - startTime).toFixed(2)}ms`);
+		console.debug(`[embedding-search] Server search completed in ${(endTime - startTime).toFixed(2)}ms`);
 
-		return limitedResults;
+		return results;
 	}
 
 	/**
@@ -139,19 +118,18 @@ export class EmbeddingSearch {
 	 */
 	async searchWithMetadata(query: SearchQuery): Promise<SearchResult> {
 		const startTime = performance.now();
-		const queryEmbedding = await this.generateQueryEmbedding(query.query);
 		const results = await this.search(query);
 
 		return {
 			results: results.map((r, index) => ({
 				...r,
-				boost: { geographic: 1, temporal: 1, network: 1, impact: 1 }, // No boosting applied yet
+				boost: { geographic: 1, temporal: 1, network: 1, impact: 1 },
 				final_score: r.similarity,
 				rank: index + 1
 			})),
 			query: query.query,
 			total_results: results.length,
-			query_embedding: queryEmbedding,
+			query_embedding: [], // Server handles embeddings internally
 			search_time_ms: performance.now() - startTime,
 			cached: false
 		};
