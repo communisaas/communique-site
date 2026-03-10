@@ -75,6 +75,8 @@ export interface Template {
 	// === ORG ENDORSEMENT (Perceptual Bridge) ===
 	// When present, the template has organizational backing — institutional provenance
 	endorsingOrg?: { name: string; slug: string; avatar: string | null } | null;
+	// Coalition endorsements — multiple orgs can endorse the same template
+	endorsingOrgs?: Array<{ name: string; slug: string; avatar: string | null }>;
 
 	// === PERCEPTUAL ENCODING PROPERTIES ===
 	// Visual weight encoding (0-1 scale for card size transformation)

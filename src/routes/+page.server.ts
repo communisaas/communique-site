@@ -118,6 +118,9 @@ export const load: PageServerLoad = async ({ depends }) => {
 				endorsingOrg: template.org
 					? { name: template.org.name, slug: template.org.slug, avatar: template.org.avatar }
 					: null,
+				endorsingOrgs: (template.endorsements ?? []).map((e: { org: { name: string; slug: string; avatar: string | null } }) => ({
+					name: e.org.name, slug: e.org.slug, avatar: e.org.avatar
+				})),
 				coordinationScale,
 				isNew,
 				hasActiveDebate: activeDebateTemplateIds.has(template.id),

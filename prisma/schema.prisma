@@ -228,6 +228,9 @@ model Template {
   // Staked deliberation (DebateMarket.sol off-chain content storage)
   debates Debate[]
 
+  // Coalition endorsements (many orgs can endorse one template)
+  endorsements TemplateEndorsement[]
+
   @@unique([userId, content_hash], name: "template_author_content")
   @@index([verification_status])
   @@index([country_code])
@@ -1296,6 +1299,7 @@ model Organization {
 
   memberships       OrgMembership[]
   templates         Template[]         @relation("OrgTemplates")
+  endorsements      TemplateEndorsement[]
   resolved_contacts OrgResolvedContact[]
   invites           OrgInvite[]
   subscription      Subscription?
@@ -1363,6 +1367,24 @@ model OrgResolvedContact {
   @@index([orgId])
   @@index([expiresAt])
   @@map("org_resolved_contact")
+}
+
+// Coalition endorsement: multiple orgs can endorse the same template
+// Per DESIGN-004-COALITION-COORDINATION.md §2.3
+model TemplateEndorsement {
+  id         String   @id @default(cuid())
+  templateId String   @map("template_id")
+  orgId      String   @map("org_id")
+  endorsedAt DateTime @default(now()) @map("endorsed_at")
+  endorsedBy String?  @map("endorsed_by") // userId of the person who endorsed
+
+  template Template     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, orgId])
+  @@index([templateId])
+  @@index([orgId])
+  @@map("template_endorsement")
 }
 
 model Supporter {

@@ -163,15 +163,39 @@
 			{template.description}
 		</p>
 
-		<!-- Org Endorsement: Institutional provenance — felt before read -->
-		{#if template.endorsingOrg}
+		<!-- Org Provenance: Creator org + coalition endorsements -->
+		{#if template.endorsingOrg || (template.endorsingOrgs && template.endorsingOrgs.length > 0)}
 			<div class="org-provenance">
-				{#if template.endorsingOrg.avatar}
-					<img src={template.endorsingOrg.avatar} alt="" class="org-provenance-avatar" />
-				{:else}
-					<span class="org-provenance-initial">{template.endorsingOrg.name.charAt(0).toUpperCase()}</span>
+				{#if template.endorsingOrg}
+					{#if template.endorsingOrg.avatar}
+						<img src={template.endorsingOrg.avatar} alt="" class="org-provenance-avatar" />
+					{:else}
+						<span class="org-provenance-initial">{template.endorsingOrg.name.charAt(0).toUpperCase()}</span>
+					{/if}
 				{/if}
-				<span class="org-provenance-name">{template.endorsingOrg.name}</span>
+				{#if template.endorsingOrgs && template.endorsingOrgs.length > 0}
+					{#each template.endorsingOrgs.slice(0, 3) as endorser}
+						{#if endorser.avatar}
+							<img src={endorser.avatar} alt="" class="org-provenance-avatar org-provenance-avatar--endorser" />
+						{:else}
+							<span class="org-provenance-initial org-provenance-initial--endorser">{endorser.name.charAt(0).toUpperCase()}</span>
+						{/if}
+					{/each}
+					{#if template.endorsingOrgs.length > 3}
+						<span class="org-provenance-overflow">+{template.endorsingOrgs.length - 3}</span>
+					{/if}
+				{/if}
+				<span class="org-provenance-name">
+					{#if template.endorsingOrg && template.endorsingOrgs && template.endorsingOrgs.length > 0}
+						{template.endorsingOrg.name} + {template.endorsingOrgs.length}
+					{:else if template.endorsingOrg}
+						{template.endorsingOrg.name}
+					{:else if template.endorsingOrgs && template.endorsingOrgs.length === 1}
+						{template.endorsingOrgs[0].name}
+					{:else if template.endorsingOrgs}
+						{template.endorsingOrgs.length} orgs
+					{/if}
+				</span>
 			</div>
 		{/if}
 	</div>
@@ -349,6 +373,30 @@
 		font-family: 'Satoshi', system-ui, sans-serif;
 		font-size: 0.5625rem;
 		font-weight: 700;
+	}
+
+	/* Endorser avatars/initials overlap slightly for coalition density */
+	.org-provenance-avatar--endorser,
+	.org-provenance-initial--endorser {
+		margin-left: -0.25rem;
+		border: 1.5px solid white;
+	}
+
+	.org-provenance-overflow {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 1rem;
+		height: 1rem;
+		border-radius: 3px;
+		margin-left: -0.25rem;
+		border: 1.5px solid white;
+		background: oklch(0.88 0.04 180);
+		color: oklch(0.4 0.08 180);
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.5rem;
+		font-weight: 700;
+		flex-shrink: 0;
 	}
 
 	.org-provenance-name {

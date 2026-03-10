@@ -34,4 +34,10 @@ export const TEMPLATE_LIST_SELECT = {
 	jurisdictions: true,
 	user: { select: { name: true, avatar: true } },
 	org: { select: { name: true, slug: true, avatar: true } },
+	endorsements: {
+		select: {
+			org: { select: { name: true, slug: true, avatar: true } }
+		},
+		orderBy: { endorsedAt: 'asc' as const }
+	},
 } as const;
