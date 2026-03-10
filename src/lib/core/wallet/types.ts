@@ -63,7 +63,8 @@ export type WalletProviderType =
 	| 'coinbase-wallet'
 	| 'injected'
 	| 'near-chain-sig'
-	| 'operator';
+	| 'operator'
+	| 'smart-account';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EIP-712 TYPES

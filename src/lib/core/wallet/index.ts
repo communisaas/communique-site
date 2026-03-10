@@ -87,6 +87,15 @@ export type {
 	NEARConnectionState
 } from './near-provider';
 
+// ── Browser-only Smart Account (DO NOT import in server code) ────────────
+// EIP-7702 delegation wrapper for EOA wallets. Transparent to consumers —
+// msg.sender stays the EOA. Feature-flagged via PUBLIC_ENABLE_SMART_ACCOUNTS.
+export {
+	SmartAccountProvider,
+	createSmartAccountProvider,
+	SIMPLE_ACCOUNT_ADDRESS
+} from './smart-account-provider';
+
 // ── Server-only (DO NOT import in client code) ──────────────────────────
 // These are re-exported for convenience but will fail at build time if
 // imported in a client-side module (SvelteKit enforces the boundary).
