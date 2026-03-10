@@ -165,19 +165,20 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		? solidityPackedKeccak256(['string'], [amendmentText])
 		: null;
 
-	// Compute weighted score: sqrt(stake) * 2^tier
+	// Compute weighted score: sqrt(stake) * 2^engagementTier
+	// Engagement tier (civic participation, 0-4) comes from the ZK circuit's publicInputs[30],
+	// NOT trust tier (identity verification, 0-5). The circuit proves the tier against the
+	// engagement Merkle tree, so it's cryptographically verified and can't be inflated.
 	const stakeInDollars = Number(stakeAmount) / 1e6;
-	const tier = user.trust_tier ?? 0;
-
-	// Verify client-claimed tier doesn't exceed server-known tier (off-chain defense)
+	let engagementTier = 0;
 	if (publicInputs && Array.isArray(publicInputs) && publicInputs.length > 30) {
-		const claimedTier = Number(publicInputs[30]);
-		if (Number.isInteger(claimedTier) && claimedTier > tier) {
-			console.warn(`[debates/arguments] Tier mismatch: claimed=${claimedTier}, server=${tier}, user=${session.userId}`);
+		const provenTier = Number(publicInputs[30]);
+		if (Number.isInteger(provenTier) && provenTier >= 0 && provenTier <= 4) {
+			engagementTier = provenTier;
 		}
 	}
 
-	const weightedScore = Math.floor(Math.sqrt(stakeInDollars) * Math.pow(2, tier) * 1e6);
+	const weightedScore = Math.floor(Math.sqrt(stakeInDollars) * Math.pow(2, engagementTier) * 1e6);
 
 	const argumentIndex = debate.argument_count;
 
@@ -255,7 +256,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			amendment_hash: amendmentHash,
 			nullifier_hash: nullifierHex || null,
 			stake_amount: BigInt(stakeAmount),
-			engagement_tier: tier,
+			engagement_tier: engagementTier,
 			weighted_score: BigInt(weightedScore),
 			total_stake: BigInt(stakeAmount),
 			verification_status: initialStatus,

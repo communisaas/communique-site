@@ -54,7 +54,7 @@
 </script>
 
 <svelte:head>
-	<title>{debate?.propositionText ? `Debate: ${debate.propositionText.slice(0, 60)}` : 'Debate'} | Communiqué</title>
+	<title>{debate?.propositionText ? `Debate: ${debate.propositionText.slice(0, 60)}` : 'Debate'} | Commons</title>
 </svelte:head>
 
 <div class="py-8">

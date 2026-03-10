@@ -11,6 +11,31 @@
 	import { debateState } from '$lib/stores/debateState.svelte';
 	import { computeStanceCounts } from '$lib/utils/debate-stats';
 
+	// Fetch actual engagement tier from Shadow Atlas (voter-protocol reputation).
+	// Trust tier (identity verification, 0-5) != engagement tier (civic participation, 0-4).
+	let userEngagementTier = $state(0);
+	let engagementTierLoaded = $state(false);
+
+	async function fetchEngagementTier() {
+		try {
+			const res = await fetch('/api/shadow-atlas/engagement', { method: 'POST' });
+			if (res.ok) {
+				const data = await res.json();
+				userEngagementTier = data.engagementTier ?? 0;
+			}
+		} catch {
+			// Graceful degradation: tier-0 default (same as Shadow Atlas endpoint)
+		} finally {
+			engagementTierLoaded = true;
+		}
+	}
+
+	$effect(() => {
+		if (!engagementTierLoaded) {
+			fetchEngagementTier();
+		}
+	});
+
 	interface Props {
 		debate: DebateData;
 		userTrustTier?: number;
@@ -225,7 +250,7 @@
 				{debate}
 				prices={debateState.lmsrPrices}
 				epochPhase={debateState.epochPhase}
-				engagementTier={userTrustTier}
+				engagementTier={userEngagementTier}
 				{onCommit}
 				preselectedArgument={preselectedTradeArgument}
 			/>

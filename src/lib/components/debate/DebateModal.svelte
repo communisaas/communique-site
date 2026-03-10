@@ -73,6 +73,18 @@
 
 	// Derived
 	const userTier = $derived(user?.trust_tier ?? 0);
+
+	// Fetch actual engagement tier from Shadow Atlas (voter-protocol reputation).
+	// Trust tier (identity verification, 0-5) != engagement tier (civic participation, 0-4).
+	let userEngagementTier = $state(0);
+	$effect(() => {
+		fetch('/api/shadow-atlas/engagement', { method: 'POST' })
+			.then((res) => (res.ok ? res.json() : null))
+			.then((data) => {
+				if (data?.engagementTier != null) userEngagementTier = data.engagementTier;
+			})
+			.catch(() => {}); // tier-0 default on failure
+	});
 	const canProceedFromStance = $derived(stance !== null);
 	const canProceedFromBody = $derived(body.trim().length >= 20);
 	const canProceedFromProposition = $derived(propositionText.trim().length >= 10);
@@ -454,7 +466,7 @@
 	{:else if phase === 'staking'}
 		<StakeVisualizer
 			{stakeAmount}
-			engagementTier={userTier}
+			engagementTier={userEngagementTier}
 			onchange={(amount) => { stakeAmount = amount; }}
 		/>
 
@@ -471,7 +483,7 @@
 			</p>
 			<StakeVisualizer
 				{stakeAmount}
-				engagementTier={userTier}
+				engagementTier={userEngagementTier}
 				onchange={(amount) => { stakeAmount = amount; }}
 			/>
 		</div>
