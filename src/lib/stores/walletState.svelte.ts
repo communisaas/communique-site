@@ -169,7 +169,16 @@ function createWalletState() {
 				);
 
 				const provider = await connectInjectedWallet();
-				const providerChainId = await provider.getChainId();
+				let providerChainId = await provider.getChainId();
+
+				// Switch to Scroll Sepolia if on wrong chain
+				if (providerChainId !== 534351) {
+					const { switchToScrollSepolia } = await import(
+						'$lib/core/wallet/evm-provider'
+					);
+					await switchToScrollSepolia(provider.eip1193Provider);
+					providerChainId = await provider.getChainId();
+				}
 
 				// Success — update all state
 				evmProvider = provider;

@@ -10,8 +10,12 @@ vi.mock('$lib/core/wallet/evm-provider', () => ({
 	subscribeToWalletEvents: vi.fn().mockReturnValue(() => {})
 }));
 
-beforeEach(() => {
-	walletState.disconnect();
+beforeEach(async () => {
+	global.fetch = vi.fn().mockResolvedValue({
+		ok: true,
+		json: vi.fn().mockResolvedValue({})
+	});
+	await walletState.disconnect();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -165,14 +169,20 @@ describe('derived getters', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('disconnect', () => {
-	it('resets all state to defaults', () => {
+	it('resets all state to defaults', async () => {
 		walletState.initFromPageData({
 			wallet_address: '0xABC',
 			wallet_type: 'evm'
 		});
 		expect(walletState.connected).toBe(true);
 
-		walletState.disconnect();
+		// disconnect() is async — it calls fetch('/api/wallet/disconnect') then resets state
+		global.fetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: vi.fn().mockResolvedValue({})
+		});
+
+		await walletState.disconnect();
 
 		expect(walletState.connected).toBe(false);
 		expect(walletState.address).toBeNull();

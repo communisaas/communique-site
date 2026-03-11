@@ -4,6 +4,7 @@
 	import { isDigitalCredentialsSupported } from '$lib/core/identity/digital-credentials-api';
 	import { FEATURES } from '$lib/config/features';
 	import DebateMarketCard from '$lib/components/debate/DebateMarketCard.svelte';
+	import DebateParticipationPanel from '$lib/components/wallet/debate/DebateParticipationPanel.svelte';
 	import { buildArgumentStanceMap } from '$lib/utils/debate-stats';
 	import type { PageData, ActionData } from './$types';
 
@@ -408,6 +409,12 @@
 					argumentStances={debateStanceMap}
 					currentEpoch={data.debateSignal.currentEpoch ?? undefined}
 					href={debateHref}
+				/>
+				<DebateParticipationPanel
+					debateId={data.debateSignal.id}
+					debateStatus={data.debateSignal.status}
+					arguments={data.debateSignal.arguments ?? []}
+					debateIdOnchain={data.debateSignal.debateIdOnchain}
 				/>
 			</div>
 		{/if}

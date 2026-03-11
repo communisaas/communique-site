@@ -34,7 +34,7 @@ export const FEATURES = {
 	STANCE_POSITIONS: false,
 
 	/** Wallet connect, balance display, on-chain identity */
-	WALLET: false,
+	WALLET: true,
 
 	/** Enhanced campaign analytics: delivery metrics, timelines, coordination integrity overlay */
 	ANALYTICS_EXPANDED: true,
