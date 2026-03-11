@@ -5,16 +5,21 @@
 	 * Perceptual Engineering: Working memory constraint (4±1 chunks).
 	 * Only 3 elements: Back navigation | Brand | User identity
 	 *
-	 * Layout: [Back] -------- [Avatar/SignIn]
+	 * Layout: [Back] -------- [TrustTier | Wallet | Avatar/SignIn]
 	 */
+	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { browser } from '$app/environment';
 	import HeaderBackButton from './header/HeaderBackButton.svelte';
 	import HeaderAvatar from './header/HeaderAvatar.svelte';
 	import HeaderSignIn from './header/HeaderSignIn.svelte';
 	import BalanceDisplay from '$lib/components/wallet/BalanceDisplay.svelte';
 	import WalletStatus from '$lib/components/wallet/WalletStatus.svelte';
+	import TrustTierIndicator from '$lib/components/identity/TrustTierIndicator.svelte';
 	import { walletState } from '$lib/stores/walletState.svelte';
 	import type { HeaderUser, HeaderTemplate, TemplateUseEvent } from '$lib/types/any-replacements';
+	import type { TrustTier } from '$lib/core/identity/authority-level';
+	import type { SessionCredentialForPolicy } from '$lib/core/identity/credential-policy';
 	import { FEATURES } from '$lib/config/features';
 
 	let {
@@ -30,6 +35,36 @@
 		isHidden?: boolean;
 		onTemplateUse?: ((event: TemplateUseEvent) => void) | null;
 	} = $props();
+
+	// ── Trust tier from server-provided user data ────────────────────────
+	const trustTier = $derived((user?.trust_tier ?? 0) as TrustTier);
+
+	// ── Session credential from IndexedDB (async, client-only) ──────────
+	let credential: SessionCredentialForPolicy | null = $state(null);
+
+	$effect(() => {
+		if (!browser || !user?.id) {
+			credential = null;
+			return;
+		}
+
+		let cancelled = false;
+		const userId = user.id;
+		import('$lib/core/identity/session-credentials').then(async ({ getSessionCredential }) => {
+			const cred = await getSessionCredential(userId);
+			if (cancelled) return;
+			credential = cred ? {
+				userId: cred.userId,
+				createdAt: cred.createdAt,
+				expiresAt: cred.expiresAt,
+				congressionalDistrict: cred.congressionalDistrict
+			} : null;
+		}).catch(() => {
+			if (!cancelled) credential = null;
+		});
+
+		return () => { cancelled = true; };
+	});
 
 	// Derive back navigation from context
 	const backConfig = $derived.by(() => {
@@ -75,9 +110,14 @@
 		<!-- Center: Empty (flexible space) -->
 		<div class="identity-strip__center"></div>
 
-		<!-- Right: User identity + wallet -->
+		<!-- Right: Trust tier + wallet + avatar -->
 		<div class="identity-strip__right">
 			{#if user}
+				<TrustTierIndicator
+					tier={trustTier}
+					{credential}
+					onUpgrade={() => goto('/profile')}
+				/>
 				{#if FEATURES.WALLET}
 					<div class="identity-strip__wallet-group">
 						{#if walletState.connected}

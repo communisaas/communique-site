@@ -305,6 +305,8 @@ export interface HeaderUser {
 	verification_method?: string | null;
 	verified_at?: Date | null;
 	address?: string | null;
+	// Graduated trust tier (0-5) — from deriveTrustTier()
+	trust_tier?: number;
 	// Wallet integration
 	wallet_address?: string | null;
 	wallet_type?: string | null;

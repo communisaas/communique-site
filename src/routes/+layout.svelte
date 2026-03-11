@@ -1,10 +1,13 @@
 <script lang="ts">
 
+	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	// Note: `browser` import removed - was causing CLS by gating route detection
+	import { browser } from '$app/environment';
+	// Note: `browser` import restored — needed for credential loading (not route detection)
 	import '../app.css';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import HeaderSystem from '$lib/components/layout/HeaderSystem.svelte';
+	import CredentialExpiryNudge from '$lib/components/identity/CredentialExpiryNudge.svelte';
 	import ErrorBoundary from '$lib/components/error/ErrorBoundary.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
 	import ModalRegistry from '$lib/components/modals/ModalRegistry.svelte';
@@ -13,6 +16,7 @@
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 	import type { HeaderUser, HeaderTemplate, TemplateUseEvent } from '$lib/types/any-replacements';
+	import type { SessionCredentialForPolicy } from '$lib/core/identity/credential-policy';
 	import type { PageUser } from '$lib/stores/walletState.svelte';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
@@ -32,6 +36,7 @@
 	const isTemplatePage = $derived($page.route?.id === '/s/[slug]');
 	const isOrgPage = $derived(($page.url?.pathname === '/org' || $page.url?.pathname?.startsWith('/org/')) ?? false);
 	const isEmbedPage = $derived($page.url?.pathname?.startsWith('/embed/') ?? false);
+	const isCampaignPage = $derived($page.url?.pathname?.startsWith('/c/') ?? false);
 
 	let {
 		children,
@@ -47,6 +52,32 @@
 		walletState.initFromPageData(data.user as PageUser | null);
 	});
 
+	// ── Session credential for CredentialExpiryNudge (async, client-only) ──
+	let layoutCredential: SessionCredentialForPolicy | null = $state(null);
+
+	$effect(() => {
+		const userId = (data.user as Record<string, unknown> | null)?.id as string | undefined;
+		if (!browser || !userId) {
+			layoutCredential = null;
+			return;
+		}
+
+		let cancelled = false;
+		import('$lib/core/identity/session-credentials').then(async ({ getSessionCredential }) => {
+			const cred = await getSessionCredential(userId);
+			if (cancelled) return;
+			layoutCredential = cred ? {
+				userId: cred.userId,
+				createdAt: cred.createdAt,
+				expiresAt: cred.expiresAt,
+				congressionalDistrict: cred.congressionalDistrict
+			} : null;
+		}).catch(() => {
+			if (!cancelled) layoutCredential = null;
+		});
+
+		return () => { cancelled = true; };
+	});
 
 	// Handle template use from header/bottom bar
 	function handleTemplateUse(__event: TemplateUseEvent): void {
@@ -74,13 +105,19 @@
 	}
 </script>
 
-{#if isEmbedPage}
-	<!-- Embed pages: Completely bare, no chrome, no global UI -->
+{#if isEmbedPage || isCampaignPage}
+	<!-- Embed and campaign pages: Own layout, no root chrome -->
 	{@render children()}
 {:else}
 	<!-- HeaderSystem handles context-aware header rendering -->
 	<!-- HeaderTemplate is a structural subset of Template — handler only reads common fields at runtime -->
 	<HeaderSystem user={data.user as HeaderUser | null} template={(data as Record<string, unknown>).template as HeaderTemplate | null} onTemplateUse={handleTemplateUse} />
+
+	<!-- Credential expiry nudge: fixed banner below header, shows when credential nears expiration -->
+	<CredentialExpiryNudge
+		credential={layoutCredential}
+		onReverify={() => goto('/profile')}
+	/>
 
 	{#if (data.user as Record<string, unknown> | null)?.id === 'user-seed-1'}
 		<div class="pointer-events-none fixed top-0 left-0 right-0 z-[9999] bg-amber-500/10 text-amber-200 text-center text-xs py-1 font-mono tracking-wide">
