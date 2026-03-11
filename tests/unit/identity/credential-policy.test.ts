@@ -46,9 +46,9 @@ const MS_PER_HOUR = 60 * 60 * 1000;
 // Action TTLs in days for readability
 const TTL_DAYS = {
 	view_content: 180,
-	community_discussion: 90,
+	community_discussion: 180,
 	constituent_message: 90,
-	official_petition: 7
+	official_petition: 30
 };
 
 // ============================================================================
@@ -88,9 +88,9 @@ describe('exported constants', () => {
 
 		it('should have correct TTL values in milliseconds', () => {
 			expect(CREDENTIAL_TTL.view_content).toBe(180 * MS_PER_DAY);
-			expect(CREDENTIAL_TTL.community_discussion).toBe(90 * MS_PER_DAY);
+			expect(CREDENTIAL_TTL.community_discussion).toBe(180 * MS_PER_DAY);
 			expect(CREDENTIAL_TTL.constituent_message).toBe(90 * MS_PER_DAY);
-			expect(CREDENTIAL_TTL.official_petition).toBe(7 * MS_PER_DAY);
+			expect(CREDENTIAL_TTL.official_petition).toBe(30 * MS_PER_DAY);
 		});
 
 		it('should enforce view_content >= community_discussion >= official_petition ordering', () => {
@@ -103,9 +103,9 @@ describe('exported constants', () => {
 	describe('CREDENTIAL_TTL_DISPLAY', () => {
 		it('should have human-readable display names for all actions', () => {
 			expect(CREDENTIAL_TTL_DISPLAY.view_content).toBe('6 months');
-			expect(CREDENTIAL_TTL_DISPLAY.community_discussion).toBe('3 months');
+			expect(CREDENTIAL_TTL_DISPLAY.community_discussion).toBe('6 months');
 			expect(CREDENTIAL_TTL_DISPLAY.constituent_message).toBe('90 days');
-			expect(CREDENTIAL_TTL_DISPLAY.official_petition).toBe('7 days');
+			expect(CREDENTIAL_TTL_DISPLAY.official_petition).toBe('30 days');
 		});
 	});
 
@@ -131,7 +131,7 @@ describe('exported constants', () => {
 
 		it('should have specific tier TTL values', () => {
 			expect(TIER_CREDENTIAL_TTL[1]).toBe(365 * MS_PER_DAY); // OAuth: 1 year
-			expect(TIER_CREDENTIAL_TTL[2]).toBe(90 * MS_PER_DAY);  // Address attestation: 90 days
+			expect(TIER_CREDENTIAL_TTL[2]).toBe(180 * MS_PER_DAY); // Address attestation: 6 months
 			expect(TIER_CREDENTIAL_TTL[3]).toBe(180 * MS_PER_DAY); // Identity verification: 6 months
 			expect(TIER_CREDENTIAL_TTL[4]).toBe(180 * MS_PER_DAY); // Passport verification: 6 months
 			expect(TIER_CREDENTIAL_TTL[5]).toBe(365 * MS_PER_DAY); // Government credential: 1 year
@@ -220,32 +220,32 @@ describe('isCredentialValidForAction', () => {
 		});
 	});
 
-	describe('community_discussion (90 day TTL)', () => {
+	describe('community_discussion (180 day TTL)', () => {
 		it('should be valid for a fresh credential', () => {
 			const credential = makeCredential(0);
 			const result = isCredentialValidForAction(credential, 'community_discussion');
 			expect(result.valid).toBe(true);
 		});
 
-		it('should be valid at 89 days (maxAge - 1 day)', () => {
-			const credential = makeCredential(89);
+		it('should be valid at 179 days (maxAge - 1 day)', () => {
+			const credential = makeCredential(179);
 			const result = isCredentialValidForAction(credential, 'community_discussion');
 			expect(result.valid).toBe(true);
 		});
 
-		it('should be invalid at 91 days (maxAge + 1 day)', () => {
-			const credential = makeCredential(91);
+		it('should be invalid at 181 days (maxAge + 1 day)', () => {
+			const credential = makeCredential(181);
 			const result = isCredentialValidForAction(credential, 'community_discussion');
 			expect(result.valid).toBe(false);
 			expect(result.requiresReverification).toBe(true);
 		});
 
-		it('should be invalid at exactly 90 days', () => {
+		it('should be invalid at exactly 180 days', () => {
 			const now = Date.now();
 			vi.spyOn(Date, 'now').mockReturnValue(now);
 			const credential: SessionCredentialForPolicy = {
 				userId: 'test',
-				createdAt: new Date(now - 90 * MS_PER_DAY)
+				createdAt: new Date(now - 180 * MS_PER_DAY)
 			};
 			const result = isCredentialValidForAction(credential, 'community_discussion');
 			expect(result.valid).toBe(false);
@@ -274,38 +274,38 @@ describe('isCredentialValidForAction', () => {
 			expect(result.message).toContain('90 days');
 		});
 
-		it('should have same TTL as community_discussion', () => {
-			expect(CREDENTIAL_TTL.constituent_message).toBe(CREDENTIAL_TTL.community_discussion);
+		it('should have shorter TTL than community_discussion', () => {
+			expect(CREDENTIAL_TTL.constituent_message).toBeLessThan(CREDENTIAL_TTL.community_discussion);
 		});
 	});
 
-	describe('official_petition (7 day TTL)', () => {
+	describe('official_petition (30 day TTL)', () => {
 		it('should be valid for a fresh credential', () => {
 			const credential = makeCredential(0);
 			const result = isCredentialValidForAction(credential, 'official_petition');
 			expect(result.valid).toBe(true);
 		});
 
-		it('should be valid at 6 days (maxAge - 1 day)', () => {
-			const credential = makeCredential(6);
+		it('should be valid at 29 days (maxAge - 1 day)', () => {
+			const credential = makeCredential(29);
 			const result = isCredentialValidForAction(credential, 'official_petition');
 			expect(result.valid).toBe(true);
 		});
 
-		it('should be invalid at 8 days (maxAge + 1 day)', () => {
-			const credential = makeCredential(8);
+		it('should be invalid at 31 days (maxAge + 1 day)', () => {
+			const credential = makeCredential(31);
 			const result = isCredentialValidForAction(credential, 'official_petition');
 			expect(result.valid).toBe(false);
 			expect(result.message).toContain('signing official petitions');
-			expect(result.message).toContain('7 days');
+			expect(result.message).toContain('30 days');
 		});
 
-		it('should be invalid at exactly 7 days', () => {
+		it('should be invalid at exactly 30 days', () => {
 			const now = Date.now();
 			vi.spyOn(Date, 'now').mockReturnValue(now);
 			const credential: SessionCredentialForPolicy = {
 				userId: 'test',
-				createdAt: new Date(now - 7 * MS_PER_DAY)
+				createdAt: new Date(now - 30 * MS_PER_DAY)
 			};
 			const result = isCredentialValidForAction(credential, 'official_petition');
 			expect(result.valid).toBe(false);
@@ -384,7 +384,7 @@ describe('isCredentialValidForAction', () => {
 		});
 
 		it('should be 0 for expired official_petition', () => {
-			const credential = makeCredential(10);
+			const credential = makeCredential(35);
 			const result = isCredentialValidForAction(credential, 'official_petition');
 			expect(result.daysUntilExpiry).toBe(0);
 		});
@@ -437,14 +437,14 @@ describe('isCredentialValidForAction', () => {
 			expect(messageResult.valid).toBe(false);
 		});
 
-		it('91-day-old credential should also fail community_discussion', () => {
+		it('91-day-old credential should still pass community_discussion (180 day TTL)', () => {
 			const credential = makeCredential(91);
 			const result = isCredentialValidForAction(credential, 'community_discussion');
-			expect(result.valid).toBe(false);
+			expect(result.valid).toBe(true);
 		});
 
-		it('8-day-old credential should fail official_petition but pass everything else', () => {
-			const credential = makeCredential(8);
+		it('31-day-old credential should fail official_petition but pass everything else', () => {
+			const credential = makeCredential(31);
 			expect(isCredentialValidForAction(credential, 'view_content').valid).toBe(true);
 			expect(isCredentialValidForAction(credential, 'community_discussion').valid).toBe(true);
 			expect(isCredentialValidForAction(credential, 'constituent_message').valid).toBe(true);
@@ -498,8 +498,8 @@ describe('getValidActionsForCredential', () => {
 		expect(valid).toContain('official_petition');
 	});
 
-	it('should return 3 actions when official_petition has expired (8 days)', () => {
-		const credential = makeCredential(8);
+	it('should return 3 actions when official_petition has expired (31 days)', () => {
+		const credential = makeCredential(31);
 		const valid = getValidActionsForCredential(credential);
 		expect(valid).toHaveLength(3);
 		expect(valid).toContain('view_content');
@@ -508,14 +508,14 @@ describe('getValidActionsForCredential', () => {
 		expect(valid).not.toContain('official_petition');
 	});
 
-	it('should return only view_content when discussion-level actions have expired (91 days)', () => {
+	it('should return view_content and community_discussion when constituent_message has expired (91 days)', () => {
 		const credential = makeCredential(91);
 		const valid = getValidActionsForCredential(credential);
-		expect(valid).toHaveLength(1);
+		expect(valid).toHaveLength(2);
 		expect(valid).toContain('view_content');
+		expect(valid).toContain('community_discussion');
 		expect(valid).not.toContain('official_petition');
 		expect(valid).not.toContain('constituent_message');
-		expect(valid).not.toContain('community_discussion');
 	});
 
 	it('should return empty array when all actions have expired (181 days)', () => {
@@ -552,16 +552,17 @@ describe('getNextExpiringAction', () => {
 	});
 
 	it('should return constituent_message when official_petition has expired', () => {
-		const credential = makeCredential(8);
+		const credential = makeCredential(31);
 		const result = getNextExpiringAction(credential);
-		// official_petition expired (7 day TTL), next is constituent_message (90 day TTL)
+		// official_petition expired (30 day TTL), next is constituent_message (90 day TTL)
 		expect(result).toBe('constituent_message');
 	});
 
-	it('should return view_content when community_discussion and constituent_message have expired', () => {
+	it('should return view_content when constituent_message has expired', () => {
 		const credential = makeCredential(91);
 		const result = getNextExpiringAction(credential);
-		expect(result).toBe('view_content');
+		// constituent_message expired (90 day TTL), community_discussion and view_content share 180 day TTL
+		expect(result).toBe('community_discussion');
 	});
 
 	it('should return null when all actions have expired', () => {
@@ -574,12 +575,12 @@ describe('getNextExpiringAction', () => {
 		expect(getNextExpiringAction(credential)).toBeNull();
 	});
 
-	it('should handle exact boundary: at 7 days official_petition expires', () => {
+	it('should handle exact boundary: at 30 days official_petition expires', () => {
 		const now = Date.now();
 		vi.spyOn(Date, 'now').mockReturnValue(now);
 		const credential: SessionCredentialForPolicy = {
 			userId: 'test',
-			createdAt: new Date(now - 7 * MS_PER_DAY)
+			createdAt: new Date(now - 30 * MS_PER_DAY)
 		};
 		// age === maxAge => NOT less than maxAge => expired
 		// Should skip official_petition and return constituent_message
@@ -598,9 +599,7 @@ describe('shouldPromptReverification', () => {
 
 	describe('with upcomingAction specified', () => {
 		it('should not prompt when well within TTL (official_petition, 0 days old)', () => {
-			// For official_petition (7 day TTL), warning starts at day 0 (7 - 7 = 0)
-			// Actually: threshold is 7 days, warningPeriod is 7 days, so prompt when age > 0
-			// A credential created now has age ~0, which is NOT > 0 ms technically
+			// For official_petition (30 day TTL), warning starts at day 23 (30 - 7 = 23)
 			const now = Date.now();
 			vi.spyOn(Date, 'now').mockReturnValue(now);
 			const credential: SessionCredentialForPolicy = {
@@ -608,15 +607,15 @@ describe('shouldPromptReverification', () => {
 				createdAt: new Date(now) // literally just created
 			};
 			const result = shouldPromptReverification(credential, 'official_petition');
-			// age = 0, threshold - warning = 7*MS - 7*MS = 0, so age > 0 => false
+			// age = 0, threshold - warning = 30*MS - 7*MS = 23*MS, so age > 23*MS => false
 			expect(result).toBe(false);
 		});
 
-		it('should prompt when approaching official_petition expiry (1 day old)', () => {
-			// For official_petition: threshold=7 days, warning=7 days
-			// Prompt when age > (7-7)*MS_PER_DAY = 0
-			// 1 day old => age > 0 => should prompt
-			const credential = makeCredential(1);
+		it('should prompt when approaching official_petition expiry (24 days old)', () => {
+			// For official_petition: threshold=30 days, warning=7 days
+			// Prompt when age > (30-7)*MS_PER_DAY = 23 days
+			// 24 days old => age > 23 days => should prompt
+			const credential = makeCredential(24);
 			expect(shouldPromptReverification(credential, 'official_petition')).toBe(true);
 		});
 
@@ -648,8 +647,9 @@ describe('shouldPromptReverification', () => {
 			expect(shouldPromptReverification(credential, 'constituent_message')).toBe(false);
 		});
 
-		it('should prompt for community_discussion at 84 days', () => {
-			const credential = makeCredential(84);
+		it('should prompt for community_discussion at 174 days', () => {
+			// community_discussion: threshold=180 days, warning=7 days => prompt at 173+ days
+			const credential = makeCredential(174);
 			expect(shouldPromptReverification(credential, 'community_discussion')).toBe(true);
 		});
 
@@ -771,21 +771,21 @@ describe('isTierCredentialFresh', () => {
 		});
 	});
 
-	describe('tier 2 (address attestation, 90 day TTL)', () => {
-		it('should be fresh at 89 days', () => {
-			const verifiedAt = new Date(Date.now() - 89 * MS_PER_DAY);
+	describe('tier 2 (address attestation, 180 day TTL)', () => {
+		it('should be fresh at 179 days', () => {
+			const verifiedAt = new Date(Date.now() - 179 * MS_PER_DAY);
 			expect(isTierCredentialFresh(2, verifiedAt)).toBe(true);
 		});
 
-		it('should be stale at 91 days', () => {
-			const verifiedAt = new Date(Date.now() - 91 * MS_PER_DAY);
+		it('should be stale at 181 days', () => {
+			const verifiedAt = new Date(Date.now() - 181 * MS_PER_DAY);
 			expect(isTierCredentialFresh(2, verifiedAt)).toBe(false);
 		});
 
-		it('should be stale at exactly 90 days', () => {
+		it('should be stale at exactly 180 days', () => {
 			const now = Date.now();
 			vi.spyOn(Date, 'now').mockReturnValue(now);
-			const verifiedAt = new Date(now - 90 * MS_PER_DAY);
+			const verifiedAt = new Date(now - 180 * MS_PER_DAY);
 			expect(isTierCredentialFresh(2, verifiedAt)).toBe(false);
 		});
 	});
@@ -920,13 +920,13 @@ describe('formatValidationError', () => {
 		expect(viewError.maxDays).toBe(180);
 
 		const discussionError = formatValidationError(isCredentialValidForAction(credential, 'community_discussion'));
-		expect(discussionError.maxDays).toBe(90);
+		expect(discussionError.maxDays).toBe(180);
 
 		const messageError = formatValidationError(isCredentialValidForAction(credential, 'constituent_message'));
 		expect(messageError.maxDays).toBe(90);
 
 		const petitionError = formatValidationError(isCredentialValidForAction(credential, 'official_petition'));
-		expect(petitionError.maxDays).toBe(7);
+		expect(petitionError.maxDays).toBe(30);
 	});
 
 	it('should echo the action in the error', () => {
@@ -1064,15 +1064,15 @@ describe('getDaysUntilExpiry', () => {
 		expect(getDaysUntilExpiry(credential, 'view_content')).toBe(0);
 	});
 
-	it('should handle official_petition correctly (7 day TTL)', () => {
+	it('should handle official_petition correctly (30 day TTL)', () => {
 		const now = Date.now();
 		vi.spyOn(Date, 'now').mockReturnValue(now);
 		const credential: SessionCredentialForPolicy = {
 			userId: 'test',
 			createdAt: new Date(now - 3 * MS_PER_DAY)
 		};
-		// 7 - 3 = 4 days
-		expect(getDaysUntilExpiry(credential, 'official_petition')).toBe(4);
+		// 30 - 3 = 27 days
+		expect(getDaysUntilExpiry(credential, 'official_petition')).toBe(27);
 	});
 });
 
@@ -1102,7 +1102,7 @@ describe('getExpirationDateForAction', () => {
 		expect(expiration.getTime()).toBe(now + 180 * MS_PER_DAY);
 	});
 
-	it('should return a date 7 days after createdAt for official_petition', () => {
+	it('should return a date 30 days after createdAt for official_petition', () => {
 		const now = Date.now();
 		vi.spyOn(Date, 'now').mockReturnValue(now);
 		const credential: SessionCredentialForPolicy = {
@@ -1110,7 +1110,7 @@ describe('getExpirationDateForAction', () => {
 			createdAt: new Date(now)
 		};
 		const expiration = getExpirationDateForAction(credential, 'official_petition');
-		expect(expiration.getTime()).toBe(now + 7 * MS_PER_DAY);
+		expect(expiration.getTime()).toBe(now + 30 * MS_PER_DAY);
 	});
 
 	it('should work with ISO string dates', () => {
@@ -1120,7 +1120,7 @@ describe('getExpirationDateForAction', () => {
 			createdAt: new Date(now).toISOString()
 		};
 		const expiration = getExpirationDateForAction(credential, 'community_discussion');
-		expect(expiration.getTime()).toBe(now + 90 * MS_PER_DAY);
+		expect(expiration.getTime()).toBe(now + 180 * MS_PER_DAY);
 	});
 });
 
@@ -1178,7 +1178,7 @@ describe('edge cases', () => {
 			vi.spyOn(Date, 'now').mockReturnValue(now);
 			const credential: SessionCredentialForPolicy = {
 				userId: 'test',
-				createdAt: new Date(now - (7 * MS_PER_DAY - 1))
+				createdAt: new Date(now - (30 * MS_PER_DAY - 1))
 			};
 			const result = isCredentialValidForAction(credential, 'official_petition');
 			expect(result.valid).toBe(true);
@@ -1189,7 +1189,7 @@ describe('edge cases', () => {
 			vi.spyOn(Date, 'now').mockReturnValue(now);
 			const credential: SessionCredentialForPolicy = {
 				userId: 'test',
-				createdAt: new Date(now - (7 * MS_PER_DAY + 1))
+				createdAt: new Date(now - (30 * MS_PER_DAY + 1))
 			};
 			const result = isCredentialValidForAction(credential, 'official_petition');
 			expect(result.valid).toBe(false);

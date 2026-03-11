@@ -99,7 +99,7 @@ export async function storeConstituentAddress(
 	}
 
 	const db = await getDB();
-	const encrypted = await encryptCredential(address);
+	const encrypted = await encryptCredential(address, userId);
 	const expiresAt = new Date(Date.now() + TTL_MS);
 
 	await db.put(STORE_NAME, { userId, encrypted, expiresAt });
@@ -132,7 +132,7 @@ export async function getConstituentAddress(
 			return null;
 		}
 
-		const address = await decryptCredential<ConstituentAddress>(stored.encrypted);
+		const address = await decryptCredential<ConstituentAddress>(stored.encrypted, userId);
 		return address;
 	} catch (e) {
 		console.warn('[ConstituentAddress] Retrieval failed:', e);

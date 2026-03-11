@@ -77,10 +77,10 @@ describe('issueDistrictCredential', () => {
 		expect(issuance).toBeGreaterThanOrEqual(before);
 		expect(issuance).toBeLessThanOrEqual(after);
 
-		// Expiration should be ~90 days (±1 second tolerance for test timing)
-		const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+		// Expiration should be ~180 days / 6 months (±1 second tolerance for test timing)
+		const sixMonthsMs = 180 * 24 * 60 * 60 * 1000;
 		const delta = expiration - issuance;
-		expect(Math.abs(delta - ninetyDaysMs)).toBeLessThan(1000);
+		expect(Math.abs(delta - sixMonthsMs)).toBeLessThan(1000);
 	});
 
 	it('should use didKey as credentialSubject.id when available', async () => {

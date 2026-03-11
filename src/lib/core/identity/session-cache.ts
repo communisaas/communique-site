@@ -221,7 +221,7 @@ export async function storeSessionCredential(credential: SessionCredential): Pro
 
 		// Serialize and encrypt credential data
 		const serialized = serializeForEncryption(credential);
-		const encrypted = await encryptCredential(serialized);
+		const encrypted = await encryptCredential(serialized, credential.userId);
 
 		storedCredential = {
 			userId: credential.userId,
@@ -295,7 +295,7 @@ export async function getSessionCredential(userId: string): Promise<SessionCrede
 				if (stored.encrypted) {
 					// Decrypt the credential
 					try {
-						const decrypted = await decryptCredential<Record<string, unknown>>(stored.encrypted);
+						const decrypted = await decryptCredential<Record<string, unknown>>(stored.encrypted, userId);
 						credential = deserializeAfterDecryption(decrypted);
 						console.debug('[Session Cache] Retrieved encrypted credential for user:', userId);
 					} catch (decryptError) {

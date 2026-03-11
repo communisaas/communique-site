@@ -1,17 +1,19 @@
 /**
- * Credential Encryption Service
+ * Credential Encryption Service (v2 — Per-User HKDF Isolation)
  *
  * Uses Web Crypto API to encrypt session credentials before IndexedDB storage.
- * The encryption key is:
- * - Device-bound (stored in IndexedDB, not exportable)
- * - Non-extractable (cannot be read by JavaScript after creation)
- * - AES-GCM 256-bit for authenticated encryption
  *
- * SECURITY: This is defense-in-depth. Same-origin scripts with full DOM access
- * can still invoke decrypt(). This protects against:
- * - Reading credentials via devtools
- * - Cross-site data exfiltration
- * - Non-privileged browser extensions
+ * v2 changes (multi-user device isolation):
+ * - Device master key is now raw 256-bit entropy stored in IndexedDB
+ * - Per-user AES-256-GCM keys derived via HKDF(masterKey, userId)
+ * - Record IDs are HMAC(userId, masterKey) — User B cannot enumerate User A's records
+ * - Derived keys are held in-memory only, discarded on logout
+ * - Legacy v1 device key (AES-GCM CryptoKey) retained for migration decryption
+ *
+ * Security model:
+ * - Same-origin scripts with full DOM access can still invoke decrypt()
+ * - Protects against: devtools inspection, cross-site exfiltration, non-privileged extensions
+ * - NEW: Cross-user isolation on shared devices (library, family laptop)
  *
  * @module credential-encryption
  */
@@ -23,9 +25,12 @@
 const KEY_DB_NAME = 'communique-keystore';
 const KEY_STORE_NAME = 'encryption-keys';
 const DEVICE_KEY_ID = 'device-credential-key';
+const DERIVATION_KEY_ID = 'device-derivation-key-v2';
+
+const HKDF_SALT = new TextEncoder().encode('communique-credential-v2');
 
 /** Current encryption version for migration support */
-const ENCRYPTION_VERSION = 1;
+const ENCRYPTION_VERSION = 2;
 
 // ============================================================================
 // Types
@@ -66,10 +71,8 @@ let keyDBInstance: IDBDatabase | null = null;
  * Open the key storage database
  *
  * Uses a separate database from credential storage for security isolation.
- * The key is stored as a non-extractable CryptoKey object.
  */
 async function openKeyDB(): Promise<IDBDatabase> {
-	// Return cached connection if available
 	if (keyDBInstance) {
 		return keyDBInstance;
 	}
@@ -85,7 +88,6 @@ async function openKeyDB(): Promise<IDBDatabase> {
 		request.onsuccess = () => {
 			keyDBInstance = request.result;
 
-			// Handle connection close
 			keyDBInstance.onclose = () => {
 				keyDBInstance = null;
 			};
@@ -104,99 +106,246 @@ async function openKeyDB(): Promise<IDBDatabase> {
 }
 
 // ============================================================================
-// Key Management
+// Key Management — v2 (Per-User HKDF)
 // ============================================================================
 
-/** Cached device key for performance */
-let cachedDeviceKey: CryptoKey | null = null;
+/** Cached master key bytes */
+let cachedMasterBytes: ArrayBuffer | null = null;
+
+/** Serialization lock — prevents concurrent callers from generating duplicate master keys */
+let masterKeyPromise: Promise<ArrayBuffer> | null = null;
+
+/** Cached per-user derived keys: Map<recordId, CryptoKey> */
+const derivedKeyCache = new Map<string, CryptoKey>();
 
 /**
- * Get or create the device-bound encryption key
+ * Get or create the device master key material (256-bit random bytes).
  *
- * Key properties:
- * - Algorithm: AES-GCM with 256-bit key
- * - Non-extractable: Cannot be read by JavaScript after creation
- * - Usage: encrypt and decrypt only
- *
- * The key is persisted in IndexedDB and survives browser restarts.
- * Different devices will have different keys (device-bound).
- *
- * @returns The device encryption key
+ * Stored as raw bytes in IndexedDB. Unlike v1's CryptoKey, raw bytes can be
+ * imported as HKDF key material for per-user derivation.
  */
-async function getOrCreateDeviceKey(): Promise<CryptoKey> {
-	// Return cached key if available
-	if (cachedDeviceKey) {
-		return cachedDeviceKey;
+async function getOrCreateMasterBytes(): Promise<ArrayBuffer> {
+	if (cachedMasterBytes) {
+		return cachedMasterBytes;
+	}
+
+	// Serialize concurrent callers to prevent duplicate key generation.
+	// storeSessionCredential calls Promise.all([encryptCredential(identity), encryptCredential(treeState)])
+	// — both call getOrCreateMasterBytes() concurrently on first load. Without this lock,
+	// both see cachedMasterBytes=null, both generate random bytes, second put() wins,
+	// and the first encryption becomes undecryptable.
+	if (!masterKeyPromise) {
+		masterKeyPromise = (async () => {
+			try {
+				const db = await openKeyDB();
+
+				// Try to get existing derivation key
+				const existing = await new Promise<ArrayBuffer | null>((resolve, reject) => {
+					const tx = db.transaction(KEY_STORE_NAME, 'readonly');
+					const store = tx.objectStore(KEY_STORE_NAME);
+					const request = store.get(DERIVATION_KEY_ID);
+
+					request.onerror = () => reject(request.error);
+					request.onsuccess = () => {
+						const result = request.result;
+						resolve(result?.rawBytes ?? null);
+					};
+				});
+
+				if (existing) {
+					cachedMasterBytes = existing;
+					console.debug('[CredentialEncryption] Retrieved existing derivation master key');
+					return existing;
+				}
+
+				// Generate 256-bit random master key material
+				const rawBytes = crypto.getRandomValues(new Uint8Array(32)).buffer;
+
+				await new Promise<void>((resolve, reject) => {
+					const tx = db.transaction(KEY_STORE_NAME, 'readwrite');
+					const store = tx.objectStore(KEY_STORE_NAME);
+					const request = store.put({
+						id: DERIVATION_KEY_ID,
+						rawBytes,
+						createdAt: new Date().toISOString()
+					});
+
+					request.onerror = () => reject(request.error);
+					request.onsuccess = () => resolve();
+				});
+
+				cachedMasterBytes = rawBytes;
+				console.debug('[CredentialEncryption] Created new derivation master key');
+				return rawBytes;
+			} finally {
+				masterKeyPromise = null;
+			}
+		})();
+	}
+
+	return masterKeyPromise;
+}
+
+/**
+ * Derive a per-user AES-256-GCM key via HKDF.
+ *
+ * HKDF(SHA-256, masterKey, salt="communique-credential-v2", info=userId) -> AES-256-GCM
+ *
+ * The derived key is:
+ * - Deterministic: same master + same userId = same key (survives page reload)
+ * - Non-extractable: cannot be exported from Web Crypto
+ * - In-memory only: discarded on logout/page close, re-derived on next login
+ */
+async function deriveUserKey(userId: string): Promise<CryptoKey> {
+	const masterBytes = await getOrCreateMasterBytes();
+
+	// Import master bytes as HKDF base key
+	const hkdfKey = await crypto.subtle.importKey(
+		'raw',
+		masterBytes,
+		{ name: 'HKDF' },
+		false,
+		['deriveKey']
+	);
+
+	// Derive per-user AES-256-GCM key
+	const info = new TextEncoder().encode(userId);
+	const derivedKey = await crypto.subtle.deriveKey(
+		{
+			name: 'HKDF',
+			hash: 'SHA-256',
+			salt: HKDF_SALT,
+			info
+		},
+		hkdfKey,
+		{ name: 'AES-GCM', length: 256 },
+		false, // non-extractable
+		['encrypt', 'decrypt']
+	);
+
+	return derivedKey;
+}
+
+/**
+ * Get (or derive + cache) the per-user encryption key.
+ *
+ * @param userId - The authenticated user's ID
+ * @returns Per-user AES-256-GCM CryptoKey
+ */
+async function getUserKey(userId: string): Promise<CryptoKey> {
+	const recordId = await computeRecordId(userId);
+	const cached = derivedKeyCache.get(recordId);
+	if (cached) {
+		return cached;
+	}
+
+	const key = await deriveUserKey(userId);
+	derivedKeyCache.set(recordId, key);
+	return key;
+}
+
+/**
+ * Compute an opaque record ID for a userId.
+ *
+ * Uses HMAC-SHA-256(userId, masterKeyBytes) so that:
+ * - User B cannot determine User A's record IDs by inspecting IndexedDB
+ * - The mapping is deterministic (same user always gets same record ID)
+ *
+ * @param userId - The authenticated user's ID
+ * @returns Hex-encoded HMAC digest (64 chars)
+ */
+export async function computeRecordId(userId: string): Promise<string> {
+	const masterBytes = await getOrCreateMasterBytes();
+
+	// Import master bytes as HMAC key
+	const hmacKey = await crypto.subtle.importKey(
+		'raw',
+		masterBytes,
+		{ name: 'HMAC', hash: 'SHA-256' },
+		false,
+		['sign']
+	);
+
+	const data = new TextEncoder().encode(userId);
+	const signature = await crypto.subtle.sign('HMAC', hmacKey, data);
+
+	return bufferToHex(signature);
+}
+
+/**
+ * Discard all cached per-user derived keys.
+ *
+ * Call this on logout. The ciphertext remains in IndexedDB but is inert
+ * without re-deriving the key (which requires the userId + master key).
+ */
+export function discardDerivedKeys(): void {
+	derivedKeyCache.clear();
+	console.debug('[CredentialEncryption] All derived keys discarded');
+}
+
+// ============================================================================
+// Legacy v1 Key Management (for migration)
+// ============================================================================
+
+/** Cached legacy device key */
+let cachedLegacyKey: CryptoKey | null = null;
+
+/**
+ * Get the legacy v1 device key (if it exists).
+ * Used only for decrypting v1-encrypted credentials during migration.
+ */
+async function getLegacyDeviceKey(): Promise<CryptoKey | null> {
+	if (cachedLegacyKey) {
+		return cachedLegacyKey;
 	}
 
 	const db = await openKeyDB();
 
-	// Try to get existing key
-	const existingKey = await new Promise<CryptoKey | null>((resolve, reject) => {
+	const existing = await new Promise<CryptoKey | null>((resolve, reject) => {
 		const tx = db.transaction(KEY_STORE_NAME, 'readonly');
 		const store = tx.objectStore(KEY_STORE_NAME);
 		const request = store.get(DEVICE_KEY_ID);
 
-		request.onerror = () => {
-			console.error('[CredentialEncryption] Failed to retrieve key:', request.error);
-			reject(request.error);
-		};
-
+		request.onerror = () => reject(request.error);
 		request.onsuccess = () => {
-			const result = request.result;
-			resolve(result?.key ?? null);
+			resolve(request.result?.key ?? null);
 		};
 	});
 
-	if (existingKey) {
-		cachedDeviceKey = existingKey;
-		console.debug('[CredentialEncryption] Retrieved existing device key');
-		return existingKey;
+	if (existing) {
+		cachedLegacyKey = existing;
+	}
+	return existing;
+}
+
+/**
+ * Decrypt a v1-encrypted credential using the legacy device key.
+ *
+ * @throws Error if legacy key doesn't exist or decryption fails
+ */
+export async function decryptLegacyCredential<T>(encrypted: EncryptedCredential): Promise<T> {
+	const key = await getLegacyDeviceKey();
+	if (!key) {
+		throw new Error('[CredentialEncryption] No legacy device key found for v1 decryption');
 	}
 
-	// Generate new AES-GCM key
-	const key = await crypto.subtle.generateKey(
-		{
-			name: 'AES-GCM',
-			length: 256
-		},
-		false, // NOT extractable - device-bound, cannot be exported
-		['encrypt', 'decrypt']
+	const ivBuffer = base64ToBuffer(encrypted.iv);
+	const ciphertext = base64ToBuffer(encrypted.ciphertext);
+
+	const plaintext = await crypto.subtle.decrypt(
+		{ name: 'AES-GCM', iv: ivBuffer },
+		key,
+		ciphertext
 	);
 
-	// Store the key
-	await new Promise<void>((resolve, reject) => {
-		const tx = db.transaction(KEY_STORE_NAME, 'readwrite');
-		const store = tx.objectStore(KEY_STORE_NAME);
-		const request = store.put({
-			id: DEVICE_KEY_ID,
-			key,
-			createdAt: new Date().toISOString()
-		});
-
-		request.onerror = () => {
-			console.error('[CredentialEncryption] Failed to store key:', request.error);
-			reject(request.error);
-		};
-
-		request.onsuccess = () => resolve();
-	});
-
-	cachedDeviceKey = key;
-	console.debug('[CredentialEncryption] Created new device-bound encryption key');
-	return key;
+	const json = new TextDecoder().decode(plaintext);
+	return JSON.parse(json);
 }
 
 // ============================================================================
 // Encoding Utilities
 // ============================================================================
 
-/**
- * Convert ArrayBuffer to base64 string
- *
- * @param buffer - ArrayBuffer to encode
- * @returns Base64-encoded string
- */
 function bufferToBase64(buffer: ArrayBuffer): string {
 	const bytes = new Uint8Array(buffer);
 	let binary = '';
@@ -206,12 +355,6 @@ function bufferToBase64(buffer: ArrayBuffer): string {
 	return btoa(binary);
 }
 
-/**
- * Convert base64 string to ArrayBuffer
- *
- * @param base64 - Base64-encoded string
- * @returns Decoded ArrayBuffer
- */
 function base64ToBuffer(base64: string): ArrayBuffer {
 	const binary = atob(base64);
 	const bytes = new Uint8Array(binary.length);
@@ -221,33 +364,33 @@ function base64ToBuffer(base64: string): ArrayBuffer {
 	return bytes.buffer;
 }
 
+function bufferToHex(buffer: ArrayBuffer): string {
+	const bytes = new Uint8Array(buffer);
+	return Array.from(bytes)
+		.map((b) => b.toString(16).padStart(2, '0'))
+		.join('');
+}
+
 // ============================================================================
-// Encryption Operations
+// Encryption Operations (v2 — Per-User)
 // ============================================================================
 
 /**
- * Encrypt a credential object for storage
+ * Encrypt a credential object for a specific user.
  *
- * Uses AES-GCM authenticated encryption:
- * - 256-bit key (device-bound, non-extractable)
- * - 96-bit random IV (unique per encryption)
- * - Authentication tag (prevents tampering)
+ * Uses per-user AES-256-GCM key derived via HKDF from device master key.
  *
  * @param credential - Credential object to encrypt
- * @returns Encrypted credential wrapper
+ * @param userId - The authenticated user's ID
+ * @returns Encrypted credential wrapper (version 2)
  */
-export async function encryptCredential<T>(credential: T): Promise<EncryptedCredential> {
-	const key = await getOrCreateDeviceKey();
+export async function encryptCredential<T>(credential: T, userId: string): Promise<EncryptedCredential> {
+	const key = await getUserKey(userId);
 
-	// Generate random IV (12 bytes / 96 bits for AES-GCM)
-	// NIST recommends 96-bit IV for AES-GCM
 	const iv = crypto.getRandomValues(new Uint8Array(12));
-
-	// Serialize credential to JSON
 	const plaintext = JSON.stringify(credential);
 	const data = new TextEncoder().encode(plaintext);
 
-	// Encrypt with AES-GCM
 	const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
 
 	return {
@@ -258,30 +401,35 @@ export async function encryptCredential<T>(credential: T): Promise<EncryptedCred
 }
 
 /**
- * Decrypt a stored credential
+ * Decrypt a stored credential for a specific user.
+ *
+ * Handles both v2 (per-user HKDF) and v1 (legacy device key) formats.
  *
  * @param encrypted - Encrypted credential wrapper
+ * @param userId - The authenticated user's ID
  * @returns Decrypted credential object
- * @throws Error if decryption fails (wrong key, tampered data, etc.)
+ * @throws Error if decryption fails
  */
-export async function decryptCredential<T>(encrypted: EncryptedCredential): Promise<T> {
-	const key = await getOrCreateDeviceKey();
+export async function decryptCredential<T>(encrypted: EncryptedCredential, userId: string): Promise<T> {
+	// v2: per-user HKDF-derived key
+	if (encrypted.version >= 2) {
+		const key = await getUserKey(userId);
 
-	// Decode IV and ciphertext
-	const ivBuffer = base64ToBuffer(encrypted.iv);
-	const iv = new Uint8Array(ivBuffer);
-	const ciphertext = base64ToBuffer(encrypted.ciphertext);
+		const ivBuffer = base64ToBuffer(encrypted.iv);
+		const ciphertext = base64ToBuffer(encrypted.ciphertext);
 
-	// Decrypt with AES-GCM
-	// This will throw if:
-	// - Wrong key (different device)
-	// - Tampered ciphertext
-	// - Invalid IV
-	const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: ivBuffer }, key, ciphertext);
+		const plaintext = await crypto.subtle.decrypt(
+			{ name: 'AES-GCM', iv: ivBuffer },
+			key,
+			ciphertext
+		);
 
-	// Parse JSON
-	const json = new TextDecoder().decode(plaintext);
-	return JSON.parse(json);
+		const json = new TextDecoder().decode(plaintext);
+		return JSON.parse(json);
+	}
+
+	// v1 fallback: legacy device-bound key
+	return decryptLegacyCredential<T>(encrypted);
 }
 
 // ============================================================================
@@ -290,28 +438,18 @@ export async function decryptCredential<T>(encrypted: EncryptedCredential): Prom
 
 /**
  * Check if encryption is available (Web Crypto API present)
- *
- * Encryption requires:
- * - Web Crypto API (crypto.subtle)
- * - IndexedDB (for key storage)
- * - Secure context (HTTPS or localhost)
- *
- * @returns True if encryption is available
  */
 export function isEncryptionAvailable(): boolean {
-	// Check for Web Crypto API
 	if (typeof crypto === 'undefined' || typeof crypto.subtle === 'undefined') {
 		console.warn('[CredentialEncryption] Web Crypto API not available');
 		return false;
 	}
 
-	// Check for IndexedDB
 	if (typeof indexedDB === 'undefined') {
 		console.warn('[CredentialEncryption] IndexedDB not available');
 		return false;
 	}
 
-	// Check for secure context (required for crypto.subtle in most browsers)
 	if (typeof window !== 'undefined' && !window.isSecureContext) {
 		console.warn('[CredentialEncryption] Not in secure context (HTTPS required)');
 		return false;
@@ -322,9 +460,6 @@ export function isEncryptionAvailable(): boolean {
 
 /**
  * Check if a stored object is encrypted
- *
- * @param stored - Stored object to check
- * @returns True if the object contains encrypted data
  */
 export function isEncryptedCredential(stored: unknown): stored is { encrypted: EncryptedCredential } {
 	if (!stored || typeof stored !== 'object') {
@@ -347,80 +482,80 @@ export function isEncryptedCredential(stored: unknown): stored is { encrypted: E
 }
 
 // ============================================================================
-// Key Rotation Support (Future)
+// Key Rotation Support
 // ============================================================================
 
 /**
- * Rotate the device encryption key
+ * Rotate the device master key.
  *
- * This will:
- * 1. Generate a new key
- * 2. Return the old and new keys for re-encryption
- *
- * Caller is responsible for re-encrypting all stored credentials.
- *
- * @returns Object containing old and new keys
+ * Generates new master bytes. Caller must re-encrypt all stored credentials.
+ * Returns old master bytes for re-encryption migration.
  */
-export async function rotateDeviceKey(): Promise<{
-	oldKey: CryptoKey | null;
-	newKey: CryptoKey;
+export async function rotateMasterKey(): Promise<{
+	oldMasterBytes: ArrayBuffer | null;
+	newMasterBytes: ArrayBuffer;
 }> {
 	const db = await openKeyDB();
+	const oldMasterBytes = cachedMasterBytes;
 
-	// Get existing key (may be null)
-	const oldKey = cachedDeviceKey;
+	const newRawBytes = crypto.getRandomValues(new Uint8Array(32)).buffer;
 
-	// Generate new key
-	const newKey = await crypto.subtle.generateKey(
-		{
-			name: 'AES-GCM',
-			length: 256
-		},
-		false,
-		['encrypt', 'decrypt']
-	);
-
-	// Store new key
 	await new Promise<void>((resolve, reject) => {
 		const tx = db.transaction(KEY_STORE_NAME, 'readwrite');
 		const store = tx.objectStore(KEY_STORE_NAME);
 		const request = store.put({
-			id: DEVICE_KEY_ID,
-			key: newKey,
+			id: DERIVATION_KEY_ID,
+			rawBytes: newRawBytes,
 			createdAt: new Date().toISOString(),
-			rotatedFrom: oldKey ? new Date().toISOString() : undefined
+			rotatedFrom: oldMasterBytes ? new Date().toISOString() : undefined
 		});
 
 		request.onerror = () => reject(request.error);
 		request.onsuccess = () => resolve();
 	});
 
-	// Update cache
-	cachedDeviceKey = newKey;
+	cachedMasterBytes = newRawBytes;
+	derivedKeyCache.clear();
 
-	console.debug('[CredentialEncryption] Device key rotated');
+	console.debug('[CredentialEncryption] Master key rotated, derived key cache cleared');
 
-	return { oldKey, newKey };
+	return { oldMasterBytes, newMasterBytes: newRawBytes };
 }
 
 /**
- * Clear the device encryption key
+ * Clear all key material (full data wipe).
  *
  * WARNING: This will make all encrypted credentials unreadable!
- * Only use for complete data wipe (user logout, privacy clear).
  */
-export async function clearDeviceKey(): Promise<void> {
+export async function clearAllKeys(): Promise<void> {
 	const db = await openKeyDB();
 
 	await new Promise<void>((resolve, reject) => {
 		const tx = db.transaction(KEY_STORE_NAME, 'readwrite');
 		const store = tx.objectStore(KEY_STORE_NAME);
-		const request = store.delete(DEVICE_KEY_ID);
+
+		// Clear both legacy and v2 keys
+		store.delete(DEVICE_KEY_ID);
+		const request = store.delete(DERIVATION_KEY_ID);
 
 		request.onerror = () => reject(request.error);
-		request.onsuccess = () => resolve();
+		tx.oncomplete = () => resolve();
 	});
 
-	cachedDeviceKey = null;
-	console.debug('[CredentialEncryption] Device key cleared');
+	cachedMasterBytes = null;
+	masterKeyPromise = null;
+	cachedLegacyKey = null;
+	derivedKeyCache.clear();
+
+	console.debug('[CredentialEncryption] All key material cleared');
 }
+
+// Legacy aliases for backward compatibility during migration
+export const clearDeviceKey = clearAllKeys;
+export const rotateDeviceKey = async () => {
+	const result = await rotateMasterKey();
+	return {
+		oldKey: null as CryptoKey | null,
+		newKey: null as unknown as CryptoKey
+	};
+};

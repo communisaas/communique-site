@@ -37,7 +37,7 @@ export interface DistrictResidencyCredential {
 	type: ['VerifiableCredential', 'DistrictResidencyCredential'];
 	issuer: string; // 'did:web:communique.io'
 	issuanceDate: string; // ISO 8601
-	expirationDate: string; // ISO 8601 (90 days from issuance)
+	expirationDate: string; // ISO 8601 (6 months from issuance)
 	credentialSubject: {
 		id: string; // user's did:key or fallback user ID
 		districtMembership: DistrictMembership;
@@ -205,13 +205,13 @@ function deterministicJSON(obj: unknown): string {
  * Issue a W3C VC 2.0 DistrictResidencyCredential.
  *
  * Signs the credential body with Ed25519 using the IDENTITY_SIGNING_KEY.
- * Expiration is TIER_CREDENTIAL_TTL[2] (90 days) from now.
+ * Expiration is TIER_CREDENTIAL_TTL[2] (6 months) from now.
  */
 export async function issueDistrictCredential(
 	params: IssueDistrictCredentialParams
 ): Promise<DistrictResidencyCredential> {
 	const now = new Date();
-	const ttl = TIER_CREDENTIAL_TTL[2]; // 90 days in ms
+	const ttl = TIER_CREDENTIAL_TTL[2]; // 6 months in ms
 	const expiry = new Date(now.getTime() + ttl);
 
 	const issuanceDate = now.toISOString();

@@ -32,15 +32,15 @@ export type CredentialAction =
  *
  * Rationale:
  * - view_content: 6 months - minimal risk, just viewing
- * - community_discussion: 3 months - community participation
- * - constituent_message: 90 days - aligned with Tier 2 district credential TTL
- * - official_petition: 7 days - legal documents require very fresh credentials
+ * - community_discussion: 6 months - community participation (aligned with tree state TTL)
+ * - constituent_message: 90 days - aligned with address-attestation freshness
+ * - official_petition: 30 days - legal documents require fresh credentials but 7d was too aggressive
  */
 export const CREDENTIAL_TTL: Record<CredentialAction, number> = {
 	view_content: 180 * 24 * 60 * 60 * 1000, // 6 months
-	community_discussion: 90 * 24 * 60 * 60 * 1000, // 3 months
-	constituent_message: 90 * 24 * 60 * 60 * 1000, // 90 days (aligned with Tier 2 district credential)
-	official_petition: 7 * 24 * 60 * 60 * 1000 // 7 days
+	community_discussion: 180 * 24 * 60 * 60 * 1000, // 6 months
+	constituent_message: 90 * 24 * 60 * 60 * 1000, // 90 days
+	official_petition: 30 * 24 * 60 * 60 * 1000 // 30 days
 } as const;
 
 /**
@@ -48,9 +48,9 @@ export const CREDENTIAL_TTL: Record<CredentialAction, number> = {
  */
 export const CREDENTIAL_TTL_DISPLAY: Record<CredentialAction, string> = {
 	view_content: '6 months',
-	community_discussion: '3 months',
+	community_discussion: '6 months',
 	constituent_message: '90 days',
-	official_petition: '7 days'
+	official_petition: '30 days'
 };
 
 /**
@@ -61,6 +61,19 @@ export const ACTION_DESCRIPTIONS: Record<CredentialAction, string> = {
 	community_discussion: 'community discussions',
 	constituent_message: 'contacting your representatives',
 	official_petition: 'signing official petitions'
+};
+
+/**
+ * Minimum trust tier required for each action.
+ *
+ * Authoritative source — components (TrustTierIndicator, etc.) import
+ * this instead of hardcoding tier gates. Keeps tier policy in one place.
+ */
+export const ACTION_REQUIRED_TIER: Record<CredentialAction, number> = {
+	view_content: 0,
+	community_discussion: 1,
+	constituent_message: 2,
+	official_petition: 2
 };
 
 /**
@@ -343,19 +356,19 @@ export function formatValidationError(validation: CredentialValidation): {
  * Rationale:
  * - Tier 0: Guest (no account, no credential)
  * - Tier 1: Authenticated (OAuth), 1 year TTL (session-based)
- * - Tier 2: Address attestation, 90 days (population moves ~2% annually)
+ * - Tier 2: Address attestation, 6 months (aligned with tree state TTL)
  * - Tier 3: Identity verification, 6 months (ID card / drivers license)
  * - Tier 4: Passport verification, 6 months (NFC passport)
  * - Tier 5: Government credential, 1 year (follows issuer TTL)
  *
  * Note: Action-based TTL applies ON TOP of tier TTL.
- * Example: Tier 2 user sending constituent_message needs credential < 30 days old,
- * even though the district credential itself is valid for 90 days.
+ * Example: Tier 2 user sending constituent_message needs credential < 90 days old,
+ * even though the district credential itself is valid for 6 months.
  */
 export const TIER_CREDENTIAL_TTL: Record<number, number> = {
 	0: 0, // Guest: no credential
 	1: 365 * 24 * 60 * 60 * 1000, // Authenticated (OAuth): 1 year
-	2: 90 * 24 * 60 * 60 * 1000, // Address attestation: 90 days
+	2: 180 * 24 * 60 * 60 * 1000, // Address attestation: 6 months
 	3: 180 * 24 * 60 * 60 * 1000, // Identity verification: 6 months
 	4: 180 * 24 * 60 * 60 * 1000, // Passport verification: 6 months
 	5: 365 * 24 * 60 * 60 * 1000 // Government credential: follows issuer TTL (typically 1-5 years)
