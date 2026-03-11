@@ -149,46 +149,56 @@ Phase 0 proved the loop works. Phase 1 makes it self-serve and starts building t
 
 ---
 
-### Phase 2: Cancel Action Network (Months 4–8)
+### Phase 2: Transcend the Landscape (Months 4–8)
 
-Phase 1 proved orgs will use verified advocacy. Phase 2 makes Commons a complete AN replacement. Every feature carries verification context — there is no "basic" layer underneath.
+Phase 1 proved orgs will use verified advocacy. Phase 2 makes Commons the platform every org wants — not by matching competitors feature-for-feature, but by making every feature carry verification context that no competitor can produce. The target is the entire landscape: AN, Quorum, VoterVoice, the conservative void, the local government void, the citizen-tool graveyard.
 
 **Build:**
 
 | Task | Why |
 |---|---|
-| Events (RSVP, map, attendee management, calendar export) | AN parity. Attendance verified against identity commitment. |
-| Fundraising (Stripe checkout, one-time + recurring, 0% platform fee) | AN parity. Donation linked to verified supporter. |
-| Automation / ladders | Event-driven workflows: verified action → debate invitation → follow-up → escalation. Trigger conditions include tier transitions and verification events. |
-| Patch-through calling (Twilio) | Verified caller district before connection. No competitor has this. A staffer picks up and hears: "Connecting you with a verified constituent from your district." |
-| SMS campaigns (Twilio) | Segmentation by tier + district. Delivery status. |
-| Multi-org networks (Coalition tier) | Parent org, child orgs, shared supporter pools with portable reputation, cross-org coordination. |
+| Events (RSVP, map, attendee management, calendar export) | AN/Quorum parity. Attendance verified against identity commitment. "247 verified constituents attended your town hall" — no competitor can prove who was there. |
+| Fundraising (Stripe checkout, one-time + recurring, 0% platform fee) | AN parity at zero platform fee. AN takes a cut. Quorum doesn't offer fundraising. Commons routes every dollar to the cause. |
+| Automation / ladders | Event-driven workflows: verified action → debate invitation → follow-up → escalation. Trigger conditions include tier transitions and verification events. Quorum has workflow automation for legislative tracking; Commons has it for verified civic engagement. |
+| Patch-through calling (Twilio) | Verified caller district before connection. No competitor has this. A staffer picks up and hears: "Connecting you with a verified constituent from your district." Capitol Canary (Quorum) connects calls without district verification. |
+| SMS campaigns (Twilio) | Segmentation by tier + district. Every SMS campaign is verifiable. |
+| Multi-org networks (Coalition tier) | Parent org, child orgs, shared supporter pools with portable reputation, cross-org coordination. Coalition verification aggregation: "12 organizations, 4,847 verified constituents across 3 states." |
+| Local government boundary ingestion | State-by-state LAFCO data ingestion for special districts (water, fire, transit, parks, hospitals). Each ingested boundary type unlocks an entirely unserved market. |
+| International boundary support | Canada (338 federal ridings + provincial), UK (650 constituencies + devolved assemblies + parish councils), Australia (federal + state electorates). Shadow Atlas architecture already supports country-code-keyed registries. |
+| Public API + SDK | RESTful, free, uncapped on all tiers. OpenAPI spec, generated TypeScript/Python SDKs, "Building on Commons" developer guide. AN gates API behind paid tiers and caps at 4 req/s. Quorum charges separately for API access. |
 
-**AN migration accelerator:**
-- API sync tool (built) + marketing campaign targeting AN orgs
-- Parallel operation mode (shadow → split → primary, spec'd in `docs/specs/AN-MIGRATION-SPEC.md`)
-- "Why switch" landing page showing side-by-side: AN campaign report vs. Commons verification packet
+**Migration accelerators (all platforms, not just AN):**
+- AN API sync tool (built) + parallel operation mode (shadow → split → primary)
+- CSV import from any platform (built)
+- "Why switch" landing pages per competitor:
+  - vs AN: campaign report comparison (count vs. verification packet)
+  - vs Quorum: 10-30x price reduction ($75/mo vs $10K+/yr) with verification Quorum can't match
+  - vs VoterVoice: credibility over SmartCheck (verified identity > AI-personalized language)
+  - vs nothing (conservative/local orgs): "The advocacy platform that doesn't exist yet. Until now."
 
 **Target orgs:**
-- Progressive orgs frustrated with AN's limitations (one-action-at-a-time export, 4 req/s API, no CRM)
-- Mid-size orgs (5K–50K contacts) who are AN's core market
-- Conservative/nonpartisan orgs who had no affordable option
+- Domain-obsessed groups (water rights, school safety, transit equity, fire safety, environmental justice) — these orgs have no tool because no platform covers their district type
+- Progressive orgs frustrated with AN's limitations (export lock-in, 4 req/s API, no verification)
+- Conservative/nonpartisan orgs who've been deplatformed or priced out
+- Trade associations paying Quorum $10K-$30K+/yr for less capability
+- International advocacy orgs with no verification option at any price
+- Mid-size orgs (5K–50K contacts) across the political spectrum
 
 ---
 
 ### Phase 3: Transcend the Paradigm (Months 8–14)
 
-Capabilities that redefine civic infrastructure. Only possible because Phases 0–2 built the verification substrate.
+Capabilities that no competitor can imagine, let alone build. Only possible because Phases 0–2 established the verification substrate across jurisdictions, ideologies, and borders.
 
 **Build:**
 
 | Task | Why |
 |---|---|
-| Debate markets on campaigns | Campaign reaches traction → verified participants stake SUPPORT/OPPOSE/AMEND → LMSR pricing → 5-model AI panel scores argument quality. sqrt(stake) * 2^tier. Quality of reasoning, not just count. The contracts and AI evaluator are built (193 tests). Need campaign integration. |
-| Verified agentic delegation | Agents act for verified constituents. Monitor legislation across all 24 district types. Draft grounding-verified messages. Participate in debates. ZK proof on every action. Tier-gated authority, revocable, private memory. Agent infrastructure is built (8,188 lines). Need delegation contract + UI. |
-| Agentic legislative monitoring | Agent queries Shadow Atlas for constituent's districts → monitors bills → alerts constituent. Personalized to verified districts, not keyword-based. ~$6.50/org/month (Gemini + LegiScan). |
-| Legislator scorecards | Track campaign delivery → official response. "This legislator received 891 verified constituent messages on this bill and voted No." Accountability instrument no scorecard platform can produce. |
-| Coalition verification aggregation | Template-level metrics across endorsing orgs. "1,462 verified constituents across 3 organizations." Decision-maker sees collective weight. |
+| Debate markets on campaigns | Campaign reaches traction → verified participants stake SUPPORT/OPPOSE/AMEND → LMSR pricing → 5-model AI panel scores argument quality. sqrt(stake) * 2^tier. Quality of reasoning, not just count. The contracts and AI evaluator are built (193 tests). Need campaign integration. A school board advocacy group can surface genuine community consensus on a bond measure. A water district accountability org can prove its members actually disagree on implementation details. Quality signal, not just volume. |
+| Verified agentic delegation | Agents act for verified constituents. Monitor legislation across all 24 district types — from Congress to the local water board. Draft grounding-verified messages. Participate in debates. ZK proof on every action. Tier-gated authority, revocable, private memory. Agent infrastructure is built (8,188 lines). Need delegation contract + UI. A constituent tells their agent: "Watch every school board agenda for items about budget cuts. Draft a response matching my positions. Notify me before sending." The agent does this across every relevant jurisdiction, at ~$6.50/org/month. Quorum charges $10K+/year for legislative monitoring that only covers federal and state — and has no verification. |
+| Agentic legislative monitoring | Agent queries Shadow Atlas for constituent's districts → monitors bills across all covered jurisdictions → alerts constituent. Personalized to verified districts, not keyword-based. Works internationally as boundary data expands (Canadian ridings, UK constituencies, etc.). |
+| Legislator scorecards | Track campaign delivery → official response across every level of government. "This school board member received 147 verified constituent messages on the bond measure and voted No." "This MP received 891 verified constituent contacts on NHS funding and didn't respond." Accountability that works for Congress, city council, and everything between. |
+| Cross-border coalition campaigns | A climate coalition runs a verified campaign targeting legislators in the US, UK, and Canada simultaneously. Each constituent is verified against their own country's district tree. The coalition report aggregates across jurisdictions: "4,200 verified constituents across 3 countries." Protocol-level identity makes this possible. App-level platforms can't compose across borders. |
 
 ---
 
@@ -197,12 +207,14 @@ Capabilities that redefine civic infrastructure. Only possible because Phases 0�
 | Capability | Why Skip |
 |---|---|
 | Web form navigation (à la EveryAction 99.6% deliverability) | Fragile — forms change constantly, get CAPTCHAd, break. Our verification packet sent directly via email is more impactful than navigating an intake form. The packet IS the delivery. |
-| Legislative tracking breadth (à la Quorum) | We'll never match Quorum's 50-state legislative corpus. We don't need to. Agentic monitoring personalized to verified districts is a better product for our users than a search engine across all bills. |
+| Legislative tracking breadth (à la Quorum) | We'll never match Quorum's 50-state legislative corpus. We don't need to. Agentic monitoring personalized to verified districts is a better product for our users than a search engine across all bills. Quorum charges $10K+/yr for that search engine. We give personalized monitoring at ~$6.50/org/month. |
 | Full CRM (à la Bonterra) | CRM is not our product. Verification is. An org can use EveryAction for donor management and Commons for advocacy. We stay focused on what no one else can build. |
 | Social media advocacy | Low ROI relative to engineering cost. Verification doesn't carry to social platforms. |
 | Video messages to officials | Niche (only CiviClick offers this). Low adoption. |
 | Fax to officials | Legacy channel. Declining relevance. |
-| Gamification | Engagement tiers are structural, not gamified. Earned through civic labor, not badges. |
+| Gamification | Engagement tiers are structural, not gamified. Earned through civic labor, not badges. CiviClick gamifies with points and rewards. We don't. Reputation is proof of civic participation, not a loyalty program. |
+| Partisan alignment | Not a feature we skip — a constraint we refuse. AN restricts to progressives. i360 is Koch-ecosystem. Heritage Action is Heritage-only. Verification is orthogonal to ideology. A gun rights org and a gun control org can both run verified campaigns on the same protocol. The proof doesn't care about the position. |
+| Per-country product forks | voter-protocol's 24-slot model and country-code registries mean international expansion is boundary data ingestion, not product development. No separate UK product, Canadian product, Australian product. One protocol, one app, many district trees. |
 
 ---
 
@@ -243,43 +255,57 @@ Campaign reaches traction threshold → org enables debate market → verified s
                     Low Verification
 ```
 
-Commons occupies the only quadrant no competitor can reach: high verification at low cost. Debate markets add a vertical axis no one else has — quality signals, not just volume.
+Commons occupies the only quadrant no competitor can reach: high verification at low cost. Debate markets add a vertical axis no one else has — quality signals, not just volume. 24 boundary types add a depth axis no one else has — local government, not just federal/state.
 
-**Against Quorum:** We don't compete on legislative intelligence breadth. We compete on the output — what the staffer receives. Proof beats volume.
+**Against Quorum ($10K-$30K+/yr, 9 modules, Quincy AI):** Don't compete on legislative intelligence breadth. Compete on output — what the staffer receives. Quorum helps a lobbyist analyze bills. Commons helps verified constituents prove they exist. A trade association paying Quorum $30K/yr for grassroots advocacy gets AI-generated message variants from unverified senders. Commons Organization tier at $75/mo gets verification packets with ZK proof of identity, district membership across 24 boundary types, and coordination integrity scores. 10-30x cheaper. Structurally more credible.
 
-**Against Bonterra:** We don't compete on CRM. We complement it. Use EveryAction for fundraising, Commons for advocacy. When the advocacy campaigns consistently outperform, the conversation shifts.
+**Against Bonterra/EveryAction (20K+ orgs, 69.5% market share):** Don't compete on CRM. Complement it. Use EveryAction for donor management, Commons for advocacy. But know this: Bonterra deplatformed conservative nonprofits (documented, Senate investigation), has "appalling" post-acquisition support, and its Que AI is fundraising-focused. When advocacy campaigns on Commons consistently outperform Bonterra's unverified advocacy module, the conversation shifts.
 
-**Against VoterVoice:** We don't compete on mobilization speed. We compete on mobilization credibility. SmartCheck makes messages sound authentic. Commons makes messages be authentic.
+**Against VoterVoice/FiscalNote (publicly traded, enterprise):** Don't compete on mobilization speed. Compete on credibility. SmartCheck uses ChatGPT to make messages sound authentic. Commons makes messages be authentic — the sender is cryptographically verified. VoterVoice only matches officials in areas >250K population; Commons resolves 24 boundary types down to water districts and school boards.
 
-**Against Action Network:** We compete directly. Same market (grassroots advocacy orgs), lower price, stronger product (verification), wider market (political neutrality). Migration pipeline built and spec'd.
+**Against Action Network (12K+ orgs, progressive-only):** Compete directly. Same market (grassroots advocacy orgs), lower price ($0 vs $15/mo minimum), stronger product (verification), wider market (political neutrality), wider scope (24 district types vs ~3). Migration pipeline built and spec'd. AN's API is capped at 4 req/s on paid tiers. Commons API is free and uncapped.
 
-**Against the conservative void:** We don't compete. We fill a vacuum. There is no conservative AN. We're it — and we serve both sides.
+**Against the conservative void:** Fill a vacuum. Bonterra deplatformed conservative nonprofits. AN rejects them at the front door. Quorum prices them out. The conservative advocacy market has no affordable, integrated advocacy platform. Free tier wins this entire market by default.
+
+**Against the local government void:** Create a market. 90,887 local government entities, 500,396 elected officials, zero affordable advocacy tools. School parent coalitions, water district accountability groups, transit equity orgs, fire safety advocates — they use Mailchimp and Google Forms today. Commons with 24 boundary types is the only platform that can target these officials at any price, and we offer it free.
+
+**Against the international void:** Extend the protocol. voter-protocol's 24-slot district model and country-code-keyed registries are designed for global expansion. No competitor operates at protocol level across borders. A UK environmental org, a Canadian healthcare coalition, an Australian transit advocacy group — same verification infrastructure, same proof guarantees.
+
+**Against the citizen-tool graveyard (Resistbot, Democracy.io, Countable):** Citizen-facing tools are dying or dead. Resistbot serves individuals via text, unverified, no org features. Democracy.io is unmaintained. Countable pivoted to HR. POPVOX serves institutions, not grassroots. Commons serves both layers — individuals and organizations — on shared verification infrastructure. The person layer is the structural differentiator. The org layer is the business.
 
 ---
 
 ## Go-to-Market Sequence
 
+### Principle: Any Org, Any Domain, Any Legislature
+
+The platform serves whoever has constituents and cares enough to prove it. Not "progressive advocacy platform." Not "conservative advocacy platform." Not "US-only platform." Infrastructure. The verification proof is the universal value — every org wants their campaign to be taken seriously, regardless of ideology, issue domain, or level of government. The orgs most obsessed with their domain — the ones who live and breathe water rights, school safety, transit equity, pharmaceutical pricing, gun rights, environmental justice, tenant protections — are the ones who will use Commons hardest, because proof is what converts their obsession into legislative leverage.
+
 ### Beachhead (Phase 0–1, months 1–4)
 
 | Segment | Why First | Acquisition |
 |---|---|---|
-| Science/health advocacy | Credibility is the product. "847 verified constituents" changes how a committee staffer reads testimony. | Direct outreach to 10–20 foundations/coalitions. |
-| Local government advocacy | School boards, water districts, transit authorities — 21 of 24 Shadow Atlas boundary types have zero competitor coverage. We're the only platform that can target these offices. | Partner with local government transparency orgs. |
-| Nonpartisan/conservative groups | No affordable tooling exists. Free tier is immediately the best option they've ever had. | Content marketing: "The advocacy platform that doesn't check your politics." |
+| **Domain-obsessed local groups** | School parent coalitions, water district accountability, transit equity, fire safety. 90,887 local government entities, 500,396 elected officials, **zero** affordable advocacy tools. These orgs use Google Forms and Mailchimp because nothing else exists. Commons with 24 boundary types is the only platform that can target their officials — at any price. Free tier wins by default. | Partner with local government transparency orgs (Sunshine Foundation, OpenGov orgs, League of Women Voters chapters). Content: "Finally, a tool for school board advocacy." |
+| **Science/health advocacy** | Credibility IS the product. "847 verified constituents in your district support NIH funding" changes how a committee staffer reads testimony. Disease foundations, research coalitions, scientific societies — they've been sending unverified form emails and watching them get deleted. | Direct outreach to 10–20 foundations/coalitions. Show them the verification packet. One demo closes. |
+| **Conservative/nonpartisan groups** | Deplatformed by Bonterra, rejected by AN's front door, priced out of Quorum. No affordable tooling exists. Free tier is immediately the best they've ever had. Second Amendment orgs, faith-based advocacy, fiscal policy groups, pro-life organizations — all underserved. | Content marketing: "The advocacy platform that doesn't check your politics." Outreach to Startup Caucus network, conservative think tanks, faith-based coalitions. |
+| **Single-issue orgs across spectrum** | Environmental justice. Immigration reform. Criminal justice reform. Homeschool advocacy. Agricultural policy. Veterans affairs. These orgs are domain-obsessed — they don't care about platform politics, they care about whether their campaign reaches the right official with proof that their supporters are real. | SEO: "[issue] advocacy tools." Product-led growth from template discovery. |
 
 ### Expansion (Phase 2, months 4–8)
 
 | Segment | Why Now | Acquisition |
 |---|---|---|
-| Progressive orgs wanting proof | Run Commons alongside AN. Compare staffer response rates. Migration when they see the difference. | AN migration tool + comparison landing page. |
-| Small orgs (<5K contacts) | Free tier vs. AN's $15/mo minimum. Full API. No paywall on analytics. | Product-led growth. Self-serve signup. |
+| **Progressive orgs wanting proof** | Run Commons alongside AN. Compare staffer response rates. Verification packet vs. unverified email count. Migration when the data proves the point. AN's export lock-in (one action at a time, automation ladders non-portable) makes this sticky — Commons' OSDI import and parallel operation mode de-risk the switch. | AN migration tool + comparison landing page. Side-by-side: AN report vs. Commons verification packet. |
+| **Trade associations fleeing Quorum pricing** | Currently paying $10K–$30K+/year for legislative tracking + grassroots advocacy. Commons Organization tier at $75/mo ($900/yr) is 10-30x cheaper with verification packets Quorum can't produce. Quorum Quincy AI analyzes bills; Commons agents monitor bills AND verify the constituents who care about them. | Case studies from beachhead orgs showing staffer response rate improvement. Direct outreach to association management companies. |
+| **Small orgs (<5K contacts)** | Free tier vs. AN's $15/mo minimum. Full API, uncapped. No paywall on analytics. Every small org with a cause — tenant advocacy, animal rights, disability rights, education reform — can run verified campaigns for free. | Product-led growth. Self-serve signup. Template discovery drives adoption. |
+| **International early adopters** | UK, Canada, Australia — boundary data available, English-speaking, parliamentary systems with similar constituency models. A UK environmental org targeting MPs, a Canadian healthcare coalition targeting provincial legislators. Same verification infrastructure, first-mover advantage in markets with zero verified advocacy tools. | Partner with civic tech organizations in target countries. Boundary data ingestion as the trigger for market entry. |
 
 ### Scale (Phase 3, months 8–14)
 
 | Segment | Why Now | Acquisition |
 |---|---|---|
-| Corporate advocacy / trade associations | Currently paying Quorum $10K–$30K+/year. Commons Organization tier at $900/year with verification packets. | Case studies from beachhead orgs showing staffer response rate improvement. |
-| Coalition networks | Cross-org reputation portable. Template-level verification aggregation. | Coalition tier feature launch + outreach to multi-org alliances. |
+| **Corporate advocacy / trade associations** | Phase 2 proved the staffer response rate improvement. Now the case study exists. Fortune 500 companies paying Quorum $30K+/yr for grassroots modules see that verified constituent contacts produce meetings, not inbox noise. | Enterprise sales motion backed by Phase 1-2 case studies. |
+| **Coalition networks** | Cross-org reputation portable. Template-level verification aggregation across endorsing organizations. "12 organizations, 4,847 verified constituents across 3 states" is a different kind of political pressure. | Coalition tier feature launch + outreach to multi-org alliances (climate coalitions, healthcare coalitions, education coalitions). |
+| **International expansion** | Shadow Atlas ingests boundary data country by country. Each country unlocked creates a new market with zero competition for verified advocacy. EU parliamentary elections, Indian state assemblies, Brazilian legislative assemblies — the 24-slot model accommodates any governance hierarchy. | Country-by-country boundary data partnerships. Protocol-level composability means a single org can run cross-border campaigns as constituency data expands. |
 
 ---
 

@@ -77,10 +77,26 @@ Full specification: `specs/agentic-civic-infrastructure.md`
 
 ## Political Neutrality
 
-Every major advocacy platform is either explicitly progressive (Action Network — 501(c)(4), stated in ToS) or progressive-leaning (EveryAction — 69.5% market share, Bonterra parent). Commons verifies constituency, not ideology. Science-focused orgs, single-issue groups, conservative advocacy, nonpartisan coalitions — the protocol doesn't filter by politics. It filters by proof.
+Every major advocacy platform is either explicitly progressive (Action Network — 501(c)(4), stated in ToS) or progressive-leaning (EveryAction — 69.5% market share, Bonterra parent). Bonterra actively deplatformed conservative nonprofits (Senate Commerce Committee investigation, 2024). Action Network rejects them at signup. The conservative side has no affordable, integrated advocacy platform — just fundraising tools (WinRed), canvassing tools (i360), and texting tools (RumbleUp), none of which connect constituents to legislators.
+
+Commons verifies constituency, not ideology. Science-focused orgs, single-issue groups, conservative advocacy, nonpartisan coalitions, domain-obsessed local groups — the protocol doesn't filter by politics. It filters by proof. A gun rights org and a gun control org can both run verified campaigns on the same infrastructure. A tenant union and a landlord association can both target the same city council member with verified constituent contacts. The decision-maker sees proof from both sides.
 
 This is not centrism. It is infrastructure. Roads don't check voter registration.
+
+## Universal by Design
+
+Commons is not a US federal advocacy tool that might expand someday. It is civic communication infrastructure designed for any org, targeting any level of government, in any country with structured district boundaries.
+
+**Any org.** Conservative, progressive, or simply obsessed with their domain. Water rights. School safety. Transit equity. Pharmaceutical pricing. Agricultural policy. Veterans affairs. Fire district accountability. The orgs that will use Commons hardest are the ones most obsessed with their issue — because proof is what converts their obsession into legislative leverage. When you've spent years fighting a water district rate hike, and you can finally send a verification packet proving 147 verified constituents in the district oppose it with a coordination diversity score of 0.91, that changes the game. No platform has ever given these orgs anything.
+
+**Any level of government.** The US has 90,887 local government entities and 500,396 elected officials — 96% of all elected officials. School boards, water districts, fire districts, transit authorities, county commissions, city councils, township boards. No advocacy platform covers more than 2-17% of these entities. Shadow Atlas's 24-slot model is designed to ingest every boundary type, and each new type ingested creates an entirely unserved market for verified advocacy.
+
+**Any country.** voter-protocol uses H3 hexagonal indexing (global), country-code-keyed district registries, and a 24-slot model that accommodates any governance hierarchy. Canada's federal ridings and provincial constituencies, the UK's Westminster constituencies and devolved assemblies, Australia's federal and state electorates — all fit within the existing architecture. Boundary data ingestion is the only work required per country. One protocol, one app, many district trees.
+
+**The business implication:** The addressable market is not $191M (US grassroots advocacy). It is every organization in every democracy that wants to prove its supporters are real. That's a market no competitor has even conceived of, because no competitor has the verification infrastructure to serve it.
 
 ## Why "Commons"
 
 The commons is shared infrastructure that belongs to no one and serves everyone. Public roads, public water, public airwaves. Civic communication infrastructure should be a commons — not a proprietary SaaS platform owned by an advocacy organization with undisclosed funding sources.
+
+voter-protocol is the commons. commons.email is one application on it. The identity is portable. The reputation is portable. The verification is portable. Any developer can build on the protocol. Any org can use the application. Any constituent can carry their proof anywhere.

@@ -37,6 +37,149 @@ Google Civic Info's shutdown forced every advocacy platform to either pay Cicero
 
 ---
 
+## The Signal Crisis in Legislatures
+
+Congressional offices received **81 million messages** in 2022 and sent **3.5 million responses** — a 43:1 ratio. The average House office processes ~65,000 emails/year (up 5x from the 1970s). Some Senate offices receive **25,000+ pieces per week**. Staff and budget have not kept pace with the 9x growth in constituents-per-member (75,000 in 1911 → 650,000 today).
+
+The result is structural: **form emails are deleted in bulk without being read.** Fireside (FiscalNote's CRM, used by ~65% of Congress via IQ/Leidos IQ) explicitly documents this pattern. When staffers do process mail, they distinguish authentic constituents from astroturf using:
+
+1. **Address verification** — is the sender in the district? (self-reported, no cryptographic proof)
+2. **Personalization** — did the sender write their own words?
+3. **Pattern recognition** — sudden volume spikes, identical talking points, confused callers
+
+**The data on what works** (Congressional Management Foundation, 2017):
+- In-person constituent visits: **94%** of staffers say "a lot of positive influence"
+- Individualized email: **92%**
+- Phone calls: **84%**
+- Form emails: **51%**
+- Form postal letters: **3%**
+
+**Fewer than 100 personalized emails** on a given issue is enough to get an office to consider action (90% of staff agree). Yet 75-85% of incoming mail is form-generated advocacy campaigns. The signal is drowning in noise.
+
+**The AI threat is escalating.** The FCC net neutrality proceeding (2017) revealed that **nearly 18 million of 22 million comments were fake**, with **8.5 million impersonating real people**. Lead generation firms fabricated **500,000+ fake letters to Congress** and **3.5M fake digital signatures**. The NY AG secured $615,000 in penalties. These same firms reportedly work with **40% of Fortune 500 companies**. AI-generated text makes detection orders of magnitude harder — and every advocacy platform sends unverified text from unverified identities.
+
+Commons doesn't optimize signal-to-noise. It eliminates the noise floor entirely. A verification packet proves: these are real people, in your district, with earned engagement history, and the campaign shows no coordination anomalies. That's a different category of communication.
+
+**Sources:** [CMF Citizen-Centric Advocacy 2017](https://www.congressfoundation.org/revitalizing-congress/communicating-with-congress/citizen-centric-advocacy-2017), [Fireside CRM](https://www.fireside21.com/), [NY AG FCC Fake Comments Report](https://ag.ny.gov/sites/default/files/reports/oag-fakecommentsreport.pdf), [Bipartisan Policy Center: Listening Is Governing](https://bipartisanpolicy.org/article/listening-is-governing-modernizing-congresss-public-interface/)
+
+---
+
+## The Local Government Void
+
+The US has **90,887 local government entities** (2022 Census of Governments):
+
+| Type | Count | Elected Officials |
+|------|-------|-------------------|
+| Counties | 3,031 | ~58,108 |
+| Municipalities (cities/towns) | 19,491 | ~135,531 |
+| Townships | 16,214 | ~126,958 |
+| School districts | 12,546 | ~95,000 |
+| Special purpose districts | 39,555 | ~84,089 |
+| **Total** | **90,887** | **~500,396** |
+
+That's **500,396 local elected officials** — 96.2% of all elected officials in the US. Federal + state combined total just ~19,284.
+
+**What existing platforms cover:**
+
+| Platform | Local Coverage |
+|---|---|
+| Quorum Local | 75,000 official profiles, school board agendas from largest districts. No special districts. |
+| FiscalNote Curate | 16,000 entities (~17.6% of 90,887). No special districts. |
+| Cicero (Melissa) | ~400 cities (~2% of 19,491 municipalities). Zero special districts. |
+| VoterVoice | Officials in areas >250,000 population only. Rural and suburban America uncovered. |
+| Action Network | Zero legislator matching. Orgs bring their own target lists. |
+
+**No platform covers special districts** — 39,555 entities governing water, fire protection, sewerage, transit, parks, libraries, hospitals, housing, airports, and more. Their **84,089 elected officials** are invisible to every advocacy tool on the market.
+
+**No national boundary dataset exists for special districts.** TIGER/Line shapefiles cover congressional, state legislative, county, municipal, school district, and voting tabulation district boundaries — but NOT water districts, fire districts, transit authorities, or any other special purpose district. Each state's LAFCO (Local Agency Formation Commission) maintains its own data in its own format.
+
+**What local advocacy orgs use today:**
+- Email and phone trees (manual coordination)
+- Action Network (free tier, no legislator matching — just petitions and events)
+- Google Forms, Mailchimp, Facebook Groups, Nextdoor
+- National PTA advocacy toolkit (calendar and contact guides — not software)
+- **Nothing purpose-built for sub-state advocacy**
+
+The enterprise platforms (Quorum at $10K+/year) serve trade associations targeting city councils, not a PTA chapter fighting a school board budget cut. A neighborhood association fighting a water district rate hike has no tool at any price.
+
+**Commons serves 24 boundary types per cell.** Shadow Atlas already ingests TIGER/Line congressional, state legislative, county, municipal, school district, and voting tabulation district boundaries. The architecture (H3-indexed, 24 slots per cell) is designed to ingest special district boundaries as they become available — state by state, LAFCO by LAFCO. Every boundary type added instantly becomes targetable for verified advocacy campaigns. No other platform's architecture can accommodate this.
+
+**The market opportunity:** A platform that lets a transit advocacy group, a school parent coalition, or a water district accountability org run verified campaigns to their specific local officials — at a free tier — would have zero competition. Not underpriced competition. Zero.
+
+**Sources:** [Census of Governments 2022](https://www.census.gov/newsroom/press-releases/2023/census-of-governments.html), [Census Special Districts by Function](https://www.census.gov/library/visualizations/2023/econ/special-district-governments-by-function.html), [TIGER/Line Shapefiles](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html), [PoliEngine Elected Officials Count](https://poliengine.com/blog/how-many-politicians-are-there-in-the-us)
+
+---
+
+## The Conservative Deplatforming
+
+The conservative advocacy gap is not hypothetical. Organizations have been actively deplatformed.
+
+**Bonterra/EveryAction** maintained internal policies stipulating clients could not be "Not Progressive Aligned" — defined as "Can't be a Republican org," "Can't go against LGBT+," "Can't be against pro-choice." This was the subject of a **Senate Commerce Committee investigation** (2024, Sen. Ted Cruz). Documented deplatformed organizations include:
+- Wisconsin Right to Life
+- Idaho Family Policy Center
+- Deaconess Pregnancy & Adoptions
+- Stand for Health Freedom
+- The Ruth Institute (flagged via SPLC "hate group" label)
+
+**Action Network** explicitly states: "The Action Network is only available to left-progressive organizations and will not assist any other type of organization that opposes progressive stances." Violation is a "material breach" of ToS. This is a front-door rejection, not a backdoor policy.
+
+**Mailchimp** has dropped conservative organizations without warning: Virginia Citizens Defense League, Northern Virginia Tea Party (cited "potential misinformation"), Babylon Bee (automated "harmful information" flag, later reinstated).
+
+**What conservative orgs actually cobble together:**
+
+| Function | Progressive Tool | Conservative Equivalent |
+|---|---|---|
+| Advocacy (email + petitions + letters) | Action Network ($15/mo) | **Nothing** below $7,500/yr |
+| CRM + fundraising | EveryAction/Bonterra | CMDI Crimson (fundraising only, $7.5B+ managed) |
+| P2P texting | Hustle, ThruText | RumbleUp ($19/mo + per-message) |
+| Canvassing | MiniVAN (EveryAction) | i360 Walk ($265+/mo, Koch ecosystem) |
+| Fundraising | ActBlue | WinRed, Anedot, RallyRight DonateRight |
+| Voter data | TargetSmart, L2 | i360, Numinar |
+| All-in-one campaign | — | Campaign Nucleus ($50/mo, no advocacy) |
+
+The gap is specific: **there is no conservative equivalent of Action Network** — an integrated, affordable platform combining email, petitions, write-your-legislator campaigns, event management, and supporter CRM at a self-serve price point. The bipartisan enterprise platforms (Quorum, VoterVoice) start at $5,000-$10,000+/year. Heritage Action's Sentinel program and Americans for Prosperity's i360 are bespoke internal systems, not commercial platforms.
+
+Commons fills this vacuum structurally. Verification is orthogonal to ideology. The protocol doesn't check politics — it checks proof. A free tier that includes email campaigns, verified advocacy, full API access, and 24-boundary-type district targeting is immediately the best tool a conservative advocacy org has ever had. It's also the best tool many progressive orgs have ever had — the ones too small for AN's $15/mo or excluded from EveryAction's ecosystem for other reasons.
+
+**Sources:** [Senate Commerce Committee Investigation (2024)](https://www.commerce.senate.gov/2024/4/senate-commerce-investigation-reveals-how-big-tech-weaponizes-terms-of-service-to-silence-the-right), [AN Help: Who Can Use It](https://help.actionnetwork.org/hc/en-us/articles/203852955-Who-can-use-the-Action-Network-Only-progressives), [Startup Caucus: Areas of Need (2024)](https://startupcaucus.com/insights/identified-areas-of-need-in-the-republican-campaign-tech-ecosystem-2024)
+
+---
+
+## Beyond the United States
+
+voter-protocol is designed for global coverage. The three-tree ZK architecture uses **24 district slots per cell** — an internationally extensible model. The Shadow Atlas uses H3 hexagonal indexing (Uber's global spatial index) and country-code-keyed district registries in the DistrictRegistry contract.
+
+**Current coverage:** US congressional, state legislative (upper + lower), county, municipal, school district, voting tabulation district boundaries via Census Bureau TIGER/Line.
+
+**Expansion path:**
+- **Canada:** Electoral districts (338 federal ridings, ~1,000 provincial constituencies) available from Elections Canada / provincial boundary commissions
+- **United Kingdom:** 650 Westminster constituencies + devolved assemblies (Scottish Parliament, Senedd Cymru, NI Assembly) + ~9,000 parish/town/community councils. Boundary data from Ordnance Survey (Open Government License)
+- **European Union:** European Parliament constituencies + national parliaments + sub-national assemblies. Eurostat NUTS (Nomenclature of Territorial Units for Statistics) provides a hierarchical classification
+- **Australia/New Zealand:** Federal + state/territory electorates. Australian Electoral Commission publishes boundary shapefiles
+
+**What this means for orgs:** A UK environmental group, a Canadian healthcare coalition, an Australian transit advocacy org — all can run verified campaigns through the same protocol, with the same ZK proof guarantees, targeting any level of government where boundary data is ingested. The verified action is the universal unit. The district tree is the extensible structure. The 24-slot model accommodates any country's governance hierarchy.
+
+No competitor operates at protocol level. AN, Quorum, VoterVoice, and Bonterra are US-centric or have separate, disconnected international products. One Click Politics claims US/Canada/UK/Australia coverage but with no verification and at $42K+/year.
+
+---
+
+## Citizen-Facing Tools (The Graveyard)
+
+Several citizen-facing advocacy tools have died or pivoted, leaving a gap in individual civic engagement:
+
+| Tool | Status | What Happened |
+|---|---|---|
+| **Resistbot** | Active (niche) | Text-based letter-sending to officials. ~50M letters sent, ~10M users. **Premium at $7/mo**. No verification. No CWC integration (uses email/fax/postal). No org features. Individual-only. Critics argue making contact "too easy" devalues messages. |
+| **Democracy.io** | Effectively dead | EFF-built open-source tool. House contact-congress YAML files **unmaintained since Jan 2017** (switched to CWC). Senate files may be stale. Minimal maintenance. |
+| **Countable** | Dead | Acquired Causes + Brigade (Sean Parker). In June 2024, entire company **acquired by EV3 Global** and pivoted to employee engagement. No longer civic tech. |
+| **POPVOX** | Active (institutional) | Still operating as POPVOX Foundation. Casework Navigator for Congressional caseworkers. ParlLink for Caribbean/African legislative digitization. Not a grassroots advocacy tool. |
+| **GovTrack** | Active (research) | Bulk data/API discontinued 2017. Still operates as a navigation/research site for Congress. |
+| **ProPublica Congress API** | Dead | **Shut down July 10, 2024.** Migrated to Congress.gov API. |
+
+The citizen-facing tool landscape has contracted. Resistbot is the last standing mass-use citizen tool, and it's text-based, unverified, and individual-only. The opportunity for a platform that serves both individuals (person layer) and organizations (org layer) on shared verification infrastructure is clear.
+
+---
+
 ## Platform Profiles
 
 ### Tier 1: Enterprise ($10K+/year)

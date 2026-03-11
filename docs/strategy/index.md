@@ -8,11 +8,12 @@
 
 ### [product-roadmap.md](product-roadmap.md) — What We're Building Now
 
-The authoritative plan. Phase 1-3 feature sequence, key flows, competitive positioning. Updated March 2026.
+The authoritative plan. Phase 0-3 feature sequence, key flows, competitive positioning against the entire landscape. Updated March 2026.
 
-- **Phase 1**: Verified Campaign Infrastructure (current)
-- **Phase 2**: Cancel Action Network
-- **Phase 3**: Transcend the Paradigm (debates, agentic delegation, coalitions)
+- **Phase 0**: Ship the Verification Loop (current — 4-6 weeks)
+- **Phase 1**: Compete on Verification, Not Features (months 2-4)
+- **Phase 2**: Transcend the Landscape (months 4-8) — not just AN, the entire competitive field
+- **Phase 3**: Transcend the Paradigm (months 8-14) — debates, agentic delegation, international, cross-border coalitions
 
 ### [economics.md](economics.md) — Unit Economics
 
@@ -29,18 +30,20 @@ $191M grassroots segment. Commons occupies the only quadrant no competitor can r
 Commons serves **two audiences** through shared verification infrastructure:
 
 **Person Layer** — Individual verified civic action
-- Send verified letters to decision-makers
-- Identity verification via mDL (browser-side ZK)
-- Engagement tiers (New → Pillar) through participation
+- Send verified letters to decision-makers at any level of government (federal through school board, water district, transit authority — 24 boundary types)
+- Identity verification via mDL (browser-side ZK, zero server cost)
+- Engagement tiers (New → Pillar) through participation, portable across orgs
+- Works internationally as boundary data expands (UK, Canada, Australia, EU)
 - Described in: `coordination.md`, `viral.md`
 
 **Org Layer** — Campaign management and advocacy infrastructure
 - Create campaigns, manage supporters, send mass email
-- Verification packets with constituent counts, tier distribution, coordination signals
-- Direct Action Network replacement
+- Verification packets with constituent counts, tier distribution, coordination integrity signals
+- Replaces the entire landscape: AN ($15/mo for less), Quorum ($10K+/yr for less), VoterVoice (enterprise for less), the conservative void (nothing), the local government void (nothing), the citizen-tool graveyard (dead or dying)
+- Politically neutral: serves progressive, conservative, nonpartisan, and domain-obsessed orgs equally
 - Described in: `product-roadmap.md`, `economics.md`
 
-Both layers ship in Phase 1. The org layer is what competes with AN/EveryAction/Quorum. The person layer is what makes it structurally different.
+Both layers ship in Phase 1. The org layer is what competes with the entire advocacy landscape. The person layer is what makes competition structurally impossible — verification infrastructure that took years to build and cannot be bolted on after the fact.
 
 ---
 
