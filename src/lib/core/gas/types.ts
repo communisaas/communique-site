@@ -119,6 +119,16 @@ export interface SponsorshipResult {
 	/** Gas limit for paymaster postOp (set when sponsored). */
 	paymasterPostOpGasLimit?: bigint;
 
+	/**
+	 * Estimated gas limits from eth_estimateUserOperationGas (set when sponsored).
+	 * Callers must merge these into the UserOp before submission to sendUserOperation.
+	 */
+	callGasLimit?: bigint;
+	verificationGasLimit?: bigint;
+	preVerificationGas?: bigint;
+	maxFeePerGas?: bigint;
+	maxPriorityFeePerGas?: bigint;
+
 	/** Human-readable reason if sponsorship was denied. */
 	reason?: string;
 }

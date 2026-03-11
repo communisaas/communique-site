@@ -1,12 +1,26 @@
 <!--
 	OnrampWidget.svelte
 
-	Fiat-to-ETH onramp via Transak's hosted widget (iframe embed).
-	Configured for ETH on Scroll Sepolia (testnet) or Scroll (production).
+	Fiat-to-USDC onramp via Transak's hosted widget (iframe embed).
+	Configured for USDC on Scroll Sepolia (testnet) or Scroll (production).
+
+	USDC is the correct target currency for all entry paths:
+	  - USDC is the staking token for DebateMarket (approve + submitArgument).
+	  - Gas (ETH) is sponsored via Pimlico paymaster for NEAR users (Path 1)
+	    and is acquired separately by EVM users (Path 2).
+	  - Do NOT change this to ETH without updating the staking flow.
 
 	The iframe communicates back via window.postMessage. We listen for:
-	  TRANSAK_ORDER_SUCCESSFUL — order completed, ETH on the way
+	  TRANSAK_ORDER_SUCCESSFUL — order completed, USDC on the way
 	  TRANSAK_WIDGET_CLOSE    — user dismissed the widget
+
+	ADDRESS SAFETY:
+	  `walletAddress` must be a valid 0x EVM address (42 chars, hex).
+	  For Path 1 (NEAR) users, this is `user.near_derived_scroll_address`.
+	  For Path 2 (EVM) users, this is their MetaMask/injected address.
+	  Both are resolved by `walletState.address` — callers should use that.
+	  `disableWalletAddressForm: 'true'` prevents the user from changing the
+	  target in the Transak UI, so a wrong address means lost funds.
 
 	The Transak API key is a public key (safe to expose in browser).
 	It is read from PUBLIC_TRANSAK_API_KEY, with a placeholder fallback.
@@ -32,6 +46,18 @@
 		onClose
 	}: Props = $props();
 
+	// ── Address validation ────────────────────────────────────────────────────
+	// Guard against loading Transak with a bad address. Since
+	// disableWalletAddressForm is true, the user cannot correct it in the UI.
+	// For NEAR users (Path 1): walletState.address = user.near_derived_scroll_address
+	// For EVM users (Path 2):  walletState.address = user.wallet_address (MetaMask)
+	// Both must be valid 0x-prefixed, 42-char hex strings.
+
+	const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+	const isValidAddress = $derived(
+		!!walletAddress && ADDRESS_RE.test(walletAddress)
+	);
+
 	// ── State ─────────────────────────────────────────────────────────────────
 
 	let iframeLoaded = $state(false);
@@ -55,6 +81,8 @@
 	function buildWidgetUrl(): string {
 		const params = new URLSearchParams({
 			apiKey,
+			// USDC is the DebateMarket staking token. Gas (ETH) is sponsored
+			// via Pimlico paymaster for Path 1 users; Path 2 users bring their own.
 			cryptoCurrencyCode: 'USDC',
 			network,
 			walletAddress,
@@ -62,6 +90,8 @@
 			fiatCurrency: 'USD',
 			themeColor: '000000',
 			hideMenu: 'true',
+			// Locked: user cannot change the target address in Transak UI.
+			// Relies on caller passing the correct address (walletState.address).
 			disableWalletAddressForm: 'true'
 		});
 
@@ -156,40 +186,53 @@
 			</button>
 		</div>
 
-		<!-- Loading state -->
-		{#if !iframeLoaded && !loadError}
-			<div class="onramp__loading" role="status" aria-label="Loading payment widget">
-				<div class="onramp__spinner"></div>
-				<p class="onramp__loading-text">Loading payment widget...</p>
-			</div>
-		{/if}
-
-		<!-- Error state -->
-		{#if loadError}
+		<!-- Address validation error — prevents loading Transak with a bad target -->
+		{#if !isValidAddress}
 			<div class="onramp__error">
-				<p class="onramp__error-text">Failed to load payment widget.</p>
-				<button
-					type="button"
-					class="onramp__retry"
-					onclick={() => { loadError = false; iframeLoaded = false; }}
-				>
-					Try again
-				</button>
+				<p class="onramp__error-text">
+					{#if !walletAddress}
+						No wallet address available. Connect a wallet first.
+					{:else}
+						Invalid wallet address. Expected a 0x Scroll address.
+					{/if}
+				</p>
 			</div>
-		{/if}
+		{:else}
+			<!-- Loading state -->
+			{#if !iframeLoaded && !loadError}
+				<div class="onramp__loading" role="status" aria-label="Loading payment widget">
+					<div class="onramp__spinner"></div>
+					<p class="onramp__loading-text">Loading payment widget...</p>
+				</div>
+			{/if}
 
-		<!-- Transak iframe -->
-		{#if !loadError}
-			<iframe
-				src={widgetUrl}
-				class="onramp__iframe"
-				class:onramp__iframe--hidden={!iframeLoaded}
-				title="Transak fiat onramp"
-				allow="camera;microphone;fullscreen;payment"
-				sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
-				onload={handleIframeLoad}
-				onerror={handleIframeError}
-			></iframe>
+			<!-- Error state -->
+			{#if loadError}
+				<div class="onramp__error">
+					<p class="onramp__error-text">Failed to load payment widget.</p>
+					<button
+						type="button"
+						class="onramp__retry"
+						onclick={() => { loadError = false; iframeLoaded = false; }}
+					>
+						Try again
+					</button>
+				</div>
+			{/if}
+
+			<!-- Transak iframe — only rendered when address is valid -->
+			{#if !loadError}
+				<iframe
+					src={widgetUrl}
+					class="onramp__iframe"
+					class:onramp__iframe--hidden={!iframeLoaded}
+					title="Transak fiat onramp"
+					allow="camera;microphone;fullscreen;payment"
+					sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
+					onload={handleIframeLoad}
+					onerror={handleIframeError}
+				></iframe>
+			{/if}
 		{/if}
 	</div>
 {/if}

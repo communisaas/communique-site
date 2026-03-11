@@ -138,7 +138,7 @@ const DEBATE_MARKET_ABI = [
 	'function resolutionExtension() view returns (uint256)',
 	// Events
 	'event DebateProposed(bytes32 indexed debateId, bytes32 indexed actionDomain, bytes32 propositionHash, uint256 deadline, bytes32 baseDomain)',
-	'event ArgumentSubmitted(bytes32 indexed debateId, uint256 indexed argumentIndex, uint8 stance, bytes32 bodyHash, uint8 engagementTier, uint256 weight)',
+	'event ArgumentSubmitted(bytes32 indexed debateId, uint256 indexed argumentIndex, uint8 stance, bytes32 bodyHash, uint8 engagementTier, uint256 weight, bytes32 nullifier)',
 	'event TradeCommitted(bytes32 indexed debateId, uint256 indexed epoch, bytes32 commitHash, uint256 commitIndex)',
 	'event TradeRevealed(bytes32 indexed debateId, uint256 indexed epoch, uint256 argumentIndex, uint8 direction, uint256 weightedAmount)',
 	'event EpochExecuted(bytes32 indexed debateId, uint256 indexed epoch, uint256 tradesApplied)',
@@ -798,10 +798,12 @@ async function main() {
 					argumentIndex1 = parsed.args[1] as bigint;
 					const tier = parsed.args[4];
 					const weight = parsed.args[5];
+					const nullifier = parsed.args[6];
 					ok(`argumentIndex: ${argumentIndex1}`);
 					ok(`stance:        ${STANCE_NAMES[Number(parsed.args[2])]}`);
 					ok(`engagementTier: ${tier}`);
 					ok(`weight (sqrt(stake)*tier): ${weight}`);
+					ok(`nullifier:     ${nullifier}`);
 				}
 			} catch { /* skip */ }
 		}
@@ -878,6 +880,7 @@ async function main() {
 					ok(`stance:        ${STANCE_NAMES[Number(parsed.args[2])]}`);
 					ok(`engagementTier: ${parsed.args[4]}`);
 					ok(`weight: ${parsed.args[5]}`);
+					ok(`nullifier:     ${parsed.args[6]}`);
 				}
 			} catch { /* skip */ }
 		}

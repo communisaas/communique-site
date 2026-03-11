@@ -68,7 +68,6 @@ export class SmartAccountProvider implements WalletProvider {
 	readonly providerType: WalletProviderType = 'smart-account';
 
 	private readonly _inner: EVMWalletProvider;
-	private _delegated: boolean = false;
 
 	/**
 	 * @param inner — The underlying EVMWalletProvider to wrap
@@ -111,6 +110,17 @@ export class SmartAccountProvider implements WalletProvider {
 	 */
 	async delegate(delegateAddress: string = SIMPLE_ACCOUNT_ADDRESS): Promise<{ txHash: string }> {
 		try {
+			// F-3: Verify delegate target has deployed bytecode before authorizing.
+			// Prevents delegating to an EOA or empty address.
+			const delegateCode = await this._inner.ethersProvider.getCode(delegateAddress);
+			if (!delegateCode || delegateCode === '0x' || delegateCode === '0x0') {
+				throw new WalletConnectionError(
+					`Delegate target ${delegateAddress} has no bytecode — refusing to authorize`,
+					undefined,
+					undefined
+				);
+			}
+
 			// Use raw EIP-1193 eth_sendTransaction with type 4 (EIP-7702).
 			// MetaMask handles 7702 authorization natively — the wallet builds
 			// the authorization tuple and prompts the user for delegation approval.
@@ -145,7 +155,6 @@ export class SmartAccountProvider implements WalletProvider {
 			// Wait for receipt
 			const ethersProvider = this._inner.ethersProvider;
 			const receipt = await ethersProvider.waitForTransaction(txHash);
-			this._delegated = true;
 
 			return { txHash: receipt?.hash ?? txHash };
 		} catch (err) {
@@ -174,17 +183,15 @@ export class SmartAccountProvider implements WalletProvider {
 		try {
 			const code = await this._inner.ethersProvider.getCode(this.address);
 			// EIP-7702 delegation prefix: 0xef0100 + 20-byte delegate address
-			const delegated = code.length > 2 && code.startsWith('0xef0100');
-			this._delegated = delegated;
-			return delegated;
+			// F-5: Verify both the prefix AND that the 20-byte target matches
+			// SIMPLE_ACCOUNT_ADDRESS, not just any delegated contract.
+			if (code.length < 46 || !code.startsWith('0xef0100')) return false;
+			const target = code.slice(6, 46).toLowerCase();
+			const expected = SIMPLE_ACCOUNT_ADDRESS.slice(2).toLowerCase();
+			return target === expected;
 		} catch {
 			return false;
 		}
-	}
-
-	/** Whether delegation has been confirmed (cached from delegate() or isDelegated()). */
-	get delegated(): boolean {
-		return this._delegated;
 	}
 
 	/** Access the underlying ethers BrowserProvider (same as inner — 7702 is transparent). */

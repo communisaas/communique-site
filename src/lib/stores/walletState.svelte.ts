@@ -243,8 +243,25 @@ function createWalletState() {
 
 		/**
 		 * Disconnect the wallet and reset all state.
+		 * Notifies the server to unbind the wallet (best-effort),
+		 * then clears client state regardless of server result.
 		 */
-		disconnect() {
+		async disconnect(): Promise<void> {
+			// Notify server to unbind wallet
+			try {
+				const res = await fetch('/api/wallet/disconnect', { method: 'DELETE' });
+				if (!res.ok) {
+					const data = await res.json().catch(() => ({}));
+					console.warn(
+						'[wallet-state] Server disconnect failed:',
+						(data as { error?: string }).error
+					);
+				}
+			} catch (err) {
+				console.warn('[wallet-state] Server disconnect error:', err);
+			}
+
+			// Always clear client state regardless of server result
 			resetState();
 		},
 

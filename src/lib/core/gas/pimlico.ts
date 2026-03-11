@@ -301,7 +301,13 @@ export async function sponsorUserOperation(
 			paymaster: finalResult.paymaster,
 			paymasterData: finalResult.paymasterData,
 			paymasterVerificationGasLimit: BigInt(finalResult.paymasterVerificationGasLimit),
-			paymasterPostOpGasLimit: BigInt(finalResult.paymasterPostOpGasLimit)
+			paymasterPostOpGasLimit: BigInt(finalResult.paymasterPostOpGasLimit),
+			// Gas estimates from estimation step — callers must merge these into the UserOp
+			callGasLimit: gasEstimate.callGasLimit,
+			verificationGasLimit: gasEstimate.verificationGasLimit,
+			preVerificationGas: gasEstimate.preVerificationGas,
+			maxFeePerGas: gasEstimate.maxFeePerGas,
+			maxPriorityFeePerGas: gasEstimate.maxPriorityFeePerGas
 		};
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);

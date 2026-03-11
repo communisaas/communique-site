@@ -17,14 +17,25 @@
  *   6. Submit tx via Contract connected to user's Signer
  *   7. Wait for receipt, return { txHash }
  *
- * @see eip712.ts         — pure EIP-712 typed data construction
- * @see token.ts          — ERC-20 balance / allowance / approve helpers
- * @see evm-provider.ts   — EVMWalletProvider wrapping MetaMask
+ * Gasless flow for NEAR-path users (gaslessSubmitArgument / gaslessCoSignArgument):
+ *   1. Validate proof inputs
+ *   2. Read nonce from DistrictGate via public JsonRpcProvider (no wallet provider needed)
+ *   3. Build EIP-712 typed data and sign via wallet.signTypedData (works for NEAR + EVM)
+ *   4. Build UserOp via buildSubmitArgumentUserOp / buildCoSignArgumentUserOp
+ *   5. Serialize UserOp fields as hex strings and POST to /api/wallet/sponsor-userop
+ *   6. Server sponsors gas via Pimlico, submits to bundler, returns txHash
+ *
+ * @see eip712.ts                      — pure EIP-712 typed data construction
+ * @see token.ts                       — ERC-20 balance / allowance / approve helpers
+ * @see evm-provider.ts                — EVMWalletProvider wrapping MetaMask
+ * @see gas/user-operation.ts          — ERC-4337 UserOp builders
+ * @see routes/api/wallet/sponsor-userop — server-side Pimlico sponsorship endpoint
  * @see debate-market-client.ts (blockchain/) — legacy server relayer (being replaced)
  */
 
-import { Contract, keccak256, solidityPacked, type BrowserProvider, type Provider } from 'ethers';
+import { Contract, JsonRpcProvider, keccak256, solidityPacked, type BrowserProvider, type Provider } from 'ethers';
 import type { EVMWalletProvider } from './evm-provider';
+import type { WalletProvider } from './types';
 import {
 	validateProofInputs,
 	buildProofAuthorizationData,
@@ -36,6 +47,11 @@ import {
 	STAKING_TOKEN_ADDRESS,
 	ensureTokenApproval
 } from './token';
+import {
+	buildSubmitArgumentUserOp,
+	buildCoSignArgumentUserOp
+} from '$lib/core/gas/user-operation';
+import { env } from '$env/dynamic/public';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONTRACT ABIs
@@ -356,6 +372,249 @@ export async function clientCoSignArgument(
 	const receipt = await tx.wait();
 
 	return { txHash: receipt.hash };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GASLESS SUBMISSION (ERC-4337 — NEAR-path users)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Scroll Sepolia public RPC URL — used to read on-chain nonces when the caller
+ * has no BrowserProvider (e.g. NEAR-path users who cannot provide an ethers Signer).
+ * Reads PUBLIC_SCROLL_RPC_URL from the environment with a safe fallback.
+ */
+const SCROLL_PUBLIC_RPC =
+	env.PUBLIC_SCROLL_RPC_URL ?? 'https://sepolia-rpc.scroll.io';
+
+/**
+ * Serialize a bigint to a 0x-prefixed hex string.
+ * Used to convert UserOp numeric fields for JSON transport.
+ */
+function toHexString(value: bigint): string {
+	if (value === 0n) return '0x0';
+	return '0x' + value.toString(16);
+}
+
+/**
+ * Submit a new argument to a debate via ERC-4337 gasless sponsorship.
+ *
+ * For NEAR-path users who cannot sign Scroll transactions directly.
+ * The wallet signs only the EIP-712 typed data (works via MPC for NEAR);
+ * actual transaction submission is handled server-side via the Pimlico bundler.
+ *
+ * Flow:
+ *   1. Validate proof inputs
+ *   2. Read EIP-712 nonce from DistrictGate via public JsonRpcProvider
+ *   3. Build EIP-712 typed data and sign via wallet.signTypedData (MPC or MetaMask)
+ *   4. Build UserOp wrapping submitArgument in execute()
+ *   5. POST {userOp, signature} to /api/wallet/sponsor-userop
+ *   6. Server sponsors gas, submits to bundler, waits for receipt
+ *   7. Return { txHash }
+ *
+ * Prerequisites (not enforced here):
+ *   - The sender address must have a deployed SimpleAccount with wallet.address as owner
+ *   - The smart account must have approved DebateMarket to spend stakeAmount of USDC
+ *     (TODO: batch approve + submitArgument in a single multi-call UserOp)
+ *
+ * @param wallet - Any WalletProvider (NEAR or EVM) — only signTypedData is called
+ * @param params - Argument submission parameters (same as clientSubmitArgument)
+ * @returns Transaction hash of the confirmed on-chain submission
+ * @throws On validation failure, MPC signing error, or server-side sponsorship failure
+ */
+export async function gaslessSubmitArgument(
+	wallet: WalletProvider,
+	params: ClientSubmitArgumentParams
+): Promise<{ txHash: string }> {
+	// 1. Validate proof inputs
+	const validationError = validateProofInputs(params.proof, params.publicInputs, params.verifierDepth);
+	if (validationError) {
+		throw new Error(`Proof validation failed: ${validationError}`);
+	}
+
+	// 2. Read EIP-712 nonce via a public read-only provider
+	// NEAR wallets have no BrowserProvider, so we construct a JsonRpcProvider here.
+	// This read is chain-state-only (view call) — no signing, no gas.
+	const readProvider = new JsonRpcProvider(SCROLL_PUBLIC_RPC);
+	const nonce = await readNonce(readProvider, params.districtGateAddress, wallet.address);
+
+	// 3. Build EIP-712 typed data
+	const deadline = defaultDeadline();
+	const { domain, types, value } = buildProofAuthorizationData({
+		proof: params.proof,
+		publicInputs: params.publicInputs,
+		verifierDepth: params.verifierDepth,
+		deadline,
+		districtGateAddress: params.districtGateAddress,
+		chainId: params.chainId,
+		nonce
+	});
+
+	// 4. Sign with wallet — works for both NEAR (MPC, 5-15s) and EVM (MetaMask popup)
+	const signature = await wallet.signTypedData(domain, types, value);
+
+	// 5. Build the UserOp wrapping DebateMarket.submitArgument in execute()
+	//
+	// The sender is wallet.address (the NEAR-derived Scroll EOA or EVM EOA).
+	// In production this must be the SimpleAccount address, which for first-time
+	// users may be a counterfactual address (not yet deployed). The factory/factoryData
+	// fields are NOT populated here — SimpleAccount factory deployment is a separate step.
+	//
+	// ERC-4337 account nonce is initialized to 0n. Pimlico's estimation step validates
+	// the account's actual on-chain nonce and will reject if mismatched.
+	const publicInputsAsBigInt = publicInputsToBigInt(params.publicInputs);
+	const userOp = buildSubmitArgumentUserOp({
+		sender: wallet.address,
+		debateId: params.debateId,
+		stance: params.stance,
+		bodyHash: params.bodyHash,
+		amendmentHash: params.amendmentHash,
+		stakeAmount: params.stakeAmount,
+		signerAddress: wallet.address,
+		proof: params.proof,
+		publicInputs: publicInputsAsBigInt,
+		verifierDepth: params.verifierDepth,
+		deadline,
+		signature,        // EIP-712 proof-authorization sig (also the UserOp sig for SimpleAccount)
+		beneficiary: wallet.address
+	});
+
+	// 6. Serialize UserOp — bigint fields must be transmitted as hex strings (JSON cannot encode bigint)
+	const wireUserOp = {
+		sender: userOp.sender,
+		nonce: toHexString(userOp.nonce ?? 0n),
+		callData: userOp.callData,
+		callGasLimit: toHexString(userOp.callGasLimit ?? 0n),
+		verificationGasLimit: toHexString(userOp.verificationGasLimit ?? 0n),
+		preVerificationGas: toHexString(userOp.preVerificationGas ?? 0n),
+		maxFeePerGas: toHexString(userOp.maxFeePerGas ?? 0n),
+		maxPriorityFeePerGas: toHexString(userOp.maxPriorityFeePerGas ?? 0n)
+	};
+
+	// 7. POST to the sponsorship endpoint
+	const response = await fetch('/api/wallet/sponsor-userop', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ userOp: wireUserOp, signature })
+	});
+
+	const result = await response.json() as {
+		success: boolean;
+		txHash?: string;
+		userOpHash?: string;
+		error?: string;
+		reason?: string;
+	};
+
+	if (!result.success) {
+		const detail = result.reason ? ` (${result.reason})` : '';
+		throw new Error(`Gasless submission failed: ${result.error}${detail}`);
+	}
+
+	if (!result.txHash) {
+		throw new Error('Gasless submission: server returned success but no txHash');
+	}
+
+	return { txHash: result.txHash };
+}
+
+/**
+ * Co-sign an existing argument via ERC-4337 gasless sponsorship.
+ *
+ * Identical flow to gaslessSubmitArgument but wraps coSignArgument instead.
+ * See that function's JSDoc for full architecture notes.
+ *
+ * Prerequisites (not enforced here):
+ *   - The sender address must have a deployed SimpleAccount with wallet.address as owner
+ *   - The smart account must have approved DebateMarket to spend stakeAmount of USDC
+ *     (TODO: batch approve + coSignArgument in a single multi-call UserOp)
+ *
+ * @param wallet - Any WalletProvider (NEAR or EVM) — only signTypedData is called
+ * @param params - Co-sign parameters (same as clientCoSignArgument)
+ * @returns Transaction hash of the confirmed on-chain co-sign
+ * @throws On validation failure, MPC signing error, or server-side sponsorship failure
+ */
+export async function gaslessCoSignArgument(
+	wallet: WalletProvider,
+	params: ClientCoSignArgumentParams
+): Promise<{ txHash: string }> {
+	// 1. Validate proof inputs
+	const validationError = validateProofInputs(params.proof, params.publicInputs, params.verifierDepth);
+	if (validationError) {
+		throw new Error(`Proof validation failed: ${validationError}`);
+	}
+
+	// 2. Read EIP-712 nonce via a public read-only provider
+	const readProvider = new JsonRpcProvider(SCROLL_PUBLIC_RPC);
+	const nonce = await readNonce(readProvider, params.districtGateAddress, wallet.address);
+
+	// 3. Build EIP-712 typed data
+	const deadline = defaultDeadline();
+	const { domain, types, value } = buildProofAuthorizationData({
+		proof: params.proof,
+		publicInputs: params.publicInputs,
+		verifierDepth: params.verifierDepth,
+		deadline,
+		districtGateAddress: params.districtGateAddress,
+		chainId: params.chainId,
+		nonce
+	});
+
+	// 4. Sign with wallet
+	const signature = await wallet.signTypedData(domain, types, value);
+
+	// 5. Build the UserOp wrapping DebateMarket.coSignArgument in execute()
+	const publicInputsAsBigInt = publicInputsToBigInt(params.publicInputs);
+	const userOp = buildCoSignArgumentUserOp({
+		sender: wallet.address,
+		debateId: params.debateId,
+		argumentIndex: params.argumentIndex,
+		stakeAmount: params.stakeAmount,
+		signerAddress: wallet.address,
+		proof: params.proof,
+		publicInputs: publicInputsAsBigInt,
+		verifierDepth: params.verifierDepth,
+		deadline,
+		signature,
+		beneficiary: wallet.address
+	});
+
+	// 6. Serialize UserOp for JSON transport
+	const wireUserOp = {
+		sender: userOp.sender,
+		nonce: toHexString(userOp.nonce ?? 0n),
+		callData: userOp.callData,
+		callGasLimit: toHexString(userOp.callGasLimit ?? 0n),
+		verificationGasLimit: toHexString(userOp.verificationGasLimit ?? 0n),
+		preVerificationGas: toHexString(userOp.preVerificationGas ?? 0n),
+		maxFeePerGas: toHexString(userOp.maxFeePerGas ?? 0n),
+		maxPriorityFeePerGas: toHexString(userOp.maxPriorityFeePerGas ?? 0n)
+	};
+
+	// 7. POST to the sponsorship endpoint
+	const response = await fetch('/api/wallet/sponsor-userop', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ userOp: wireUserOp, signature })
+	});
+
+	const result = await response.json() as {
+		success: boolean;
+		txHash?: string;
+		userOpHash?: string;
+		error?: string;
+		reason?: string;
+	};
+
+	if (!result.success) {
+		const detail = result.reason ? ` (${result.reason})` : '';
+		throw new Error(`Gasless co-sign failed: ${result.error}${detail}`);
+	}
+
+	if (!result.txHash) {
+		throw new Error('Gasless co-sign: server returned success but no txHash');
+	}
+
+	return { txHash: result.txHash };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
