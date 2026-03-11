@@ -1,9 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import SegmentBuilder from '$lib/components/segments/SegmentBuilder.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	// Segment builder toggle
+	let showSegmentBuilder = $state(false);
 
 	// Local state for "load more" accumulation
 	let allSupporters = $state(data.supporters);
@@ -269,7 +273,32 @@
 				<option value={opt.value} selected={data.filters.source === opt.value}>{opt.label}</option>
 			{/each}
 		</select>
+
+		<!-- Segment builder toggle -->
+		<button
+			type="button"
+			class="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors {showSegmentBuilder
+				? 'border-teal-500/30 bg-teal-500/10 text-teal-400'
+				: 'border-zinc-800/60 text-zinc-400 hover:text-zinc-300 hover:border-zinc-700'}"
+			onclick={() => (showSegmentBuilder = !showSegmentBuilder)}
+		>
+			<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
+			</svg>
+			Segments
+		</button>
 	</div>
+
+	<!-- Segment Builder Panel -->
+	{#if showSegmentBuilder}
+		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-5">
+			<SegmentBuilder
+				orgSlug={data.org.slug}
+				tags={data.tags}
+				campaigns={data.campaigns}
+			/>
+		</div>
+	{/if}
 
 	<!-- Active filter chips -->
 	{#if activeChips.length > 0}

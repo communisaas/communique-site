@@ -2,6 +2,8 @@
 	import { onDestroy } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { browser } from '$app/environment';
+	import SegmentBuilder from '$lib/components/segments/SegmentBuilder.svelte';
+	import type { SegmentFilter } from '$lib/types/segment';
 	import type { PageData, ActionData } from './$types';
 	import type { Editor as EditorType } from '@tiptap/core';
 
@@ -18,6 +20,23 @@
 	let countLoading = $state(false);
 	let sending = $state(false);
 	let showPreview = $state(false);
+
+	// Segment builder state
+	let useSegmentBuilder = $state(false);
+	let segmentFilter = $state<SegmentFilter | null>(null);
+	let segmentFilterJson = $state('');
+
+	// A/B testing state
+	let abEnabled = $state(false);
+	let subjectA = $state('');
+	let subjectB = $state('');
+	let bodyHtmlA = $state('');
+	let bodyHtmlB = $state('');
+	let activeVariant = $state<'A' | 'B'>('A');
+	let splitPct = $state(50);
+	let testDuration = $state('4h');
+	let winnerMetric = $state('open');
+	let testGroupPct = $state(20);
 
 	// Draft auto-save
 	interface ComposeDraft {
@@ -338,16 +357,45 @@
 					</div>
 				</div>
 
-				<div>
-					<label for="subject" class="block text-sm font-medium text-zinc-300 mb-1.5">Subject Line</label>
-					<input
-						id="subject"
-						type="text"
-						bind:value={subject}
-						class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-						placeholder="Your email subject..."
-					/>
-				</div>
+				{#if !abEnabled}
+					<div>
+						<label for="subject" class="block text-sm font-medium text-zinc-300 mb-1.5">Subject Line</label>
+						<input
+							id="subject"
+							type="text"
+							bind:value={subject}
+							class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+							placeholder="Your email subject..."
+						/>
+					</div>
+				{:else}
+					<div class="space-y-3">
+						<div class="flex items-center gap-2">
+							<span class="text-sm font-medium text-zinc-300">Subject Lines</span>
+							<span class="rounded-md bg-teal-500/15 border border-teal-500/20 px-2 py-0.5 text-xs font-mono text-teal-400">A/B Test</span>
+						</div>
+						<div>
+							<label for="subjectA" class="block text-xs font-medium text-zinc-400 mb-1">Variant A</label>
+							<input
+								id="subjectA"
+								type="text"
+								bind:value={subjectA}
+								class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+								placeholder="Subject line A..."
+							/>
+						</div>
+						<div>
+							<label for="subjectB" class="block text-xs font-medium text-zinc-400 mb-1">Variant B</label>
+							<input
+								id="subjectB"
+								type="text"
+								bind:value={subjectB}
+								class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+								placeholder="Subject line B..."
+							/>
+						</div>
+					</div>
+				{/if}
 
 				<div>
 					<label for="campaignId" class="block text-sm font-medium text-zinc-300 mb-1.5">
@@ -368,6 +416,38 @@
 					</select>
 				</div>
 			</div>
+
+			{#if abEnabled}
+				<!-- A/B Variant Tabs for Body -->
+				<div class="flex gap-1 rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-1">
+					<button
+						type="button"
+						class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors {activeVariant === 'A' ? 'bg-zinc-700/50 text-teal-400' : 'text-zinc-400 hover:text-zinc-200'}"
+						onclick={() => {
+							if (activeVariant === 'A') return;
+							bodyHtmlB = bodyHtml;
+							activeVariant = 'A';
+							bodyHtml = bodyHtmlA;
+							if (editor) editor.commands.setContent(bodyHtmlA || '');
+						}}
+					>
+						Variant A Body
+					</button>
+					<button
+						type="button"
+						class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors {activeVariant === 'B' ? 'bg-zinc-700/50 text-teal-400' : 'text-zinc-400 hover:text-zinc-200'}"
+						onclick={() => {
+							if (activeVariant === 'B') return;
+							bodyHtmlA = bodyHtml;
+							activeVariant = 'B';
+							bodyHtml = bodyHtmlB;
+							if (editor) editor.commands.setContent(bodyHtmlB || '');
+						}}
+					>
+						Variant B Body
+					</button>
+				</div>
+			{/if}
 
 			<!-- Body editor -->
 			<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
@@ -494,79 +574,185 @@
 		<div class="space-y-6">
 			<!-- Recipient filters -->
 			<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
-				<h3 class="text-sm font-medium text-zinc-300">Recipients</h3>
-
-				<!-- Verification filter -->
-				<div>
-					<label for="verified" class="block text-xs font-medium text-zinc-400 mb-1.5">Verification Status</label>
-					<select
-						id="verified"
-						bind:value={verifiedFilter}
-						class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+				<div class="flex items-center justify-between">
+					<h3 class="text-sm font-medium text-zinc-300">Recipients</h3>
+					<button
+						type="button"
+						class="text-xs transition-colors {useSegmentBuilder
+							? 'text-teal-400 hover:text-teal-300'
+							: 'text-zinc-500 hover:text-zinc-300'}"
+						onclick={() => (useSegmentBuilder = !useSegmentBuilder)}
 					>
-						<option value="any">Any status</option>
-						<option value="verified">Verified only</option>
-						<option value="unverified">Unverified only</option>
-					</select>
+						{useSegmentBuilder ? 'Simple filters' : 'Segment builder'}
+					</button>
 				</div>
 
-				<!-- Tag filter -->
-				{#if data.tags.length > 0}
+				{#if useSegmentBuilder}
+					<SegmentBuilder
+						orgSlug={data.org.slug}
+						tags={data.tags}
+						campaigns={data.campaigns}
+						showSaveControls={true}
+						onApply={(filter, count) => {
+							segmentFilter = filter;
+							segmentFilterJson = JSON.stringify(filter);
+							recipientCount = count;
+						}}
+						onFilterChange={(filter) => {
+							segmentFilter = filter;
+							segmentFilterJson = JSON.stringify(filter);
+						}}
+					/>
+				{:else}
+					<!-- Verification filter -->
 					<div>
-						<p class="text-xs font-medium text-zinc-400 mb-1.5">Tags</p>
-						<div class="flex flex-wrap gap-2">
-							{#each data.tags as tag (tag.id)}
-								<button
-									type="button"
-									class="rounded-md border px-2.5 py-1 text-xs transition-colors {selectedTagIds.includes(tag.id)
-										? 'bg-teal-500/20 text-teal-400 border-teal-500/30'
-										: 'bg-zinc-800/50 text-zinc-400 border-zinc-700 hover:border-zinc-600'}"
-									onclick={() => toggleTag(tag.id)}
-								>
-									{tag.name}
-								</button>
-							{/each}
+						<label for="verified" class="block text-xs font-medium text-zinc-400 mb-1.5">Verification Status</label>
+						<select
+							id="verified"
+							bind:value={verifiedFilter}
+							class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+						>
+							<option value="any">Any status</option>
+							<option value="verified">Verified only</option>
+							<option value="unverified">Unverified only</option>
+						</select>
+					</div>
+
+					<!-- Tag filter -->
+					{#if data.tags.length > 0}
+						<div>
+							<p class="text-xs font-medium text-zinc-400 mb-1.5">Tags</p>
+							<div class="flex flex-wrap gap-2">
+								{#each data.tags as tag (tag.id)}
+									<button
+										type="button"
+										class="rounded-md border px-2.5 py-1 text-xs transition-colors {selectedTagIds.includes(tag.id)
+											? 'bg-teal-500/20 text-teal-400 border-teal-500/30'
+											: 'bg-zinc-800/50 text-zinc-400 border-zinc-700 hover:border-zinc-600'}"
+										onclick={() => toggleTag(tag.id)}
+									>
+										{tag.name}
+									</button>
+								{/each}
+							</div>
 						</div>
+					{/if}
+
+					<!-- Recipient count -->
+					<form
+						method="POST"
+						action="?/count"
+						use:enhance={() => {
+							countLoading = true;
+							return async ({ result, update }) => {
+								countLoading = false;
+								if (result.type === 'success' && result.data && 'count' in result.data) {
+									recipientCount = result.data.count as number;
+								}
+								await update({ reset: false });
+							};
+						}}
+					>
+						<input type="hidden" name="verified" value={verifiedFilter} />
+						{#each selectedTagIds as tagId}
+							<input type="hidden" name="tagIds" value={tagId} />
+						{/each}
+						<button
+							type="submit"
+							class="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
+							disabled={countLoading}
+						>
+							{#if countLoading}
+								Counting...
+							{:else}
+								Update Count
+							{/if}
+						</button>
+					</form>
+
+					<div class="rounded-lg bg-zinc-800/50 px-4 py-3 text-center">
+						<p class="text-2xl font-mono tabular-nums text-zinc-100">{recipientCount.toLocaleString()}</p>
+						<p class="text-xs text-zinc-500 mt-0.5">subscribed recipients</p>
 					</div>
 				{/if}
-
-				<!-- Recipient count -->
-				<form
-					method="POST"
-					action="?/count"
-					use:enhance={() => {
-						countLoading = true;
-						return async ({ result, update }) => {
-							countLoading = false;
-							if (result.type === 'success' && result.data && 'count' in result.data) {
-								recipientCount = result.data.count as number;
-							}
-							await update({ reset: false });
-						};
-					}}
-				>
-					<input type="hidden" name="verified" value={verifiedFilter} />
-					{#each selectedTagIds as tagId}
-						<input type="hidden" name="tagIds" value={tagId} />
-					{/each}
-					<button
-						type="submit"
-						class="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
-						disabled={countLoading}
-					>
-						{#if countLoading}
-							Counting...
-						{:else}
-							Update Count
-						{/if}
-					</button>
-				</form>
-
-				<div class="rounded-lg bg-zinc-800/50 px-4 py-3 text-center">
-					<p class="text-2xl font-mono tabular-nums text-zinc-100">{recipientCount.toLocaleString()}</p>
-					<p class="text-xs text-zinc-500 mt-0.5">subscribed recipients</p>
-				</div>
 			</div>
+
+			<!-- A/B Test Toggle -->
+			{#if data.abTestingAllowed}
+				<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
+					<div class="flex items-center justify-between">
+						<div>
+							<h3 class="text-sm font-medium text-zinc-300">A/B Test</h3>
+							<p class="text-xs text-zinc-500 mt-0.5">Test two variants, send the winner</p>
+						</div>
+						<button
+							type="button"
+							class="relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 cursor-pointer {abEnabled ? 'bg-teal-500' : 'bg-zinc-600'}"
+							role="switch"
+							aria-checked={abEnabled}
+							onclick={() => {
+								abEnabled = !abEnabled;
+								if (abEnabled) {
+									subjectA = subject;
+									subjectB = '';
+									bodyHtmlA = bodyHtml;
+									bodyHtmlB = '';
+									activeVariant = 'A';
+								} else {
+									subject = subjectA || subject;
+									bodyHtml = bodyHtmlA || bodyHtml;
+								}
+							}}
+						>
+							<span class="pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition duration-200 {abEnabled ? 'translate-x-4' : 'translate-x-0'}"></span>
+						</button>
+					</div>
+
+					{#if abEnabled}
+						<div class="space-y-3 pt-2 border-t border-zinc-800/40">
+							<div>
+								<label for="testGroupPct" class="block text-xs font-medium text-zinc-400 mb-1">Test group size</label>
+								<select id="testGroupPct" bind:value={testGroupPct} class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
+									<option value={10}>10% test, 90% winner</option>
+									<option value={20}>20% test, 80% winner</option>
+									<option value={30}>30% test, 70% winner</option>
+									<option value={50}>50% test, 50% winner</option>
+								</select>
+							</div>
+							<div>
+								<label for="splitPct" class="block text-xs font-medium text-zinc-400 mb-1">Test split (A/B)</label>
+								<select id="splitPct" bind:value={splitPct} class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
+									<option value={50}>50 / 50</option>
+									<option value={60}>60 / 40</option>
+									<option value={70}>70 / 30</option>
+								</select>
+							</div>
+							<div>
+								<label for="testDuration" class="block text-xs font-medium text-zinc-400 mb-1">Wait before picking winner</label>
+								<select id="testDuration" bind:value={testDuration} class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
+									<option value="1h">1 hour</option>
+									<option value="4h">4 hours</option>
+									<option value="24h">24 hours</option>
+								</select>
+							</div>
+							<div>
+								<label for="winnerMetric" class="block text-xs font-medium text-zinc-400 mb-1">Pick winner by</label>
+								<select id="winnerMetric" bind:value={winnerMetric} class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
+									<option value="open">Open rate</option>
+									<option value="click">Click rate</option>
+									<option value="verified_action">Verified action rate</option>
+								</select>
+							</div>
+							<div class="rounded-lg bg-zinc-800/50 px-3 py-2.5 text-xs text-zinc-500">
+								{Math.round(recipientCount * testGroupPct / 100)} in test group
+								({Math.round(recipientCount * testGroupPct / 100 * splitPct / 100)} A,
+								{Math.round(recipientCount * testGroupPct / 100 * (100 - splitPct) / 100)} B).
+								Winner sent to ~{Math.round(recipientCount * (100 - testGroupPct) / 100)} remaining.
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
 
 			<!-- Actions -->
 			<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-3">
@@ -581,56 +767,104 @@
 						};
 					}}
 				>
-					<input type="hidden" name="subject" value={subject} />
-					<input type="hidden" name="bodyHtml" value={bodyHtml} />
+					<input type="hidden" name="subject" value={abEnabled ? subjectA : subject} />
+					<input type="hidden" name="bodyHtml" value={abEnabled ? (activeVariant === 'A' ? bodyHtml : bodyHtmlA) : bodyHtml} />
 					<button
 						type="submit"
 						class="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm font-medium text-zinc-200 hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
 						disabled={!hasBody}
 					>
-						Preview Email
+						Preview Email{abEnabled ? ` (${activeVariant})` : ''}
 					</button>
 				</form>
 
-				<!-- Send -->
-				<form
-					method="POST"
-					action="?/send"
-					use:enhance={({ cancel }) => {
-						if (!confirm(`Send email to ${recipientCount.toLocaleString()} supporter${recipientCount === 1 ? '' : 's'}? This cannot be undone.`)) {
-							cancel();
-							return;
-						}
-						sending = true;
-						// Clear draft before redirect so it doesn't persist after send
-						if (browser) { try { localStorage.removeItem(draftKey); } catch {} }
-						return async ({ update }) => {
-							sending = false;
-							await update({ reset: false });
-						};
-					}}
-				>
-					<input type="hidden" name="subject" value={subject} />
-					<input type="hidden" name="bodyHtml" value={bodyHtml} />
-					<input type="hidden" name="fromName" value={fromName} />
-					<input type="hidden" name="fromEmail" value={fromEmail} />
-					<input type="hidden" name="campaignId" value={campaignId} />
-					<input type="hidden" name="verified" value={verifiedFilter} />
-					{#each selectedTagIds as tagId}
-						<input type="hidden" name="tagIds" value={tagId} />
-					{/each}
-					<button
-						type="submit"
-						class="w-full rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-						disabled={!subject.trim() || !hasBody || recipientCount === 0 || sending}
+				{#if abEnabled}
+					<!-- A/B Send -->
+					<form
+						method="POST"
+						action="?/sendAbTest"
+						use:enhance={({ cancel }) => {
+							if (activeVariant === 'A') bodyHtmlA = bodyHtml;
+							else bodyHtmlB = bodyHtml;
+							if (!confirm(`Send A/B test to ${recipientCount.toLocaleString()} supporter${recipientCount === 1 ? '' : 's'}? This cannot be undone.`)) {
+								cancel();
+								return;
+							}
+							sending = true;
+							if (browser) { try { localStorage.removeItem(draftKey); } catch {} }
+							return async ({ update }) => {
+								sending = false;
+								await update({ reset: false });
+							};
+						}}
 					>
-						{#if sending}
-							Sending...
-						{:else}
-							Send to {recipientCount.toLocaleString()} supporter{recipientCount === 1 ? '' : 's'}
-						{/if}
-					</button>
-				</form>
+						<input type="hidden" name="subjectA" value={subjectA} />
+						<input type="hidden" name="subjectB" value={subjectB} />
+						<input type="hidden" name="bodyHtmlA" value={activeVariant === 'A' ? bodyHtml : bodyHtmlA} />
+						<input type="hidden" name="bodyHtmlB" value={activeVariant === 'B' ? bodyHtml : bodyHtmlB} />
+						<input type="hidden" name="fromName" value={fromName} />
+						<input type="hidden" name="fromEmail" value={fromEmail} />
+						<input type="hidden" name="campaignId" value={campaignId} />
+						<input type="hidden" name="verified" value={verifiedFilter} />
+						<input type="hidden" name="splitPct" value={splitPct} />
+						<input type="hidden" name="testGroupPct" value={testGroupPct} />
+						<input type="hidden" name="testDuration" value={testDuration} />
+						<input type="hidden" name="winnerMetric" value={winnerMetric} />
+						{#each selectedTagIds as tagId}
+							<input type="hidden" name="tagIds" value={tagId} />
+						{/each}
+						<button
+							type="submit"
+							class="w-full rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							disabled={!subjectA.trim() || !subjectB.trim() || recipientCount < 4 || sending}
+						>
+							{#if sending}
+								Sending A/B Test...
+							{:else}
+								Send A/B Test to {recipientCount.toLocaleString()}
+							{/if}
+						</button>
+					</form>
+				{:else}
+					<!-- Regular Send -->
+					<form
+						method="POST"
+						action="?/send"
+						use:enhance={({ cancel }) => {
+							if (!confirm(`Send email to ${recipientCount.toLocaleString()} supporter${recipientCount === 1 ? '' : 's'}? This cannot be undone.`)) {
+								cancel();
+								return;
+							}
+							sending = true;
+							if (browser) { try { localStorage.removeItem(draftKey); } catch {} }
+							return async ({ update }) => {
+								sending = false;
+								await update({ reset: false });
+							};
+						}}
+					>
+						<input type="hidden" name="subject" value={subject} />
+						<input type="hidden" name="bodyHtml" value={bodyHtml} />
+						<input type="hidden" name="fromName" value={fromName} />
+						<input type="hidden" name="fromEmail" value={fromEmail} />
+						<input type="hidden" name="campaignId" value={campaignId} />
+						<input type="hidden" name="verified" value={verifiedFilter} />
+						{#each selectedTagIds as tagId}
+							<input type="hidden" name="tagIds" value={tagId} />
+						{/each}
+						<button
+							type="submit"
+							class="w-full rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							disabled={!subject.trim() || !hasBody || recipientCount === 0 || sending}
+						>
+							{#if sending}
+								Sending...
+							{:else}
+								Send to {recipientCount.toLocaleString()} supporter{recipientCount === 1 ? '' : 's'}
+							{/if}
+						</button>
+					</form>
+				{/if}
 			</div>
 		</div>
 	</div>

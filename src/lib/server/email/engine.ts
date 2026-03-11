@@ -25,6 +25,8 @@ export interface RecipientFilter {
 	verified?: 'any' | 'verified' | 'unverified';
 	tierMinimum?: number;
 	emailStatus?: string;
+	testRecipientIds?: string[];  // A/B test: only send to these IDs
+	excludeIds?: string[];        // A/B test: exclude these IDs (already in test group)
 }
 
 type Recipient = {
@@ -68,6 +70,25 @@ function buildFilterWhere(
 
 		if (filter.tagIds && filter.tagIds.length > 0) {
 			where.tags = { some: { tagId: { in: filter.tagIds } } };
+		}
+
+		// A/B testing: only include specific recipient IDs (test group)
+		if (filter.testRecipientIds && filter.testRecipientIds.length > 0) {
+			where.id = { in: filter.testRecipientIds };
+		}
+
+		// A/B testing: exclude IDs already sent to in test groups
+		if (filter.excludeIds && filter.excludeIds.length > 0) {
+			if (where.id) {
+				// Combine with existing ID filter using AND
+				where.AND = [
+					{ id: where.id },
+					{ id: { notIn: filter.excludeIds } }
+				];
+				delete where.id;
+			} else {
+				where.id = { notIn: filter.excludeIds };
+			}
 		}
 	}
 

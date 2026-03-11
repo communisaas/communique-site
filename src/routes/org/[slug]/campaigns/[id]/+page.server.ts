@@ -2,6 +2,8 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import { loadOrgContext, requireRole } from '$lib/server/org';
 import { computeVerificationPacket } from '$lib/server/campaigns/verification';
+import { loadCampaignAnalytics } from '$lib/server/campaigns/analytics';
+import { FEATURES } from '$lib/config/features';
 import type { PageServerLoad, Actions } from './$types';
 
 /** Valid status transitions */
@@ -36,10 +38,14 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		templateTitle = tmpl?.title ?? null;
 	}
 
-	// Compute verification packet for active/paused campaigns
-	const packet = campaign.status !== 'DRAFT'
-		? await computeVerificationPacket(campaign.id, org.id)
-		: null;
+	// Compute verification packet and analytics for non-draft campaigns
+	const isActive = campaign.status !== 'DRAFT';
+	const [packet, analytics] = await Promise.all([
+		isActive ? computeVerificationPacket(campaign.id, org.id) : null,
+		isActive && FEATURES.ANALYTICS_EXPANDED
+			? loadCampaignAnalytics(campaign.id, org.id)
+			: null
+	]);
 
 	return {
 		campaign: {
@@ -57,7 +63,8 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 			updatedAt: campaign.updatedAt.toISOString()
 		},
 		templates,
-		packet
+		packet,
+		analytics
 	};
 };
 

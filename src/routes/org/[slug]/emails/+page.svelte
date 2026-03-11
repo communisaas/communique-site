@@ -65,14 +65,23 @@
 		</div>
 	{:else}
 		<div class="space-y-3">
-			{#each data.blasts as blast (blast.id)}
-				<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-5">
+			{#each data.blasts.filter(b => !b.isAbTest || b.abVariant === 'A' || (!b.abVariant && !b.isAbTest)) as blast (blast.id)}
+				{@const isAb = blast.isAbTest && blast.abVariant === 'A'}
+				<a
+					href="/org/{data.org.slug}/emails/{blast.id}"
+					class="block rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-5 hover:border-zinc-700/60 transition-colors"
+				>
 					<div class="flex items-start justify-between gap-4">
 						<div class="min-w-0 flex-1">
 							<div class="flex items-center gap-3 mb-2">
 								<h2 class="text-lg font-medium text-zinc-100 truncate">
 									{blast.subject}
 								</h2>
+								{#if isAb}
+									<span class="inline-flex items-center rounded-md border bg-teal-500/15 text-teal-400 border-teal-500/20 px-2 py-0.5 text-xs font-mono">
+										A/B
+									</span>
+								{/if}
 								<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-mono {statusBadgeClass(blast.status)}">
 									{blast.status}
 								</span>
@@ -104,7 +113,7 @@
 							</div>
 						</div>
 					</div>
-				</div>
+				</a>
 			{/each}
 		</div>
 	{/if}

@@ -61,7 +61,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		findArgs.skip = 1; // skip the cursor item itself
 	}
 
-	const [rawSupporters, total, verifiedCount, postalCount, tags, statusCounts] =
+	const [rawSupporters, total, verifiedCount, postalCount, tags, statusCounts, campaigns] =
 		await Promise.all([
 			db.supporter.findMany(findArgs as Parameters<typeof db.supporter.findMany>[0]) as Promise<Array<Awaited<ReturnType<typeof db.supporter.findFirst>> & { tags: Array<{ tag: { id: string; name: string } }> }>>,
 			db.supporter.count({ where }),
@@ -88,6 +88,11 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 				by: ['emailStatus'],
 				where: { orgId: org.id },
 				_count: { id: true }
+			}),
+			db.campaign.findMany({
+				where: { orgId: org.id },
+				select: { id: true, title: true },
+				orderBy: { updatedAt: 'desc' }
 			})
 		]);
 
@@ -122,6 +127,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		hasMore,
 		nextCursor,
 		tags,
+		campaigns,
 		summary: {
 			verified: verifiedCount,
 			postal: postalCount,

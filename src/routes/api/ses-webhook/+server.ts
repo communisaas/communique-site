@@ -33,7 +33,23 @@ interface SESComplaintMessage {
 	};
 }
 
-type SESMessage = SESBounceMessage | SESComplaintMessage | { notificationType: string };
+interface SESOpenMessage {
+	notificationType: 'Open';
+	mail: { messageId: string; destination: string[] };
+}
+
+interface SESClickMessage {
+	notificationType: 'Click';
+	click: { link: string };
+	mail: { messageId: string; destination: string[] };
+}
+
+type SESMessage =
+	| SESBounceMessage
+	| SESComplaintMessage
+	| SESOpenMessage
+	| SESClickMessage
+	| { notificationType: string };
 
 export const POST: RequestHandler = async ({ request }) => {
 	let body: SNSMessage;
@@ -127,6 +143,71 @@ export const POST: RequestHandler = async ({ request }) => {
 				where: { email: { in: emails } },
 				data: { emailStatus: 'complained' }
 			});
+		}
+	} else if (message.notificationType === 'Open') {
+		const openMsg = message as SESOpenMessage;
+		const email = openMsg.mail.destination[0]?.toLowerCase();
+		if (email) {
+			// Find the most recent blast that was sent to this recipient.
+			// We look for blasts where this email already has a prior event (e.g. the
+			// initial "send" was tracked), or fall back to the most recent sent blast
+			// that doesn't already have an open event for this recipient (dedup).
+			const blast = await db.emailBlast.findFirst({
+				where: {
+					status: 'sent',
+					batches: { some: {} },
+					events: { none: { recipientEmail: email, eventType: 'open' } }
+				},
+				orderBy: { sentAt: 'desc' }
+			});
+			if (blast) {
+				await Promise.all([
+					db.emailEvent.create({
+						data: { blastId: blast.id, recipientEmail: email, eventType: 'open' }
+					}),
+					db.emailBlast.update({
+						where: { id: blast.id },
+						data: { totalOpened: { increment: 1 } }
+					})
+				]);
+			}
+		}
+	} else if (message.notificationType === 'Click') {
+		const clickMsg = message as SESClickMessage;
+		const email = clickMsg.mail.destination[0]?.toLowerCase();
+		if (email) {
+			// Attribute click to the blast that already recorded an open for this
+			// recipient (most reliable correlation). Fall back to the most recent
+			// sent blast if no open event exists yet.
+			let blast = await db.emailBlast.findFirst({
+				where: {
+					status: 'sent',
+					events: { some: { recipientEmail: email, eventType: 'open' } }
+				},
+				orderBy: { sentAt: 'desc' }
+			});
+			if (!blast) {
+				blast = await db.emailBlast.findFirst({
+					where: { status: 'sent', batches: { some: {} } },
+					orderBy: { sentAt: 'desc' }
+				});
+			}
+			if (blast) {
+				await Promise.all([
+					db.emailEvent.create({
+						data: {
+							blastId: blast.id,
+							recipientEmail: email,
+							eventType: 'click',
+							linkUrl: clickMsg.click.link
+						}
+					}),
+					db.emailBlast.update({
+						where: { id: blast.id },
+						data: { totalClicked: { increment: 1 } }
+					})
+				]);
+			}
 		}
 	}
 

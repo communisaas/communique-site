@@ -16,7 +16,10 @@ export const load: PageServerLoad = async ({ parent }) => {
 			totalBounced: true,
 			sentAt: true,
 			createdAt: true,
-			campaignId: true
+			campaignId: true,
+			isAbTest: true,
+			abVariant: true,
+			abParentId: true
 		}
 	});
 

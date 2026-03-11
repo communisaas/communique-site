@@ -2,6 +2,10 @@
 	import { enhance } from '$app/forms';
 	import { browser } from '$app/environment';
 	import VerificationPacket from '$lib/components/org/VerificationPacket.svelte';
+	import DeliveryMetrics from '$lib/components/org/DeliveryMetrics.svelte';
+	import VerificationTimeline from '$lib/components/org/VerificationTimeline.svelte';
+	import GeographicSpread from '$lib/components/org/GeographicSpread.svelte';
+	import CoordinationIntegrity from '$lib/components/org/CoordinationIntegrity.svelte';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -285,6 +289,29 @@
 		packet={data.packet}
 		showDebate={data.campaign.debateEnabled}
 	/>
+
+	<!-- Analytics Dashboard (non-draft campaigns with analytics data) -->
+	{#if data.analytics}
+		<!-- Email Delivery Metrics -->
+		<DeliveryMetrics metrics={data.analytics.delivery} />
+
+		<!-- Verification Timeline -->
+		<VerificationTimeline timeline={data.analytics.timeline} />
+
+		<!-- Analytics: two-column layout for geographic + coordination -->
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+			<!-- Geographic Spread -->
+			<GeographicSpread
+				topDistricts={data.analytics.topDistricts}
+				districtCount={data.packet?.districtCount ?? 0}
+			/>
+
+			<!-- Coordination Integrity -->
+			{#if data.packet}
+				<CoordinationIntegrity packet={data.packet} />
+			{/if}
+		</div>
+	{/if}
 
 	<!-- Decision-Maker Targets -->
 	<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">

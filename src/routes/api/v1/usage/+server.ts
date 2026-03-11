@@ -1,0 +1,24 @@
+/**
+ * GET /api/v1/usage — Current billing period usage for the org.
+ */
+
+import { authenticateApiKey, requireScope } from '$lib/server/api-v1/auth';
+import { apiOk } from '$lib/server/api-v1/response';
+import { getOrgUsage } from '$lib/server/billing/usage';
+import type { RequestHandler } from './$types';
+
+export const GET: RequestHandler = async ({ request }) => {
+	const auth = await authenticateApiKey(request);
+	if (auth instanceof Response) return auth;
+	const scopeErr = requireScope(auth, 'read');
+	if (scopeErr) return scopeErr;
+
+	const usage = await getOrgUsage(auth.orgId);
+
+	return apiOk({
+		verifiedActions: usage.verifiedActions,
+		maxVerifiedActions: usage.limits.maxVerifiedActions,
+		emailsSent: usage.emailsSent,
+		maxEmails: usage.limits.maxEmails
+	});
+};

@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import { loadOrgContext, requireRole } from '$lib/server/org';
-import { countRecipients, sendBlast, type RecipientFilter } from '$lib/server/email/engine';
+import { countRecipients, resolveRecipients, sendBlast, type RecipientFilter } from '$lib/server/email/engine';
 import {
 	compileEmail,
 	buildTierContext,
@@ -10,6 +10,8 @@ import {
 } from '$lib/server/email/compiler';
 import { sanitizeEmailBody } from '$lib/server/email/sanitize';
 import { getRateLimiter } from '$lib/core/security/rate-limiter';
+import { orgMeetsPlan } from '$lib/server/billing/plan-check';
+import { FEATURES } from '$lib/config/features';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
@@ -31,6 +33,9 @@ export const load: PageServerLoad = async ({ parent }) => {
 		})
 	]);
 
+	// A/B testing requires Starter+ plan
+	const abTestingAllowed = FEATURES.AB_TESTING && await orgMeetsPlan(org.id, 'starter');
+
 	return {
 		campaigns: campaigns.map((c) => ({
 			id: c.id,
@@ -38,7 +43,8 @@ export const load: PageServerLoad = async ({ parent }) => {
 			status: c.status
 		})),
 		tags,
-		subscribedCount
+		subscribedCount,
+		abTestingAllowed
 	};
 };
 
@@ -197,6 +203,150 @@ export const actions: Actions = {
 		} else {
 			// Non-CF: await inline so the blast actually runs (blocks redirect but doesn't silently drop)
 			await blastPromise;
+		}
+
+		throw redirect(302, `/org/${params.slug}/emails`);
+	},
+
+	sendAbTest: async ({ request, params, locals, platform }) => {
+		if (!locals.user) {
+			throw redirect(302, `/auth/google?returnTo=/org/${params.slug}/emails/compose`);
+		}
+		const { org, membership } = await loadOrgContext(params.slug, locals.user.id);
+		requireRole(membership.role, 'editor');
+
+		if (!FEATURES.AB_TESTING || !(await orgMeetsPlan(org.id, 'starter'))) {
+			return fail(403, { error: 'A/B testing requires a Starter plan or above.' });
+		}
+
+		const sendLimit = await getRateLimiter().check(`ratelimit:compose:send:org:${org.id}`, {
+			maxRequests: 5,
+			windowMs: 60 * 60_000
+		});
+		if (!sendLimit.allowed) {
+			return fail(429, { error: 'Too many requests. Try again later.' });
+		}
+
+		const formData = await request.formData();
+		const subjectA = formData.get('subjectA')?.toString().trim();
+		const subjectB = formData.get('subjectB')?.toString().trim();
+		const rawBodyHtmlA = formData.get('bodyHtmlA')?.toString();
+		const rawBodyHtmlB = formData.get('bodyHtmlB')?.toString();
+		const rawFromName = formData.get('fromName')?.toString().trim() || org.name;
+		const fromName = rawFromName.replace(/[\x00-\x1f\x7f<>"]/g, '').slice(0, 64);
+		if (!fromName) return fail(400, { error: 'From name is required' });
+		const fromEmail = `${org.slug}@commons.email`;
+		const campaignId = formData.get('campaignId')?.toString() || null;
+
+		if (!subjectA || !subjectB) return fail(400, { error: 'Both variant subjects are required' });
+		if (!rawBodyHtmlA || !rawBodyHtmlB) return fail(400, { error: 'Both variant bodies are required' });
+
+		const bodyHtmlA = sanitizeEmailBody(rawBodyHtmlA);
+		const bodyHtmlB = sanitizeEmailBody(rawBodyHtmlB);
+
+		const splitPct = Math.max(10, Math.min(90, parseInt(formData.get('splitPct')?.toString() || '50')));
+		const testGroupPct = Math.max(10, Math.min(50, parseInt(formData.get('testGroupPct')?.toString() || '20')));
+		const winnerMetric = (['open', 'click', 'verified_action'].includes(formData.get('winnerMetric')?.toString() || '')
+			? formData.get('winnerMetric')!.toString()
+			: 'open') as 'open' | 'click' | 'verified_action';
+
+		const durationMap: Record<string, number> = {
+			'1h': 60 * 60 * 1000,
+			'4h': 4 * 60 * 60 * 1000,
+			'24h': 24 * 60 * 60 * 1000
+		};
+		const testDuration = formData.get('testDuration')?.toString() || '4h';
+		const testDurationMs = durationMap[testDuration] ?? durationMap['4h'];
+
+		if (campaignId) {
+			const campaign = await db.campaign.findFirst({
+				where: { id: campaignId, orgId: org.id }
+			});
+			if (!campaign) return fail(400, { error: 'Invalid campaign selection' });
+		}
+
+		const filter = parseFilter(formData);
+
+		// Resolve all recipients and split into test/remainder pools
+		const allRecipients = await resolveRecipients(org.id, filter);
+		if (allRecipients.length === 0) {
+			return fail(400, { error: 'No recipients match your filters.' });
+		}
+
+		// Shuffle recipients for random assignment
+		const shuffled = [...allRecipients];
+		for (let i = shuffled.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+		}
+
+		const testGroupSize = Math.max(2, Math.round(shuffled.length * (testGroupPct / 100)));
+		const testGroup = shuffled.slice(0, testGroupSize);
+		const splitPoint = Math.round(testGroup.length * (splitPct / 100));
+		const groupA = testGroup.slice(0, splitPoint);
+		const groupB = testGroup.slice(splitPoint);
+
+		if (groupA.length === 0 || groupB.length === 0) {
+			return fail(400, { error: 'Not enough recipients for an A/B test. Need at least 2 per variant.' });
+		}
+
+		const abParentId = crypto.randomUUID();
+		const abTestConfig = { splitPct, winnerMetric, testDurationMs, testGroupPct };
+
+		// Create variant A blast
+		const blastA = await db.emailBlast.create({
+			data: {
+				orgId: org.id,
+				campaignId,
+				subject: subjectA,
+				bodyHtml: bodyHtmlA,
+				fromName,
+				fromEmail,
+				status: 'draft',
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				recipientFilter: { ...filter, testRecipientIds: groupA.map((r) => r.id) } as any,
+				totalRecipients: groupA.length,
+				isAbTest: true,
+				abVariant: 'A',
+				abParentId,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				abTestConfig: abTestConfig as any
+			}
+		});
+
+		// Create variant B blast
+		const blastB = await db.emailBlast.create({
+			data: {
+				orgId: org.id,
+				campaignId,
+				subject: subjectB,
+				bodyHtml: bodyHtmlB,
+				fromName,
+				fromEmail,
+				status: 'draft',
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				recipientFilter: { ...filter, testRecipientIds: groupB.map((r) => r.id) } as any,
+				totalRecipients: groupB.length,
+				isAbTest: true,
+				abVariant: 'B',
+				abParentId,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				abTestConfig: abTestConfig as any
+			}
+		});
+
+		// Send both variants async
+		const sendPromise = Promise.all([
+			sendBlast(blastA.id),
+			sendBlast(blastB.id)
+		]).catch((err) => {
+			console.error(`[email-engine] A/B test ${abParentId} send error:`, err);
+		});
+
+		if (platform?.context?.waitUntil) {
+			platform.context.waitUntil(sendPromise);
+		} else {
+			await sendPromise;
 		}
 
 		throw redirect(302, `/org/${params.slug}/emails`);
