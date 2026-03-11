@@ -2,14 +2,137 @@ import { db } from '$lib/core/db';
 import { computeOrgVerificationPacket } from '$lib/server/campaigns/verification';
 import type { PageServerLoad } from './$types';
 
+/** Mask email for display: "jane@example.com" -> "j***@example.com" */
+function maskEmail(email: string): string {
+	const [local, domain] = email.split('@');
+	if (!domain) return '***';
+	return `${local.charAt(0)}***@${domain}`;
+}
+
 export const load: PageServerLoad = async ({ parent }) => {
 	const { org } = await parent();
 
-	const [supporterCount, campaignCount, templateCount, packet, endorsedTemplates] = await Promise.all([
+	const [
+		// Verification funnel counts
+		totalSupporters,
+		postalResolvedCount,
+		verifiedCount,
+		districtVerifiedCount,
+
+		// Tier distribution (engagement tiers from campaign actions)
+		tierGroups,
+
+		// Campaign list with action counts (includes verified count in single query)
+		campaigns,
+
+		// Verification packet (coordination integrity)
+		packet,
+
+		// Recent activity
+		recentActions,
+		recentSupporters,
+
+		// Endorsed templates
+		endorsedTemplates,
+
+		// Template count
+		templateCount,
+
+		// Onboarding state (I1: moved into main Promise.all)
+		teamCount,
+		sentEmailCount,
+
+		// I2: Verified action counts per campaign
+		verifiedActionGroups
+	] = await Promise.all([
+		// Total supporters
 		db.supporter.count({ where: { orgId: org.id } }),
-		db.campaign.count({ where: { orgId: org.id } }),
-		db.template.count({ where: { orgId: org.id } }),
+
+		// Postal-resolved: have a postal code
+		db.supporter.count({
+			where: { orgId: org.id, postalCode: { not: null } }
+		}),
+
+		// Identity-verified: have identity commitment
+		db.supporter.count({
+			where: { orgId: org.id, verified: true }
+		}),
+
+		// District-verified: supporters that have taken a verified campaign action
+		db.campaignAction.groupBy({
+			by: ['supporterId'],
+			where: {
+				campaign: { orgId: org.id },
+				verified: true,
+				supporterId: { not: null }
+			},
+			_count: { id: true }
+		}).then(rows => rows.length),
+
+		// Tier distribution from campaign actions
+		db.campaignAction.groupBy({
+			by: ['engagementTier'],
+			where: { campaign: { orgId: org.id } },
+			_count: { id: true }
+		}),
+
+		// I2: Campaigns with both total and verified action counts in single query
+		// Prisma _count only allows one filter per relation, so we use verified-only
+		// and compute total from a parallel groupBy below
+		db.campaign.findMany({
+			where: { orgId: org.id },
+			orderBy: { updatedAt: 'desc' },
+			take: 10,
+			select: {
+				id: true,
+				title: true,
+				type: true,
+				status: true,
+				updatedAt: true,
+				_count: {
+					select: {
+						actions: true
+					}
+				}
+			}
+		}),
+
+		// Org-wide packet
 		computeOrgVerificationPacket(org.id),
+
+		// B1: Recent actions — select only name, mask email server-side
+		db.campaignAction.findMany({
+			where: {
+				campaign: { orgId: org.id }
+			},
+			orderBy: { createdAt: 'desc' },
+			take: 10,
+			select: {
+				id: true,
+				verified: true,
+				engagementTier: true,
+				createdAt: true,
+				campaign: { select: { title: true } },
+				supporter: { select: { name: true, email: true } }
+			}
+		}),
+
+		// B1: Recent supporter signups — select only name, mask email server-side
+		db.supporter.findMany({
+			where: { orgId: org.id },
+			orderBy: { createdAt: 'desc' },
+			take: 5,
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				source: true,
+				verified: true,
+				createdAt: true
+			}
+		}),
+
+		// Endorsed templates
 		db.templateEndorsement.findMany({
 			where: { orgId: org.id },
 			include: {
@@ -21,21 +144,110 @@ export const load: PageServerLoad = async ({ parent }) => {
 				}
 			},
 			orderBy: { endorsedAt: 'desc' }
+		}),
+
+		// Template count
+		db.template.count({ where: { orgId: org.id } }),
+
+		// I1: Onboarding queries — now in main Promise.all
+		db.orgMembership.count({ where: { orgId: org.id } }),
+		db.emailBlast.count({ where: { orgId: org.id, status: 'sent' } }),
+
+		// I2: Verified action counts per campaign (org-wide, no dependency on campaign IDs)
+		db.campaignAction.groupBy({
+			by: ['campaignId'],
+			where: {
+				campaign: { orgId: org.id },
+				verified: true
+			},
+			_count: { id: true }
 		})
 	]);
 
-	const activeCampaignCount = await db.campaign.count({
-		where: { orgId: org.id, status: 'ACTIVE' }
-	});
+	// I2: Build verified action count map from parallel query
+	const verifiedActionCounts: Record<string, number> = Object.fromEntries(
+		verifiedActionGroups.map(g => [g.campaignId, g._count.id])
+	);
+
+	// Build tier distribution map
+	const TIER_LABELS: Record<number, string> = {
+		0: 'New', 1: 'Active', 2: 'Established', 3: 'Veteran', 4: 'Pillar'
+	};
+	const tiers = [0, 1, 2, 3, 4].map(tier => ({
+		tier,
+		label: TIER_LABELS[tier],
+		count: tierGroups.find(g => g.engagementTier === tier)?._count?.id ?? 0
+	}));
+
+	const activeCampaignCount = campaigns.filter(c => c.status === 'ACTIVE').length;
+
+	const onboardingState = {
+		hasDescription: !!org.description,
+		hasSupporters: totalSupporters > 0,
+		hasCampaigns: campaigns.length > 0,
+		hasTeam: teamCount > 1,
+		hasSentEmail: sentEmailCount > 0
+	};
+
+	const onboardingComplete = onboardingState.hasSupporters && onboardingState.hasCampaigns;
 
 	return {
+		// Verification funnel
+		funnel: {
+			imported: totalSupporters,
+			postalResolved: postalResolvedCount,
+			identityVerified: verifiedCount,
+			districtVerified: districtVerifiedCount
+		},
+
+		// Tier distribution
+		tiers,
+
+		// Campaign list
+		campaigns: campaigns.map(c => ({
+			id: c.id,
+			title: c.title,
+			type: c.type,
+			status: c.status,
+			totalActions: c._count.actions,
+			verifiedActions: verifiedActionCounts[c.id] ?? 0,
+			updatedAt: c.updatedAt.toISOString()
+		})),
+
+		// Stats
 		stats: {
-			supporters: supporterCount,
-			campaigns: campaignCount,
+			supporters: totalSupporters,
+			campaigns: campaigns.length,
 			templates: templateCount,
 			activeCampaigns: activeCampaignCount
 		},
+
+		// Packet
 		packet,
+
+		// B1: Recent activity — emails masked server-side, never sent raw to client
+		recentActivity: [
+			...recentActions.map(a => ({
+				type: 'action' as const,
+				id: a.id,
+				label: a.supporter?.name ?? (a.supporter?.email ? maskEmail(a.supporter.email) : 'Anonymous'),
+				detail: a.campaign.title,
+				verified: a.verified,
+				tier: a.engagementTier,
+				timestamp: a.createdAt.toISOString()
+			})),
+			...recentSupporters.map(s => ({
+				type: 'signup' as const,
+				id: s.id,
+				label: s.name ?? maskEmail(s.email),
+				detail: s.source ?? 'organic',
+				verified: s.verified,
+				tier: 0,
+				timestamp: s.createdAt.toISOString()
+			}))
+		].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 10),
+
+		// Endorsed templates
 		endorsedTemplates: endorsedTemplates.map(e => ({
 			id: e.id,
 			templateId: e.template.id,
@@ -45,6 +257,10 @@ export const load: PageServerLoad = async ({ parent }) => {
 			sends: e.template.verified_sends,
 			districts: e.template.unique_districts,
 			endorsedAt: e.endorsedAt.toISOString()
-		}))
+		})),
+
+		// Onboarding
+		onboardingState,
+		onboardingComplete
 	};
 };

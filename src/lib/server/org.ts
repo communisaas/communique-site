@@ -15,6 +15,8 @@ export interface OrgContext {
 		dm_cache_ttl_days: number;
 		identity_commitment: string | null;
 		wallet_address: string | null;
+		billing_email: string | null;
+		stripe_customer_id: string | null;
 		createdAt: Date;
 	};
 	membership: {
@@ -59,6 +61,8 @@ export async function loadOrgContext(slug: string, userId: string): Promise<OrgC
 			dm_cache_ttl_days: org.dm_cache_ttl_days,
 			identity_commitment: org.identity_commitment,
 			wallet_address: org.wallet_address,
+			billing_email: org.billing_email,
+			stripe_customer_id: org.stripe_customer_id,
 			createdAt: org.createdAt
 		},
 		membership: {
