@@ -11,12 +11,20 @@ import { redirect, error } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/core/db';
+import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
 import type { RequestHandler } from './$types';
+
+function sanitizeReturnTo(raw: string): string {
+	// Only allow relative paths — block protocol-relative and absolute URLs
+	if (!raw.startsWith('/') || raw.startsWith('//')) return '/';
+	return raw;
+}
 
 async function resetUser(locals: App.Locals, returnTo: string): Promise<never> {
 	if (!dev && env.DEMO_MODE !== 'true') {
 		throw error(404, 'Not found');
 	}
+	returnTo = sanitizeReturnTo(returnTo);
 
 	if (!locals.user?.id) {
 		throw error(401, 'Not authenticated');
@@ -24,8 +32,10 @@ async function resetUser(locals: App.Locals, returnTo: string): Promise<never> {
 
 	const userId = locals.user.id;
 
-	// Delete ALL submissions (clears nullifiers so user can re-submit)
-	await db.submission.deleteMany({});
+	// F2: Delete only this user's submissions (clears nullifiers so user can re-submit).
+	// Submissions use pseudonymous_id (HMAC of userId), not a direct FK.
+	const pseudoId = computePseudonymousId(userId);
+	await db.submission.deleteMany({ where: { pseudonymous_id: pseudoId } });
 
 	// Reset ALL verification fields that deriveTrustTier() checks.
 	// The trust_tier column is cosmetic — hooks.server.ts recomputes it

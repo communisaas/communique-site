@@ -1,9 +1,8 @@
 import { json } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
-
-// TODO: verify SNS signature (fetch SigningCertURL, validate against cert)
-// The endpoint URL is secret/non-guessable, so spoofing risk is low for now.
+import { verifySNSSignature } from '$lib/core/security/sns-verify';
 
 interface SNSMessage {
 	Type: 'SubscriptionConfirmation' | 'Notification' | 'UnsubscribeConfirmation';
@@ -16,6 +15,7 @@ interface SNSMessage {
 	Signature: string;
 	SigningCertURL: string;
 	SubscribeURL?: string;
+	Token?: string;
 }
 
 interface SESBounceMessage {
@@ -46,19 +46,29 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({ ok: false, error: 'invalid JSON' }, { status: 400 });
 	}
 
+	// F1: Reject messages from unexpected SNS topics before signature verification.
+	// SES_SNS_TOPIC_ARN must be configured — without it, any valid SNS topic could
+	// subscribe and inject fake bounce/complaint data.
+	const allowedTopic = env.SES_SNS_TOPIC_ARN;
+	if (!allowedTopic) {
+		console.error('[ses-webhook] SES_SNS_TOPIC_ARN not configured — rejecting all SNS messages');
+		return json({ ok: false, error: 'webhook not configured' }, { status: 403 });
+	}
+	if (body.TopicArn !== allowedTopic) {
+		console.error('[ses-webhook] Unexpected TopicArn:', body.TopicArn);
+		return json({ ok: false, error: 'topic not allowed' }, { status: 403 });
+	}
+
+	// Verify SNS message signature to prevent spoofed notifications
+	const verifyResult = await verifySNSSignature(body);
+	if (!verifyResult.valid) {
+		console.error('[ses-webhook] SNS signature verification failed:', verifyResult.error);
+		return json({ ok: false, error: 'signature verification failed' }, { status: 403 });
+	}
+
 	// Handle SNS subscription confirmation
 	if (body.Type === 'SubscriptionConfirmation') {
 		if (body.SubscribeURL) {
-			// Validate SNS domain to prevent SSRF
-			try {
-				const url = new URL(body.SubscribeURL);
-				if (!url.hostname.endsWith('.amazonaws.com') || url.protocol !== 'https:') {
-					console.error('[ses-webhook] Rejected non-SNS SubscribeURL:', url.hostname);
-					return json({ ok: false, error: 'invalid SubscribeURL domain' }, { status: 403 });
-				}
-			} catch {
-				return json({ ok: false, error: 'invalid SubscribeURL' }, { status: 400 });
-			}
 			console.log('[ses-webhook] Confirming SNS subscription:', body.TopicArn);
 			try {
 				await fetch(body.SubscribeURL);
@@ -80,9 +90,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	} catch {
 		return json({ ok: false, error: 'invalid Message JSON' }, { status: 400 });
 	}
-
-	// Validate TopicArn matches our configured topic (prevents cross-account injection)
-	// TODO: validate against SES_SNS_TOPIC_ARN env var when configured
 
 	if (message.notificationType === 'Bounce') {
 		const bounce = (message as SESBounceMessage).bounce;

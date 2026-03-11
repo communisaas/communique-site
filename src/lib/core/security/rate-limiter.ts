@@ -509,6 +509,41 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		windowMs: 60 * 1000, // 30 req/min per IP — public balance endpoint
 		keyStrategy: 'ip',
 		includeGet: true
+	},
+	// ── Org onboarding rate limits (Phase 0) ──
+	{
+		pattern: '/api/org/check-slug',
+		maxRequests: 20,
+		windowMs: 60 * 1000, // 20 req/min per user — slug availability checks (debounced on client)
+		keyStrategy: 'user',
+		includeGet: true
+	},
+	{
+		pattern: '/api/org/',
+		maxRequests: 10,
+		windowMs: 60 * 1000, // 10 req/min per user — org mutations (create, update, invites)
+		keyStrategy: 'user'
+	},
+	// ── Billing rate limits (Phase 0) ──
+	{
+		pattern: '/api/billing/checkout',
+		maxRequests: 5,
+		windowMs: 60 * 1000, // 5 req/min per user — creates Stripe Customers/Sessions
+		keyStrategy: 'user'
+	},
+	{
+		pattern: '/api/billing/portal',
+		maxRequests: 10,
+		windowMs: 60 * 1000, // 10 req/min per user — Stripe portal redirects
+		keyStrategy: 'user'
+	},
+	// ── Public campaign page rate limits (Phase 0) ──
+	{
+		pattern: '/api/c/',
+		maxRequests: 30,
+		windowMs: 60 * 1000, // 30 req/min per IP — stats polling (every 30s) + action submission
+		keyStrategy: 'ip',
+		includeGet: true
 	}
 ];
 
@@ -517,6 +552,7 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
  */
 export const RATE_LIMIT_EXEMPT_PATHS = [
 	'/api/identity/didit/webhook', // HMAC-authenticated webhook
+	'/api/billing/webhook', // Stripe signature-verified webhook
 	'/api/health', // Health checks
 	'/api/cron/' // Cron jobs (authenticated separately)
 ];

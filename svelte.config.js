@@ -24,7 +24,17 @@ const config = {
 				'style-src': ['self', 'unsafe-inline', 'https://fonts.googleapis.com'],
 				'img-src': ['self', 'data:', 'blob:'],
 				'font-src': ['self', 'https://fonts.gstatic.com'],
-				'connect-src': ['self', 'https://nominatim.openstreetmap.org', 'https://crs.aztec.network', 'data:', 'blob:'],
+				'connect-src': [
+					'self',
+					'https://nominatim.openstreetmap.org',
+					'https://crs.aztec.network',
+					// F4: Scroll RPC — debate-client.ts, evm-provider.ts (browser-side chain reads + tx submission)
+					'https://sepolia-rpc.scroll.io',
+					'https://rpc.scroll.io',
+					// F4: NEAR RPC — chain-signatures.ts via near-provider.ts (browser-side MPC signing)
+					'https://rpc.testnet.near.org',
+					'https://rpc.mainnet.near.org'
+				],
 				'worker-src': ['self', 'blob:'],
 				'object-src': ['none'],
 				'frame-ancestors': ['none'],
