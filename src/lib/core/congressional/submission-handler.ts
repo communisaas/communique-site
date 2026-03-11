@@ -6,6 +6,8 @@ import {
 } from '$lib/core/blockchain/district-gate-client';
 import { queueForRetry } from '$lib/core/blockchain/submission-retry-queue';
 import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
+import { FEATURES } from '$lib/config/features';
+import { deliverToCWC } from './cwc-delivery';
 
 /**
  * Congressional Submission Request
@@ -178,6 +180,18 @@ async function queueBlockchainSubmission(
 				submissionId,
 				txHash: result.txHash
 			});
+
+			// Deliver to CWC (fire-and-forget — does not block or fail the submission)
+			if (FEATURES.CONGRESSIONAL) {
+				deliverToCWC({
+					submissionId,
+					districtId: request.districtId,
+					templateId: request.templateId,
+					verificationTxHash: result.txHash
+				}).catch((error) => {
+					console.error('[SubmissionHandler] CWC delivery error:', error);
+				});
+			}
 		} else {
 			// Update with failure status
 			await prisma.submission.update({

@@ -2,6 +2,8 @@ import { error, fail } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import { getRateLimiter } from '$lib/core/security/rate-limiter';
 import { getOrgUsage, isOverLimit } from '$lib/server/billing/usage';
+import { FEATURES } from '$lib/config/features';
+import { hashDistrict } from '$lib/core/identity/district-credential';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -17,26 +19,103 @@ export const load: PageServerLoad = async ({ params }) => {
 		throw error(404, 'Campaign not found');
 	}
 
-	// Parallel queries for stats
-	const [totalActions, districtCounts, tierDist] = await Promise.all([
-		// Total action count (all, not just verified) for social proof
+	// Build debate query: direct debateId first, fall back to template chain
+	const debateSelect = {
+		id: true,
+		template_id: true,
+		proposition_text: true,
+		status: true,
+		deadline: true,
+		argument_count: true,
+		unique_participants: true,
+		total_stake: true,
+		winning_stance: true,
+		current_prices: true,
+		current_epoch: true,
+		arguments: {
+			select: { argument_index: true, stance: true, weighted_score: true },
+			orderBy: { weighted_score: 'desc' as const },
+			take: 5
+		}
+	};
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let debateQuery: Promise<any> = Promise.resolve(null);
+
+	if (FEATURES.DEBATE) {
+		if (campaign.debateId) {
+			// Direct link: campaign explicitly references a debate
+			debateQuery = db.debate.findUnique({ where: { id: campaign.debateId }, select: debateSelect });
+		} else if (campaign.debateEnabled && campaign.templateId) {
+			// Template chain: campaign → template → debate (prefer active)
+			debateQuery = db.debate.findFirst({
+				where: { template_id: campaign.templateId },
+				orderBy: [{ status: 'asc' }, { created_at: 'desc' }],
+				select: debateSelect
+			});
+		}
+	}
+
+	// Parallel queries for stats + optional debate data
+	const [totalActions, districtCounts, tierDist, debate] = await Promise.all([
 		db.campaignAction.count({
 			where: { campaignId: campaign.id }
 		}),
-		// Unique districts for geographic spread
 		db.campaignAction.groupBy({
 			by: ['districtHash'],
 			where: { campaignId: campaign.id, verified: true, districtHash: { not: null } },
 			_count: true
 		}),
-		// Tier distribution for social proof
 		db.campaignAction.groupBy({
 			by: ['engagementTier'],
 			where: { campaignId: campaign.id, verified: true },
 			_count: true,
 			orderBy: { engagementTier: 'asc' }
-		})
+		}),
+		debateQuery
 	]);
+
+	// Serialize debate data for client (BigInt → string)
+	let debateSignal: {
+		id: string;
+		propositionText: string;
+		status: 'active' | 'resolving' | 'resolved' | 'awaiting_governance' | 'under_appeal';
+		argumentCount: number;
+		uniqueParticipants: number;
+		totalStake: string;
+		deadline: string;
+		winningStance: string | null;
+		currentPrices: Record<number, string> | null;
+		currentEpoch: number | null;
+		templateSlug: string | null;
+		arguments: Array<{ argumentIndex: number; stance: 'SUPPORT' | 'OPPOSE' | 'AMEND' }>;
+	} | null = null;
+
+	if (debate) {
+		// Resolve template slug for debate page link
+		const template = await db.template.findUnique({
+			where: { id: debate.template_id },
+			select: { slug: true }
+		});
+
+		debateSignal = {
+			id: debate.id,
+			propositionText: debate.proposition_text,
+			status: debate.status as 'active' | 'resolving' | 'resolved' | 'awaiting_governance' | 'under_appeal',
+			argumentCount: debate.argument_count,
+			uniqueParticipants: debate.unique_participants,
+			totalStake: debate.total_stake.toString(),
+			deadline: debate.deadline.toISOString(),
+			winningStance: debate.winning_stance,
+			currentPrices: debate.current_prices as Record<number, string> | null,
+			currentEpoch: debate.current_epoch,
+			templateSlug: template?.slug ?? null,
+			arguments: debate.arguments.map((arg: { argument_index: number; stance: string }) => ({
+				argumentIndex: arg.argument_index,
+				stance: arg.stance as 'SUPPORT' | 'OPPOSE' | 'AMEND',
+			}))
+		};
+	}
 
 	return {
 		campaign: {
@@ -57,7 +136,8 @@ export const load: PageServerLoad = async ({ params }) => {
 				tier: t.engagementTier,
 				count: t._count
 			}))
-		}
+		},
+		debateSignal
 	};
 };
 
@@ -97,6 +177,7 @@ export const actions: Actions = {
 		const name = formData.get('name')?.toString().trim();
 		const postalCode = formData.get('postalCode')?.toString().trim() || null;
 		const message = formData.get('message')?.toString().trim() || null;
+		const rawDistrictCode = formData.get('districtCode')?.toString().trim() || null;
 
 		if (!email) {
 			return fail(400, { error: 'Email is required' });
@@ -140,10 +221,22 @@ export const actions: Actions = {
 			}
 		}
 
-		// Compute districtHash server-side with a salt (not client-controllable).
-		// The salt prevents rainbow-table reversal of the ~42K US ZIP code space.
+		// ── District-level verification (ADDRESS_SPECIFICITY='district') ──
+		// When district code is provided, validate format and use hashDistrict()
+		// for a proper congressional district hash (not postal code hash).
 		let districtHash: string | null = null;
-		if (postalCode) {
+		let districtVerified = false;
+		const districtCodePattern = /^[A-Z]{2}-(\d{2}|AL)$/;
+
+		if (
+			FEATURES.ADDRESS_SPECIFICITY === 'district' &&
+			rawDistrictCode &&
+			districtCodePattern.test(rawDistrictCode)
+		) {
+			districtHash = await hashDistrict(rawDistrictCode);
+			districtVerified = true;
+		} else if (postalCode) {
+			// Fallback: region-level hash from postal code (existing behavior)
 			const salt = process.env.DISTRICT_HASH_SALT || 'commons-district-v1';
 			const encoder = new TextEncoder();
 			const hashBuffer = await crypto.subtle.digest(
@@ -182,15 +275,16 @@ export const actions: Actions = {
 		}
 
 		// Create the campaign action
-		// Verified if postal code was provided (district hash computed server-side above)
-		const verified = !!postalCode;
+		// Tier 2 = district verified, Tier 1 = postal code, Tier 0 = no location
+		const verified = districtVerified || !!postalCode;
+		const engagementTier = districtVerified ? 2 : postalCode ? 1 : 0;
 
 		await db.campaignAction.create({
 			data: {
 				campaignId: campaign.id,
 				supporterId: supporter.id,
 				verified,
-				engagementTier: verified ? 1 : 0,
+				engagementTier,
 				districtHash,
 				messageHash
 			}

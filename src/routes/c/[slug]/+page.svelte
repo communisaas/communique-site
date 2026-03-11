@@ -2,12 +2,18 @@
 	import { enhance } from '$app/forms';
 	import { browser } from '$app/environment';
 	import { isDigitalCredentialsSupported } from '$lib/core/identity/digital-credentials-api';
+	import { FEATURES } from '$lib/config/features';
+	import DebateMarketCard from '$lib/components/debate/DebateMarketCard.svelte';
+	import { buildArgumentStanceMap } from '$lib/utils/debate-stats';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
+	// ── Feature checks ──
+	const districtEnabled = FEATURES.ADDRESS_SPECIFICITY === 'district';
+
 	// ── Step management ──
-	type Step = 'info' | 'identify' | 'compose' | 'success';
+	type Step = 'info' | 'identify' | 'district' | 'compose' | 'success';
 	let currentStep = $state<Step>('info');
 
 	// ── Form state ──
@@ -20,11 +26,33 @@
 	// ── Postal code state ──
 	let postalCodeResolved = $state(false);
 
+	// ── District verification state (ADDRESS_SPECIFICITY='district') ──
+	let districtStreet = $state('');
+	let districtCity = $state('');
+	let districtState = $state('');
+	let districtZip = $state('');
+	let districtCode = $state(''); // e.g. "CA-12"
+	let districtVerified = $state(false);
+	let districtVerifying = $state(false);
+	let districtError = $state('');
+
 	// ── mDL verification state ──
 	let mdlSupported = $state(false);
 	let mdlVerifying = $state(false);
 	let mdlVerified = $state(false);
-	let verificationTier = $state(0); // 0=unverified, 1=postal, 2=mDL
+	let verificationTier = $state(0); // 0=unverified, 1=postal, 2=district, 3=mDL
+
+	// ── Debate signal (read-only, no wallet needed) ──
+	const debateStanceMap = $derived(
+		data.debateSignal?.arguments
+			? buildArgumentStanceMap(data.debateSignal.arguments)
+			: undefined
+	);
+	const debateHref = $derived(
+		data.debateSignal?.templateSlug
+			? `/s/${data.campaign.orgSlug}/debate/${data.debateSignal.id}`
+			: undefined
+	);
 
 	// ── Live verified count (optimistic + polled) ──
 	let displayCount = $state(data.stats.verifiedActions);
@@ -112,7 +140,7 @@
 
 			if (result.success) {
 				mdlVerified = true;
-				verificationTier = 2;
+				verificationTier = 3;
 			}
 		} catch {
 			// User cancelled or error — non-blocking
@@ -121,9 +149,80 @@
 		}
 	}
 
+	// ── District verification ──
+	async function verifyDistrict() {
+		if (districtVerifying) return;
+		if (!districtStreet.trim() || !districtCity.trim() || !districtState.trim() || !districtZip.trim()) {
+			districtError = 'Please fill in all address fields.';
+			return;
+		}
+
+		districtVerifying = true;
+		districtError = '';
+
+		try {
+			// Use the campaign-specific public endpoint (no auth required)
+			const res = await fetch(`/api/c/${data.campaign.id}/verify-district`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					street: districtStreet.trim(),
+					city: districtCity.trim(),
+					state: districtState.trim().toUpperCase(),
+					zip: districtZip.trim()
+				})
+			});
+
+			const result = await res.json();
+
+			if (!res.ok || !result.resolved) {
+				districtError = result.error || 'Unable to verify address. Please check and try again.';
+				return;
+			}
+
+			if (!result.district?.code) {
+				districtError = 'Congressional district could not be determined. Please verify your address.';
+				return;
+			}
+
+			districtCode = result.district.code;
+			districtVerified = true;
+			verificationTier = 2;
+
+			// Store encrypted address client-side (privacy: never reaches server)
+			if (browser) {
+				try {
+					const { storeConstituentAddress } = await import('$lib/core/identity/constituent-address');
+					await storeConstituentAddress(email, {
+						street: districtStreet.trim(),
+						city: districtCity.trim(),
+						state: districtState.trim().toUpperCase(),
+						zip: districtZip.trim(),
+						district: districtCode
+					});
+				} catch {
+					// Non-blocking — address storage is best-effort
+				}
+			}
+		} catch {
+			districtError = 'Verification service temporarily unavailable. Please try again.';
+		} finally {
+			districtVerifying = false;
+		}
+	}
+
+	function skipDistrict() {
+		currentStep = 'compose';
+	}
+
 	// ── Step transitions ──
 	function goToIdentify() {
 		currentStep = 'identify';
+	}
+
+	function goToDistrict() {
+		if (!name.trim() || !email.trim()) return;
+		currentStep = 'district';
 	}
 
 	function goToCompose() {
@@ -132,7 +231,9 @@
 	}
 
 	function goBack() {
-		if (currentStep === 'compose') currentStep = 'identify';
+		if (currentStep === 'compose' && districtEnabled) currentStep = 'district';
+		else if (currentStep === 'compose') currentStep = 'identify';
+		else if (currentStep === 'district') currentStep = 'identify';
 		else if (currentStep === 'identify') currentStep = 'info';
 	}
 
@@ -193,14 +294,20 @@
 
 			<!-- Verification tier badge -->
 			<div class="mt-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm
-				{verificationTier >= 2 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
+				{verificationTier >= 3 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
+				 verificationTier >= 2 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
 				 verificationTier >= 1 ? 'border-blue-200 bg-blue-50 text-blue-700' :
 				 'border-slate-200 bg-slate-50 text-slate-600'}">
-				{#if verificationTier >= 2}
+				{#if verificationTier >= 3}
 					<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
 						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
 					</svg>
 					Identity Verified
+				{:else if verificationTier >= 2}
+					<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+					</svg>
+					District Verified
 				{:else if verificationTier >= 1}
 					<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
 						<path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
@@ -285,6 +392,25 @@
 				</p>
 			</div>
 		</div>
+
+		<!-- Debate signal (read-only market consensus) -->
+		{#if FEATURES.DEBATE && data.debateSignal}
+			<div class="mt-4">
+				<DebateMarketCard
+					debateId={data.debateSignal.id}
+					propositionText={data.debateSignal.propositionText}
+					status={data.debateSignal.status === 'active' ? 'active' : 'resolved'}
+					argumentCount={data.debateSignal.argumentCount}
+					totalStake={data.debateSignal.totalStake}
+					uniqueParticipants={data.debateSignal.uniqueParticipants}
+					deadline={data.debateSignal.deadline}
+					prices={data.debateSignal.currentPrices ?? undefined}
+					argumentStances={debateStanceMap}
+					currentEpoch={data.debateSignal.currentEpoch ?? undefined}
+					href={debateHref}
+				/>
+			</div>
+		{/if}
 
 		<button
 			onclick={goToIdentify}
@@ -407,7 +533,7 @@
 			{/if}
 
 			<button
-				onclick={goToCompose}
+				onclick={districtEnabled ? goToDistrict : goToCompose}
 				disabled={!name.trim() || !email.trim()}
 				class="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
 			>
@@ -417,6 +543,145 @@
 				</svg>
 			</button>
 		</div>
+
+	{:else if districtEnabled && currentStep === 'district'}
+		<!-- ═══════════ DISTRICT VERIFICATION (optional) ═══════════ -->
+		<button
+			onclick={goBack}
+			class="mb-4 flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
+			aria-label="Go back"
+		>
+			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+			</svg>
+			Back
+		</button>
+
+		<h2 class="text-xl font-bold text-slate-900">Verify Your District</h2>
+		<p class="mt-1 text-sm text-slate-500">
+			Enter your street address to verify your congressional district. This strengthens your action.
+		</p>
+
+		<!-- Privacy note -->
+		<div class="mt-4 flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50/50 p-3">
+			<svg class="mt-0.5 h-4 w-4 shrink-0 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+			</svg>
+			<p class="text-xs text-blue-700">
+				Your address is geocoded via the U.S. Census Bureau and never stored on our server. Only a district identifier is recorded.
+			</p>
+		</div>
+
+		{#if districtVerified}
+			<!-- District verified success state -->
+			<div class="mt-5 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+				<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+					<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+				</svg>
+				District verified: {districtCode}
+			</div>
+
+			<button
+				onclick={goToCompose}
+				class="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800"
+			>
+				Continue
+				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+				</svg>
+			</button>
+		{:else}
+			<!-- Address collection form -->
+			<div class="mt-5 space-y-4">
+				<div>
+					<label for="districtStreet" class="block text-sm font-medium text-slate-700">
+						Street Address
+					</label>
+					<input
+						type="text"
+						id="districtStreet"
+						bind:value={districtStreet}
+						autocomplete="street-address"
+						placeholder="123 Main Street"
+						class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm transition-colors focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+					/>
+				</div>
+
+				<div>
+					<label for="districtCity" class="block text-sm font-medium text-slate-700">
+						City
+					</label>
+					<input
+						type="text"
+						id="districtCity"
+						bind:value={districtCity}
+						autocomplete="address-level2"
+						placeholder="City"
+						class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm transition-colors focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+					/>
+				</div>
+
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label for="districtStateInput" class="block text-sm font-medium text-slate-700">
+							State
+						</label>
+						<input
+							type="text"
+							id="districtStateInput"
+							bind:value={districtState}
+							autocomplete="address-level1"
+							placeholder="CA"
+							maxlength="2"
+							class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm transition-colors focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+						/>
+					</div>
+					<div>
+						<label for="districtZipInput" class="block text-sm font-medium text-slate-700">
+							ZIP Code
+						</label>
+						<input
+							type="text"
+							id="districtZipInput"
+							bind:value={districtZip}
+							autocomplete="postal-code"
+							placeholder="90210"
+							maxlength="10"
+							class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm transition-colors focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+						/>
+					</div>
+				</div>
+
+				{#if districtError}
+					<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+						{districtError}
+					</div>
+				{/if}
+
+				<button
+					onclick={verifyDistrict}
+					disabled={districtVerifying || !districtStreet.trim() || !districtCity.trim() || !districtState.trim() || !districtZip.trim()}
+					class="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+				>
+					{#if districtVerifying}
+						<svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+						</svg>
+						Verifying...
+					{:else}
+						Verify My District
+					{/if}
+				</button>
+
+				<button
+					onclick={skipDistrict}
+					class="w-full rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+				>
+					Skip for now
+				</button>
+			</div>
+		{/if}
 
 	{:else if currentStep === 'compose'}
 		<!-- ═══════════ COMPOSE / CONFIRM ═══════════ -->
@@ -461,6 +726,9 @@
 			<input type="hidden" name="name" value={name} />
 			<input type="hidden" name="email" value={email} />
 			<input type="hidden" name="postalCode" value={postalCode} />
+			{#if districtEnabled && districtVerified}
+				<input type="hidden" name="districtCode" value={districtCode} />
+			{/if}
 
 			<!-- Summary card -->
 			<div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
@@ -478,11 +746,17 @@
 						<span class="font-medium text-slate-900">{postalCode}</span>
 					</div>
 				{/if}
+				{#if districtEnabled && districtVerified}
+					<div class="mt-2 flex items-center justify-between">
+						<span class="text-slate-500">District</span>
+						<span class="font-medium text-emerald-600">{districtCode}</span>
+					</div>
+				{/if}
 				{#if verificationTier >= 1}
 					<div class="mt-2 flex items-center justify-between">
 						<span class="text-slate-500">Verification</span>
 						<span class="font-medium {verificationTier >= 2 ? 'text-emerald-600' : 'text-blue-600'}">
-							{verificationTier >= 2 ? 'Identity Verified' : 'Location Verified'}
+							{verificationTier >= 3 ? 'Identity Verified' : verificationTier >= 2 ? 'District Verified' : 'Location Verified'}
 						</span>
 					</div>
 				{/if}
@@ -551,10 +825,13 @@
 	{/if}
 
 	<!-- Step indicator -->
-	{#if currentStep === 'identify' || currentStep === 'compose'}
-		<div class="mt-8 flex items-center justify-center gap-2" role="progressbar" aria-label="Step {currentStep === 'identify' ? '1' : '2'} of 2">
-			<div class="h-1.5 w-8 rounded-full bg-slate-900"></div>
-			<div class="h-1.5 w-8 rounded-full {currentStep === 'compose' ? 'bg-slate-900' : 'bg-slate-200'}"></div>
+	{#if currentStep === 'identify' || currentStep === 'district' || currentStep === 'compose'}
+		{@const steps = districtEnabled ? ['identify', 'district', 'compose'] : ['identify', 'compose']}
+		{@const currentIndex = steps.indexOf(currentStep)}
+		<div class="mt-8 flex items-center justify-center gap-2" role="progressbar" aria-label="Step {currentIndex + 1} of {steps.length}">
+			{#each steps as _, i}
+				<div class="h-1.5 w-8 rounded-full {i <= currentIndex ? 'bg-slate-900' : 'bg-slate-200'}"></div>
+			{/each}
 		</div>
 	{/if}
 </div>

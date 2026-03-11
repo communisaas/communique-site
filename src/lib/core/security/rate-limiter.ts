@@ -537,6 +537,14 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		windowMs: 60 * 1000, // 10 req/min per user — Stripe portal redirects
 		keyStrategy: 'user'
 	},
+	// ── Public REST API v1 (Phase 1) ──
+	{
+		pattern: '/api/v1/',
+		maxRequests: 100,
+		windowMs: 60 * 1000, // 100 req/min per API key (key ID fills userId slot)
+		keyStrategy: 'user',
+		includeGet: true
+	},
 	// ── Public campaign page rate limits (Phase 0) ──
 	{
 		pattern: '/api/c/',

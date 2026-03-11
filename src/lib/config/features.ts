@@ -18,21 +18,30 @@ export type AddressSpecificity = 'off' | 'region' | 'district';
 
 export const FEATURES = {
 	/** Deliberation surfaces, argument submission, LMSR market, resolution/appeal */
-	DEBATE: false,
+	DEBATE: true,
 
 	/** CWC delivery, district officials, congressional template routing */
-	CONGRESSIONAL: false,
+	CONGRESSIONAL: true,
 
 	/**
 	 * Address verification specificity level.
 	 * Location inference and template filtering are available at 'region'+.
 	 * Street address collection and district credential issuance require 'district'.
 	 */
-	ADDRESS_SPECIFICITY: 'region' as AddressSpecificity,
+	ADDRESS_SPECIFICITY: 'district' as AddressSpecificity,
 
 	/** Stance registration (support/oppose), TrustJourney signal strength, verified positions */
 	STANCE_POSITIONS: false,
 
 	/** Wallet connect, balance display, on-chain identity */
-	WALLET: false
+	WALLET: false,
+
+	/** Enhanced campaign analytics: delivery metrics, timelines, coordination integrity overlay */
+	ANALYTICS_EXPANDED: true,
+
+	/** Email A/B testing: two-variant split, winner selection, results comparison */
+	AB_TESTING: true,
+
+	/** Public REST API at /api/v1/ with API key auth */
+	PUBLIC_API: false
 } as const;
