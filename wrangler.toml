@@ -32,6 +32,12 @@ PUBLIC_SCROLL_RPC_URL = "https://rpc.scroll.io"
 # AI Services:
 #   GEMINI_API_KEY           - Gemini API for agents + embeddings
 #   GROQ_API_KEY             - Llama Guard safety moderation
+#
+# Rate Limiting:
+#   REDIS_URL                - Redis connection URL for distributed rate limiting (optional)
+#
+# Wallet — Fiat Onramp:
+#   PUBLIC_TRANSAK_API_KEY   - Transak API key for fiat onramp widget
 
 [[hyperdrive]]
 binding = "HYPERDRIVE"

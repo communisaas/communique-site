@@ -42,19 +42,13 @@ import {
 	waitForUserOperationReceipt
 } from '$lib/core/gas/pimlico';
 import type { UserOperation } from '$lib/core/gas/types';
+import { DEBATE_MARKET_ADDRESS } from '$lib/core/contracts';
 
 // =============================================================================
 // Constants
 // =============================================================================
 
 const LOG_PREFIX = '[gas/sponsor]';
-
-/**
- * DebateMarket V9 address — the only contract whose calls we will sponsor.
- * Falls back to the known Scroll Sepolia V9 deploy if the env var is not set.
- */
-const DEBATE_MARKET_ADDRESS =
-	env.DEBATE_MARKET_ADDRESS ?? '0x410699589e5c03EBd18bB1Bd62db06FF5C704Eaa';
 
 /**
  * Maximum gas value (in wei) we will sponsor per UserOp.

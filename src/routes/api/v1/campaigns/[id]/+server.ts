@@ -6,6 +6,7 @@
 import { db } from '$lib/core/db';
 import { authenticateApiKey, requireScope } from '$lib/server/api-v1/auth';
 import { requirePublicApi } from '$lib/server/api-v1/gate';
+import { checkApiPlanRateLimit } from '$lib/server/api-v1/rate-limit';
 import { apiOk, apiError } from '$lib/server/api-v1/response';
 import type { RequestHandler } from './$types';
 
@@ -13,6 +14,8 @@ export const GET: RequestHandler = async ({ request, params }) => {
 	requirePublicApi();
 	const auth = await authenticateApiKey(request);
 	if (auth instanceof Response) return auth;
+	const rateLimit = await checkApiPlanRateLimit(auth);
+	if (rateLimit) return rateLimit;
 	const scopeErr = requireScope(auth, 'read');
 	if (scopeErr) return scopeErr;
 
@@ -48,6 +51,8 @@ export const PATCH: RequestHandler = async ({ request, params }) => {
 	requirePublicApi();
 	const auth = await authenticateApiKey(request);
 	if (auth instanceof Response) return auth;
+	const rateLimit = await checkApiPlanRateLimit(auth);
+	if (rateLimit) return rateLimit;
 	const scopeErr = requireScope(auth, 'write');
 	if (scopeErr) return scopeErr;
 

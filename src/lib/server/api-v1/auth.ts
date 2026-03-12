@@ -13,6 +13,7 @@ export interface ApiKeyContext {
 	orgId: string;
 	keyId: string;
 	scopes: string[];
+	planSlug: string;
 }
 
 /**
@@ -45,7 +46,14 @@ export async function authenticateApiKey(
 			orgId: true,
 			scopes: true,
 			revokedAt: true,
-			expiresAt: true
+			expiresAt: true,
+			org: {
+				select: {
+					subscription: {
+						select: { plan: true }
+					}
+				}
+			}
 		}
 	});
 
@@ -77,7 +85,8 @@ export async function authenticateApiKey(
 	return {
 		orgId: apiKey.orgId,
 		keyId: apiKey.id,
-		scopes: apiKey.scopes
+		scopes: apiKey.scopes,
+		planSlug: apiKey.org?.subscription?.plan ?? 'free'
 	};
 }
 
