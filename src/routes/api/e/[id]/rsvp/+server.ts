@@ -128,6 +128,20 @@ export const POST: RequestHandler = async ({ params, request, getClientAddress }
 		select: { rsvpCount: true }
 	});
 
+	// Fire-and-forget: trigger automation workflows
+	void (async () => {
+		try {
+			const { dispatchTrigger } = await import('$lib/server/automation/trigger');
+			if (event.orgId) {
+				await dispatchTrigger(event.orgId, 'event_rsvp', {
+					entityId: rsvp.id,
+					supporterId: supporterId ?? undefined,
+					metadata: { eventId: event.id }
+				});
+			}
+		} catch {}
+	})();
+
 	return json({
 		success: true,
 		rsvpCount: updatedEvent?.rsvpCount ?? event.rsvpCount + 1,

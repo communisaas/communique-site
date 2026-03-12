@@ -77,6 +77,21 @@ export const POST: RequestHandler = async ({ request }) => {
 								}
 							});
 						}
+
+						// Fire-and-forget: trigger automation workflows
+						const orgId = session.metadata?.orgId;
+						if (orgId) {
+							void (async () => {
+								try {
+									const { dispatchTrigger } = await import('$lib/server/automation/trigger');
+									await dispatchTrigger(orgId, 'donation_completed', {
+										entityId: donationId,
+										supporterId: donation.supporterId ?? undefined,
+										metadata: { campaignId, amountCents: donation.amountCents }
+									});
+								} catch {}
+							})();
+						}
 					}
 				}
 				break;

@@ -1317,6 +1317,7 @@ model Organization {
   segments          Segment[]
   events            Event[]
   donations         Donation[]
+  workflows         Workflow[]
 
   @@map("organization")
 }
@@ -1426,8 +1427,9 @@ model Supporter {
   org     Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   tags    SupporterTag[]
   actions CampaignAction[]
-  rsvps     EventRsvp[]
-  donations Donation[]
+  rsvps              EventRsvp[]
+  donations          Donation[]
+  workflowExecutions WorkflowExecution[]
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -1916,4 +1918,70 @@ model Donation {
   @@index([supporterId])
   @@index([status])
   @@map("donations")
+}
+
+// ── Automation (Phase 2 Wave 3) ──
+
+model Workflow {
+  id          String  @id @default(cuid())
+  orgId       String  @map("org_id")
+  name        String
+  description String?
+
+  trigger Json // { type: 'donation_completed' | 'event_rsvp' | 'event_checkin' | 'campaign_action' | 'supporter_created' | 'tag_added', ... }
+  steps   Json // Array of step objects
+
+  enabled Boolean @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  org        Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  executions WorkflowExecution[]
+
+  @@index([orgId])
+  @@index([enabled])
+  @@map("workflows")
+}
+
+model WorkflowExecution {
+  id          String  @id @default(cuid())
+  workflowId  String  @map("workflow_id")
+  supporterId String? @map("supporter_id")
+
+  triggerEvent Json @map("trigger_event") // snapshot of what triggered: { type, entityId, ... }
+
+  status      String    @default("pending") // 'pending' | 'running' | 'completed' | 'failed' | 'paused'
+  currentStep Int       @default(0) @map("current_step")
+  nextRunAt   DateTime? @map("next_run_at")
+  error       String?
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  workflow   Workflow            @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  supporter  Supporter?          @relation(fields: [supporterId], references: [id], onDelete: SetNull)
+  actionLogs WorkflowActionLog[]
+
+  @@index([workflowId])
+  @@index([supporterId])
+  @@index([status])
+  @@index([nextRunAt])
+  @@map("workflow_executions")
+}
+
+model WorkflowActionLog {
+  id          String @id @default(cuid())
+  executionId String @map("execution_id")
+
+  stepIndex  Int    @map("step_index")
+  actionType String @map("action_type") // 'send_email' | 'add_tag' | 'remove_tag' | 'delay' | 'condition'
+  result     Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  execution WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+  @@map("workflow_action_logs")
 }
