@@ -46,5 +46,8 @@ export const FEATURES = {
 	PUBLIC_API: true,
 
 	/** Events: RSVP, verified attendance, event management */
-	EVENTS: true
+	EVENTS: true,
+
+	/** Fundraising: Stripe donations, 0% platform fee, public donate pages */
+	FUNDRAISING: true
 } as const;

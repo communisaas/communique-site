@@ -1316,6 +1316,7 @@ model Organization {
   apiKeys           ApiKey[]
   segments          Segment[]
   events            Event[]
+  donations         Donation[]
 
   @@map("organization")
 }
@@ -1425,7 +1426,8 @@ model Supporter {
   org     Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   tags    SupporterTag[]
   actions CampaignAction[]
-  rsvps   EventRsvp[]
+  rsvps     EventRsvp[]
+  donations Donation[]
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -1505,6 +1507,12 @@ model Campaign {
   debateThreshold Int     @default(50) @map("debate_threshold")
   debateId        String? @unique @map("debate_id")
 
+  // Fundraising
+  goalAmountCents    Int?     @map("goal_amount_cents")
+  raisedAmountCents  Int      @default(0) @map("raised_amount_cents")
+  donorCount         Int      @default(0) @map("donor_count")
+  donationCurrency   String?  @default("usd") @map("donation_currency")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -1513,6 +1521,7 @@ model Campaign {
   actions    CampaignAction[]
   deliveries CampaignDelivery[]
   events     Event[]
+  donations  Donation[]
 
   @@index([orgId])
   @@index([status])
@@ -1867,4 +1876,44 @@ model EventAttendance {
 
   @@index([eventId])
   @@map("event_attendance")
+}
+
+// ── Fundraising (Phase 2 Wave 2) ──
+
+model Donation {
+  id          String  @id @default(cuid())
+  orgId       String  @map("org_id")
+  campaignId  String  @map("campaign_id")
+  supporterId String? @map("supporter_id")
+
+  email String
+  name  String
+
+  amountCents       Int     @map("amount_cents")
+  currency          String  @default("usd")
+  recurring         Boolean @default(false)
+  recurringInterval String? @map("recurring_interval") // 'month' | 'year'
+
+  stripeSessionId       String? @unique @map("stripe_session_id")
+  stripePaymentIntentId String? @unique @map("stripe_payment_intent_id")
+  stripeSubscriptionId  String? @map("stripe_subscription_id")
+
+  status String @default("pending") // 'pending' | 'completed' | 'failed' | 'refunded'
+
+  districtHash   String? @map("district_hash")
+  engagementTier Int     @default(0) @map("engagement_tier")
+
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  campaign  Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  supporter Supporter?   @relation(fields: [supporterId], references: [id], onDelete: SetNull)
+
+  @@index([orgId])
+  @@index([campaignId])
+  @@index([supporterId])
+  @@index([status])
+  @@map("donations")
 }

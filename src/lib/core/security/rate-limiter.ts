@@ -553,6 +553,14 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		keyStrategy: 'ip',
 		includeGet: true
 	},
+	// ── Fundraising (Phase 2 Wave 2) ──
+	{
+		pattern: '/api/d/',
+		maxRequests: 10,
+		windowMs: 60 * 1000, // 10 req/min per IP — donation checkout + stats
+		keyStrategy: 'ip',
+		includeGet: true
+	},
 	// ── Public campaign page rate limits (Phase 0) ──
 	{
 		pattern: '/api/c/',

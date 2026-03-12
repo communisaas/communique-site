@@ -50,6 +50,38 @@ export const POST: RequestHandler = async ({ request }) => {
 	switch (event.type) {
 		case 'checkout.session.completed': {
 			const session = event.data.object;
+
+			// Handle donation checkouts
+			if (session.metadata?.type === 'donation') {
+				const donationId = session.metadata.donationId;
+				const campaignId = session.metadata.campaignId;
+				if (donationId) {
+					const donation = await db.donation.findUnique({ where: { id: donationId } });
+					if (donation && donation.status === 'pending') {
+						await db.donation.update({
+							where: { id: donationId },
+							data: {
+								status: 'completed',
+								stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+								stripeSubscriptionId: typeof session.subscription === 'string' ? session.subscription : null,
+								completedAt: new Date()
+							}
+						});
+						// Increment campaign counters
+						if (campaignId) {
+							await db.campaign.update({
+								where: { id: campaignId },
+								data: {
+									raisedAmountCents: { increment: donation.amountCents },
+									donorCount: { increment: 1 }
+								}
+							});
+						}
+					}
+				}
+				break;
+			}
+
 			if (session.mode !== 'subscription' || !session.subscription) break;
 			const orgId = session.metadata?.orgId;
 			const plan = session.metadata?.plan;
@@ -163,6 +195,27 @@ export const POST: RequestHandler = async ({ request }) => {
 			await db.subscription.update({
 				where: { id: existing.id },
 				data: { status: 'past_due' }
+			});
+			break;
+		}
+
+		case 'charge.refunded': {
+			const charge = event.data.object;
+			const paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
+			if (!paymentIntentId) break;
+			const donation = await db.donation.findFirst({ where: { stripePaymentIntentId: paymentIntentId } });
+			if (!donation || donation.status !== 'completed') break;
+			await db.donation.update({
+				where: { id: donation.id },
+				data: { status: 'refunded' }
+			});
+			// Decrement campaign counters
+			await db.campaign.update({
+				where: { id: donation.campaignId },
+				data: {
+					raisedAmountCents: { decrement: donation.amountCents },
+					donorCount: { decrement: 1 }
+				}
 			});
 			break;
 		}
