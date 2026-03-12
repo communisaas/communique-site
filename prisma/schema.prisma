@@ -1315,6 +1315,7 @@ model Organization {
   anSyncs           AnSync[]
   apiKeys           ApiKey[]
   segments          Segment[]
+  events            Event[]
 
   @@map("organization")
 }
@@ -1424,6 +1425,7 @@ model Supporter {
   org     Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   tags    SupporterTag[]
   actions CampaignAction[]
+  rsvps   EventRsvp[]
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -1510,6 +1512,7 @@ model Campaign {
   debate     Debate?            @relation(fields: [debateId], references: [id])
   actions    CampaignAction[]
   deliveries CampaignDelivery[]
+  events     Event[]
 
   @@index([orgId])
   @@index([status])
@@ -1741,4 +1744,127 @@ model ApiKey {
   @@index([orgId])
   @@index([keyHash])
   @@map("api_key")
+}
+
+// ── Events (Phase 2 Wave 1) ──
+
+enum EventType {
+  IN_PERSON
+  VIRTUAL
+  HYBRID
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum RsvpStatus {
+  GOING
+  MAYBE
+  NOT_GOING
+  WAITLISTED
+}
+
+model Event {
+  id         String      @id @default(cuid())
+  orgId      String      @map("org_id")
+  campaignId String?     @map("campaign_id")
+
+  title       String
+  description String?    @db.Text
+  eventType   EventType  @default(IN_PERSON) @map("event_type")
+
+  // When
+  startAt    DateTime    @map("start_at")
+  endAt      DateTime?   @map("end_at")
+  timezone   String      @default("America/New_York")
+
+  // Where (physical)
+  venue      String?
+  address    String?
+  city       String?
+  state      String?
+  postalCode String?     @map("postal_code")
+  latitude   Float?
+  longitude  Float?
+
+  // Where (virtual)
+  virtualUrl String?     @map("virtual_url")
+
+  // Capacity
+  capacity        Int?
+  waitlistEnabled Boolean @default(false) @map("waitlist_enabled")
+
+  // Aggregate counters (denormalized for read performance)
+  rsvpCount       Int     @default(0) @map("rsvp_count")
+  attendeeCount   Int     @default(0) @map("attendee_count")
+  verifiedAttendees Int   @default(0) @map("verified_attendees")
+
+  // Verification
+  checkinCode         String?  @unique @map("checkin_code")
+  requireVerification Boolean  @default(false) @map("require_verification")
+
+  status    EventStatus @default(DRAFT)
+
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  org        Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  campaign   Campaign?      @relation(fields: [campaignId], references: [id])
+  rsvps      EventRsvp[]
+  attendances EventAttendance[]
+
+  @@index([orgId])
+  @@index([orgId, status])
+  @@index([startAt])
+  @@map("event")
+}
+
+model EventRsvp {
+  id          String     @id @default(cuid())
+  eventId     String     @map("event_id")
+  supporterId String?    @map("supporter_id")
+
+  email      String
+  name       String
+  status     RsvpStatus @default(GOING)
+  guestCount Int        @default(0) @map("guest_count")
+
+  // Verification context
+  districtHash   String? @map("district_hash")
+  engagementTier Int     @default(0) @map("engagement_tier")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  event      Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  supporter  Supporter?   @relation(fields: [supporterId], references: [id], onDelete: SetNull)
+  attendance EventAttendance?
+
+  @@unique([eventId, email])
+  @@index([eventId])
+  @@index([eventId, status])
+  @@map("event_rsvp")
+}
+
+model EventAttendance {
+  id      String  @id @default(cuid())
+  eventId String  @map("event_id")
+  rsvpId  String? @unique @map("rsvp_id")
+
+  verified            Boolean  @default(false)
+  verificationMethod  String?  @map("verification_method") // 'mdl' | 'passkey' | 'checkin_code'
+  identityCommitment  String?  @map("identity_commitment")
+  districtHash        String?  @map("district_hash")
+
+  checkedInAt DateTime @default(now()) @map("checked_in_at")
+
+  event Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  rsvp  EventRsvp?  @relation(fields: [rsvpId], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@map("event_attendance")
 }

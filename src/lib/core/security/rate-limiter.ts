@@ -545,6 +545,14 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		keyStrategy: 'user',
 		includeGet: true
 	},
+	// ── Events (Phase 2 Wave 1) ──
+	{
+		pattern: '/api/e/',
+		maxRequests: 10,
+		windowMs: 60 * 1000, // 10 req/min per IP — RSVP + stats
+		keyStrategy: 'ip',
+		includeGet: true
+	},
 	// ── Public campaign page rate limits (Phase 0) ──
 	{
 		pattern: '/api/c/',

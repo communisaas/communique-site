@@ -43,5 +43,8 @@ export const FEATURES = {
 	AB_TESTING: true,
 
 	/** Public REST API at /api/v1/ with API key auth */
-	PUBLIC_API: true
+	PUBLIC_API: true,
+
+	/** Events: RSVP, verified attendance, event management */
+	EVENTS: true
 } as const;
