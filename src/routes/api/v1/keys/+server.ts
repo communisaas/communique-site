@@ -8,10 +8,12 @@
 import { db } from '$lib/core/db';
 import { loadOrgContext, requireRole } from '$lib/server/org';
 import { generateApiKey } from '$lib/core/security/api-key';
+import { requirePublicApi } from '$lib/server/api-v1/gate';
 import { apiOk, apiError } from '$lib/server/api-v1/response';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
+	requirePublicApi();
 	if (!locals.user) return apiError('UNAUTHORIZED', 'Authentication required', 401);
 
 	let body: Record<string, unknown>;

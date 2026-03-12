@@ -6,10 +6,12 @@
 
 import { db } from '$lib/core/db';
 import { authenticateApiKey, requireScope } from '$lib/server/api-v1/auth';
+import { requirePublicApi } from '$lib/server/api-v1/gate';
 import { apiOk, apiError } from '$lib/server/api-v1/response';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request, params }) => {
+	requirePublicApi();
 	const auth = await authenticateApiKey(request);
 	if (auth instanceof Response) return auth;
 	const scopeErr = requireScope(auth, 'read');
@@ -40,6 +42,7 @@ export const GET: RequestHandler = async ({ request, params }) => {
 };
 
 export const PATCH: RequestHandler = async ({ request, params }) => {
+	requirePublicApi();
 	const auth = await authenticateApiKey(request);
 	if (auth instanceof Response) return auth;
 	const scopeErr = requireScope(auth, 'write');
@@ -69,6 +72,7 @@ export const PATCH: RequestHandler = async ({ request, params }) => {
 };
 
 export const DELETE: RequestHandler = async ({ request, params }) => {
+	requirePublicApi();
 	const auth = await authenticateApiKey(request);
 	if (auth instanceof Response) return auth;
 	const scopeErr = requireScope(auth, 'write');

@@ -10,11 +10,14 @@
  */
 
 import { json, error } from '@sveltejs/kit';
+import { FEATURES } from '$lib/config/features';
 import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
 import { confirmMailtoSend } from '$lib/services/positionService';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
+	if (!FEATURES.STANCE_POSITIONS) throw error(404, 'Not found');
+
 	try {
 		const session = locals.session;
 		if (!session?.userId) {

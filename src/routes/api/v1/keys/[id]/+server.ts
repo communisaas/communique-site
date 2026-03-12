@@ -7,6 +7,7 @@
 
 import { db } from '$lib/core/db';
 import { loadOrgContext, requireRole } from '$lib/server/org';
+import { requirePublicApi } from '$lib/server/api-v1/gate';
 import { apiOk, apiError } from '$lib/server/api-v1/response';
 import type { RequestHandler } from './$types';
 
@@ -26,6 +27,7 @@ async function resolveKeyAndOrg(params: Record<string, string>, locals: App.Loca
 }
 
 export const PATCH: RequestHandler = async ({ request, params, locals, url }) => {
+	requirePublicApi();
 	const result = await resolveKeyAndOrg(params, locals, url);
 	if ('error' in result) return result.error;
 
@@ -40,6 +42,7 @@ export const PATCH: RequestHandler = async ({ request, params, locals, url }) =>
 };
 
 export const DELETE: RequestHandler = async ({ params, locals, url }) => {
+	requirePublicApi();
 	const result = await resolveKeyAndOrg(params, locals, url);
 	if ('error' in result) return result.error;
 

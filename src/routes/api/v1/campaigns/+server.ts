@@ -5,10 +5,12 @@
 
 import { db } from '$lib/core/db';
 import { authenticateApiKey, requireScope } from '$lib/server/api-v1/auth';
+import { requirePublicApi } from '$lib/server/api-v1/gate';
 import { apiOk, apiError, parsePagination } from '$lib/server/api-v1/response';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request, url }) => {
+	requirePublicApi();
 	const auth = await authenticateApiKey(request);
 	if (auth instanceof Response) return auth;
 
@@ -81,6 +83,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 };
 
 export const POST: RequestHandler = async ({ request }) => {
+	requirePublicApi();
 	const auth = await authenticateApiKey(request);
 	if (auth instanceof Response) return auth;
 

@@ -10,11 +10,14 @@
  */
 
 import { json, error } from '@sveltejs/kit';
+import { FEATURES } from '$lib/config/features';
 import type { RequestHandler } from './$types';
 import { getEngagementByDistrict } from '$lib/services/positionService';
 import { prisma } from '$lib/core/db';
 
 export const GET: RequestHandler = async ({ params, url }) => {
+	if (!FEATURES.STANCE_POSITIONS) throw error(404, 'Not found');
+
 	try {
 		const { templateId } = params;
 

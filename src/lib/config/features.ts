@@ -31,7 +31,7 @@ export const FEATURES = {
 	ADDRESS_SPECIFICITY: 'district' as AddressSpecificity,
 
 	/** Stance registration (support/oppose), TrustJourney signal strength, verified positions */
-	STANCE_POSITIONS: false,
+	STANCE_POSITIONS: true,
 
 	/** Wallet connect, balance display, on-chain identity */
 	WALLET: true,
@@ -43,5 +43,5 @@ export const FEATURES = {
 	AB_TESTING: true,
 
 	/** Public REST API at /api/v1/ with API key auth */
-	PUBLIC_API: false
+	PUBLIC_API: true
 } as const;

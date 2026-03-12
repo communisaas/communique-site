@@ -3,11 +3,13 @@
  */
 
 import { authenticateApiKey, requireScope } from '$lib/server/api-v1/auth';
+import { requirePublicApi } from '$lib/server/api-v1/gate';
 import { apiOk } from '$lib/server/api-v1/response';
 import { getOrgUsage } from '$lib/server/billing/usage';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request }) => {
+	requirePublicApi();
 	const auth = await authenticateApiKey(request);
 	if (auth instanceof Response) return auth;
 	const scopeErr = requireScope(auth, 'read');
