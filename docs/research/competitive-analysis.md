@@ -746,7 +746,7 @@ Congressional staffers process 75–85% of incoming mail as form-generated advoc
 
 ### Expansion (Year 2–4)
 
-5. **Progressive orgs wanting proof** — run Commons alongside AN. Use AN for volume, Commons for verified actions. Migration path when they see the difference in staffer response rates. AN API sync tool (spec'd in `docs/specs/AN-MIGRATION-SPEC.md`) reduces migration from 6 months to weeks.
+5. **Progressive orgs wanting proof** — run Commons alongside AN. Use AN for volume, Commons for verified actions. Migration path when they see the difference in staffer response rates. AN API sync tool (spec'd in `docs/specs/IMPORT-SPEC.md`) reduces migration from 6 months to weeks.
 6. **Corporate advocacy / trade associations** — currently paying $10K–$30K+/year to Quorum/VoterVoice. Commons Organization tier at $75/mo ($900/yr) is 10–30x cheaper. Verification packet is more credible than volume metrics.
 
 ### Differentiated capabilities by segment

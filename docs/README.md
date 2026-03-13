@@ -90,7 +90,7 @@ Technical specifications and design docs.
 - `agentic-civic-infrastructure.md` — Verified agentic civic action
 - `chain-abstraction-architecture.md` — Wallet, signing, gas, funding layers
 - `CAMPAIGN-ORCHESTRATION-SPEC.md` — Campaign lifecycle and delivery
-- `AN-MIGRATION-SPEC.md` — Action Network migration spec
+- `IMPORT-SPEC.md` — Supporter import architecture
 - `INTEGRATION-REMEDIATION-PLAN.md` — Multi-wave remediation plan
 - `GEOGRAPHIC-IDENTITY-ROUTING.md` — District proof model
 - `decision-maker-enrichment-pipeline.md` — Decision-maker discovery pipeline

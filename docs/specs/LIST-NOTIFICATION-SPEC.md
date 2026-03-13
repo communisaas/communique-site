@@ -5,7 +5,7 @@
 **Status:** Shipped
 **Author:** Architecture
 **Created:** 2026-03-06
-**Depends on:** Org Data Model (`docs/architecture/org-data-model.md`), Platform Extension (`docs/architecture/platform-extension.md`), AN Migration Spec (`docs/specs/AN-MIGRATION-SPEC.md`), Reputation Architecture (`voter-protocol/specs/REPUTATION-ARCHITECTURE-SPEC.md`), Shadow Atlas
+**Depends on:** Org Data Model (`docs/architecture/org-data-model.md`), Platform Extension (`docs/architecture/platform-extension.md`), Import Spec (`docs/specs/IMPORT-SPEC.md`), Reputation Architecture (`voter-protocol/specs/REPUTATION-ARCHITECTURE-SPEC.md`), Shadow Atlas
 **Implements:** `src/lib/server/lists/`, `src/lib/server/email/`, `src/routes/admin/supporters/`, `src/routes/admin/emails/`
 
 ---
@@ -480,7 +480,7 @@ The field mapper auto-detects AN's standard column names:
 
 ### Subscription status preservation
 
-CAN-SPAM/CASL compliance is non-negotiable. Imported subscription status is preserved with strictest-wins merging. See `AN-MIGRATION-SPEC.md` section 2.3 for the `resolveEmailStatus` function.
+CAN-SPAM/CASL compliance is non-negotiable. Imported subscription status is preserved with strictest-wins merging. See `IMPORT-SPEC.md` section 2.3 for the `resolveEmailStatus` function.
 
 ### Deduplication
 
