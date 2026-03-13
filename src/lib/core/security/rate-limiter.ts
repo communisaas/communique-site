@@ -568,6 +568,13 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		windowMs: 60 * 1000, // 5 req/min — scheduler endpoint
 		keyStrategy: 'ip'
 	},
+	// ── SMS + Calling (Phase 2 Wave 4) ──
+	{
+		pattern: '/api/sms/',
+		maxRequests: 5,
+		windowMs: 60 * 1000, // 5 req/min per IP — webhook + status
+		keyStrategy: 'ip'
+	},
 	// ── Public campaign page rate limits (Phase 0) ──
 	{
 		pattern: '/api/c/',
@@ -585,7 +592,9 @@ export const RATE_LIMIT_EXEMPT_PATHS = [
 	'/api/identity/didit/webhook', // HMAC-authenticated webhook
 	'/api/billing/webhook', // Stripe signature-verified webhook
 	'/api/health', // Health checks
-	'/api/cron/' // Cron jobs (authenticated separately)
+	'/api/cron/', // Cron jobs (authenticated separately)
+	'/api/sms/webhook', // Twilio signature-verified SMS webhook
+	'/api/sms/call-status' // Twilio signature-verified call status webhook
 ];
 
 /**

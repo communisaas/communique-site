@@ -1318,6 +1318,8 @@ model Organization {
   events            Event[]
   donations         Donation[]
   workflows         Workflow[]
+  smsBlasts         SmsBlast[]
+  patchThroughCalls PatchThroughCall[]
 
   @@map("organization")
 }
@@ -1430,6 +1432,8 @@ model Supporter {
   rsvps              EventRsvp[]
   donations          Donation[]
   workflowExecutions WorkflowExecution[]
+  smsMessages        SmsMessage[]
+  patchThroughCalls  PatchThroughCall[]
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -1523,7 +1527,9 @@ model Campaign {
   actions    CampaignAction[]
   deliveries CampaignDelivery[]
   events     Event[]
-  donations  Donation[]
+  donations         Donation[]
+  smsBlasts         SmsBlast[]
+  patchThroughCalls PatchThroughCall[]
 
   @@index([orgId])
   @@index([status])
@@ -1984,4 +1990,90 @@ model WorkflowActionLog {
 
   @@index([executionId])
   @@map("workflow_action_logs")
+}
+
+// ── SMS + Patch-through Calling (Phase 2 Wave 4) ──
+
+model SmsBlast {
+  id         String  @id @default(cuid())
+  orgId      String  @map("org_id")
+  campaignId String? @map("campaign_id")
+
+  body       String
+  fromNumber String  @map("from_number")
+
+  recipientFilter Json? @map("recipient_filter")
+  totalRecipients Int   @default(0) @map("total_recipients")
+
+  sentCount      Int @default(0) @map("sent_count")
+  deliveredCount Int @default(0) @map("delivered_count")
+  failedCount    Int @default(0) @map("failed_count")
+
+  status String @default("draft")
+
+  sentAt    DateTime? @map("sent_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  campaign Campaign?    @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  messages SmsMessage[]
+
+  @@index([orgId])
+  @@index([status])
+  @@map("sms_blasts")
+}
+
+model SmsMessage {
+  id          String @id @default(cuid())
+  blastId     String @map("blast_id")
+  supporterId String @map("supporter_id")
+
+  to   String
+  body String
+
+  twilioSid String? @map("twilio_sid")
+  status    String  @default("queued")
+  errorCode String? @map("error_code")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blast     SmsBlast  @relation(fields: [blastId], references: [id], onDelete: Cascade)
+  supporter Supporter @relation(fields: [supporterId], references: [id], onDelete: Cascade)
+
+  @@index([blastId])
+  @@index([supporterId])
+  @@index([twilioSid])
+  @@map("sms_messages")
+}
+
+model PatchThroughCall {
+  id          String  @id @default(cuid())
+  orgId       String  @map("org_id")
+  campaignId  String? @map("campaign_id")
+  supporterId String  @map("supporter_id")
+
+  callerPhone String  @map("caller_phone")
+  targetPhone String  @map("target_phone")
+  targetName  String? @map("target_name")
+  targetTitle String? @map("target_title")
+
+  twilioCallSid String? @unique @map("twilio_call_sid")
+  districtHash  String? @map("district_hash")
+
+  status   String @default("initiated")
+  duration Int?
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  campaign  Campaign?    @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  supporter Supporter    @relation(fields: [supporterId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([campaignId])
+  @@index([supporterId])
+  @@index([status])
+  @@map("patch_through_calls")
 }

@@ -52,5 +52,8 @@ export const FEATURES = {
 	FUNDRAISING: true,
 
 	/** Automation: event-driven engagement ladders, workflow builder */
-	AUTOMATION: true
+	AUTOMATION: true,
+
+	/** SMS campaigns + patch-through calling (Twilio) */
+	SMS: true
 } as const;
