@@ -78,6 +78,10 @@ infrastructure/aws/tee-enclave/node_modules/
 infrastructure/gcp-proxy/node_modules/
 scripts/remote-test
 
+# Python
+__pycache__/
+*.pyc
+
 # Development artifacts
 .wrangler/
 .yarn/
