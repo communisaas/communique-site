@@ -651,6 +651,262 @@ export const openApiSpec = {
 					'404': { $ref: '#/components/responses/NotFound' }
 				}
 			}
+		},
+		'/events': {
+			get: {
+				operationId: 'listEvents',
+				summary: 'List events',
+				description: 'List events with cursor pagination and optional filters. Requires read scope.',
+				parameters: [
+					{ $ref: '#/components/parameters/cursor' },
+					{ $ref: '#/components/parameters/limit' },
+					{ name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'PUBLISHED', 'CANCELLED', 'COMPLETED'] }, description: 'Filter by event status' },
+					{ name: 'eventType', in: 'query', schema: { type: 'string', enum: ['IN_PERSON', 'VIRTUAL', 'HYBRID'] }, description: 'Filter by event type' }
+				],
+				responses: {
+					'200': {
+						description: 'Paginated list of events',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: {
+										data: { type: 'array', items: { $ref: '#/components/schemas/Event' } },
+										meta: { $ref: '#/components/schemas/PaginationMeta' }
+									}
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' }
+				}
+			}
+		},
+		'/events/{id}': {
+			get: {
+				operationId: 'getEvent',
+				summary: 'Get event',
+				description: 'Get a single event by ID. Requires read scope.',
+				parameters: [{ $ref: '#/components/parameters/resourceId' }],
+				responses: {
+					'200': {
+						description: 'Event details',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: { data: { $ref: '#/components/schemas/EventDetail' } }
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' },
+					'404': { $ref: '#/components/responses/NotFound' }
+				}
+			}
+		},
+		'/donations': {
+			get: {
+				operationId: 'listDonations',
+				summary: 'List donations',
+				description: 'List donations with cursor pagination and optional filters. Requires read scope.',
+				parameters: [
+					{ $ref: '#/components/parameters/cursor' },
+					{ $ref: '#/components/parameters/limit' },
+					{ name: 'status', in: 'query', schema: { type: 'string', enum: ['pending', 'completed', 'refunded'] }, description: 'Filter by donation status' },
+					{ name: 'campaignId', in: 'query', schema: { type: 'string' }, description: 'Filter by campaign ID' }
+				],
+				responses: {
+					'200': {
+						description: 'Paginated list of donations',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: {
+										data: { type: 'array', items: { $ref: '#/components/schemas/Donation' } },
+										meta: { $ref: '#/components/schemas/PaginationMeta' }
+									}
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' }
+				}
+			}
+		},
+		'/donations/{id}': {
+			get: {
+				operationId: 'getDonation',
+				summary: 'Get donation',
+				description: 'Get a single donation by ID. Requires read scope.',
+				parameters: [{ $ref: '#/components/parameters/resourceId' }],
+				responses: {
+					'200': {
+						description: 'Donation details',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: { data: { $ref: '#/components/schemas/DonationDetail' } }
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' },
+					'404': { $ref: '#/components/responses/NotFound' }
+				}
+			}
+		},
+		'/workflows': {
+			get: {
+				operationId: 'listWorkflows',
+				summary: 'List workflows',
+				description: 'List automation workflows with cursor pagination and optional filters. Requires read scope.',
+				parameters: [
+					{ $ref: '#/components/parameters/cursor' },
+					{ $ref: '#/components/parameters/limit' },
+					{ name: 'enabled', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filter by enabled status' }
+				],
+				responses: {
+					'200': {
+						description: 'Paginated list of workflows',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: {
+										data: { type: 'array', items: { $ref: '#/components/schemas/Workflow' } },
+										meta: { $ref: '#/components/schemas/PaginationMeta' }
+									}
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' }
+				}
+			}
+		},
+		'/workflows/{id}': {
+			get: {
+				operationId: 'getWorkflow',
+				summary: 'Get workflow',
+				description: 'Get a single workflow by ID including step definitions. Requires read scope.',
+				parameters: [{ $ref: '#/components/parameters/resourceId' }],
+				responses: {
+					'200': {
+						description: 'Workflow details',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: { data: { $ref: '#/components/schemas/WorkflowDetail' } }
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' },
+					'404': { $ref: '#/components/responses/NotFound' }
+				}
+			}
+		},
+		'/sms': {
+			get: {
+				operationId: 'listSmsBlasts',
+				summary: 'List SMS blasts',
+				description: 'List SMS blasts with cursor pagination and optional filters. Requires read scope.',
+				parameters: [
+					{ $ref: '#/components/parameters/cursor' },
+					{ $ref: '#/components/parameters/limit' },
+					{ name: 'status', in: 'query', schema: { type: 'string', enum: ['draft', 'sending', 'sent', 'failed'] }, description: 'Filter by blast status' }
+				],
+				responses: {
+					'200': {
+						description: 'Paginated list of SMS blasts',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: {
+										data: { type: 'array', items: { $ref: '#/components/schemas/SmsBlast' } },
+										meta: { $ref: '#/components/schemas/PaginationMeta' }
+									}
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' }
+				}
+			}
+		},
+		'/calls': {
+			get: {
+				operationId: 'listCalls',
+				summary: 'List patch-through calls',
+				description: 'List patch-through calls with cursor pagination and optional filters. Requires read scope.',
+				parameters: [
+					{ $ref: '#/components/parameters/cursor' },
+					{ $ref: '#/components/parameters/limit' },
+					{ name: 'status', in: 'query', schema: { type: 'string', enum: ['initiated', 'ringing', 'in-progress', 'completed', 'failed', 'no-answer', 'busy'] }, description: 'Filter by call status' },
+					{ name: 'campaignId', in: 'query', schema: { type: 'string' }, description: 'Filter by campaign ID' }
+				],
+				responses: {
+					'200': {
+						description: 'Paginated list of patch-through calls',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: {
+										data: { type: 'array', items: { $ref: '#/components/schemas/PatchThroughCall' } },
+										meta: { $ref: '#/components/schemas/PaginationMeta' }
+									}
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' }
+				}
+			}
+		},
+		'/representatives': {
+			get: {
+				operationId: 'listRepresentatives',
+				summary: 'List representatives',
+				description: 'List international representatives with cursor pagination and optional filters. Requires read scope.',
+				parameters: [
+					{ $ref: '#/components/parameters/cursor' },
+					{ $ref: '#/components/parameters/limit' },
+					{ name: 'country', in: 'query', schema: { type: 'string' }, description: 'Filter by ISO country code' },
+					{ name: 'constituency', in: 'query', schema: { type: 'string' }, description: 'Filter by constituency ID' }
+				],
+				responses: {
+					'200': {
+						description: 'Paginated list of representatives',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: {
+										data: { type: 'array', items: { $ref: '#/components/schemas/Representative' } },
+										meta: { $ref: '#/components/schemas/PaginationMeta' }
+									}
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' }
+				}
+			}
 		}
 	},
 	components: {
@@ -899,6 +1155,176 @@ export const openApiSpec = {
 					name: { type: 'string' },
 					scopes: { type: 'array', items: { type: 'string' } },
 					createdAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			Event: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					title: { type: 'string' },
+					description: { type: ['string', 'null'] },
+					eventType: { type: 'string', enum: ['IN_PERSON', 'VIRTUAL', 'HYBRID'] },
+					startAt: { type: 'string', format: 'date-time' },
+					endAt: { type: ['string', 'null'], format: 'date-time' },
+					timezone: { type: ['string', 'null'] },
+					venue: { type: ['string', 'null'] },
+					city: { type: ['string', 'null'] },
+					state: { type: ['string', 'null'] },
+					virtualUrl: { type: ['string', 'null'] },
+					capacity: { type: ['integer', 'null'] },
+					status: { type: 'string', enum: ['DRAFT', 'PUBLISHED', 'CANCELLED', 'COMPLETED'] },
+					rsvpCount: { type: 'integer' },
+					attendeeCount: { type: 'integer' },
+					verifiedAttendees: { type: 'integer' },
+					campaignId: { type: ['string', 'null'] },
+					createdAt: { type: 'string', format: 'date-time' },
+					updatedAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			EventDetail: {
+				type: 'object',
+				description: 'Full event detail including address and configuration fields',
+				properties: {
+					id: { type: 'string' },
+					title: { type: 'string' },
+					description: { type: ['string', 'null'] },
+					eventType: { type: 'string', enum: ['IN_PERSON', 'VIRTUAL', 'HYBRID'] },
+					startAt: { type: 'string', format: 'date-time' },
+					endAt: { type: ['string', 'null'], format: 'date-time' },
+					timezone: { type: ['string', 'null'] },
+					venue: { type: ['string', 'null'] },
+					address: { type: ['string', 'null'] },
+					city: { type: ['string', 'null'] },
+					state: { type: ['string', 'null'] },
+					postalCode: { type: ['string', 'null'] },
+					latitude: { type: ['number', 'null'] },
+					longitude: { type: ['number', 'null'] },
+					virtualUrl: { type: ['string', 'null'] },
+					capacity: { type: ['integer', 'null'] },
+					waitlistEnabled: { type: 'boolean' },
+					requireVerification: { type: 'boolean' },
+					status: { type: 'string', enum: ['DRAFT', 'PUBLISHED', 'CANCELLED', 'COMPLETED'] },
+					rsvpCount: { type: 'integer' },
+					attendeeCount: { type: 'integer' },
+					verifiedAttendees: { type: 'integer' },
+					campaignId: { type: ['string', 'null'] },
+					createdAt: { type: 'string', format: 'date-time' },
+					updatedAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			Donation: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					campaignId: { type: ['string', 'null'] },
+					email: { type: 'string', format: 'email' },
+					name: { type: ['string', 'null'] },
+					amountCents: { type: 'integer' },
+					currency: { type: 'string' },
+					recurring: { type: 'boolean' },
+					status: { type: 'string', enum: ['pending', 'completed', 'refunded'] },
+					engagementTier: { type: 'integer' },
+					completedAt: { type: ['string', 'null'], format: 'date-time' },
+					createdAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			DonationDetail: {
+				type: 'object',
+				description: 'Full donation detail including Stripe and district fields',
+				properties: {
+					id: { type: 'string' },
+					campaignId: { type: ['string', 'null'] },
+					email: { type: 'string', format: 'email' },
+					name: { type: ['string', 'null'] },
+					amountCents: { type: 'integer' },
+					currency: { type: 'string' },
+					recurring: { type: 'boolean' },
+					recurringInterval: { type: ['string', 'null'] },
+					status: { type: 'string', enum: ['pending', 'completed', 'refunded'] },
+					engagementTier: { type: 'integer' },
+					districtHash: { type: ['string', 'null'] },
+					stripeSessionId: { type: ['string', 'null'] },
+					completedAt: { type: ['string', 'null'], format: 'date-time' },
+					createdAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			Workflow: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					name: { type: 'string' },
+					description: { type: ['string', 'null'] },
+					trigger: { type: 'string' },
+					stepCount: { type: 'integer' },
+					enabled: { type: 'boolean' },
+					createdAt: { type: 'string', format: 'date-time' },
+					updatedAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			WorkflowDetail: {
+				type: 'object',
+				description: 'Full workflow detail including step definitions',
+				properties: {
+					id: { type: 'string' },
+					name: { type: 'string' },
+					description: { type: ['string', 'null'] },
+					trigger: { type: 'string' },
+					steps: { type: 'array', items: { type: 'object' }, description: 'Array of workflow step definitions' },
+					stepCount: { type: 'integer' },
+					enabled: { type: 'boolean' },
+					createdAt: { type: 'string', format: 'date-time' },
+					updatedAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			SmsBlast: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					body: { type: 'string' },
+					fromNumber: { type: 'string' },
+					status: { type: 'string', enum: ['draft', 'sending', 'sent', 'failed'] },
+					totalRecipients: { type: 'integer' },
+					sentCount: { type: 'integer' },
+					failedCount: { type: 'integer' },
+					campaignId: { type: ['string', 'null'] },
+					sentAt: { type: ['string', 'null'], format: 'date-time' },
+					createdAt: { type: 'string', format: 'date-time' },
+					updatedAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			PatchThroughCall: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					callerPhone: { type: 'string' },
+					targetPhone: { type: 'string' },
+					targetName: { type: ['string', 'null'] },
+					status: { type: 'string', enum: ['initiated', 'ringing', 'in-progress', 'completed', 'failed', 'no-answer', 'busy'] },
+					duration: { type: ['integer', 'null'] },
+					twilioCallSid: { type: ['string', 'null'] },
+					campaignId: { type: ['string', 'null'] },
+					districtHash: { type: ['string', 'null'] },
+					createdAt: { type: 'string', format: 'date-time' },
+					updatedAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			Representative: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					countryCode: { type: 'string' },
+					constituencyId: { type: ['string', 'null'] },
+					constituencyName: { type: ['string', 'null'] },
+					name: { type: 'string' },
+					party: { type: ['string', 'null'] },
+					chamber: { type: ['string', 'null'] },
+					office: { type: ['string', 'null'] },
+					phone: { type: ['string', 'null'] },
+					email: { type: ['string', 'null'] },
+					websiteUrl: { type: ['string', 'null'] },
+					photoUrl: { type: ['string', 'null'] },
+					createdAt: { type: 'string', format: 'date-time' },
+					updatedAt: { type: 'string', format: 'date-time' }
 				}
 			},
 			ErrorEnvelope: {
