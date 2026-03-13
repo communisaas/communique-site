@@ -8,6 +8,8 @@ import { authenticateApiKey, requireScope } from '$lib/server/api-v1/auth';
 import { requirePublicApi } from '$lib/server/api-v1/gate';
 import { checkApiPlanRateLimit } from '$lib/server/api-v1/rate-limit';
 import { apiOk, apiError } from '$lib/server/api-v1/response';
+import { VALID_JURISDICTIONS, VALID_COUNTRY_CODES } from '$lib/server/geographic/types';
+import type { JurisdictionType, CountryCode } from '$lib/server/geographic/types';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request, params }) => {
@@ -38,6 +40,8 @@ export const GET: RequestHandler = async ({ request, params }) => {
 		templateId: campaign.templateId,
 		debateEnabled: campaign.debateEnabled,
 		debateThreshold: campaign.debateThreshold,
+		targetJurisdiction: campaign.targetJurisdiction,
+		targetCountry: campaign.targetCountry,
 		createdAt: campaign.createdAt.toISOString(),
 		updatedAt: campaign.updatedAt.toISOString(),
 		counts: {
@@ -62,11 +66,25 @@ export const PATCH: RequestHandler = async ({ request, params }) => {
 	let body: Record<string, unknown>;
 	try { body = await request.json(); } catch { return apiError('BAD_REQUEST', 'Invalid JSON body', 400); }
 
-	const { title, body: campaignBody, status } = body as { title?: string; body?: string; status?: string };
+	const { title, body: campaignBody, status, targetJurisdiction, targetCountry } = body as {
+		title?: string; body?: string; status?: string; targetJurisdiction?: string | null; targetCountry?: string;
+	};
 	const data: Record<string, unknown> = {};
 	if (typeof title === 'string') data.title = title.trim();
 	if (typeof campaignBody === 'string') data.body = campaignBody.trim();
 	if (status && ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETE'].includes(status)) data.status = status;
+	if (targetJurisdiction !== undefined) {
+		if (targetJurisdiction !== null && !VALID_JURISDICTIONS.includes(targetJurisdiction as JurisdictionType)) {
+			return apiError('BAD_REQUEST', `Invalid jurisdiction: ${targetJurisdiction}`, 400);
+		}
+		data.targetJurisdiction = targetJurisdiction;
+	}
+	if (targetCountry !== undefined) {
+		if (!VALID_COUNTRY_CODES.includes(targetCountry.toUpperCase() as CountryCode)) {
+			return apiError('BAD_REQUEST', `Invalid country code: ${targetCountry}`, 400);
+		}
+		data.targetCountry = targetCountry.toUpperCase();
+	}
 
 	if (Object.keys(data).length === 0) return apiError('BAD_REQUEST', 'No fields to update', 400);
 

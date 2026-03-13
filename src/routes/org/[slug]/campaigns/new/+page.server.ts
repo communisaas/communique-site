@@ -32,6 +32,8 @@ export const actions: Actions = {
 		const debateEnabled = formData.get('debateEnabled') === 'on';
 		const debateThresholdRaw = formData.get('debateThreshold')?.toString();
 		const debateThreshold = debateThresholdRaw ? parseInt(debateThresholdRaw, 10) : 50;
+		const targetCountry = formData.get('targetCountry')?.toString()?.toUpperCase() || 'US';
+		const targetJurisdiction = formData.get('targetJurisdiction')?.toString() || null;
 
 		if (!title) {
 			return fail(400, { error: 'Title is required', title, type, body });
@@ -64,6 +66,8 @@ export const actions: Actions = {
 				templateId,
 				debateEnabled,
 				debateThreshold,
+				targetCountry,
+				targetJurisdiction,
 				status: 'DRAFT'
 			}
 		});

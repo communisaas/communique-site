@@ -8,6 +8,8 @@ import { authenticateApiKey, requireScope } from '$lib/server/api-v1/auth';
 import { requirePublicApi } from '$lib/server/api-v1/gate';
 import { checkApiPlanRateLimit } from '$lib/server/api-v1/rate-limit';
 import { apiOk, apiError, parsePagination } from '$lib/server/api-v1/response';
+import { VALID_JURISDICTIONS, VALID_COUNTRY_CODES } from '$lib/server/geographic/types';
+import type { JurisdictionType, CountryCode } from '$lib/server/geographic/types';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request, url }) => {
@@ -73,6 +75,8 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			templateId: campaign.templateId,
 			debateEnabled: campaign.debateEnabled,
 			debateThreshold: campaign.debateThreshold,
+			targetJurisdiction: campaign.targetJurisdiction,
+			targetCountry: campaign.targetCountry,
 			createdAt: campaign.createdAt.toISOString(),
 			updatedAt: campaign.updatedAt.toISOString(),
 			counts: {
@@ -102,11 +106,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		return apiError('BAD_REQUEST', 'Invalid JSON body', 400);
 	}
 
-	const { title, type, body: campaignBody, templateId } = body as {
+	const { title, type, body: campaignBody, templateId, targetJurisdiction, targetCountry } = body as {
 		title?: string;
 		type?: string;
 		body?: string;
 		templateId?: string;
+		targetJurisdiction?: string;
+		targetCountry?: string;
 	};
 
 	if (!title || typeof title !== 'string' || !title.trim()) {
@@ -126,6 +132,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 	}
 
+	if (targetJurisdiction && !VALID_JURISDICTIONS.includes(targetJurisdiction as JurisdictionType)) {
+		return apiError('BAD_REQUEST', `Invalid jurisdiction: ${targetJurisdiction}`, 400);
+	}
+	if (targetCountry && !VALID_COUNTRY_CODES.includes(targetCountry.toUpperCase() as CountryCode)) {
+		return apiError('BAD_REQUEST', `Invalid country code: ${targetCountry}`, 400);
+	}
+
 	const campaign = await db.campaign.create({
 		data: {
 			orgId: auth.orgId,
@@ -133,6 +146,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			type,
 			body: campaignBody?.trim() || null,
 			templateId: templateId || null,
+			targetJurisdiction: targetJurisdiction || null,
+			targetCountry: targetCountry?.toUpperCase() || 'US',
 			status: 'DRAFT'
 		}
 	});
@@ -145,6 +160,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			body: campaign.body,
 			status: campaign.status,
 			templateId: campaign.templateId,
+			targetJurisdiction: campaign.targetJurisdiction,
+			targetCountry: campaign.targetCountry,
 			createdAt: campaign.createdAt.toISOString(),
 			updatedAt: campaign.updatedAt.toISOString()
 		},

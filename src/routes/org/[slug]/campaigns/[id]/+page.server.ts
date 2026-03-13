@@ -59,6 +59,8 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 			debateEnabled: campaign.debateEnabled,
 			debateThreshold: campaign.debateThreshold,
 			targets: campaign.targets,
+			targetCountry: campaign.targetCountry,
+			targetJurisdiction: campaign.targetJurisdiction,
 			createdAt: campaign.createdAt.toISOString(),
 			updatedAt: campaign.updatedAt.toISOString()
 		},
@@ -84,6 +86,8 @@ export const actions: Actions = {
 		const debateEnabled = formData.get('debateEnabled') === 'on';
 		const debateThresholdRaw = formData.get('debateThreshold')?.toString();
 		const debateThreshold = debateThresholdRaw ? parseInt(debateThresholdRaw, 10) : 50;
+		const targetCountry = formData.get('targetCountry')?.toString()?.toUpperCase() || 'US';
+		const targetJurisdiction = formData.get('targetJurisdiction')?.toString() || null;
 
 		if (!title) {
 			return fail(400, { error: 'Title is required' });
@@ -123,7 +127,9 @@ export const actions: Actions = {
 				body,
 				templateId,
 				debateEnabled,
-				debateThreshold
+				debateThreshold,
+				targetCountry,
+				targetJurisdiction
 			}
 		});
 

@@ -6,11 +6,15 @@
 	import VerificationTimeline from '$lib/components/org/VerificationTimeline.svelte';
 	import GeographicSpread from '$lib/components/org/GeographicSpread.svelte';
 	import CoordinationIntegrity from '$lib/components/org/CoordinationIntegrity.svelte';
+	import CountrySelector from '$lib/components/geographic/CountrySelector.svelte';
+	import JurisdictionPicker from '$lib/components/geographic/JurisdictionPicker.svelte';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let debateEnabled = $state(data.campaign.debateEnabled);
+	let targetCountry = $state(data.campaign.targetCountry ?? 'US');
+	let targetJurisdiction = $state(data.campaign.targetJurisdiction ?? '');
 	let embedOpen = $state(false);
 	let embedCopied = $state(false);
 
@@ -230,6 +234,41 @@
 						</option>
 					{/each}
 				</select>
+			</div>
+
+			<!-- Geographic targeting -->
+			<div class="rounded-lg border border-zinc-800/60 bg-zinc-950/50 p-4 space-y-4">
+				<div>
+					<p class="text-sm font-medium text-zinc-300">Geographic Targeting</p>
+					<p class="text-xs text-zinc-500 mt-0.5">Country and jurisdiction for this campaign</p>
+				</div>
+
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<div>
+						<label for="targetCountry" class="block text-sm font-medium text-zinc-300 mb-1.5">Country</label>
+						<input type="hidden" name="targetCountry" value={targetCountry} />
+						{#if canEdit && isEditable}
+							<CountrySelector value={targetCountry} onchange={(c) => { targetCountry = c; targetJurisdiction = ''; }} />
+						{:else}
+							<p class="py-2 text-sm text-zinc-400">{targetCountry}</p>
+						{/if}
+					</div>
+					<div>
+						<label for="targetJurisdiction" class="block text-sm font-medium text-zinc-300 mb-1.5">Jurisdiction</label>
+						<input type="hidden" name="targetJurisdiction" value={targetJurisdiction} />
+						{#if canEdit && isEditable}
+							<JurisdictionPicker value={targetJurisdiction || null} country={targetCountry} onchange={(j) => { targetJurisdiction = j; }} />
+						{:else}
+							<p class="py-2 text-sm text-zinc-400">{targetJurisdiction || 'Not set'}</p>
+						{/if}
+					</div>
+				</div>
+
+				{#if targetJurisdiction}
+					<p class="text-xs text-zinc-500">
+						Targeting <span class="text-zinc-300 font-medium">{targetJurisdiction}</span> in <span class="text-zinc-300 font-medium">{targetCountry}</span>
+					</p>
+				{/if}
 			</div>
 
 			<!-- Debate settings -->

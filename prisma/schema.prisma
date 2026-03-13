@@ -1519,6 +1519,10 @@ model Campaign {
   donorCount         Int      @default(0) @map("donor_count")
   donationCurrency   String?  @default("usd") @map("donation_currency")
 
+  // Geographic targeting (Phase 2 Wave 5)
+  targetJurisdiction String? @map("target_jurisdiction") // null = congressional (default)
+  targetCountry      String  @default("US") @map("target_country")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -2076,4 +2080,51 @@ model PatchThroughCall {
   @@index([supporterId])
   @@index([status])
   @@map("patch_through_calls")
+}
+
+// ── International Geographic Expansion (Phase 2 Wave 5) ──
+
+model InternationalRepresentative {
+  id              String  @id @default(cuid())
+  countryCode     String  @map("country_code") // 'GB' | 'CA' | 'AU'
+  constituencyId  String  @map("constituency_id") // e.g., 'E14000530' (UK), '24001' (CA)
+  constituencyName String @map("constituency_name")
+
+  name       String
+  party      String?
+  chamber    String?  // 'commons' | 'senate' | 'house' etc.
+  office     String?
+  phone      String?
+  email      String?
+  websiteUrl String? @map("website_url")
+  photoUrl   String? @map("photo_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([countryCode, constituencyId, name])
+  @@index([countryCode])
+  @@index([countryCode, constituencyId])
+  @@map("international_representatives")
+}
+
+model ScopeCorrection {
+  id         String @id @default(cuid())
+  templateId String @map("template_id")
+
+  aiExtracted   Json   @map("ai_extracted")
+  aiConfidence  Float  @map("ai_confidence")
+  aiMethod      String @map("ai_method") // 'regex' | 'fuzzy' | 'geocoder' | 'llm'
+
+  userCorrected  Json   @map("user_corrected")
+  correctionType String @map("correction_type") // 'wrong_country' | 'wrong_region' | 'wrong_district' | 'too_broad' | 'too_specific'
+
+  messageSnippet String @map("message_snippet")
+  subject        String
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([aiMethod, correctionType])
+  @@index([createdAt])
+  @@map("scope_corrections")
 }

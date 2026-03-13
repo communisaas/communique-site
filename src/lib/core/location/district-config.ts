@@ -11,14 +11,21 @@
  *
  * ADAPTER STATUS:
  * - census-bureau (US): ✅ Implemented
- * - uk-postcodes (GB): ❌ Not yet implemented
+ * - uk-postcodes (GB): ✅ Implemented
+ * - ca-postal (CA): ✅ Implemented
+ * - au-aec (AU): ✅ Implemented
  * - france-geo (FR): ❌ Not yet implemented
  * - japan-districts (JP): ❌ Not yet implemented
  * - brazil-tse (BR): ❌ Not yet implemented
  */
 
 /** Resolvers that are actually implemented and working */
-export const IMPLEMENTED_RESOLVERS = new Set<string>(['census-bureau']);
+export const IMPLEMENTED_RESOLVERS = new Set<string>([
+	'census-bureau',
+	'uk-postcodes',
+	'ca-postal',
+	'au-aec'
+]);
 
 export interface DistrictConfig {
 	/** Full label (e.g., "Congressional District") */
@@ -31,7 +38,14 @@ export interface DistrictConfig {
 	placeholder: string;
 
 	/** Resolver type determines which API/method to use */
-	resolver: 'census-bureau' | 'uk-postcodes' | 'france-geo' | 'japan-districts' | 'brazil-tse';
+	resolver:
+		| 'census-bureau'
+		| 'uk-postcodes'
+		| 'ca-postal'
+		| 'au-aec'
+		| 'france-geo'
+		| 'japan-districts'
+		| 'brazil-tse';
 
 	/** Whether street address is required (false = postcode/commune sufficient) */
 	requiresStreetAddress: boolean;
@@ -96,6 +110,28 @@ export const DISTRICT_CONFIG: Record<string, DistrictConfig> = {
 		streetPlaceholder: '住所',
 		postalPlaceholder: '郵便番号 (例: 100-0001)',
 		postalPattern: /^\d{3}-?\d{4}$/,
+		hasLegislativeDistricts: true
+	},
+
+	CA: {
+		label: 'Federal Riding',
+		shortLabel: 'Riding',
+		placeholder: 'Your Riding',
+		resolver: 'ca-postal',
+		requiresStreetAddress: false,
+		postalPlaceholder: 'Postal Code (e.g., K1A 0A6)',
+		postalPattern: /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/,
+		hasLegislativeDistricts: true
+	},
+
+	AU: {
+		label: 'Federal Electorate',
+		shortLabel: 'Electorate',
+		placeholder: 'Your Electorate',
+		resolver: 'au-aec',
+		requiresStreetAddress: false,
+		postalPlaceholder: 'Postcode (e.g., 3000)',
+		postalPattern: /^\d{4}$/,
 		hasLegislativeDistricts: true
 	},
 

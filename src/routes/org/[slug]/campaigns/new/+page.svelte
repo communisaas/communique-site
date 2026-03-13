@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import CountrySelector from '$lib/components/geographic/CountrySelector.svelte';
+	import JurisdictionPicker from '$lib/components/geographic/JurisdictionPicker.svelte';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let debateEnabled = $state(false);
+	let targetCountry = $state(form?.targetCountry ?? 'US');
+	let targetJurisdiction = $state(form?.targetJurisdiction ?? '');
 </script>
 
 <div class="space-y-6">
@@ -90,6 +94,36 @@
 					<option value={template.id}>{template.title}</option>
 				{/each}
 			</select>
+		</div>
+
+		<!-- Geographic targeting -->
+		<div class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-4 space-y-4">
+			<div>
+				<p class="text-sm font-medium text-zinc-300">Geographic Targeting</p>
+				<p class="text-xs text-zinc-500 mt-0.5">Set the country and jurisdiction for this campaign</p>
+			</div>
+
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+				<div>
+					<label for="targetCountry" class="block text-sm font-medium text-zinc-300 mb-1.5">Country</label>
+					<input type="hidden" name="targetCountry" value={targetCountry} />
+					<CountrySelector value={targetCountry} onchange={(c) => { targetCountry = c; targetJurisdiction = ''; }} />
+				</div>
+				<div>
+					<label for="targetJurisdiction" class="block text-sm font-medium text-zinc-300 mb-1.5">
+						Jurisdiction
+						<span class="text-zinc-600 font-normal">(optional)</span>
+					</label>
+					<input type="hidden" name="targetJurisdiction" value={targetJurisdiction} />
+					<JurisdictionPicker value={targetJurisdiction || null} country={targetCountry} onchange={(j) => { targetJurisdiction = j; }} />
+				</div>
+			</div>
+
+			{#if targetJurisdiction}
+				<p class="text-xs text-zinc-500">
+					This campaign targets <span class="text-zinc-300 font-medium">{targetJurisdiction}</span> in <span class="text-zinc-300 font-medium">{targetCountry}</span>
+				</p>
+			{/if}
 		</div>
 
 		<!-- Debate settings -->

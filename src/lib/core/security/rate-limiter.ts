@@ -575,6 +575,19 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		windowMs: 60 * 1000, // 5 req/min per IP — webhook + status
 		keyStrategy: 'ip'
 	},
+	// ── Geographic Expansion (Phase 2 Wave 5) ──
+	{
+		pattern: '/api/geographic/resolve',
+		maxRequests: 10,
+		windowMs: 60 * 1000, // 10 req/min per IP — public district resolution
+		keyStrategy: 'ip'
+	},
+	{
+		pattern: '/api/geographic/infer-scope',
+		maxRequests: 20,
+		windowMs: 60 * 1000, // 20 req/min per user — scope inference for template creator
+		keyStrategy: 'user'
+	},
 	// ── Public campaign page rate limits (Phase 0) ──
 	{
 		pattern: '/api/c/',
