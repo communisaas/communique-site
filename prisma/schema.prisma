@@ -1321,6 +1321,9 @@ model Organization {
   smsBlasts         SmsBlast[]
   patchThroughCalls PatchThroughCall[]
 
+  ownedNetworks      OrgNetwork[]         @relation("NetworkOwner")
+  networkMemberships OrgNetworkMember[]
+
   @@map("organization")
 }
 
@@ -1379,6 +1382,43 @@ model OrgResolvedContact {
   @@index([orgId])
   @@index([expiresAt])
   @@map("org_resolved_contact")
+}
+
+// Coalition networks: parent/child org relationships for shared supporter pools
+model OrgNetwork {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+  ownerOrgId  String  @map("owner_org_id")
+  status      String  @default("active") // 'active' | 'suspended'
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ownerOrg Organization        @relation("NetworkOwner", fields: [ownerOrgId], references: [id], onDelete: Cascade)
+  members  OrgNetworkMember[]
+
+  @@index([ownerOrgId])
+  @@map("org_network")
+}
+
+model OrgNetworkMember {
+  id        String   @id @default(cuid())
+  networkId String   @map("network_id")
+  orgId     String   @map("org_id")
+  role      String   @default("member") // 'admin' | 'member'
+  status    String   @default("active") // 'active' | 'pending' | 'removed'
+  joinedAt  DateTime @default(now()) @map("joined_at")
+  invitedBy String?  @map("invited_by")
+
+  network OrgNetwork   @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([networkId, orgId])
+  @@index([networkId])
+  @@index([orgId])
+  @@map("org_network_member")
 }
 
 // Coalition endorsement: multiple orgs can endorse the same template

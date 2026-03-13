@@ -340,6 +340,63 @@ export interface ListCallsParams {
   campaignId?: string;
 }
 
+// ---- Networks ----
+
+export interface Network {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  status: 'active' | 'suspended';
+  ownerOrgId: string;
+  memberCount: number;
+  role: 'admin' | 'member';
+  joinedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NetworkMember {
+  orgId: string;
+  orgName: string;
+  orgSlug: string;
+  role: 'admin' | 'member';
+  joinedAt: string;
+}
+
+export interface NetworkDetail {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  status: 'active' | 'suspended';
+  ownerOrgId: string;
+  memberCount: number;
+  ownerOrg: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  members: NetworkMember[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NetworkStats {
+  memberCount: number;
+  totalSupporters: number;
+  uniqueSupporters: number;
+  verifiedSupporters: number;
+  totalCampaignActions: number;
+  verifiedCampaignActions: number;
+  stateDistribution: Record<string, number>;
+}
+
+export interface ListNetworksParams {
+  cursor?: string;
+  limit?: number;
+}
+
 // ---- Representatives ----
 
 export interface Representative {

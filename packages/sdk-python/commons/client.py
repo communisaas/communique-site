@@ -26,6 +26,9 @@ from .types import (
     DonationDetail,
     Event,
     EventDetail,
+    Network,
+    NetworkDetail,
+    NetworkStats,
     OrgInfo,
     PatchThroughCall,
     Representative,
@@ -331,6 +334,31 @@ class TagResource:
         return self._client.request("DELETE", f"/tags/{tag_id}")["data"]
 
 
+class NetworkResource:
+    def __init__(self, client: _HttpClient) -> None:
+        self._client = client
+
+    def list(self, **params: Any) -> CursorPage[Network]:
+        def fetch(cursor: Optional[str] = None) -> CursorPage[Network]:
+            p = {k: v for k, v in params.items() if v is not None}
+            if cursor:
+                p["cursor"] = cursor
+            body = self._client.request("GET", "/networks", params=p)
+            return CursorPage(
+                data=body.get("data", []),
+                meta=body.get("meta", {}),
+                fetch_next=lambda c: fetch(c),
+            )
+
+        return fetch(params.get("cursor"))
+
+    def get(self, network_id: str) -> NetworkDetail:
+        return self._client.request("GET", f"/networks/{network_id}")["data"]
+
+    def stats(self, network_id: str) -> NetworkStats:
+        return self._client.request("GET", f"/networks/{network_id}/stats")["data"]
+
+
 class RepresentativeResource:
     def __init__(self, client: _HttpClient) -> None:
         self._client = client
@@ -591,6 +619,31 @@ class AsyncTagResource:
 
     async def delete(self, tag_id: str) -> Dict[str, Any]:
         return (await self._client.request("DELETE", f"/tags/{tag_id}"))["data"]
+
+
+class AsyncNetworkResource:
+    def __init__(self, client: _AsyncHttpClient) -> None:
+        self._client = client
+
+    async def list(self, **params: Any) -> AsyncCursorPage[Network]:
+        async def fetch(cursor: Optional[str] = None) -> AsyncCursorPage[Network]:
+            p = {k: v for k, v in params.items() if v is not None}
+            if cursor:
+                p["cursor"] = cursor
+            body = await self._client.request("GET", "/networks", params=p)
+            return AsyncCursorPage(
+                data=body.get("data", []),
+                meta=body.get("meta", {}),
+                fetch_next=fetch,
+            )
+
+        return await fetch(params.get("cursor"))
+
+    async def get(self, network_id: str) -> NetworkDetail:
+        return (await self._client.request("GET", f"/networks/{network_id}"))["data"]
+
+    async def stats(self, network_id: str) -> NetworkStats:
+        return (await self._client.request("GET", f"/networks/{network_id}/stats"))["data"]
 
 
 class AsyncRepresentativeResource:

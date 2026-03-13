@@ -8,6 +8,7 @@ from .client import (
     AsyncDonationResource,
     AsyncEventResource,
     AsyncKeyResource,
+    AsyncNetworkResource,
     AsyncOrgResource,
     AsyncRepresentativeResource,
     AsyncSmsResource,
@@ -20,6 +21,7 @@ from .client import (
     DonationResource,
     EventResource,
     KeyResource,
+    NetworkResource,
     OrgResource,
     RepresentativeResource,
     SmsResource,
@@ -50,6 +52,9 @@ from .types import (
     DonationDetail,
     Event,
     EventDetail,
+    Network,
+    NetworkDetail,
+    NetworkStats,
     OrgInfo,
     PatchThroughCall,
     Representative,
@@ -96,6 +101,9 @@ __all__ = [
     "SmsBlast",
     "PatchThroughCall",
     "Representative",
+    "Network",
+    "NetworkDetail",
+    "NetworkStats",
 ]
 
 _DEFAULT_BASE_URL = "https://commons.email/api/v1"
@@ -132,6 +140,7 @@ class Commons:
         self.calls = CallResource(self._client)
         self.tags = TagResource(self._client)
         self.representatives = RepresentativeResource(self._client)
+        self.networks = NetworkResource(self._client)
         self.usage = UsageResource(self._client)
         self.org = OrgResource(self._client)
         self.keys = KeyResource(self._client)
@@ -172,6 +181,7 @@ class AsyncCommons:
         self.calls = AsyncCallResource(self._client)
         self.tags = AsyncTagResource(self._client)
         self.representatives = AsyncRepresentativeResource(self._client)
+        self.networks = AsyncNetworkResource(self._client)
         self.usage = AsyncUsageResource(self._client)
         self.org = AsyncOrgResource(self._client)
         self.keys = AsyncKeyResource(self._client)

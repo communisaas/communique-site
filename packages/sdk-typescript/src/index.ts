@@ -34,6 +34,11 @@ import type {
   ListCallsParams,
   Representative,
   ListRepresentativesParams,
+  Network,
+  NetworkDetail,
+  NetworkStats,
+  NetworkMember,
+  ListNetworksParams,
   PaginationMeta
 } from './types.js';
 
@@ -72,6 +77,11 @@ export type {
   ListCallsParams,
   Representative,
   ListRepresentativesParams,
+  Network,
+  NetworkDetail,
+  NetworkStats,
+  NetworkMember,
+  ListNetworksParams,
   PaginationMeta
 };
 export { CursorPage } from './pagination.js';
@@ -305,6 +315,27 @@ class CallResource {
   }
 }
 
+class NetworkResource {
+  constructor(private readonly _client: HttpClient) {}
+
+  async list(params?: ListNetworksParams): Promise<CursorPage<Network>> {
+    const { data, meta } = await this._client.request<Network[]>('GET', '/networks', {
+      query: buildListQuery(params)
+    });
+    return makePage(this._client, '/networks', params, data, meta ?? { cursor: null, hasMore: false, total: 0 });
+  }
+
+  async get(id: string): Promise<NetworkDetail> {
+    const { data } = await this._client.request<NetworkDetail>('GET', `/networks/${encodeURIComponent(id)}`);
+    return data;
+  }
+
+  async stats(id: string): Promise<NetworkStats> {
+    const { data } = await this._client.request<NetworkStats>('GET', `/networks/${encodeURIComponent(id)}/stats`);
+    return data;
+  }
+}
+
 class RepresentativeResource {
   constructor(private readonly _client: HttpClient) {}
 
@@ -365,6 +396,7 @@ export class Commons {
   readonly sms: SmsResource;
   readonly calls: CallResource;
   readonly representatives: RepresentativeResource;
+  readonly networks: NetworkResource;
   readonly usage: UsageResource;
   readonly keys: KeyResource;
 
@@ -380,6 +412,7 @@ export class Commons {
     this.sms = new SmsResource(client);
     this.calls = new CallResource(client);
     this.representatives = new RepresentativeResource(client);
+    this.networks = new NetworkResource(client);
     this.usage = new UsageResource(client);
     this.keys = new KeyResource(client);
   }

@@ -907,6 +907,91 @@ export const openApiSpec = {
 					'403': { $ref: '#/components/responses/Forbidden' }
 				}
 			}
+		},
+		'/networks': {
+			get: {
+				operationId: 'listNetworks',
+				summary: 'List networks',
+				description: 'List coalition networks the authenticated org belongs to. Requires read scope.',
+				parameters: [
+					{ $ref: '#/components/parameters/cursor' },
+					{ $ref: '#/components/parameters/limit' }
+				],
+				responses: {
+					'200': {
+						description: 'Paginated list of networks',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: {
+										data: { type: 'array', items: { $ref: '#/components/schemas/Network' } },
+										meta: { $ref: '#/components/schemas/PaginationMeta' }
+									}
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' }
+				}
+			}
+		},
+		'/networks/{id}': {
+			get: {
+				operationId: 'getNetwork',
+				summary: 'Get network detail',
+				description: 'Returns network details including member list. Requires the org to be an active member. Requires read scope.',
+				parameters: [
+					{ $ref: '#/components/parameters/resourceId' }
+				],
+				responses: {
+					'200': {
+						description: 'Network detail with members',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: {
+										data: { $ref: '#/components/schemas/NetworkDetail' }
+									}
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' },
+					'404': { $ref: '#/components/responses/NotFound' }
+				}
+			}
+		},
+		'/networks/{id}/stats': {
+			get: {
+				operationId: 'getNetworkStats',
+				summary: 'Get network stats',
+				description: 'Returns aggregate statistics across all active member orgs in the network. Requires the org to be an active member. Requires read scope.',
+				parameters: [
+					{ $ref: '#/components/parameters/resourceId' }
+				],
+				responses: {
+					'200': {
+						description: 'Network aggregate statistics',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									properties: {
+										data: { $ref: '#/components/schemas/NetworkStats' }
+									}
+								}
+							}
+						}
+					},
+					'401': { $ref: '#/components/responses/Unauthorized' },
+					'403': { $ref: '#/components/responses/Forbidden' },
+					'404': { $ref: '#/components/responses/NotFound' }
+				}
+			}
 		}
 	},
 	components: {
@@ -1325,6 +1410,73 @@ export const openApiSpec = {
 					photoUrl: { type: ['string', 'null'] },
 					createdAt: { type: 'string', format: 'date-time' },
 					updatedAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			Network: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					name: { type: 'string' },
+					slug: { type: 'string' },
+					description: { type: ['string', 'null'] },
+					status: { type: 'string', enum: ['active', 'suspended'] },
+					ownerOrgId: { type: 'string' },
+					memberCount: { type: 'integer' },
+					role: { type: 'string', enum: ['admin', 'member'] },
+					joinedAt: { type: 'string', format: 'date-time' },
+					createdAt: { type: 'string', format: 'date-time' },
+					updatedAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			NetworkDetail: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					name: { type: 'string' },
+					slug: { type: 'string' },
+					description: { type: ['string', 'null'] },
+					status: { type: 'string', enum: ['active', 'suspended'] },
+					ownerOrgId: { type: 'string' },
+					memberCount: { type: 'integer' },
+					ownerOrg: {
+						type: 'object',
+						properties: {
+							id: { type: 'string' },
+							name: { type: 'string' },
+							slug: { type: 'string' }
+						}
+					},
+					members: {
+						type: 'array',
+						items: {
+							type: 'object',
+							properties: {
+								orgId: { type: 'string' },
+								orgName: { type: 'string' },
+								orgSlug: { type: 'string' },
+								role: { type: 'string', enum: ['admin', 'member'] },
+								joinedAt: { type: 'string', format: 'date-time' }
+							}
+						}
+					},
+					createdAt: { type: 'string', format: 'date-time' },
+					updatedAt: { type: 'string', format: 'date-time' }
+				}
+			},
+			NetworkStats: {
+				type: 'object',
+				properties: {
+					memberCount: { type: 'integer' },
+					totalSupporters: { type: 'integer' },
+					uniqueSupporters: { type: 'integer' },
+					verifiedSupporters: { type: 'integer' },
+					totalCampaignActions: { type: 'integer' },
+					verifiedCampaignActions: { type: 'integer' },
+					stateDistribution: {
+						type: 'object',
+						additionalProperties: { type: 'integer' },
+						description: 'Geographic distribution by region code'
+					}
 				}
 			},
 			ErrorEnvelope: {

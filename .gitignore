@@ -63,6 +63,7 @@ project.inlang/
 *.sh
 !scripts/remote-test.sh
 *.sql
+!prisma/migrations/**/*.sql
 .env.production
 
 # GeoIP databases (download separately, ~70MB)

@@ -55,5 +55,8 @@ export const FEATURES = {
 	AUTOMATION: true,
 
 	/** SMS campaigns + patch-through calling (Twilio) */
-	SMS: true
+	SMS: true,
+
+	/** Multi-org coalition networks: parent/child orgs, shared supporter pools */
+	NETWORKS: true
 } as const;

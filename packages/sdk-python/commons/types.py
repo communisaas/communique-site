@@ -320,6 +320,62 @@ class PatchThroughCall(TypedDict, total=False):
 
 
 # ---------------------------------------------------------------------------
+# Networks
+# ---------------------------------------------------------------------------
+
+class NetworkMember(TypedDict, total=False):
+    orgId: str
+    orgName: str
+    orgSlug: str
+    role: str
+    joinedAt: str
+
+
+class Network(TypedDict, total=False):
+    id: str
+    name: str
+    slug: str
+    description: Optional[str]
+    status: str
+    ownerOrgId: str
+    memberCount: int
+    role: str
+    joinedAt: str
+    createdAt: str
+    updatedAt: str
+
+
+class NetworkOwnerOrg(TypedDict, total=False):
+    id: str
+    name: str
+    slug: str
+
+
+class NetworkDetail(TypedDict, total=False):
+    id: str
+    name: str
+    slug: str
+    description: Optional[str]
+    status: str
+    ownerOrgId: str
+    memberCount: int
+    ownerOrg: NetworkOwnerOrg
+    members: List[NetworkMember]
+    createdAt: str
+    updatedAt: str
+
+
+class NetworkStats(TypedDict, total=False):
+    memberCount: int
+    totalSupporters: int
+    uniqueSupporters: int
+    verifiedSupporters: int
+    totalCampaignActions: int
+    verifiedCampaignActions: int
+    stateDistribution: Dict[str, int]
+
+
+# ---------------------------------------------------------------------------
 # Representatives
 # ---------------------------------------------------------------------------
 
