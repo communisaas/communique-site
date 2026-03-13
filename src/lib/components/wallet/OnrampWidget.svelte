@@ -66,8 +66,8 @@
 
 	// ── Transak configuration ─────────────────────────────────────────────────
 
-	// TODO: Replace placeholder with real Transak API key in PUBLIC_TRANSAK_API_KEY env var
-	const apiKey = env.PUBLIC_TRANSAK_API_KEY || 'TRANSAK_API_KEY_PLACEHOLDER';
+	const apiKey = env.PUBLIC_TRANSAK_API_KEY || '';
+	const hasValidApiKey = $derived(!!apiKey && apiKey !== 'TRANSAK_API_KEY_PLACEHOLDER');
 
 	// Staging for testnet, production for mainnet
 	const baseUrl = env.PUBLIC_TRANSAK_ENV === 'production'
@@ -169,7 +169,7 @@
 	}
 </script>
 
-{#if visible}
+{#if visible && hasValidApiKey}
 	<div class="onramp" role="dialog" aria-label="Add funds with Transak">
 		<!-- Header bar with close button -->
 		<div class="onramp__header">

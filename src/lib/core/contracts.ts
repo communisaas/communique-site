@@ -22,6 +22,7 @@
  */
 
 import { env } from '$env/dynamic/public';
+import { FEATURES } from '$lib/config/features';
 
 /** DebateMarket contract (Scroll Sepolia v8 default — needs update after deploy). */
 export const DEBATE_MARKET_ADDRESS =
@@ -34,6 +35,13 @@ export const DISTRICT_GATE_ADDRESS =
 /** ERC-20 staking token address (USDC on Scroll Sepolia — needs update after deploy). */
 export const STAKING_TOKEN_ADDRESS =
 	env.PUBLIC_STAKING_TOKEN_ADDRESS ?? '0x0000000000000000000000000000000000000000';
+
+if (!env.PUBLIC_STAKING_TOKEN_ADDRESS && FEATURES.WALLET) {
+	console.warn(
+		'[contracts] PUBLIC_STAKING_TOKEN_ADDRESS is not set — using zero address. ' +
+		'Staking/onramp features will not work until a real USDC address is configured.'
+	);
+}
 
 /** Target chain ID (Scroll Sepolia = 534351, Scroll mainnet = 534352). */
 export const SCROLL_CHAIN_ID = Number(env.PUBLIC_SCROLL_CHAIN_ID ?? '534351');

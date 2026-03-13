@@ -38,6 +38,13 @@ import {
 const SHADOW_ATLAS_URL = env.SHADOW_ATLAS_API_URL || 'http://localhost:3000';
 const SHADOW_ATLAS_REGISTRATION_TOKEN = env.SHADOW_ATLAS_REGISTRATION_TOKEN || '';
 
+if (SHADOW_ATLAS_URL.includes('localhost') && !import.meta.env.DEV) {
+	console.warn(
+		'[shadow-atlas] SHADOW_ATLAS_API_URL points to localhost in a non-dev environment. ' +
+		'Set SHADOW_ATLAS_API_URL to the production Shadow Atlas endpoint.'
+	);
+}
+
 // Write relay (Phase B1) — registration, replacement, engagement writes
 const WRITE_RELAY_URL = env.WRITE_RELAY_URL || SHADOW_ATLAS_URL;
 const WRITE_RELAY_TOKEN = env.WRITE_RELAY_TOKEN || SHADOW_ATLAS_REGISTRATION_TOKEN;

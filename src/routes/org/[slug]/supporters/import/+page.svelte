@@ -294,27 +294,22 @@
 			<span class="text-zinc-400">Import</span>
 		</nav>
 		<h1 class="text-xl font-semibold text-zinc-100">Import Supporters</h1>
-		<p class="text-sm text-zinc-500 mt-1">Upload a CSV file to import supporters into your organization.</p>
+		<p class="text-sm text-zinc-500 mt-1">Bring your supporters from anywhere — upload a CSV or connect a platform.</p>
 	</div>
 
-	<!-- Action Network link -->
-	<a
-		href="/org/{data.org.slug}/supporters/import/action-network"
-		class="flex items-center gap-4 rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-4 hover:border-zinc-700 hover:bg-zinc-800/40 transition-colors group"
-	>
-		<div class="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-			<svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-				<path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-			</svg>
+	<!-- ── CSV Upload Section (hero) ──────────────────────────── -->
+	<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-5">
+		<div class="flex items-center gap-3 mb-4">
+			<div class="w-9 h-9 rounded-lg bg-teal-500/15 flex items-center justify-center flex-shrink-0">
+				<svg class="w-5 h-5 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+				</svg>
+			</div>
+			<div>
+				<p class="text-sm font-medium text-zinc-200">Upload CSV</p>
+				<p class="text-xs text-zinc-500">Import a spreadsheet export from any platform, CRM, or mailing list.</p>
+			</div>
 		</div>
-		<div class="min-w-0">
-			<p class="text-sm font-medium text-zinc-200 group-hover:text-zinc-100 transition-colors">Sync from Action Network</p>
-			<p class="text-xs text-zinc-500">Connect your API key for automatic syncing of supporters, tags, and actions.</p>
-		</div>
-		<svg class="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 transition-colors flex-shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-		</svg>
-	</a>
 
 	<!-- Step indicators -->
 	<div class="flex items-center gap-2 text-xs text-zinc-500">
@@ -680,5 +675,65 @@
 			</form>
 		{/if}
 	{/if}
+	</div>
+
+	<!-- ── Platform Connectors ────────────────────────────────── -->
+	<div class="space-y-3">
+		<div>
+			<p class="text-xs font-mono uppercase tracking-wider text-zinc-500">Platform Connectors</p>
+			<p class="text-xs text-zinc-600 mt-1">Sync supporters directly from a platform via API.</p>
+		</div>
+
+		<div class="grid gap-3 sm:grid-cols-2">
+			<!-- Action Network -->
+			<a
+				href="/org/{data.org.slug}/supporters/import/action-network"
+				class="flex items-center gap-4 rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-4 hover:border-zinc-700 hover:bg-zinc-800/40 transition-colors group"
+			>
+				<div class="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+					<svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+					</svg>
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-sm font-medium text-zinc-200 group-hover:text-zinc-100 transition-colors">Action Network</p>
+					<p class="text-xs text-zinc-500">Sync supporters, tags, and actions via OSDI API.</p>
+				</div>
+				<svg class="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+				</svg>
+			</a>
+
+			<!-- EveryAction (coming soon) -->
+			<div
+				class="flex items-center gap-4 rounded-xl border border-zinc-800/40 bg-zinc-900/20 p-4 opacity-50 cursor-default"
+			>
+				<div class="w-10 h-10 rounded-lg bg-zinc-800/50 flex items-center justify-center flex-shrink-0">
+					<svg class="w-5 h-5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+					</svg>
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-sm font-medium text-zinc-400">EveryAction</p>
+					<p class="text-xs text-zinc-600">Coming soon</p>
+				</div>
+			</div>
+
+			<!-- NationBuilder (coming soon) -->
+			<div
+				class="flex items-center gap-4 rounded-xl border border-zinc-800/40 bg-zinc-900/20 p-4 opacity-50 cursor-default"
+			>
+				<div class="w-10 h-10 rounded-lg bg-zinc-800/50 flex items-center justify-center flex-shrink-0">
+					<svg class="w-5 h-5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+					</svg>
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-sm font-medium text-zinc-400">NationBuilder</p>
+					<p class="text-xs text-zinc-600">Coming soon</p>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
