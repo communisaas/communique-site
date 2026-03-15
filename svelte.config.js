@@ -28,6 +28,9 @@ const config = {
 					'self',
 					'https://nominatim.openstreetmap.org',
 					'https://crs.aztec.network',
+					// Barretenberg WASM (Poseidon hashing) loads via data: URI
+					'data:',
+					'blob:',
 					// F4: Scroll RPC — debate-client.ts, evm-provider.ts (browser-side chain reads + tx submission)
 					'https://sepolia-rpc.scroll.io',
 					'https://rpc.scroll.io',
