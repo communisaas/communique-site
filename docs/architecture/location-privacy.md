@@ -4,7 +4,7 @@
 
 ---
 
-**The server never knows a user's exact address. Location is inferred progressively, stored client-side, and revealed only through user action.**
+**The server never knows a user's exact address. Location is inferred progressively, stored client-side, and revealed only through user action. All geocoding runs on self-hosted open-source infrastructure (Shadow Atlas: Nominatim + R-tree + SQLite). No runtime API calls are made to government services or third parties. Census TIGER/Line data is the underlying source data, downloaded and processed locally.**
 
 ## Design Principle
 
@@ -46,7 +46,7 @@ IP coordinates are city-center approximations. Using them for district lookup wo
 ```
 User enters address (onboarding)
     ↓
-Client-Side Resolution (Census API / Shadow Atlas)
+Client-Side Resolution (Shadow Atlas)
 ├── Resolves all 14 governance layers
 └── Stores in IndexedDB (NEVER transmitted to server)
     ↓
@@ -57,7 +57,7 @@ Server-Side: Implicit Disclosure Only
     ↓
 Privacy Boundary
 ├── Exact address: stays in browser
-├── Cell ID (Census block): only in ZK proofs as private witness
+├── Cell ID (census block): only in ZK proofs as private witness
 └── District: revealed through action or cryptographic proof
     ↓
 Message Delivery
@@ -86,7 +86,7 @@ Message Delivery
 | `address_verification_method` | User | `'civic_api'` / `'postal'` / `'mdl'` |
 | `identity_hash` | User | SHA-256 of identity attributes (sybil resistance) |
 
-**No server-side storage of**: street address, city, state, ZIP code, GPS coordinates, Census block ID.
+**No server-side storage of**: street address, city, state, ZIP code, GPS coordinates, census block ID.
 
 ---
 
@@ -149,7 +149,7 @@ The one exception where address is transmitted: CWC (Congress) requires constitu
 |---|---|---|
 | Template selection leakage | Medium | Action-based only; users can browse without revealing location |
 | False precision from IP | High | Type system enforces `congressional_district = null` for IP signals |
-| Cell ID exposure | High | Census block (600-3000 people) treated as PII; encrypted, never logged |
+| Cell ID exposure | High | Census block (600-3000 people) treated as PII; resolved locally, encrypted, never logged |
 | Behavioral profiling | Medium | Client-side only; no server-side profile construction |
 | CWC address transmission | Low | Required by Congress; encrypted; not retained by Commons |
 | VPN/proxy circumvention | Low | Accepted limitation; IP used only for state-level filtering |
@@ -179,7 +179,7 @@ Implementation: `src/lib/core/location/district-config.ts`
 |---|---|
 | `src/lib/core/location/types.ts` | Location signal types, InferredLocation |
 | `src/lib/core/location/district-config.ts` | Multi-country district configuration |
-| `src/lib/core/location/census-api.ts` | Census Bureau geocoding client |
+| `src/lib/core/location/census-api.ts` | Geocoding client (self-hosted Shadow Atlas) |
 | `src/lib/core/location/inference-engine.ts` | Confidence-weighted location inference |
 | `src/lib/core/location/template-filter.ts` | Location-based template filtering |
 | `src/lib/core/identity/mdl-verification.ts` | mDL verification (privacy boundary) |

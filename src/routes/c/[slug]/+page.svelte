@@ -575,7 +575,7 @@
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
 			</svg>
 			<p class="text-xs text-blue-700">
-				Your address is geocoded via the U.S. Census Bureau and never stored on our server. Only a district identifier is recorded.
+				Your address is used once to find your district, then discarded. Only the district is recorded — never your address.
 			</p>
 		</div>
 

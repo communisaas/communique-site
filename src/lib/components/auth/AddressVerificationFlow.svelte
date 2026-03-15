@@ -2,8 +2,8 @@
   AddressVerificationFlow.svelte
 
   Dual-path Tier 2 verification flow: geolocation OR address-based.
-  Path A: Browser geolocation → /api/location/resolve (Census + Shadow Atlas server-side)
-  Path B: Manual address → Census Bureau (server-side) → district + representatives
+  Path A: Browser geolocation → /api/location/resolve (Shadow Atlas server-side)
+  Path B: Manual address → Shadow Atlas (server-side) → district + representatives
 
   Flow: path-select → [geolocating | address-input] → resolving → confirm-district → issuing-credential → complete
 -->
@@ -11,7 +11,7 @@
 <script lang="ts">
 	import { MapPin, CheckCircle2, Loader2, AlertCircle, Building2, ChevronRight, Navigation, Lock } from '@lucide/svelte';
 	import { storeCredential } from '$lib/core/identity/credential-store';
-	import { getBrowserGeolocation } from '$lib/core/location/census-api';
+	import { getBrowserGeolocation } from '$lib/core/location/browser-location';
 	import { storeConstituentAddress } from '$lib/core/identity/constituent-address';
 	import { addVerifiedLocationSignal } from '$lib/core/location/inference-engine';
 
@@ -78,7 +78,7 @@
 		const district = data.district as { code: string; name: string; state: string };
 		verifiedDistrict = district.code || '';
 
-		// Use Census-standardized address if available (from resolve-address endpoint)
+		// Use geocoder-standardized address if available (from resolve-address endpoint)
 		const address = data.address as { matched?: string } | undefined;
 		correctedAddress = address?.matched || '';
 
@@ -121,7 +121,7 @@
 
 			flowStep = 'resolving';
 
-			// Server resolves cell_id (Census Bureau) + district + officials (Shadow Atlas)
+			// Server resolves cell_id + district + officials via Shadow Atlas
 			const response = await fetch('/api/location/resolve', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -155,7 +155,7 @@
 		errorMessage = '';
 
 		try {
-			// Single call: address → Census-standardized address + district + officials + cell_id
+			// Single call: address → geocoder-standardized address + district + officials + cell_id
 			const response = await fetch('/api/location/resolve-address', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -176,7 +176,7 @@
 				return;
 			}
 
-			// Store Census-standardized address in IndexedDB
+			// Store geocoder-standardized address in IndexedDB
 			await storeConstituentAddress(userId, {
 				street: data.address?.street || street.trim(),
 				city: data.address?.city || city.trim(),
@@ -374,7 +374,7 @@
 			<div class="flex items-center justify-center gap-1.5">
 				<Lock class="h-3 w-3 text-emerald-700" />
 				<p class="text-xs font-medium text-emerald-700">
-					Address geocoded via OpenStreetMap (open source). Only coordinates determine your district.
+					Your address is matched to a district, then forgotten. Nothing is stored.
 				</p>
 			</div>
 

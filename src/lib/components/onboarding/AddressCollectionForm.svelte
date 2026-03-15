@@ -236,10 +236,10 @@
 							</svg>
 						</div>
 						<div>
-							<h3 class="text-sm font-semibold text-blue-900">Private & Secure</h3>
+							<h3 class="text-sm font-semibold text-blue-900">Your address stays private</h3>
 							<p class="mt-1 text-xs leading-relaxed text-blue-700">
-								Geocoded via <strong>U.S. Census Bureau</strong> (public infrastructure).
-								Your address is not stored on our server.
+								Used once to find your district, then <strong>discarded</strong>.
+								We never store or share your address.
 							</p>
 						</div>
 					</div>
