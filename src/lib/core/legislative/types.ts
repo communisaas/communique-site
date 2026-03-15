@@ -1,8 +1,8 @@
 /**
- * Legislative Provider Interface
+ * Legislative Delivery Types
  *
- * Abstract interface for interacting with legislative bodies (Congress, State Legislatures, etc.)
- * Decouples the application from specific implementation details (like CWC).
+ * Universal interface for interacting with legislative bodies.
+ * Country-agnostic — CWC (US Congress) is one adapter among many.
  */
 
 export interface Representative {
@@ -12,13 +12,59 @@ export interface Representative {
 	state: string;
 	district: string;
 	bioguideId?: string;
-	email?: string; // Some state reps might have direct email
+	email?: string;
+}
+
+/** A specific legislative office that can receive constituent messages. */
+export interface LegislativeOffice {
+	bioguideId: string;
+	name: string;
+	chamber: 'house' | 'senate';
+	officeCode: string;
+	state: string;
+	district: string;
+	party: string;
+}
+
+/** Result of a single delivery attempt to one office. */
+export interface DeliveryResult {
+	success: boolean;
+	messageId?: string;
+	confirmationNumber?: string;
+	status: 'submitted' | 'queued' | 'failed' | 'rejected';
+	office: string;
+	timestamp: string;
+	error?: string;
+	cwcResponse?: Record<string, unknown>;
+}
+
+/** Result of ZK-proof delivery path. */
+export interface ZkDeliveryResult {
+	success: boolean;
+	cwcSubmissionId?: string;
+	error?: string;
+}
+
+/**
+ * Resolved constituent data for CWC delivery.
+ *
+ * Ephemeral — exists only in memory during delivery, never persisted in plaintext.
+ * Resolved by ConstituentResolver (TEE abstraction) from encrypted witness data.
+ */
+export interface ConstituentData {
+	name: string;
+	email: string;
+	phone?: string;
+	address: {
+		street: string;
+		city: string;
+		state: string;
+		zip: string;
+	};
+	congressionalDistrict?: string;
 }
 
 export interface LegislativeProvider {
-	/**
-	 * Get representatives for a specific address
-	 */
 	getRepresentatives(address: {
 		street: string;
 		city: string;
@@ -26,9 +72,6 @@ export interface LegislativeProvider {
 		zip: string;
 	}): Promise<Representative[]>;
 
-	/**
-	 * Submit a message to a specific representative
-	 */
 	submitMessage(
 		representative: Representative,
 		message: {
@@ -54,3 +97,6 @@ export interface LegislativeProvider {
 		error?: string;
 	}>;
 }
+
+/** @deprecated Use LegislativeOffice */
+export type CongressionalOffice = LegislativeOffice;

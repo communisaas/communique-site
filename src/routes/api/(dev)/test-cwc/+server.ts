@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
-import { cwcClient } from '$lib/core/congress/cwc-client';
-import { CWCGenerator } from '$lib/core/congress/cwc-generator';
+import { cwcClient } from '$lib/core/legislative/cwc-client';
+import { CWCXmlGenerator } from '$lib/core/legislative/cwc-xml';
 import type { Template } from '$lib/types/template';
 
 interface CWCTestResults {
@@ -99,8 +99,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (testType === 'preview' || testType === 'all') {
 			// Test 1: XML Generation
-			const previewXML = CWCGenerator.generatePreviewXML(testTemplate);
-			const validation = CWCGenerator.validateXML(previewXML);
+			const previewXML = CWCXmlGenerator.generatePreviewXML(testTemplate);
+			const validation = CWCXmlGenerator.validateXML(previewXML);
 
 			results.xmlGeneration = {
 				success: validation.valid,
