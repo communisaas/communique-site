@@ -1,6 +1,6 @@
 {$DOMAIN:localhost} {
-	# Communique SvelteKit app
-	reverse_proxy communique:3000
+	# Commons SvelteKit app
+	reverse_proxy commons:3000
 
 	# Shadow Atlas API at /atlas/*
 	handle_path /atlas/* {

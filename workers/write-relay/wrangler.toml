@@ -9,6 +9,6 @@ database_name = "commons-write-relay-db"
 database_id = "232c589e-38ad-41d6-9650-5ab8d293086f"
 
 # Secrets (set via `npx wrangler secret put <KEY>`):
-#   RELAY_AUTH_TOKEN         - Bearer token communique uses to call this relay
+#   RELAY_AUTH_TOKEN         - Bearer token commons uses to call this relay
 #   SIDECAR_AUTH_TOKEN       - Bearer token this relay uses to call SA sidecar
 #   SHADOW_ATLAS_SIDECAR_URL - SA sidecar base URL (e.g., https://sa.example.com)

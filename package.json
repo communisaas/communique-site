@@ -1,5 +1,5 @@
 {
-	"name": "communique-site",
+	"name": "commons",
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
@@ -30,7 +30,7 @@
 		"test:smoke:live": "SMOKE_CWC_LIVE=true vitest --run tests/smoke --config=vitest.config.ts",
 		"test:congressional": "vitest --run tests/integration/congressional-delivery-e2e.test.ts --config=vitest.config.ts",
 		"test:e2e:voter": "vitest --run tests/unit/voter-protocol --config=vitest.config.ts",
-		"db:start": "docker compose up -d && echo 'Waiting for postgres...' && sleep 2 && docker compose exec postgres pg_isready -U communique && echo 'Ready.'",
+		"db:start": "docker compose up -d && echo 'Waiting for postgres...' && sleep 2 && docker compose exec postgres pg_isready -U commons && echo 'Ready.'",
 		"db:stop": "docker compose down",
 		"db:reset": "docker compose down -v && docker compose up -d && sleep 3 && npx prisma db push",
 		"db:generate": "prisma generate",

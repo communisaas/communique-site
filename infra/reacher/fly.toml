@@ -8,10 +8,10 @@
 #   fly deploy
 #
 # Then on CF Workers side:
-#   wrangler secret put REACHER_URL    # https://communique-reacher.fly.dev
+#   wrangler secret put REACHER_URL    # https://commons-reacher.fly.dev
 #   wrangler secret put REACHER_API_KEY # same value as RCH__HEADER_SECRET
 
-app = "communique-reacher"
+app = "commons-reacher"
 primary_region = "iad"
 
 [build]

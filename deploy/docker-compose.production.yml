@@ -1,4 +1,4 @@
-# Communique Production Stack
+# Commons Production Stack
 #
 # Deploy on any VPS with Docker:
 #   1. Copy this file + Caddyfile + .env.production to the server
@@ -11,7 +11,7 @@
 services:
   caddy:
     image: caddy:2-alpine
-    container_name: communique-caddy
+    container_name: commons-caddy
     ports:
       - "80:80"
       - "443:443"
@@ -20,21 +20,21 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      communique:
+      commons:
         condition: service_healthy
     restart: unless-stopped
 
-  communique:
+  commons:
     build:
       context: ..
       dockerfile: Dockerfile
-    container_name: communique-app
+    container_name: commons-app
     env_file: .env.production
     environment:
       NODE_ENV: production
       PORT: "3000"
-      DATABASE_URL: postgresql://communique:${DB_PASSWORD}@postgres:5432/communique
-      DIRECT_URL: postgresql://communique:${DB_PASSWORD}@postgres:5432/communique
+      DATABASE_URL: postgresql://commons:${DB_PASSWORD}@postgres:5432/commons
+      DIRECT_URL: postgresql://commons:${DB_PASSWORD}@postgres:5432/commons
     expose:
       - "3000"
     depends_on:
@@ -55,18 +55,18 @@ services:
 
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: communique-postgres
+    container_name: commons-postgres
     environment:
-      POSTGRES_USER: communique
+      POSTGRES_USER: commons
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: communique
+      POSTGRES_DB: commons
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ../docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     expose:
       - "5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U communique"]
+      test: ["CMD-SHELL", "pg_isready -U commons"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -82,7 +82,7 @@ services:
     build:
       context: ../../voter-protocol/packages/shadow-atlas
       dockerfile: Dockerfile
-    container_name: communique-shadow-atlas
+    container_name: commons-shadow-atlas
     environment:
       NODE_ENV: production
       PORT: "3001"
@@ -111,7 +111,7 @@ services:
 
   ipfs:
     image: ipfs/kubo:latest
-    container_name: communique-ipfs
+    container_name: commons-ipfs
     environment:
       IPFS_PROFILE: server
     volumes:

@@ -4,7 +4,7 @@
  * Thin reverse proxy that forwards pre-built CWC XML to the House CWC API
  * from a whitelisted IP address (35.209.173.125).
  *
- * The Communique backend (Cloudflare Workers) generates the XML client-side
+ * The Commons backend (Cloudflare Workers) generates the XML client-side
  * and sends it here in a JSON envelope { xml, jobId, officeCode }.
  * This proxy validates the bearer token, then forwards the raw XML.
  */
@@ -138,7 +138,7 @@ app.post('/api/house/submit', rateLimit, authenticate, async (req, res) => {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/xml',
-				'User-Agent': 'Communique-CWC-Proxy/1.0'
+				'User-Agent': 'Commons-CWC-Proxy/1.0'
 			},
 			body: xml,
 			signal: AbortSignal.timeout(25_000)

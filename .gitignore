@@ -89,4 +89,4 @@ __pycache__/
 prisma/dev.db
 svelte-check-baseline.txt
 .planning/
-communique-desktop-a11y.md
+commons-desktop-a11y.md
