@@ -1387,22 +1387,20 @@
 				</div>
 
 				<div class="space-y-3">
-					<!-- mDL: Aspirational peak — coming soon -->
-					<!-- Living promise: color and life show through, dashed border = under construction -->
-					<div class="relative overflow-hidden rounded-xl border border-dashed border-purple-200 bg-gradient-to-r from-purple-50/60 to-indigo-50/60 p-4">
-						<div class="flex items-center gap-4">
-							<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100/70">
-								<Smartphone class="h-5 w-5 text-purple-400" />
-							</div>
-							<div class="min-w-0 flex-1">
-								<div class="flex items-center gap-2">
-									<span class="text-sm font-semibold text-purple-900/60">Mobile Driver's License</span>
-									<span class="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-500">Coming soon</span>
-								</div>
-								<span class="block text-xs text-purple-500/50">Cryptographic proof of identity. Undeniable signal.</span>
-							</div>
+					<!-- mDL: Highest signal — verify with digital ID -->
+					<button
+						onclick={() => { attemptWalletVerification(); }}
+						class="group flex w-full items-center gap-4 rounded-xl border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50 p-4 text-left transition-all hover:border-purple-300 hover:shadow-md"
+					>
+						<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100">
+							<Smartphone class="h-5 w-5 text-purple-600" />
 						</div>
-					</div>
+						<div class="min-w-0 flex-1">
+							<span class="block text-sm font-semibold text-purple-900">Verify with Digital ID</span>
+							<span class="block text-xs text-purple-600">Cryptographic proof of identity. Undeniable signal.</span>
+						</div>
+						<ArrowRight class="h-4 w-4 shrink-0 text-purple-400 transition-transform group-hover:translate-x-0.5" />
+					</button>
 
 					<!-- Address: Primary CTA — available now, resolves the tension -->
 					<button

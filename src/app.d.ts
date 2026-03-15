@@ -65,6 +65,7 @@ declare global {
 				REGISTRATION_RETRY_KV?: KVNamespace;
 				REJECTION_MONITOR_KV?: KVNamespace;
 				VICAL_KV?: KVNamespace;
+				PUBLIC_APP_URL?: string;
 			};
 			context?: {
 				waitUntil: (promise: Promise<unknown>) => void;

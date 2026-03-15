@@ -109,9 +109,8 @@
 		if (tier === 2)
 			return {
 				label: 'Verify with digital ID',
-				sub: 'Mobile driver\u2019s license \u2014 coming soon',
-				action: undefined,
-				comingSoon: true
+				sub: 'Use your mobile driver\u2019s license',
+				action: onVerifyIdentity
 			};
 		if (tier === 3)
 			return {
