@@ -94,8 +94,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 				where: { verification_status: 'verified' },
 				orderBy: { argument_index: 'asc' },
 				select: {
-					argument_index: true,
-					weighted_score: true
+					argument_index: true
 				}
 			}
 		}
@@ -108,24 +107,16 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		throw error(400, `Debate is not active (status: ${debate.status})`);
 	}
 
-	// Build a map of existing community weighted scores
-	const communityScores = new Map<number, bigint>();
-	for (const arg of debate.arguments) {
-		communityScores.set(arg.argument_index, arg.weighted_score);
-	}
-
 	// Update each argument with subnet scores
+	// NOTE: final_score uses AI weighted score directly (0-10000 bp), matching
+	// the existing /evaluate endpoint. Community weighted_score is on a different
+	// scale (sqrt(stake) * 2^tier) and cannot be alpha-blended without normalization.
+	// On-chain resolution in DebateMarket.resolveDebateWithAI() handles the actual
+	// blending using normalized LMSR position weights.
 	const updated: Array<{ argumentIndex: number; finalScore: number }> = [];
 
 	for (const as of body.argumentScores) {
-		// Community weighted_score is a BigInt in basis points; normalize to 0-10000 range
-		const communityRaw = communityScores.get(as.argumentIndex);
-		const communityWeighted = communityRaw ? Number(communityRaw) : 0;
-
-		// final_score = 0.4 * AI weighted + 0.6 * community weighted (or AI-only if no community score)
-		const finalScore = communityWeighted > 0
-			? Math.round(0.4 * as.weightedScore + 0.6 * communityWeighted)
-			: as.weightedScore;
+		const finalScore = as.weightedScore;
 
 		await prisma.debateArgument.updateMany({
 			where: {
