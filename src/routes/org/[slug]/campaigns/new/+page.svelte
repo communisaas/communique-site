@@ -14,17 +14,17 @@
 <div class="space-y-6">
 	<!-- Header -->
 	<div>
-		<nav class="flex items-center gap-2 text-sm text-zinc-500 mb-4">
-			<a href="/org/{data.org.slug}/campaigns" class="hover:text-zinc-300 transition-colors">
+		<nav class="flex items-center gap-2 text-sm text-text-tertiary mb-4">
+			<a href="/org/{data.org.slug}/campaigns" class="hover:text-text-secondary transition-colors">
 				Campaigns
 			</a>
 			<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
 			</svg>
-			<span class="text-zinc-400">New</span>
+			<span class="text-text-tertiary">New</span>
 		</nav>
-		<h1 class="text-xl font-semibold text-zinc-100">Create Campaign</h1>
-		<p class="text-sm text-zinc-500 mt-1">Set up a new campaign to coordinate verified action.</p>
+		<h1 class="text-xl font-semibold text-text-primary">Create Campaign</h1>
+		<p class="text-sm text-text-tertiary mt-1">Set up a new campaign to coordinate verified action.</p>
 	</div>
 
 	{#if form?.error}
@@ -36,7 +36,7 @@
 	<form method="POST" use:enhance class="space-y-6">
 		<!-- Title -->
 		<div>
-			<label for="title" class="block text-sm font-medium text-zinc-300 mb-1.5">Title</label>
+			<label for="title" class="block text-sm font-medium text-text-secondary mb-1.5">Title</label>
 			<input
 				type="text"
 				id="title"
@@ -44,18 +44,18 @@
 				required
 				value={form?.title ?? ''}
 				placeholder="e.g., District 5 Zoning Letter Drive"
-				class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+				class="w-full rounded-lg participation-input text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 			/>
 		</div>
 
 		<!-- Type -->
 		<div>
-			<label for="type" class="block text-sm font-medium text-zinc-300 mb-1.5">Type</label>
+			<label for="type" class="block text-sm font-medium text-text-secondary mb-1.5">Type</label>
 			<select
 				id="type"
 				name="type"
 				required
-				class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+				class="w-full rounded-lg participation-input text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 			>
 				<option value="LETTER" selected={form?.type === 'LETTER'}>Letter</option>
 				<option value="EVENT" selected={form?.type === 'EVENT'}>Event</option>
@@ -65,29 +65,29 @@
 
 		<!-- Body -->
 		<div>
-			<label for="body" class="block text-sm font-medium text-zinc-300 mb-1.5">
+			<label for="body" class="block text-sm font-medium text-text-secondary mb-1.5">
 				Description
-				<span class="text-zinc-600 font-normal">(optional)</span>
+				<span class="text-text-quaternary font-normal">(optional)</span>
 			</label>
 			<textarea
 				id="body"
 				name="body"
 				rows="4"
 				placeholder="Describe this campaign's purpose and goals..."
-				class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors resize-y"
+				class="w-full rounded-lg participation-input text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors resize-y"
 			>{form?.body ?? ''}</textarea>
 		</div>
 
 		<!-- Template -->
 		<div>
-			<label for="templateId" class="block text-sm font-medium text-zinc-300 mb-1.5">
+			<label for="templateId" class="block text-sm font-medium text-text-secondary mb-1.5">
 				Template
-				<span class="text-zinc-600 font-normal">(optional)</span>
+				<span class="text-text-quaternary font-normal">(optional)</span>
 			</label>
 			<select
 				id="templateId"
 				name="templateId"
-				class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+				class="w-full rounded-lg participation-input text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 			>
 				<option value="">None</option>
 				{#each data.templates as template}
@@ -97,22 +97,22 @@
 		</div>
 
 		<!-- Geographic targeting -->
-		<div class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-4 space-y-4">
+		<div class="rounded-lg bg-surface-base border border-surface-border shadow-[var(--shadow-sm)] p-4 space-y-4">
 			<div>
-				<p class="text-sm font-medium text-zinc-300">Geographic Targeting</p>
-				<p class="text-xs text-zinc-500 mt-0.5">Set the country and jurisdiction for this campaign</p>
+				<p class="text-sm font-medium text-text-secondary">Geographic Targeting</p>
+				<p class="text-xs text-text-tertiary mt-0.5">Set the country and jurisdiction for this campaign</p>
 			</div>
 
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
-					<label for="targetCountry" class="block text-sm font-medium text-zinc-300 mb-1.5">Country</label>
+					<label for="targetCountry" class="block text-sm font-medium text-text-secondary mb-1.5">Country</label>
 					<input type="hidden" name="targetCountry" value={targetCountry} />
 					<CountrySelector value={targetCountry} onchange={(c) => { targetCountry = c; targetJurisdiction = ''; }} />
 				</div>
 				<div>
-					<label for="targetJurisdiction" class="block text-sm font-medium text-zinc-300 mb-1.5">
+					<label for="targetJurisdiction" class="block text-sm font-medium text-text-secondary mb-1.5">
 						Jurisdiction
-						<span class="text-zinc-600 font-normal">(optional)</span>
+						<span class="text-text-quaternary font-normal">(optional)</span>
 					</label>
 					<input type="hidden" name="targetJurisdiction" value={targetJurisdiction} />
 					<JurisdictionPicker value={targetJurisdiction || null} country={targetCountry} onchange={(j) => { targetJurisdiction = j; }} />
@@ -120,18 +120,18 @@
 			</div>
 
 			{#if targetJurisdiction}
-				<p class="text-xs text-zinc-500">
-					This campaign targets <span class="text-zinc-300 font-medium">{targetJurisdiction}</span> in <span class="text-zinc-300 font-medium">{targetCountry}</span>
+				<p class="text-xs text-text-tertiary">
+					This campaign targets <span class="text-text-secondary font-medium">{targetJurisdiction}</span> in <span class="text-text-secondary font-medium">{targetCountry}</span>
 				</p>
 			{/if}
 		</div>
 
 		<!-- Debate settings -->
-		<div class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-4 space-y-4">
+		<div class="rounded-lg bg-surface-base border border-surface-border shadow-[var(--shadow-sm)] p-4 space-y-4">
 			<div class="flex items-center justify-between">
 				<div>
-					<p class="text-sm font-medium text-zinc-300">Debate Market</p>
-					<p class="text-xs text-zinc-500 mt-0.5">Enable on-chain debate for this campaign</p>
+					<p class="text-sm font-medium text-text-secondary">Debate Market</p>
+					<p class="text-xs text-text-tertiary mt-0.5">Enable on-chain debate for this campaign</p>
 				</div>
 				<label class="relative inline-flex items-center cursor-pointer">
 					<input
@@ -140,15 +140,15 @@
 						class="sr-only peer"
 						bind:checked={debateEnabled}
 					/>
-					<div class="w-9 h-5 bg-zinc-700 peer-focus:ring-2 peer-focus:ring-teal-500/40 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600 peer-checked:after:bg-white"></div>
+					<div class="w-9 h-5 bg-surface-border-strong peer-focus:ring-2 peer-focus:ring-teal-500/40 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-tertiary after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600 peer-checked:after:bg-white"></div>
 				</label>
 			</div>
 
 			{#if debateEnabled}
 				<div>
-					<label for="debateThreshold" class="block text-sm font-medium text-zinc-300 mb-1.5">
+					<label for="debateThreshold" class="block text-sm font-medium text-text-secondary mb-1.5">
 						Threshold
-						<span class="text-zinc-600 font-normal">(minimum verified participants)</span>
+						<span class="text-text-quaternary font-normal">(minimum verified participants)</span>
 					</label>
 					<input
 						type="number"
@@ -156,7 +156,7 @@
 						name="debateThreshold"
 						min="1"
 						value="50"
-						class="w-32 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-mono text-zinc-100 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+						class="w-32 rounded-lg participation-input text-sm font-mono focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 					/>
 				</div>
 			{/if}
@@ -172,7 +172,7 @@
 			</button>
 			<a
 				href="/org/{data.org.slug}/campaigns"
-				class="rounded-lg px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+				class="rounded-lg px-4 py-2.5 text-sm text-text-tertiary hover:text-text-secondary transition-colors"
 			>
 				Cancel
 			</a>

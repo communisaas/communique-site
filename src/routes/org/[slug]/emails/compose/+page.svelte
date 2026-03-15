@@ -142,7 +142,7 @@
 				content: bodyHtml || '',
 				editorProps: {
 					attributes: {
-						class: 'prose prose-invert prose-sm max-w-none px-4 py-3 min-h-[18rem] focus:outline-none text-zinc-100 leading-relaxed'
+						class: 'prose prose-invert prose-sm max-w-none px-4 py-3 min-h-[18rem] focus:outline-none text-text-primary leading-relaxed'
 					}
 				},
 				onUpdate: ({ editor: e }) => {
@@ -257,7 +257,7 @@
 	<div class="flex items-center gap-4">
 		<a
 			href="/org/{data.org.slug}/emails"
-			class="text-zinc-500 hover:text-zinc-300 transition-colors"
+			class="text-text-tertiary hover:text-text-secondary transition-colors"
 			aria-label="Back to emails"
 		>
 			<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -265,8 +265,8 @@
 			</svg>
 		</a>
 		<div>
-			<h1 class="text-xl font-semibold text-zinc-100">Compose Email</h1>
-			<p class="text-sm text-zinc-500 mt-1">Send an email blast to your supporters</p>
+			<h1 class="text-xl font-semibold text-text-primary">Compose Email</h1>
+			<p class="text-sm text-text-tertiary mt-1">Send an email blast to your supporters</p>
 		</div>
 	</div>
 
@@ -281,7 +281,7 @@
 			<p class="text-sm text-teal-400">Draft restored from your last session</p>
 			<button
 				type="button"
-				class="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+				class="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
 				onclick={() => {
 					subject = ''; bodyHtml = ''; fromName = data.org.name;
 					campaignId = ''; verifiedFilter = 'any'; selectedTagIds = [];
@@ -298,17 +298,17 @@
 	<!-- Preview modal -->
 	{#if showPreview && previewHtml}
 		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-			<div class="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl border border-zinc-700 bg-zinc-900 overflow-hidden">
-				<div class="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+			<div class="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl border border-surface-border-strong bg-surface-raised overflow-hidden">
+				<div class="flex items-center justify-between px-4 py-3 border-b border-surface-border">
 					<div>
-						<p class="text-sm font-medium text-zinc-100">Email Preview</p>
+						<p class="text-sm font-medium text-text-primary">Email Preview</p>
 						{#if previewSubject}
-							<p class="text-xs text-zinc-500 mt-0.5">Subject: {previewSubject}</p>
+							<p class="text-xs text-text-tertiary mt-0.5">Subject: {previewSubject}</p>
 						{/if}
 					</div>
 					<button
 						type="button"
-						class="text-zinc-400 hover:text-zinc-200 transition-colors"
+						class="text-text-tertiary hover:text-text-primary transition-colors"
 						aria-label="Close preview"
 						onclick={() => (showPreview = false)}
 					>
@@ -333,25 +333,25 @@
 		<!-- Main form -->
 		<div class="lg:col-span-2 space-y-6">
 			<!-- From / Subject -->
-			<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
+			<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-4">
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<label for="fromName" class="block text-sm font-medium text-zinc-300 mb-1.5">From Name</label>
+						<label for="fromName" class="block text-sm font-medium text-text-secondary mb-1.5">From Name</label>
 						<input
 							id="fromName"
 							type="text"
 							bind:value={fromName}
-							class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+							class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
 							placeholder="Organization name"
 						/>
 					</div>
 					<div>
-						<label for="fromEmail" class="block text-sm font-medium text-zinc-300 mb-1.5">From Email</label>
+						<label for="fromEmail" class="block text-sm font-medium text-text-secondary mb-1.5">From Email</label>
 						<input
 							id="fromEmail"
 							type="email"
 							bind:value={fromEmail}
-							class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+							class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
 							placeholder="noreply@commons.email"
 						/>
 					</div>
@@ -359,38 +359,38 @@
 
 				{#if !abEnabled}
 					<div>
-						<label for="subject" class="block text-sm font-medium text-zinc-300 mb-1.5">Subject Line</label>
+						<label for="subject" class="block text-sm font-medium text-text-secondary mb-1.5">Subject Line</label>
 						<input
 							id="subject"
 							type="text"
 							bind:value={subject}
-							class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+							class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
 							placeholder="Your email subject..."
 						/>
 					</div>
 				{:else}
 					<div class="space-y-3">
 						<div class="flex items-center gap-2">
-							<span class="text-sm font-medium text-zinc-300">Subject Lines</span>
+							<span class="text-sm font-medium text-text-secondary">Subject Lines</span>
 							<span class="rounded-md bg-teal-500/15 border border-teal-500/20 px-2 py-0.5 text-xs font-mono text-teal-400">A/B Test</span>
 						</div>
 						<div>
-							<label for="subjectA" class="block text-xs font-medium text-zinc-400 mb-1">Variant A</label>
+							<label for="subjectA" class="block text-xs font-medium text-text-tertiary mb-1">Variant A</label>
 							<input
 								id="subjectA"
 								type="text"
 								bind:value={subjectA}
-								class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+								class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
 								placeholder="Subject line A..."
 							/>
 						</div>
 						<div>
-							<label for="subjectB" class="block text-xs font-medium text-zinc-400 mb-1">Variant B</label>
+							<label for="subjectB" class="block text-xs font-medium text-text-tertiary mb-1">Variant B</label>
 							<input
 								id="subjectB"
 								type="text"
 								bind:value={subjectB}
-								class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+								class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
 								placeholder="Subject line B..."
 							/>
 						</div>
@@ -398,14 +398,14 @@
 				{/if}
 
 				<div>
-					<label for="campaignId" class="block text-sm font-medium text-zinc-300 mb-1.5">
+					<label for="campaignId" class="block text-sm font-medium text-text-secondary mb-1.5">
 						Link to Campaign
-						<span class="text-zinc-500 font-normal">(optional)</span>
+						<span class="text-text-tertiary font-normal">(optional)</span>
 					</label>
 					<select
 						id="campaignId"
 						bind:value={campaignId}
-						class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+						class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
 					>
 						<option value="">No campaign</option>
 						{#each data.campaigns as campaign}
@@ -419,10 +419,10 @@
 
 			{#if abEnabled}
 				<!-- A/B Variant Tabs for Body -->
-				<div class="flex gap-1 rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-1">
+				<div class="flex gap-1 rounded-lg border border-surface-border bg-surface-base p-1">
 					<button
 						type="button"
-						class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors {activeVariant === 'A' ? 'bg-zinc-700/50 text-teal-400' : 'text-zinc-400 hover:text-zinc-200'}"
+						class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors {activeVariant === 'A' ? 'bg-surface-border-strong/50 text-teal-400' : 'text-text-tertiary hover:text-text-primary'}"
 						onclick={() => {
 							if (activeVariant === 'A') return;
 							bodyHtmlB = bodyHtml;
@@ -435,7 +435,7 @@
 					</button>
 					<button
 						type="button"
-						class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors {activeVariant === 'B' ? 'bg-zinc-700/50 text-teal-400' : 'text-zinc-400 hover:text-zinc-200'}"
+						class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors {activeVariant === 'B' ? 'bg-surface-border-strong/50 text-teal-400' : 'text-text-tertiary hover:text-text-primary'}"
 						onclick={() => {
 							if (activeVariant === 'B') return;
 							bodyHtmlA = bodyHtml;
@@ -450,14 +450,14 @@
 			{/if}
 
 			<!-- Body editor -->
-			<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
+			<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-4">
 				<div class="flex items-center justify-between">
-					<label class="block text-sm font-medium text-zinc-300">Email Body</label>
+					<label class="block text-sm font-medium text-text-secondary">Email Body</label>
 					<div class="flex items-center gap-1">
 						{#each mergeFieldHints as hint}
 							<button
 								type="button"
-								class="rounded px-2 py-1 text-xs font-mono text-zinc-500 hover:text-teal-400 hover:bg-zinc-800 transition-colors"
+								class="rounded px-2 py-1 text-xs font-mono text-text-tertiary hover:text-teal-400 hover:bg-surface-overlay transition-colors"
 								title={hint.desc}
 								onclick={() => insertMergeField(hint.field)}
 							>
@@ -468,83 +468,83 @@
 				</div>
 
 				<!-- Tiptap editor -->
-				<div class="tiptap-wrapper rounded-lg border border-zinc-700 bg-zinc-900 overflow-hidden focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500 transition-colors">
+				<div class="tiptap-wrapper rounded-lg border border-surface-border-strong bg-surface-raised overflow-hidden focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500 transition-colors">
 					<!-- Toolbar -->
 					{#if editor}
-						<div class="flex flex-wrap items-center gap-0.5 border-b border-zinc-700 bg-zinc-800 px-2 py-1.5">
+						<div class="flex flex-wrap items-center gap-0.5 border-b border-surface-border-strong bg-surface-overlay px-2 py-1.5">
 							<!-- Bold -->
-							<button type="button" title="Bold" class="rounded p-1.5 transition-colors {isActive('bold') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleBold().run()}>
+							<button type="button" title="Bold" class="rounded p-1.5 transition-colors {isActive('bold') ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().toggleBold().run()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z" /></svg>
 							</button>
 							<!-- Italic -->
-							<button type="button" title="Italic" class="rounded p-1.5 transition-colors {isActive('italic') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleItalic().run()}>
+							<button type="button" title="Italic" class="rounded p-1.5 transition-colors {isActive('italic') ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().toggleItalic().run()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 4h4m-2 0l-4 16m-2 0h4m4-16l-4 16" /></svg>
 							</button>
 							<!-- Underline -->
-							<button type="button" title="Underline" class="rounded p-1.5 transition-colors {isActive('underline') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleUnderline().run()}>
+							<button type="button" title="Underline" class="rounded p-1.5 transition-colors {isActive('underline') ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().toggleUnderline().run()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 4v7a5 5 0 0010 0V4M5 20h14" /></svg>
 							</button>
 							<!-- Strikethrough -->
-							<button type="button" title="Strikethrough" class="rounded p-1.5 transition-colors {isActive('strike') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleStrike().run()}>
+							<button type="button" title="Strikethrough" class="rounded p-1.5 transition-colors {isActive('strike') ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().toggleStrike().run()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 4c-.5-1.5-2.2-2-4-2-2.2 0-4 1.1-4 3 0 .8.3 1.5.8 2M4 12h16M8 20c.5 1.5 2.2 2 4 2 2.2 0 4-1.1 4-3 0-.8-.3-1.5-.8-2" /></svg>
 							</button>
 
-							<span class="w-px h-5 bg-zinc-700 mx-1"></span>
+							<span class="w-px h-5 bg-surface-border-strong mx-1"></span>
 
 							<!-- H1 -->
-							<button type="button" title="Heading 1" class="rounded px-1.5 py-1 text-xs font-bold transition-colors {isActive('heading', { level: 1 }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}>
+							<button type="button" title="Heading 1" class="rounded px-1.5 py-1 text-xs font-bold transition-colors {isActive('heading', { level: 1 }) ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}>
 								H1
 							</button>
 							<!-- H2 -->
-							<button type="button" title="Heading 2" class="rounded px-1.5 py-1 text-xs font-bold transition-colors {isActive('heading', { level: 2 }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>
+							<button type="button" title="Heading 2" class="rounded px-1.5 py-1 text-xs font-bold transition-colors {isActive('heading', { level: 2 }) ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>
 								H2
 							</button>
 							<!-- H3 -->
-							<button type="button" title="Heading 3" class="rounded px-1.5 py-1 text-xs font-bold transition-colors {isActive('heading', { level: 3 }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>
+							<button type="button" title="Heading 3" class="rounded px-1.5 py-1 text-xs font-bold transition-colors {isActive('heading', { level: 3 }) ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>
 								H3
 							</button>
 
-							<span class="w-px h-5 bg-zinc-700 mx-1"></span>
+							<span class="w-px h-5 bg-surface-border-strong mx-1"></span>
 
 							<!-- Bullet list -->
-							<button type="button" title="Bullet list" class="rounded p-1.5 transition-colors {isActive('bulletList') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleBulletList().run()}>
+							<button type="button" title="Bullet list" class="rounded p-1.5 transition-colors {isActive('bulletList') ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().toggleBulletList().run()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
 							</button>
 							<!-- Ordered list -->
-							<button type="button" title="Ordered list" class="rounded p-1.5 transition-colors {isActive('orderedList') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleOrderedList().run()}>
+							<button type="button" title="Ordered list" class="rounded p-1.5 transition-colors {isActive('orderedList') ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().toggleOrderedList().run()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6h11M10 12h11M10 18h11" /><text x="2" y="8" fill="currentColor" font-size="7" font-weight="bold" stroke="none">1</text><text x="2" y="14" fill="currentColor" font-size="7" font-weight="bold" stroke="none">2</text><text x="2" y="20" fill="currentColor" font-size="7" font-weight="bold" stroke="none">3</text></svg>
 							</button>
 
-							<span class="w-px h-5 bg-zinc-700 mx-1"></span>
+							<span class="w-px h-5 bg-surface-border-strong mx-1"></span>
 
 							<!-- Link -->
-							<button type="button" title="Link" class="rounded p-1.5 transition-colors {isActive('link') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => setLink()}>
+							<button type="button" title="Link" class="rounded p-1.5 transition-colors {isActive('link') ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => setLink()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
 							</button>
 							<!-- Blockquote -->
-							<button type="button" title="Blockquote" class="rounded p-1.5 transition-colors {isActive('blockquote') ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().toggleBlockquote().run()}>
+							<button type="button" title="Blockquote" class="rounded p-1.5 transition-colors {isActive('blockquote') ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().toggleBlockquote().run()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h4a1 1 0 011 1v4a1 1 0 01-1 1H3a1 1 0 01-1-1v-4a1 1 0 011-1zm0 0V7a4 4 0 014-4m7 7h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4a1 1 0 011-1zm0 0V7a4 4 0 014-4" /></svg>
 							</button>
 
-							<span class="w-px h-5 bg-zinc-700 mx-1"></span>
+							<span class="w-px h-5 bg-surface-border-strong mx-1"></span>
 
 							<!-- Align left -->
-							<button type="button" title="Align left" class="rounded p-1.5 transition-colors {isActive({ textAlign: 'left' }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().setTextAlign('left').run()}>
+							<button type="button" title="Align left" class="rounded p-1.5 transition-colors {isActive({ textAlign: 'left' }) ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().setTextAlign('left').run()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M3 12h12M3 18h18" /></svg>
 							</button>
 							<!-- Align center -->
-							<button type="button" title="Align center" class="rounded p-1.5 transition-colors {isActive({ textAlign: 'center' }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().setTextAlign('center').run()}>
+							<button type="button" title="Align center" class="rounded p-1.5 transition-colors {isActive({ textAlign: 'center' }) ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().setTextAlign('center').run()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M6 12h12M3 18h18" /></svg>
 							</button>
 							<!-- Align right -->
-							<button type="button" title="Align right" class="rounded p-1.5 transition-colors {isActive({ textAlign: 'right' }) ? 'text-teal-400 bg-zinc-700/50' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30'}" onclick={() => editor?.chain().focus().setTextAlign('right').run()}>
+							<button type="button" title="Align right" class="rounded p-1.5 transition-colors {isActive({ textAlign: 'right' }) ? 'text-teal-400 bg-surface-border-strong/50' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30'}" onclick={() => editor?.chain().focus().setTextAlign('right').run()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M6 12h18M3 18h18" /></svg>
 							</button>
 
-							<span class="w-px h-5 bg-zinc-700 mx-1"></span>
+							<span class="w-px h-5 bg-surface-border-strong mx-1"></span>
 
 							<!-- Clear formatting -->
-							<button type="button" title="Clear formatting" class="rounded p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30 transition-colors" onclick={() => editor?.chain().focus().clearNodes().unsetAllMarks().run()}>
+							<button type="button" title="Clear formatting" class="rounded p-1.5 text-text-tertiary hover:text-text-primary hover:bg-surface-border-strong/30 transition-colors" onclick={() => editor?.chain().focus().clearNodes().unsetAllMarks().run()}>
 								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
 							</button>
 						</div>
@@ -555,13 +555,13 @@
 				</div>
 
 				<!-- Verification context notice -->
-				<div class="flex items-start gap-3 rounded-lg border border-zinc-700/50 bg-zinc-800/30 px-4 py-3">
+				<div class="flex items-start gap-3 rounded-lg border border-surface-border-strong/50 bg-surface-overlay px-4 py-3">
 					<svg class="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
 					</svg>
 					<div>
-						<p class="text-xs font-medium text-zinc-300">Verification context is structural</p>
-						<p class="text-xs text-zinc-500 mt-0.5">
+						<p class="text-xs font-medium text-text-secondary">Verification context is structural</p>
+						<p class="text-xs text-text-tertiary mt-0.5">
 							Every email includes a verification context block showing recipient verification density.
 							This block cannot be removed -- it is appended automatically.
 						</p>
@@ -573,14 +573,14 @@
 		<!-- Sidebar: Filters + Actions -->
 		<div class="space-y-6">
 			<!-- Recipient filters -->
-			<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
+			<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-4">
 				<div class="flex items-center justify-between">
-					<h3 class="text-sm font-medium text-zinc-300">Recipients</h3>
+					<h3 class="text-sm font-medium text-text-secondary">Recipients</h3>
 					<button
 						type="button"
 						class="text-xs transition-colors {useSegmentBuilder
 							? 'text-teal-400 hover:text-teal-300'
-							: 'text-zinc-500 hover:text-zinc-300'}"
+							: 'text-text-tertiary hover:text-text-secondary'}"
 						onclick={() => (useSegmentBuilder = !useSegmentBuilder)}
 					>
 						{useSegmentBuilder ? 'Simple filters' : 'Segment builder'}
@@ -606,11 +606,11 @@
 				{:else}
 					<!-- Verification filter -->
 					<div>
-						<label for="verified" class="block text-xs font-medium text-zinc-400 mb-1.5">Verification Status</label>
+						<label for="verified" class="block text-xs font-medium text-text-tertiary mb-1.5">Verification Status</label>
 						<select
 							id="verified"
 							bind:value={verifiedFilter}
-							class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+							class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
 						>
 							<option value="any">Any status</option>
 							<option value="verified">Verified only</option>
@@ -621,14 +621,14 @@
 					<!-- Tag filter -->
 					{#if data.tags.length > 0}
 						<div>
-							<p class="text-xs font-medium text-zinc-400 mb-1.5">Tags</p>
+							<p class="text-xs font-medium text-text-tertiary mb-1.5">Tags</p>
 							<div class="flex flex-wrap gap-2">
 								{#each data.tags as tag (tag.id)}
 									<button
 										type="button"
 										class="rounded-md border px-2.5 py-1 text-xs transition-colors {selectedTagIds.includes(tag.id)
 											? 'bg-teal-500/20 text-teal-400 border-teal-500/30'
-											: 'bg-zinc-800/50 text-zinc-400 border-zinc-700 hover:border-zinc-600'}"
+											: 'bg-surface-overlay text-text-tertiary border-surface-border-strong hover:border-text-quaternary'}"
 										onclick={() => toggleTag(tag.id)}
 									>
 										{tag.name}
@@ -659,7 +659,7 @@
 						{/each}
 						<button
 							type="submit"
-							class="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
+							class="w-full rounded-lg border border-surface-border-strong bg-surface-overlay px-3 py-2 text-sm text-text-secondary hover:bg-surface-overlay hover:border-text-quaternary transition-colors"
 							disabled={countLoading}
 						>
 							{#if countLoading}
@@ -670,24 +670,24 @@
 						</button>
 					</form>
 
-					<div class="rounded-lg bg-zinc-800/50 px-4 py-3 text-center">
-						<p class="text-2xl font-mono tabular-nums text-zinc-100">{recipientCount.toLocaleString()}</p>
-						<p class="text-xs text-zinc-500 mt-0.5">subscribed recipients</p>
+					<div class="rounded-lg bg-surface-overlay px-4 py-3 text-center">
+						<p class="text-2xl font-mono tabular-nums text-text-primary">{recipientCount.toLocaleString()}</p>
+						<p class="text-xs text-text-tertiary mt-0.5">subscribed recipients</p>
 					</div>
 				{/if}
 			</div>
 
 			<!-- A/B Test Toggle -->
 			{#if data.abTestingAllowed}
-				<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
+				<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-4">
 					<div class="flex items-center justify-between">
 						<div>
-							<h3 class="text-sm font-medium text-zinc-300">A/B Test</h3>
-							<p class="text-xs text-zinc-500 mt-0.5">Test two variants, send the winner</p>
+							<h3 class="text-sm font-medium text-text-secondary">A/B Test</h3>
+							<p class="text-xs text-text-tertiary mt-0.5">Test two variants, send the winner</p>
 						</div>
 						<button
 							type="button"
-							class="relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 cursor-pointer {abEnabled ? 'bg-teal-500' : 'bg-zinc-600'}"
+							class="relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 cursor-pointer {abEnabled ? 'bg-teal-500' : 'bg-text-quaternary'}"
 							role="switch"
 							aria-checked={abEnabled}
 							onclick={() => {
@@ -709,10 +709,10 @@
 					</div>
 
 					{#if abEnabled}
-						<div class="space-y-3 pt-2 border-t border-zinc-800/40">
+						<div class="space-y-3 pt-2 border-t border-surface-border">
 							<div>
-								<label for="testGroupPct" class="block text-xs font-medium text-zinc-400 mb-1">Test group size</label>
-								<select id="testGroupPct" bind:value={testGroupPct} class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
+								<label for="testGroupPct" class="block text-xs font-medium text-text-tertiary mb-1">Test group size</label>
+								<select id="testGroupPct" bind:value={testGroupPct} class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
 									<option value={10}>10% test, 90% winner</option>
 									<option value={20}>20% test, 80% winner</option>
 									<option value={30}>30% test, 70% winner</option>
@@ -720,30 +720,30 @@
 								</select>
 							</div>
 							<div>
-								<label for="splitPct" class="block text-xs font-medium text-zinc-400 mb-1">Test split (A/B)</label>
-								<select id="splitPct" bind:value={splitPct} class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
+								<label for="splitPct" class="block text-xs font-medium text-text-tertiary mb-1">Test split (A/B)</label>
+								<select id="splitPct" bind:value={splitPct} class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
 									<option value={50}>50 / 50</option>
 									<option value={60}>60 / 40</option>
 									<option value={70}>70 / 30</option>
 								</select>
 							</div>
 							<div>
-								<label for="testDuration" class="block text-xs font-medium text-zinc-400 mb-1">Wait before picking winner</label>
-								<select id="testDuration" bind:value={testDuration} class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
+								<label for="testDuration" class="block text-xs font-medium text-text-tertiary mb-1">Wait before picking winner</label>
+								<select id="testDuration" bind:value={testDuration} class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
 									<option value="1h">1 hour</option>
 									<option value="4h">4 hours</option>
 									<option value="24h">24 hours</option>
 								</select>
 							</div>
 							<div>
-								<label for="winnerMetric" class="block text-xs font-medium text-zinc-400 mb-1">Pick winner by</label>
-								<select id="winnerMetric" bind:value={winnerMetric} class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
+								<label for="winnerMetric" class="block text-xs font-medium text-text-tertiary mb-1">Pick winner by</label>
+								<select id="winnerMetric" bind:value={winnerMetric} class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
 									<option value="open">Open rate</option>
 									<option value="click">Click rate</option>
 									<option value="verified_action">Verified action rate</option>
 								</select>
 							</div>
-							<div class="rounded-lg bg-zinc-800/50 px-3 py-2.5 text-xs text-zinc-500">
+							<div class="rounded-lg bg-surface-overlay px-3 py-2.5 text-xs text-text-tertiary">
 								{Math.round(recipientCount * testGroupPct / 100)} in test group
 								({Math.round(recipientCount * testGroupPct / 100 * splitPct / 100)} A,
 								{Math.round(recipientCount * testGroupPct / 100 * (100 - splitPct) / 100)} B).
@@ -755,7 +755,7 @@
 			{/if}
 
 			<!-- Actions -->
-			<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-3">
+			<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-3">
 				<!-- Preview -->
 				<form
 					method="POST"
@@ -771,7 +771,7 @@
 					<input type="hidden" name="bodyHtml" value={abEnabled ? (activeVariant === 'A' ? bodyHtml : bodyHtmlA) : bodyHtml} />
 					<button
 						type="submit"
-						class="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm font-medium text-zinc-200 hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
+						class="w-full rounded-lg border border-surface-border-strong bg-surface-overlay px-4 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-overlay hover:border-text-quaternary transition-colors"
 						disabled={!hasBody}
 					>
 						Preview Email{abEnabled ? ` (${activeVariant})` : ''}
@@ -877,7 +877,7 @@
 		padding: 0.75rem 1rem;
 		font-size: 0.875rem;
 		line-height: 1.625;
-		color: #f4f4f5; /* zinc-100 */
+		color: var(--text-primary);
 		outline: none;
 	}
 
@@ -888,7 +888,7 @@
 	:global(.tiptap-editor .ProseMirror h1) {
 		font-size: 1.5rem;
 		font-weight: 700;
-		color: #fafafa; /* zinc-50 */
+		color: var(--text-primary);
 		margin-bottom: 0.75rem;
 		margin-top: 1rem;
 		line-height: 1.25;
@@ -897,7 +897,7 @@
 	:global(.tiptap-editor .ProseMirror h2) {
 		font-size: 1.25rem;
 		font-weight: 600;
-		color: #fafafa;
+		color: var(--text-primary);
 		margin-bottom: 0.5rem;
 		margin-top: 0.75rem;
 		line-height: 1.3;
@@ -906,7 +906,7 @@
 	:global(.tiptap-editor .ProseMirror h3) {
 		font-size: 1.1rem;
 		font-weight: 600;
-		color: #e4e4e7; /* zinc-200 */
+		color: var(--text-secondary);
 		margin-bottom: 0.5rem;
 		margin-top: 0.75rem;
 		line-height: 1.4;
@@ -929,9 +929,9 @@
 	}
 
 	:global(.tiptap-editor .ProseMirror blockquote) {
-		border-left: 3px solid #3f3f46; /* zinc-700 */
+		border-left: 3px solid var(--surface-border-strong);
 		padding-left: 1rem;
-		color: #a1a1aa; /* zinc-400 */
+		color: var(--text-tertiary);
 		margin: 0.75rem 0;
 		font-style: italic;
 	}
@@ -942,17 +942,17 @@
 	}
 
 	:global(.tiptap-editor .ProseMirror code) {
-		background: #27272a; /* zinc-800 */
+		background: var(--surface-overlay);
 		border-radius: 0.25rem;
 		padding: 0.15rem 0.35rem;
 		font-size: 0.8em;
 		font-family: ui-monospace, monospace;
-		color: #d4d4d8; /* zinc-300 */
+		color: var(--text-secondary);
 	}
 
 	:global(.tiptap-editor .ProseMirror pre) {
-		background: #18181b; /* zinc-900 */
-		border: 1px solid #3f3f46;
+		background: var(--surface-raised);
+		border: 1px solid var(--surface-border-strong);
 		border-radius: 0.5rem;
 		padding: 0.75rem 1rem;
 		margin: 0.75rem 0;
@@ -967,7 +967,7 @@
 
 	:global(.tiptap-editor .ProseMirror hr) {
 		border: none;
-		border-top: 1px solid #3f3f46;
+		border-top: 1px solid var(--surface-border-strong);
 		margin: 1rem 0;
 	}
 
@@ -975,7 +975,7 @@
 	:global(.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before) {
 		content: 'Write your email content here...';
 		float: left;
-		color: #52525b; /* zinc-600 */
+		color: var(--text-quaternary);
 		pointer-events: none;
 		height: 0;
 	}

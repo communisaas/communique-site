@@ -47,7 +47,7 @@
 	<div class="flex items-center gap-4">
 		<a
 			href="/org/{data.org.slug}/emails"
-			class="text-zinc-500 hover:text-zinc-300 transition-colors"
+			class="text-text-tertiary hover:text-text-secondary transition-colors"
 			aria-label="Back to emails"
 		>
 			<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -55,10 +55,10 @@
 			</svg>
 		</a>
 		<div>
-			<h1 class="text-xl font-semibold text-zinc-100">
+			<h1 class="text-xl font-semibold text-text-primary">
 				{#if data.isAbTest}A/B Test Results{:else}Email Details{/if}
 			</h1>
-			<p class="text-sm text-zinc-500 mt-1">
+			<p class="text-sm text-text-tertiary mt-1">
 				{data.blast.subject}
 			</p>
 		</div>
@@ -68,12 +68,12 @@
 		{@const config = data.abConfig}
 
 		<!-- Config summary -->
-		<div class="rounded-lg border border-zinc-800/40 bg-zinc-900/20 px-4 py-3 flex items-center gap-6 text-xs text-zinc-500">
-			<span>Winner by: <span class="text-zinc-300">{metricLabels[config?.winnerMetric ?? 'open']}</span></span>
-			<span>Test group: <span class="text-zinc-300">{config?.testGroupPct ?? 20}%</span></span>
-			<span>Split: <span class="text-zinc-300">{config?.splitPct ?? 50}/{100 - (config?.splitPct ?? 50)}</span></span>
+		<div class="rounded-lg border border-surface-border bg-surface-base px-4 py-3 flex items-center gap-6 text-xs text-text-tertiary">
+			<span>Winner by: <span class="text-text-secondary">{metricLabels[config?.winnerMetric ?? 'open']}</span></span>
+			<span>Test group: <span class="text-text-secondary">{config?.testGroupPct ?? 20}%</span></span>
+			<span>Split: <span class="text-text-secondary">{config?.splitPct ?? 50}/{100 - (config?.splitPct ?? 50)}</span></span>
 			{#if data.variants[0]?.abWinnerPickedAt}
-				<span>Winner picked: <span class="text-zinc-300">{formatDate(data.variants[0].abWinnerPickedAt)}</span></span>
+				<span>Winner picked: <span class="text-text-secondary">{formatDate(data.variants[0].abWinnerPickedAt)}</span></span>
 			{:else}
 				<span class="text-amber-400">Waiting for results...</span>
 			{/if}
@@ -84,39 +84,39 @@
 			{#each data.variants as variant, i (variant?.id ?? i)}
 				{#if variant}
 					{@const winner = isWinner(variant)}
-					<div class="rounded-xl border {winner ? 'border-teal-500/30 bg-teal-500/5' : 'border-zinc-800/60 bg-zinc-900/30'} p-6 space-y-4">
+					<div class="rounded-xl border {winner ? 'border-teal-500/30 bg-teal-500/5' : 'border-surface-border bg-surface-base'} p-6 space-y-4">
 						<div class="flex items-center justify-between">
-							<h2 class="text-lg font-medium text-zinc-100">Variant {variant.abVariant}</h2>
+							<h2 class="text-lg font-medium text-text-primary">Variant {variant.abVariant}</h2>
 							{#if winner && data.variants[0]?.abWinnerPickedAt}
 								<span class="rounded-md bg-teal-500/15 border border-teal-500/20 px-2 py-0.5 text-xs font-mono text-teal-400">WINNER</span>
 							{/if}
 						</div>
 
-						<p class="text-sm text-zinc-300 truncate">{variant.subject}</p>
+						<p class="text-sm text-text-secondary truncate">{variant.subject}</p>
 
 						<div class="grid grid-cols-2 gap-3">
-							<div class="rounded-lg bg-zinc-800/40 px-3 py-2.5">
-								<p class="text-xs text-zinc-500">Sent</p>
-								<p class="text-lg font-mono tabular-nums text-zinc-100">{variant.totalSent.toLocaleString()}</p>
+							<div class="rounded-lg bg-surface-overlay px-3 py-2.5">
+								<p class="text-xs text-text-tertiary">Sent</p>
+								<p class="text-lg font-mono tabular-nums text-text-primary">{variant.totalSent.toLocaleString()}</p>
 							</div>
-							<div class="rounded-lg bg-zinc-800/40 px-3 py-2.5">
-								<p class="text-xs text-zinc-500">Opened</p>
-								<p class="text-lg font-mono tabular-nums text-zinc-100">{variant.totalOpened.toLocaleString()}</p>
-								<p class="text-xs font-mono text-zinc-500">{pct(variant.totalOpened, variant.totalSent)}</p>
+							<div class="rounded-lg bg-surface-overlay px-3 py-2.5">
+								<p class="text-xs text-text-tertiary">Opened</p>
+								<p class="text-lg font-mono tabular-nums text-text-primary">{variant.totalOpened.toLocaleString()}</p>
+								<p class="text-xs font-mono text-text-tertiary">{pct(variant.totalOpened, variant.totalSent)}</p>
 							</div>
-							<div class="rounded-lg bg-zinc-800/40 px-3 py-2.5">
-								<p class="text-xs text-zinc-500">Clicked</p>
-								<p class="text-lg font-mono tabular-nums text-zinc-100">{variant.totalClicked.toLocaleString()}</p>
-								<p class="text-xs font-mono text-zinc-500">{pct(variant.totalClicked, variant.totalSent)}</p>
+							<div class="rounded-lg bg-surface-overlay px-3 py-2.5">
+								<p class="text-xs text-text-tertiary">Clicked</p>
+								<p class="text-lg font-mono tabular-nums text-text-primary">{variant.totalClicked.toLocaleString()}</p>
+								<p class="text-xs font-mono text-text-tertiary">{pct(variant.totalClicked, variant.totalSent)}</p>
 							</div>
-							<div class="rounded-lg bg-zinc-800/40 px-3 py-2.5">
-								<p class="text-xs text-zinc-500">Bounced</p>
-								<p class="text-lg font-mono tabular-nums text-zinc-100">{variant.totalBounced.toLocaleString()}</p>
-								<p class="text-xs font-mono text-zinc-500">{pct(variant.totalBounced, variant.totalSent)}</p>
+							<div class="rounded-lg bg-surface-overlay px-3 py-2.5">
+								<p class="text-xs text-text-tertiary">Bounced</p>
+								<p class="text-lg font-mono tabular-nums text-text-primary">{variant.totalBounced.toLocaleString()}</p>
+								<p class="text-xs font-mono text-text-tertiary">{pct(variant.totalBounced, variant.totalSent)}</p>
 							</div>
 						</div>
 
-						<p class="text-xs text-zinc-600">Sent {formatDate(variant.sentAt)}</p>
+						<p class="text-xs text-text-quaternary">Sent {formatDate(variant.sentAt)}</p>
 					</div>
 				{/if}
 			{/each}
@@ -124,13 +124,13 @@
 
 		<!-- Winner send info -->
 		{#if data.winnerBlast}
-			<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-2">
-				<h3 class="text-sm font-medium text-zinc-300">Winner Send</h3>
-				<p class="text-sm text-zinc-400">
+			<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-2">
+				<h3 class="text-sm font-medium text-text-secondary">Winner Send</h3>
+				<p class="text-sm text-text-tertiary">
 					Winning variant sent to {data.winnerBlast.totalSent.toLocaleString()} remaining recipients
 					{#if data.winnerBlast.sentAt}on {formatDate(data.winnerBlast.sentAt)}{/if}
 				</p>
-				<div class="flex gap-4 text-xs text-zinc-500 font-mono">
+				<div class="flex gap-4 text-xs text-text-tertiary font-mono">
 					<span>{data.winnerBlast.totalOpened} opened ({pct(data.winnerBlast.totalOpened, data.winnerBlast.totalSent)})</span>
 					<span>{data.winnerBlast.totalClicked} clicked ({pct(data.winnerBlast.totalClicked, data.winnerBlast.totalSent)})</span>
 				</div>
@@ -138,26 +138,26 @@
 		{/if}
 	{:else}
 		<!-- Non-A/B blast detail -->
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6">
+		<div class="rounded-xl border border-surface-border bg-surface-base p-6">
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 				<div>
-					<p class="text-xs text-zinc-500">Sent</p>
-					<p class="text-xl font-mono tabular-nums text-zinc-100">{data.blast.totalSent.toLocaleString()}</p>
+					<p class="text-xs text-text-tertiary">Sent</p>
+					<p class="text-xl font-mono tabular-nums text-text-primary">{data.blast.totalSent.toLocaleString()}</p>
 				</div>
 				<div>
-					<p class="text-xs text-zinc-500">Opened</p>
-					<p class="text-xl font-mono tabular-nums text-zinc-100">{data.blast.totalOpened.toLocaleString()}</p>
-					<p class="text-xs font-mono text-zinc-500">{pct(data.blast.totalOpened, data.blast.totalSent)}</p>
+					<p class="text-xs text-text-tertiary">Opened</p>
+					<p class="text-xl font-mono tabular-nums text-text-primary">{data.blast.totalOpened.toLocaleString()}</p>
+					<p class="text-xs font-mono text-text-tertiary">{pct(data.blast.totalOpened, data.blast.totalSent)}</p>
 				</div>
 				<div>
-					<p class="text-xs text-zinc-500">Clicked</p>
-					<p class="text-xl font-mono tabular-nums text-zinc-100">{data.blast.totalClicked.toLocaleString()}</p>
-					<p class="text-xs font-mono text-zinc-500">{pct(data.blast.totalClicked, data.blast.totalSent)}</p>
+					<p class="text-xs text-text-tertiary">Clicked</p>
+					<p class="text-xl font-mono tabular-nums text-text-primary">{data.blast.totalClicked.toLocaleString()}</p>
+					<p class="text-xs font-mono text-text-tertiary">{pct(data.blast.totalClicked, data.blast.totalSent)}</p>
 				</div>
 				<div>
-					<p class="text-xs text-zinc-500">Bounced</p>
-					<p class="text-xl font-mono tabular-nums text-zinc-100">{data.blast.totalBounced.toLocaleString()}</p>
-					<p class="text-xs font-mono text-zinc-500">{pct(data.blast.totalBounced, data.blast.totalSent)}</p>
+					<p class="text-xs text-text-tertiary">Bounced</p>
+					<p class="text-xl font-mono tabular-nums text-text-primary">{data.blast.totalBounced.toLocaleString()}</p>
+					<p class="text-xs font-mono text-text-tertiary">{pct(data.blast.totalBounced, data.blast.totalSent)}</p>
 				</div>
 			</div>
 		</div>

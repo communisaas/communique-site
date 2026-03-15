@@ -30,11 +30,11 @@
 	}
 </script>
 
-<div class="flex min-h-screen bg-zinc-950">
+<div class="flex min-h-screen">
 	<!-- Sidebar -->
-	<aside class="hidden md:flex md:w-60 flex-col border-r border-zinc-800/60 bg-zinc-950">
+	<aside class="hidden md:flex md:w-60 flex-col border-r border-[var(--org-sidebar-border)] bg-[var(--org-sidebar-bg)]">
 		<!-- Org header -->
-		<div class="px-4 py-5 border-b border-zinc-800/60">
+		<div class="px-4 py-5 border-b border-[var(--org-sidebar-border)]">
 			<div class="flex items-center gap-3">
 				{#if data.org.avatar}
 					<img src={data.org.avatar} alt="" class="w-8 h-8 rounded-lg" />
@@ -44,8 +44,8 @@
 					</div>
 				{/if}
 				<div class="min-w-0">
-					<p class="text-sm font-medium text-zinc-100 truncate">{data.org.name}</p>
-					<p class="text-xs text-zinc-500 font-mono">{data.membership.role}</p>
+					<p class="text-sm font-medium text-[var(--org-sidebar-text)] truncate">{data.org.name}</p>
+					<p class="text-xs text-[var(--org-sidebar-text-dim)] font-mono">{data.membership.role}</p>
 				</div>
 			</div>
 		</div>
@@ -57,8 +57,8 @@
 				<a
 					href={item.href}
 					class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors {active
-						? 'bg-zinc-800/80 text-zinc-100'
-						: 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'}"
+						? 'bg-[var(--org-sidebar-active)] text-[var(--org-sidebar-text)] border-l-2 border-teal-500'
+						: 'text-[var(--org-sidebar-text-muted)] hover:text-[var(--org-sidebar-text)] hover:bg-[var(--org-sidebar-hover)]'}"
 				>
 					{#if item.icon === 'chart'}
 						<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -92,8 +92,8 @@
 		</nav>
 
 		<!-- Back to person layer -->
-		<div class="px-3 py-4 border-t border-zinc-800/60">
-			<a href="/" class="flex items-center gap-2 px-3 py-2 text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+		<div class="px-3 py-4 border-t border-[var(--org-sidebar-border)]">
+			<a href="/" class="flex items-center gap-2 px-3 py-2 text-xs text-[var(--org-sidebar-text-dim)] hover:text-[var(--org-sidebar-text-muted)] transition-colors">
 				<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
 				</svg>
@@ -103,13 +103,13 @@
 	</aside>
 
 	<!-- Mobile header -->
-	<div class="md:hidden fixed top-0 left-0 right-0 z-40 bg-zinc-950 border-b border-zinc-800/60 px-4 py-3">
+	<div class="md:hidden fixed top-0 left-0 right-0 z-40 bg-[var(--org-sidebar-bg)] border-b border-[var(--org-sidebar-border)] px-4 py-3">
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-2">
 				<div class="w-6 h-6 rounded bg-teal-500/20 flex items-center justify-center text-teal-400 font-semibold text-xs">
 					{data.org.name.charAt(0).toUpperCase()}
 				</div>
-				<span class="text-sm font-medium text-zinc-100">{data.org.name}</span>
+				<span class="text-sm font-medium text-[var(--org-sidebar-text)]">{data.org.name}</span>
 			</div>
 		</div>
 		<!-- Mobile nav tabs -->
@@ -119,8 +119,8 @@
 				<a
 					href={item.href}
 					class="px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors {active
-						? 'border-teal-400 text-zinc-100'
-						: 'border-transparent text-zinc-500 hover:text-zinc-300'}"
+						? 'border-teal-400 text-[var(--org-sidebar-text)]'
+						: 'border-transparent text-[var(--org-sidebar-text-dim)] hover:text-[var(--org-sidebar-text-muted)]'}"
 				>
 					{item.label}
 				</a>

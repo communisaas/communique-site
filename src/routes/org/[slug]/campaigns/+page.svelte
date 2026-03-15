@@ -24,24 +24,24 @@
 			case 'EVENT':
 				return 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20';
 			case 'FORM':
-				return 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20';
+				return 'bg-surface-overlay text-text-tertiary border-surface-border';
 			default:
-				return 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20';
+				return 'bg-surface-overlay text-text-tertiary border-surface-border';
 		}
 	}
 
 	function statusBadgeClass(status: string): string {
 		switch (status) {
 			case 'DRAFT':
-				return 'bg-zinc-600/20 text-zinc-400 border-zinc-600/30';
+				return 'bg-surface-overlay text-text-tertiary border-surface-border';
 			case 'ACTIVE':
 				return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20';
 			case 'PAUSED':
 				return 'bg-amber-500/15 text-amber-400 border-amber-500/20';
 			case 'COMPLETE':
-				return 'bg-zinc-500/15 text-zinc-500 border-zinc-500/20';
+				return 'bg-surface-overlay text-text-tertiary border-surface-border';
 			default:
-				return 'bg-zinc-500/15 text-zinc-500 border-zinc-500/20';
+				return 'bg-surface-overlay text-text-tertiary border-surface-border';
 		}
 	}
 
@@ -60,8 +60,8 @@
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-xl font-semibold text-zinc-100">Campaigns</h1>
-			<p class="text-sm text-zinc-500 mt-1">
+			<h1 class="text-xl font-semibold text-text-primary">Campaigns</h1>
+			<p class="text-sm text-text-tertiary mt-1">
 				{data.counts.ALL} campaign{data.counts.ALL === 1 ? '' : 's'}
 			</p>
 		</div>
@@ -79,30 +79,30 @@
 	</div>
 
 	<!-- Filter tabs -->
-	<div class="flex gap-1 border-b border-zinc-800/60">
+	<div class="flex gap-1 border-b border-surface-border">
 		{#each filters as filter}
 			<button
 				type="button"
 				class="px-4 py-2 text-sm border-b-2 transition-colors {activeFilter === filter
-					? 'border-teal-400 text-zinc-100'
-					: 'border-transparent text-zinc-500 hover:text-zinc-300'}"
+					? 'border-teal-400 text-text-primary'
+					: 'border-transparent text-text-tertiary hover:text-text-secondary'}"
 				onclick={() => (activeFilter = filter)}
 			>
 				{filter === 'ALL' ? 'All' : filter.charAt(0) + filter.slice(1).toLowerCase()}
-				<span class="ml-1 font-mono text-xs text-zinc-600">{data.counts[filter] ?? 0}</span>
+				<span class="ml-1 font-mono tabular-nums text-xs text-text-quaternary">{data.counts[filter] ?? 0}</span>
 			</button>
 		{/each}
 	</div>
 
 	<!-- Campaign cards -->
 	{#if filtered.length === 0}
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-12 text-center">
-			<div class="mx-auto w-12 h-12 rounded-full bg-zinc-800/50 flex items-center justify-center mb-4">
-				<svg class="w-6 h-6 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+		<div class="rounded-xl bg-surface-base border border-surface-border shadow-[var(--shadow-sm)] p-12 text-center">
+			<div class="mx-auto w-12 h-12 rounded-full bg-surface-overlay flex items-center justify-center mb-4">
+				<svg class="w-6 h-6 text-text-quaternary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
 				</svg>
 			</div>
-			<p class="text-sm text-zinc-400">
+			<p class="text-sm text-text-tertiary">
 				{#if activeFilter === 'ALL'}
 					No campaigns yet. Create one to start coordinating verified action.
 				{:else}
@@ -115,12 +115,12 @@
 			{#each filtered as campaign (campaign.id)}
 				<a
 					href="/org/{data.org.slug}/campaigns/{campaign.id}"
-					class="block rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-5 hover:bg-zinc-900/50 hover:border-zinc-700/60 transition-colors group"
+					class="block rounded-xl bg-surface-base border border-surface-border shadow-[var(--shadow-sm)] p-5 hover:bg-surface-raised hover:border-[var(--coord-route-solid)] transition-colors group"
 				>
 					<div class="flex items-start justify-between gap-4">
 						<div class="min-w-0 flex-1">
 							<div class="flex items-center gap-3 mb-2">
-								<h2 class="text-lg font-medium text-zinc-100 truncate group-hover:text-teal-400 transition-colors">
+								<h2 class="text-lg font-medium text-text-primary truncate group-hover:text-teal-400 transition-colors">
 									{campaign.title}
 								</h2>
 								<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-mono {typeBadgeClass(campaign.type)}">
@@ -132,10 +132,10 @@
 							</div>
 
 							{#if campaign.body}
-								<p class="text-sm text-zinc-400 mb-2">{preview(campaign.body)}</p>
+								<p class="text-sm text-text-tertiary mb-2">{preview(campaign.body)}</p>
 							{/if}
 
-							<div class="flex items-center gap-4 text-xs text-zinc-500">
+							<div class="flex items-center gap-4 text-xs text-text-tertiary">
 								{#if campaign.templateTitle}
 									<span class="flex items-center gap-1">
 										<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -152,11 +152,11 @@
 										Debate (threshold: {campaign.debateThreshold})
 									</span>
 								{/if}
-								<span class="font-mono">{formatDate(campaign.updatedAt)}</span>
+								<span class="font-mono tabular-nums">{formatDate(campaign.updatedAt)}</span>
 							</div>
 						</div>
 
-						<svg class="w-5 h-5 text-zinc-600 group-hover:text-zinc-400 transition-colors flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+						<svg class="w-5 h-5 text-text-quaternary group-hover:text-text-tertiary transition-colors flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
 						</svg>
 					</div>

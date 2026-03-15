@@ -81,10 +81,10 @@
 	<title>{data.workflow.name} | {data.org.name}</title>
 </svelte:head>
 
-<div class="min-h-screen bg-zinc-950 text-zinc-100">
+<div class="min-h-screen bg-surface-raised text-text-primary">
 	<div class="mx-auto max-w-4xl px-4 py-8">
 		<!-- Back link -->
-		<a href="/org/{data.org.slug}/workflows" class="mb-6 inline-block text-sm text-zinc-400 hover:text-zinc-200">
+		<a href="/org/{data.org.slug}/workflows" class="mb-6 inline-block text-sm text-text-tertiary hover:text-text-primary">
 			&larr; All Workflows
 		</a>
 
@@ -92,15 +92,15 @@
 		<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
 			<div>
 				<div class="mb-2 flex items-center gap-3">
-					<h1 class="text-2xl font-bold text-zinc-100">{data.workflow.name}</h1>
-					<span class="rounded-full px-2.5 py-0.5 text-xs font-medium {data.workflow.enabled ? 'bg-green-900/50 text-green-400' : 'bg-zinc-700 text-zinc-300'}">
+					<h1 class="text-2xl font-bold text-text-primary">{data.workflow.name}</h1>
+					<span class="rounded-full px-2.5 py-0.5 text-xs font-medium {data.workflow.enabled ? 'bg-green-900/50 text-green-400' : 'bg-surface-border-strong text-text-secondary'}">
 						{data.workflow.enabled ? 'Enabled' : 'Disabled'}
 					</span>
 				</div>
 				{#if data.workflow.description}
-					<p class="text-sm text-zinc-400">{data.workflow.description}</p>
+					<p class="text-sm text-text-tertiary">{data.workflow.description}</p>
 				{/if}
-				<p class="mt-1 text-sm text-zinc-500">Created {formatDate(data.workflow.createdAt)}</p>
+				<p class="mt-1 text-sm text-text-tertiary">Created {formatDate(data.workflow.createdAt)}</p>
 			</div>
 
 			<!-- Actions -->
@@ -108,7 +108,7 @@
 				<button
 					onclick={toggleEnabled}
 					disabled={toggling}
-					class="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-50"
+					class="rounded-lg border border-surface-border-strong px-3 py-1.5 text-sm text-text-secondary hover:border-text-tertiary hover:text-text-primary disabled:opacity-50"
 				>
 					{data.workflow.enabled ? 'Disable' : 'Enable'}
 				</button>
@@ -124,31 +124,31 @@
 
 		<!-- Metrics -->
 		<div class="mb-6 grid grid-cols-3 gap-3">
-			<div class="rounded-lg border border-zinc-800/60 p-4">
-				<p class="text-xs font-medium text-zinc-500">Trigger</p>
-				<p class="mt-1 text-lg font-bold text-zinc-100">{TRIGGER_LABELS[data.workflow.trigger.type] ?? data.workflow.trigger.type}</p>
+			<div class="rounded-lg border border-surface-border p-4">
+				<p class="text-xs font-medium text-text-tertiary">Trigger</p>
+				<p class="mt-1 text-lg font-bold text-text-primary">{TRIGGER_LABELS[data.workflow.trigger.type] ?? data.workflow.trigger.type}</p>
 			</div>
-			<div class="rounded-lg border border-zinc-800/60 p-4">
-				<p class="text-xs font-medium text-zinc-500">Steps</p>
-				<p class="mt-1 text-lg font-bold text-zinc-100">{data.workflow.steps.length}</p>
+			<div class="rounded-lg border border-surface-border p-4">
+				<p class="text-xs font-medium text-text-tertiary">Steps</p>
+				<p class="mt-1 text-lg font-bold text-text-primary">{data.workflow.steps.length}</p>
 			</div>
-			<div class="rounded-lg border border-zinc-800/60 p-4">
-				<p class="text-xs font-medium text-zinc-500">Executions</p>
-				<p class="mt-1 text-lg font-bold text-zinc-100">{data.workflow.totalExecutions}</p>
+			<div class="rounded-lg border border-surface-border p-4">
+				<p class="text-xs font-medium text-text-tertiary">Executions</p>
+				<p class="mt-1 text-lg font-bold text-text-primary">{data.workflow.totalExecutions}</p>
 			</div>
 		</div>
 
 		<!-- Steps -->
-		<div class="mb-6 rounded-lg border border-zinc-800/60 p-4">
-			<h3 class="mb-3 text-sm font-medium text-zinc-400">Steps</h3>
+		<div class="mb-6 rounded-lg border border-surface-border p-4">
+			<h3 class="mb-3 text-sm font-medium text-text-tertiary">Steps</h3>
 			{#if data.workflow.steps.length === 0}
-				<p class="py-4 text-center text-sm text-zinc-500">No steps defined</p>
+				<p class="py-4 text-center text-sm text-text-tertiary">No steps defined</p>
 			{:else}
 				<div class="space-y-2">
 					{#each data.workflow.steps as step, i (i)}
-						<div class="flex items-center gap-3 rounded-lg bg-zinc-900/50 px-3 py-2">
-							<span class="shrink-0 text-xs font-medium text-zinc-500">{i + 1}</span>
-							<span class="text-sm text-zinc-200">{stepSummary(step)}</span>
+						<div class="flex items-center gap-3 rounded-lg bg-surface-base px-3 py-2">
+							<span class="shrink-0 text-xs font-medium text-text-tertiary">{i + 1}</span>
+							<span class="text-sm text-text-primary">{stepSummary(step)}</span>
 						</div>
 					{/each}
 				</div>
@@ -157,7 +157,7 @@
 
 		<!-- Executions -->
 		<div>
-			<h3 class="mb-3 text-sm font-medium text-zinc-400">Recent Executions ({data.workflow.totalExecutions})</h3>
+			<h3 class="mb-3 text-sm font-medium text-text-tertiary">Recent Executions ({data.workflow.totalExecutions})</h3>
 			<ExecutionTable executions={data.executions} />
 		</div>
 	</div>

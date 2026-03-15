@@ -76,14 +76,14 @@
 	<title>Create Network | {data.org.name}</title>
 </svelte:head>
 
-<div class="min-h-screen bg-zinc-950 text-zinc-100">
+<div class="min-h-screen bg-surface-raised text-text-primary">
 	<div class="mx-auto max-w-4xl px-4 py-8">
 		<!-- Back link -->
-		<a href="/org/{data.org.slug}/networks" class="mb-6 inline-block text-sm text-zinc-400 hover:text-zinc-200">
+		<a href="/org/{data.org.slug}/networks" class="mb-6 inline-block text-sm text-text-tertiary hover:text-text-primary">
 			&larr; All Networks
 		</a>
 
-		<h1 class="mb-8 text-2xl font-bold text-zinc-100">Create Network</h1>
+		<h1 class="mb-8 text-2xl font-bold text-text-primary">Create Network</h1>
 
 		<!-- Error -->
 		{#if errorMsg}
@@ -93,9 +93,9 @@
 		{/if}
 
 		<!-- Form -->
-		<div class="space-y-4 rounded-lg border border-zinc-800/60 p-4">
+		<div class="space-y-4 rounded-lg border border-surface-border p-4">
 			<div>
-				<label for="net-name" class="mb-1 block text-sm font-medium text-zinc-400">Name</label>
+				<label for="net-name" class="mb-1 block text-sm font-medium text-text-tertiary">Name</label>
 				<input
 					id="net-name"
 					type="text"
@@ -103,13 +103,13 @@
 					oninput={onNameInput}
 					placeholder="e.g. Climate Action Coalition"
 					maxlength="100"
-					class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-zinc-500 focus:outline-none"
+					class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-text-tertiary focus:outline-none"
 				/>
-				<p class="mt-1 text-xs text-zinc-500">{name.trim().length}/100 characters</p>
+				<p class="mt-1 text-xs text-text-tertiary">{name.trim().length}/100 characters</p>
 			</div>
 
 			<div>
-				<label for="net-slug" class="mb-1 block text-sm font-medium text-zinc-400">Slug</label>
+				<label for="net-slug" class="mb-1 block text-sm font-medium text-text-tertiary">Slug</label>
 				<input
 					id="net-slug"
 					type="text"
@@ -117,22 +117,22 @@
 					oninput={onSlugInput}
 					placeholder="climate-action-coalition"
 					maxlength="50"
-					class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-mono text-zinc-100 placeholder-zinc-600 focus:border-zinc-500 focus:outline-none"
+					class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm font-mono text-text-primary placeholder-text-quaternary focus:border-text-tertiary focus:outline-none"
 				/>
-				<p class="mt-1 text-xs text-zinc-500">URL-friendly identifier ({slug.trim().length}/50)</p>
+				<p class="mt-1 text-xs text-text-tertiary">URL-friendly identifier ({slug.trim().length}/50)</p>
 			</div>
 
 			<div>
-				<label for="net-desc" class="mb-1 block text-sm font-medium text-zinc-400">Description (optional)</label>
+				<label for="net-desc" class="mb-1 block text-sm font-medium text-text-tertiary">Description (optional)</label>
 				<textarea
 					id="net-desc"
 					bind:value={description}
 					placeholder="What is this network for?"
 					rows="3"
 					maxlength="500"
-					class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-zinc-500 focus:outline-none"
+					class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-text-tertiary focus:outline-none"
 				></textarea>
-				<p class="mt-1 text-xs text-zinc-500">{description.trim().length}/500 characters</p>
+				<p class="mt-1 text-xs text-text-tertiary">{description.trim().length}/500 characters</p>
 			</div>
 		</div>
 
@@ -140,14 +140,14 @@
 		<div class="mt-6 flex items-center justify-end gap-3">
 			<a
 				href="/org/{data.org.slug}/networks"
-				class="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+				class="rounded-lg border border-surface-border-strong px-4 py-2 text-sm text-text-secondary hover:border-text-tertiary hover:text-text-primary"
 			>
 				Cancel
 			</a>
 			<button
 				onclick={submit}
 				disabled={saving}
-				class="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-200 disabled:opacity-50"
+				class="rounded-lg bg-surface-overlay px-4 py-2 text-sm font-semibold text-text-primary hover:bg-surface-raised disabled:opacity-50"
 			>
 				{saving ? 'Creating...' : 'Create Network'}
 			</button>

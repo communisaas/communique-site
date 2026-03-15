@@ -155,8 +155,8 @@
 	<!-- Header -->
 	<div class="flex items-center justify-between gap-4">
 		<div class="flex items-baseline gap-3">
-			<h1 class="text-xl font-semibold text-zinc-100">Supporters</h1>
-			<span class="font-mono text-lg text-zinc-500">{fmt(data.total)}</span>
+			<h1 class="text-xl font-semibold text-text-primary">Supporters</h1>
+			<span class="font-mono tabular-nums text-lg text-text-tertiary">{fmt(data.total)}</span>
 		</div>
 		<div class="flex items-center gap-3">
 			{#if canEdit}
@@ -175,7 +175,7 @@
 
 	<!-- Search -->
 	<div class="relative">
-		<svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+		<svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 			<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
 		</svg>
 		<input
@@ -183,19 +183,19 @@
 			placeholder="Search by name or email..."
 			value={searchInput}
 			oninput={onSearchInput}
-			class="w-full rounded-lg border border-zinc-700 bg-zinc-900 pl-10 pr-4 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+			class="participation-input pl-10 pr-4 py-2 text-sm"
 		/>
 	</div>
 
 	<!-- Filter bar -->
 	<div class="flex flex-wrap items-center gap-3">
 		<!-- Email status pills -->
-		<div class="flex items-center gap-1 rounded-lg border border-zinc-800/60 p-0.5">
+		<div class="flex items-center gap-1 rounded-lg border border-surface-border p-0.5">
 			<button
 				type="button"
 				class="px-3 py-1.5 text-xs rounded-md transition-colors {!data.filters.status
-					? 'bg-zinc-800 text-zinc-100'
-					: 'text-zinc-500 hover:text-zinc-300'}"
+					? 'bg-surface-overlay text-text-primary'
+					: 'text-text-tertiary hover:text-text-secondary'}"
 				onclick={() => removeFilter('status')}
 			>
 				All
@@ -204,8 +204,8 @@
 				<button
 					type="button"
 					class="px-3 py-1.5 text-xs rounded-md transition-colors capitalize {data.filters.status === es
-						? 'bg-zinc-800 text-zinc-100'
-						: 'text-zinc-500 hover:text-zinc-300'}"
+						? 'bg-surface-overlay text-text-primary'
+						: 'text-text-tertiary hover:text-text-secondary'}"
 					onclick={() => updateFilter('status', es)}
 				>
 					{es}
@@ -214,12 +214,12 @@
 		</div>
 
 		<!-- Verification toggle -->
-		<div class="flex items-center gap-1 rounded-lg border border-zinc-800/60 p-0.5">
+		<div class="flex items-center gap-1 rounded-lg border border-surface-border p-0.5">
 			<button
 				type="button"
 				class="px-3 py-1.5 text-xs rounded-md transition-colors {!data.filters.verified
-					? 'bg-zinc-800 text-zinc-100'
-					: 'text-zinc-500 hover:text-zinc-300'}"
+					? 'bg-surface-overlay text-text-primary'
+					: 'text-text-tertiary hover:text-text-secondary'}"
 				onclick={() => removeFilter('verified')}
 			>
 				All
@@ -227,8 +227,8 @@
 			<button
 				type="button"
 				class="px-3 py-1.5 text-xs rounded-md transition-colors {data.filters.verified === 'true'
-					? 'bg-zinc-800 text-zinc-100'
-					: 'text-zinc-500 hover:text-zinc-300'}"
+					? 'bg-surface-overlay text-text-primary'
+					: 'text-text-tertiary hover:text-text-secondary'}"
 				onclick={() => updateFilter('verified', 'true')}
 			>
 				Verified
@@ -236,8 +236,8 @@
 			<button
 				type="button"
 				class="px-3 py-1.5 text-xs rounded-md transition-colors {data.filters.verified === 'false'
-					? 'bg-zinc-800 text-zinc-100'
-					: 'text-zinc-500 hover:text-zinc-300'}"
+					? 'bg-surface-overlay text-text-primary'
+					: 'text-text-tertiary hover:text-text-secondary'}"
 				onclick={() => updateFilter('verified', 'false')}
 			>
 				Unverified
@@ -247,7 +247,7 @@
 		<!-- Tag dropdown -->
 		{#if data.tags.length > 0}
 			<select
-				class="rounded-lg border border-zinc-800/60 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+				class="rounded-lg border border-surface-border bg-surface-raised px-3 py-1.5 text-xs text-text-tertiary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 				onchange={(e) => {
 					const val = (e.target as HTMLSelectElement).value;
 					updateFilter('tag', val || null);
@@ -262,7 +262,7 @@
 
 		<!-- Source dropdown -->
 		<select
-			class="rounded-lg border border-zinc-800/60 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+			class="rounded-lg border border-surface-border bg-surface-raised px-3 py-1.5 text-xs text-text-tertiary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 			onchange={(e) => {
 				const val = (e.target as HTMLSelectElement).value;
 				updateFilter('source', val || null);
@@ -279,7 +279,7 @@
 			type="button"
 			class="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors {showSegmentBuilder
 				? 'border-teal-500/30 bg-teal-500/10 text-teal-400'
-				: 'border-zinc-800/60 text-zinc-400 hover:text-zinc-300 hover:border-zinc-700'}"
+				: 'border-surface-border text-text-tertiary hover:text-text-secondary hover:border-surface-border-strong'}"
 			onclick={() => (showSegmentBuilder = !showSegmentBuilder)}
 		>
 			<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -291,7 +291,7 @@
 
 	<!-- Segment Builder Panel -->
 	{#if showSegmentBuilder}
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-5">
+		<div class="rounded-xl bg-surface-base border border-surface-border shadow-[var(--shadow-sm)] p-5">
 			<SegmentBuilder
 				orgSlug={data.org.slug}
 				tags={data.tags}
@@ -306,7 +306,7 @@
 			{#each activeChips as chip}
 				<button
 					type="button"
-					class="inline-flex items-center gap-1.5 rounded-full bg-zinc-800 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-700 transition-colors"
+					class="inline-flex items-center gap-1.5 rounded-full bg-surface-overlay px-3 py-1 text-xs text-text-secondary hover:bg-surface-raised transition-colors"
 					onclick={() => removeFilter(chip.key)}
 				>
 					{chip.label}
@@ -318,7 +318,7 @@
 			{#if activeChips.length > 1}
 				<button
 					type="button"
-					class="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+					class="text-xs text-text-quaternary hover:text-text-tertiary transition-colors"
 					onclick={() => {
 						const url = new URL($page.url);
 						url.search = '';
@@ -334,23 +334,23 @@
 
 	<!-- Summary bar -->
 	{#if data.total > 0}
-		<div class="flex items-center gap-4 rounded-lg border border-zinc-800/60 bg-zinc-900/30 px-4 py-2.5 text-xs">
+		<div class="flex items-center gap-4 rounded-lg border border-surface-border bg-surface-base px-4 py-2.5 text-xs">
 			<span class="flex items-center gap-1.5">
 				<span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-				<span class="font-mono text-zinc-300">{fmt(data.summary.verified)}</span>
-				<span class="text-zinc-500">verified</span>
+				<span class="font-mono tabular-nums text-text-secondary">{fmt(data.summary.verified)}</span>
+				<span class="text-text-tertiary">verified</span>
 			</span>
-			<span class="text-zinc-800">|</span>
+			<span class="text-surface-border">|</span>
 			<span class="flex items-center gap-1.5">
 				<span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
-				<span class="font-mono text-zinc-300">{fmt(data.summary.postal)}</span>
-				<span class="text-zinc-500">postal-resolved</span>
+				<span class="font-mono tabular-nums text-text-secondary">{fmt(data.summary.postal)}</span>
+				<span class="text-text-tertiary">postal-resolved</span>
 			</span>
-			<span class="text-zinc-800">|</span>
+			<span class="text-surface-border">|</span>
 			<span class="flex items-center gap-1.5">
-				<span class="inline-block w-2 h-2 rounded-full bg-zinc-600"></span>
-				<span class="font-mono text-zinc-300">{fmt(data.summary.imported)}</span>
-				<span class="text-zinc-500">imported</span>
+				<span class="inline-block w-2 h-2 rounded-full bg-text-quaternary"></span>
+				<span class="font-mono tabular-nums text-text-secondary">{fmt(data.summary.imported)}</span>
+				<span class="text-text-tertiary">imported</span>
 			</span>
 		</div>
 	{/if}
@@ -358,14 +358,14 @@
 	<!-- Table -->
 	{#if allSupporters.length === 0}
 		<!-- Empty state -->
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-12 text-center">
-			<div class="mx-auto w-12 h-12 rounded-full bg-zinc-800/50 flex items-center justify-center mb-4">
-				<svg class="w-6 h-6 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+		<div class="rounded-xl bg-surface-base border border-surface-border shadow-[var(--shadow-sm)] p-12 text-center">
+			<div class="mx-auto w-12 h-12 rounded-full bg-surface-overlay flex items-center justify-center mb-4">
+				<svg class="w-6 h-6 text-text-quaternary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
 				</svg>
 			</div>
-			<p class="text-sm text-zinc-400 mb-1">No supporters yet.</p>
-			<p class="text-sm text-zinc-500">
+			<p class="text-sm text-text-tertiary mb-1">No supporters yet.</p>
+			<p class="text-sm text-text-tertiary">
 				{#if canEdit}
 					<a href="/org/{data.org.slug}/supporters/import" class="text-teal-400 hover:text-teal-300 transition-colors">Import from CSV or Action Network</a> to get started.
 				{:else}
@@ -374,24 +374,24 @@
 			</p>
 		</div>
 	{:else}
-		<div class="rounded-xl border border-zinc-800/60 overflow-hidden">
+		<div class="rounded-xl border border-surface-border overflow-hidden">
 			<div class="overflow-x-auto">
 				<table class="w-full text-left">
 					<thead>
-						<tr class="border-b border-zinc-800/60 bg-zinc-900/50">
-							<th class="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider w-16">Status</th>
-							<th class="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Name</th>
-							<th class="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Email</th>
-							<th class="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">Postal</th>
-							<th class="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden xl:table-cell">Tags</th>
-							<th class="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell w-16">Source</th>
-							<th class="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell w-24">Added</th>
+						<tr class="border-b border-surface-border bg-surface-raised">
+							<th class="px-4 py-3 text-xs font-medium text-text-tertiary uppercase tracking-wider w-16">Status</th>
+							<th class="px-4 py-3 text-xs font-medium text-text-tertiary uppercase tracking-wider">Name</th>
+							<th class="px-4 py-3 text-xs font-medium text-text-tertiary uppercase tracking-wider">Email</th>
+							<th class="px-4 py-3 text-xs font-medium text-text-tertiary uppercase tracking-wider hidden lg:table-cell">Postal</th>
+							<th class="px-4 py-3 text-xs font-medium text-text-tertiary uppercase tracking-wider hidden xl:table-cell">Tags</th>
+							<th class="px-4 py-3 text-xs font-medium text-text-tertiary uppercase tracking-wider hidden lg:table-cell w-16">Source</th>
+							<th class="px-4 py-3 text-xs font-medium text-text-tertiary uppercase tracking-wider hidden md:table-cell w-24">Added</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-zinc-800/40">
+					<tbody class="divide-y divide-surface-border">
 						{#each allSupporters as supporter (supporter.id)}
 							{@const vState = verificationState(supporter)}
-							<tr class="hover:bg-zinc-800/40 transition-colors group">
+							<tr class="hover:bg-surface-raised transition-colors group">
 								<!-- Verification status -->
 								<td class="px-4 py-3">
 									{#if vState === 'VER'}
@@ -406,8 +406,8 @@
 										</span>
 									{:else}
 										<span class="inline-flex items-center gap-1.5">
-											<span class="inline-block w-2.5 h-2.5 rounded-full bg-zinc-600"></span>
-											<span class="font-mono text-xs text-zinc-500">IMP</span>
+											<span class="inline-block w-2.5 h-2.5 rounded-full bg-text-quaternary"></span>
+											<span class="font-mono text-xs text-text-tertiary">IMP</span>
 										</span>
 									{/if}
 								</td>
@@ -416,7 +416,7 @@
 								<td class="px-4 py-3">
 									<a
 										href="/org/{data.org.slug}/supporters/{supporter.id}"
-										class="text-sm text-zinc-100 hover:text-teal-400 transition-colors"
+										class="text-sm text-text-primary hover:text-teal-400 transition-colors"
 									>
 										{supporter.name || '\u2014'}
 									</a>
@@ -432,7 +432,7 @@
 										{:else if supporter.emailStatus === 'complained'}
 											<span class="inline-block w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></span>
 										{/if}
-										<span class="text-sm truncate max-w-48 {supporter.emailStatus === 'complained' ? 'text-zinc-500 line-through' : 'text-zinc-400'}">
+										<span class="text-sm truncate max-w-48 {supporter.emailStatus === 'complained' ? 'text-text-tertiary line-through' : 'text-text-tertiary'}">
 											{supporter.email}
 										</span>
 									</div>
@@ -440,7 +440,7 @@
 
 								<!-- Postal -->
 								<td class="px-4 py-3 hidden lg:table-cell">
-									<span class="font-mono text-sm text-zinc-500">{supporter.postalCode || '\u2014'}</span>
+									<span class="font-mono tabular-nums text-sm text-text-tertiary">{supporter.postalCode || '\u2014'}</span>
 								</td>
 
 								<!-- Tags -->
@@ -448,29 +448,29 @@
 									{#if supporter.tags.length > 0}
 										<div class="flex items-center gap-1 flex-wrap">
 											{#each supporter.tags.slice(0, 3) as tag}
-												<span class="inline-flex items-center rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">
+												<span class="inline-flex items-center rounded-full bg-surface-overlay px-2 py-0.5 text-xs text-text-tertiary">
 													{tag.name}
 												</span>
 											{/each}
 											{#if supporter.tags.length > 3}
-												<span class="text-xs text-zinc-600">+{supporter.tags.length - 3} more</span>
+												<span class="text-xs text-text-quaternary">+{supporter.tags.length - 3} more</span>
 											{/if}
 										</div>
 									{:else}
-										<span class="text-zinc-700">&mdash;</span>
+										<span class="text-text-quaternary">&mdash;</span>
 									{/if}
 								</td>
 
 								<!-- Source -->
 								<td class="px-4 py-3 hidden lg:table-cell">
-									<span class="inline-flex items-center rounded bg-zinc-800/80 px-1.5 py-0.5 font-mono text-[10px] text-zinc-500 uppercase">
+									<span class="inline-flex items-center rounded bg-surface-overlay px-1.5 py-0.5 font-mono text-[10px] text-text-tertiary uppercase">
 										{sourceLabel(supporter.source)}
 									</span>
 								</td>
 
 								<!-- Added -->
 								<td class="px-4 py-3 hidden md:table-cell">
-									<span class="font-mono text-xs text-zinc-600">{relativeTime(supporter.createdAt)}</span>
+									<span class="font-mono tabular-nums text-xs text-text-quaternary">{relativeTime(supporter.createdAt)}</span>
 								</td>
 							</tr>
 						{/each}
@@ -485,7 +485,7 @@
 				<button
 					type="button"
 					disabled={loadingMore}
-					class="inline-flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-5 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:border-zinc-600 transition-colors disabled:opacity-50"
+					class="inline-flex items-center gap-2 rounded-lg border border-surface-border-strong bg-surface-raised px-5 py-2.5 text-sm text-text-secondary hover:bg-surface-overlay hover:border-surface-border-strong transition-colors disabled:opacity-50"
 					onclick={loadMore}
 				>
 					{#if loadingMore}

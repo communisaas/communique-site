@@ -32,8 +32,8 @@
 
 <div class="space-y-6">
 	<div>
-		<h1 class="text-xl font-semibold text-zinc-100">Representatives</h1>
-		<p class="text-sm text-zinc-500 mt-1">
+		<h1 class="text-xl font-semibold text-text-primary">Representatives</h1>
+		<p class="text-sm text-text-tertiary mt-1">
 			International representatives for your campaigns.
 			{data.representatives.length} total.
 		</p>
@@ -45,10 +45,10 @@
 			type="text"
 			placeholder="Search name, constituency, or party..."
 			bind:value={filterQuery}
-			class="flex-1 min-w-[200px] rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+			class="flex-1 min-w-[200px] rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 		/>
 		<select
-			class="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+			class="rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 			bind:value={filterCountry}
 		>
 			<option value="">All countries</option>
@@ -66,25 +66,25 @@
 			{/each}
 		</div>
 	{:else if data.representatives.length === 0}
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-8 text-center">
-			<p class="text-sm text-zinc-500">No representatives yet.</p>
-			<p class="text-xs text-zinc-600 mt-1">Use the lookup below to find representatives by postcode.</p>
+		<div class="rounded-xl border border-surface-border bg-surface-base p-8 text-center">
+			<p class="text-sm text-text-tertiary">No representatives yet.</p>
+			<p class="text-xs text-text-quaternary mt-1">Use the lookup below to find representatives by postcode.</p>
 		</div>
 	{:else}
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 text-center">
-			<p class="text-sm text-zinc-500">No representatives match your filter.</p>
+		<div class="rounded-xl border border-surface-border bg-surface-base p-6 text-center">
+			<p class="text-sm text-text-tertiary">No representatives match your filter.</p>
 		</div>
 	{/if}
 
 	<!-- Lookup section -->
-	<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
+	<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-4">
 		<div>
-			<p class="text-sm font-medium text-zinc-300">Lookup Representatives</p>
-			<p class="text-xs text-zinc-500 mt-0.5">Enter a postcode to find representatives for a constituency.</p>
+			<p class="text-sm font-medium text-text-secondary">Lookup Representatives</p>
+			<p class="text-xs text-text-tertiary mt-0.5">Enter a postcode to find representatives for a constituency.</p>
 		</div>
 
 		<div class="max-w-xs">
-			<label for="lookupCountry" class="block text-sm font-medium text-zinc-300 mb-1.5">Country</label>
+			<label for="lookupCountry" class="block text-sm font-medium text-text-secondary mb-1.5">Country</label>
 			<CountrySelector value={lookupCountry} onchange={(c) => { lookupCountry = c; }} />
 		</div>
 

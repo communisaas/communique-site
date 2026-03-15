@@ -59,12 +59,12 @@
 			case 'ACTIVE':
 				return [
 					{ target: 'PAUSED', label: 'Pause', style: 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-600/30' },
-					{ target: 'COMPLETE', label: 'Complete', style: 'bg-zinc-700 hover:bg-zinc-600 text-zinc-200' }
+					{ target: 'COMPLETE', label: 'Complete', style: 'bg-surface-overlay hover:bg-surface-raised text-text-primary' }
 				];
 			case 'PAUSED':
 				return [
 					{ target: 'ACTIVE', label: 'Resume', style: 'bg-emerald-600 hover:bg-emerald-500 text-white' },
-					{ target: 'COMPLETE', label: 'Complete', style: 'bg-zinc-700 hover:bg-zinc-600 text-zinc-200' }
+					{ target: 'COMPLETE', label: 'Complete', style: 'bg-surface-overlay hover:bg-surface-raised text-text-primary' }
 				];
 			default:
 				return [];
@@ -74,15 +74,15 @@
 	function statusBadgeClass(status: string): string {
 		switch (status) {
 			case 'DRAFT':
-				return 'bg-zinc-600/20 text-zinc-400 border-zinc-600/30';
+				return 'bg-text-quaternary/20 text-text-tertiary border-text-quaternary/30';
 			case 'ACTIVE':
 				return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20';
 			case 'PAUSED':
 				return 'bg-amber-500/15 text-amber-400 border-amber-500/20';
 			case 'COMPLETE':
-				return 'bg-zinc-500/15 text-zinc-500 border-zinc-500/20';
+				return 'bg-text-tertiary/15 text-text-tertiary border-text-tertiary/20';
 			default:
-				return 'bg-zinc-500/15 text-zinc-500 border-zinc-500/20';
+				return 'bg-text-tertiary/15 text-text-tertiary border-text-tertiary/20';
 		}
 	}
 
@@ -93,9 +93,9 @@
 			case 'EVENT':
 				return 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20';
 			case 'FORM':
-				return 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20';
+				return 'bg-text-tertiary/15 text-text-tertiary border-text-tertiary/20';
 			default:
-				return 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20';
+				return 'bg-text-tertiary/15 text-text-tertiary border-text-tertiary/20';
 		}
 	}
 
@@ -113,14 +113,14 @@
 
 <div class="space-y-6">
 	<!-- Breadcrumb -->
-	<nav class="flex items-center gap-2 text-sm text-zinc-500">
-		<a href="/org/{data.org.slug}/campaigns" class="hover:text-zinc-300 transition-colors">
+	<nav class="flex items-center gap-2 text-sm text-text-tertiary">
+		<a href="/org/{data.org.slug}/campaigns" class="hover:text-text-secondary transition-colors">
 			Campaigns
 		</a>
 		<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 			<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
 		</svg>
-		<span class="text-zinc-400 truncate">{data.campaign.title}</span>
+		<span class="text-text-tertiary truncate">{data.campaign.title}</span>
 	</nav>
 
 	<!-- Status bar -->
@@ -132,7 +132,7 @@
 			<span class="inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-mono {typeBadgeClass(data.campaign.type)}">
 				{data.campaign.type}
 			</span>
-			<span class="font-mono text-xs text-zinc-500">
+			<span class="font-mono text-xs text-text-tertiary">
 				Updated {formatDate(data.campaign.updatedAt)}
 			</span>
 		</div>
@@ -168,10 +168,10 @@
 
 	<!-- Edit form -->
 	<form method="POST" action="?/update" use:enhance class="space-y-6">
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-5">
+		<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-5">
 			<!-- Title -->
 			<div>
-				<label for="title" class="block text-sm font-medium text-zinc-300 mb-1.5">Title</label>
+				<label for="title" class="block text-sm font-medium text-text-secondary mb-1.5">Title</label>
 				<input
 					type="text"
 					id="title"
@@ -179,19 +179,19 @@
 					required
 					disabled={!canEdit || !isEditable}
 					value={data.campaign.title}
-					class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+					class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 				/>
 			</div>
 
 			<!-- Type -->
 			<div>
-				<label for="type" class="block text-sm font-medium text-zinc-300 mb-1.5">Type</label>
+				<label for="type" class="block text-sm font-medium text-text-secondary mb-1.5">Type</label>
 				<select
 					id="type"
 					name="type"
 					required
 					disabled={!canEdit || !isEditable}
-					class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+					class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					<option value="LETTER" selected={data.campaign.type === 'LETTER'}>Letter</option>
 					<option value="EVENT" selected={data.campaign.type === 'EVENT'}>Event</option>
@@ -201,9 +201,9 @@
 
 			<!-- Body -->
 			<div>
-				<label for="body" class="block text-sm font-medium text-zinc-300 mb-1.5">
+				<label for="body" class="block text-sm font-medium text-text-secondary mb-1.5">
 					Description
-					<span class="text-zinc-600 font-normal">(optional)</span>
+					<span class="text-text-quaternary font-normal">(optional)</span>
 				</label>
 				<textarea
 					id="body"
@@ -211,21 +211,21 @@
 					rows="4"
 					disabled={!canEdit || !isEditable}
 					placeholder="Describe this campaign's purpose and goals..."
-					class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors resize-y disabled:opacity-50 disabled:cursor-not-allowed"
+					class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors resize-y disabled:opacity-50 disabled:cursor-not-allowed"
 				>{data.campaign.body ?? ''}</textarea>
 			</div>
 
 			<!-- Template -->
 			<div>
-				<label for="templateId" class="block text-sm font-medium text-zinc-300 mb-1.5">
+				<label for="templateId" class="block text-sm font-medium text-text-secondary mb-1.5">
 					Template
-					<span class="text-zinc-600 font-normal">(optional)</span>
+					<span class="text-text-quaternary font-normal">(optional)</span>
 				</label>
 				<select
 					id="templateId"
 					name="templateId"
 					disabled={!canEdit || !isEditable}
-					class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+					class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					<option value="">None</option>
 					{#each data.templates as template}
@@ -237,46 +237,46 @@
 			</div>
 
 			<!-- Geographic targeting -->
-			<div class="rounded-lg border border-zinc-800/60 bg-zinc-950/50 p-4 space-y-4">
+			<div class="rounded-lg border border-surface-border bg-surface-raised p-4 space-y-4">
 				<div>
-					<p class="text-sm font-medium text-zinc-300">Geographic Targeting</p>
-					<p class="text-xs text-zinc-500 mt-0.5">Country and jurisdiction for this campaign</p>
+					<p class="text-sm font-medium text-text-secondary">Geographic Targeting</p>
+					<p class="text-xs text-text-tertiary mt-0.5">Country and jurisdiction for this campaign</p>
 				</div>
 
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
-						<label for="targetCountry" class="block text-sm font-medium text-zinc-300 mb-1.5">Country</label>
+						<label for="targetCountry" class="block text-sm font-medium text-text-secondary mb-1.5">Country</label>
 						<input type="hidden" name="targetCountry" value={targetCountry} />
 						{#if canEdit && isEditable}
 							<CountrySelector value={targetCountry} onchange={(c) => { targetCountry = c; targetJurisdiction = ''; }} />
 						{:else}
-							<p class="py-2 text-sm text-zinc-400">{targetCountry}</p>
+							<p class="py-2 text-sm text-text-tertiary">{targetCountry}</p>
 						{/if}
 					</div>
 					<div>
-						<label for="targetJurisdiction" class="block text-sm font-medium text-zinc-300 mb-1.5">Jurisdiction</label>
+						<label for="targetJurisdiction" class="block text-sm font-medium text-text-secondary mb-1.5">Jurisdiction</label>
 						<input type="hidden" name="targetJurisdiction" value={targetJurisdiction} />
 						{#if canEdit && isEditable}
 							<JurisdictionPicker value={targetJurisdiction || null} country={targetCountry} onchange={(j) => { targetJurisdiction = j; }} />
 						{:else}
-							<p class="py-2 text-sm text-zinc-400">{targetJurisdiction || 'Not set'}</p>
+							<p class="py-2 text-sm text-text-tertiary">{targetJurisdiction || 'Not set'}</p>
 						{/if}
 					</div>
 				</div>
 
 				{#if targetJurisdiction}
-					<p class="text-xs text-zinc-500">
-						Targeting <span class="text-zinc-300 font-medium">{targetJurisdiction}</span> in <span class="text-zinc-300 font-medium">{targetCountry}</span>
+					<p class="text-xs text-text-tertiary">
+						Targeting <span class="text-text-secondary font-medium">{targetJurisdiction}</span> in <span class="text-text-secondary font-medium">{targetCountry}</span>
 					</p>
 				{/if}
 			</div>
 
 			<!-- Debate settings -->
-			<div class="rounded-lg border border-zinc-800/60 bg-zinc-950/50 p-4 space-y-4">
+			<div class="rounded-lg border border-surface-border bg-surface-raised p-4 space-y-4">
 				<div class="flex items-center justify-between">
 					<div>
-						<p class="text-sm font-medium text-zinc-300">Debate Market</p>
-						<p class="text-xs text-zinc-500 mt-0.5">Enable on-chain debate for this campaign</p>
+						<p class="text-sm font-medium text-text-secondary">Debate Market</p>
+						<p class="text-xs text-text-tertiary mt-0.5">Enable on-chain debate for this campaign</p>
 					</div>
 					<label class="relative inline-flex items-center cursor-pointer">
 						<input
@@ -286,15 +286,15 @@
 							disabled={!canEdit || !isEditable}
 							bind:checked={debateEnabled}
 						/>
-						<div class="w-9 h-5 bg-zinc-700 peer-focus:ring-2 peer-focus:ring-teal-500/40 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600 peer-checked:after:bg-white disabled:opacity-50"></div>
+						<div class="w-9 h-5 bg-surface-border-strong peer-focus:ring-2 peer-focus:ring-teal-500/40 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-tertiary after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600 peer-checked:after:bg-white disabled:opacity-50"></div>
 					</label>
 				</div>
 
 				{#if debateEnabled}
 					<div>
-						<label for="debateThreshold" class="block text-sm font-medium text-zinc-300 mb-1.5">
+						<label for="debateThreshold" class="block text-sm font-medium text-text-secondary mb-1.5">
 							Threshold
-							<span class="text-zinc-600 font-normal">(minimum verified participants)</span>
+							<span class="text-text-quaternary font-normal">(minimum verified participants)</span>
 						</label>
 						<input
 							type="number"
@@ -303,7 +303,7 @@
 							min="1"
 							disabled={!canEdit || !isEditable}
 							value={data.campaign.debateThreshold}
-							class="w-32 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-mono text-zinc-100 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							class="w-32 rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm font-mono text-text-primary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 						/>
 					</div>
 				{/if}
@@ -353,30 +353,30 @@
 	{/if}
 
 	<!-- Decision-Maker Targets -->
-	<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
-		<h3 class="text-sm font-medium text-zinc-300">Decision-Maker Targets</h3>
+	<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-4">
+		<h3 class="text-sm font-medium text-text-secondary">Decision-Maker Targets</h3>
 
 		{#if Array.isArray(data.campaign.targets) && data.campaign.targets.length > 0}
 			<div class="overflow-x-auto">
 				<table class="w-full text-left">
 					<thead>
-						<tr class="border-b border-zinc-800/60">
-							<th class="pb-2 text-xs font-medium text-zinc-500">Name</th>
-							<th class="pb-2 text-xs font-medium text-zinc-500">Email</th>
-							<th class="pb-2 text-xs font-medium text-zinc-500">Title</th>
-							<th class="pb-2 text-xs font-medium text-zinc-500">District</th>
+						<tr class="border-b border-surface-border">
+							<th class="pb-2 text-xs font-medium text-text-tertiary">Name</th>
+							<th class="pb-2 text-xs font-medium text-text-tertiary">Email</th>
+							<th class="pb-2 text-xs font-medium text-text-tertiary">Title</th>
+							<th class="pb-2 text-xs font-medium text-text-tertiary">District</th>
 							{#if canEdit}
-								<th class="pb-2 text-xs font-medium text-zinc-500"></th>
+								<th class="pb-2 text-xs font-medium text-text-tertiary"></th>
 							{/if}
 						</tr>
 					</thead>
 					<tbody>
 						{#each data.campaign.targets as target}
-							<tr class="border-b border-zinc-800/60">
-								<td class="py-2 pr-4 text-sm text-zinc-300">{target.name}</td>
-								<td class="py-2 pr-4 text-sm text-zinc-400 font-mono">{target.email}</td>
-								<td class="py-2 pr-4 text-sm text-zinc-400">{target.title ?? '—'}</td>
-								<td class="py-2 pr-4 text-sm text-zinc-400">{target.district ?? '—'}</td>
+							<tr class="border-b border-surface-border">
+								<td class="py-2 pr-4 text-sm text-text-secondary">{target.name}</td>
+								<td class="py-2 pr-4 text-sm text-text-tertiary font-mono">{target.email}</td>
+								<td class="py-2 pr-4 text-sm text-text-tertiary">{target.title ?? '—'}</td>
+								<td class="py-2 pr-4 text-sm text-text-tertiary">{target.district ?? '—'}</td>
 								{#if canEdit}
 									<td class="py-2 text-right">
 										<form method="POST" action="?/removeTarget" use:enhance class="inline">
@@ -393,38 +393,38 @@
 				</table>
 			</div>
 		{:else}
-			<p class="text-sm text-zinc-500">No targets added. Add decision-makers to enable report delivery.</p>
+			<p class="text-sm text-text-tertiary">No targets added. Add decision-makers to enable report delivery.</p>
 		{/if}
 
 		{#if canEdit}
-			<form method="POST" action="?/addTarget" use:enhance class="space-y-3 border-t border-zinc-800/60 pt-4">
-				<p class="text-xs font-medium text-zinc-400">Add Target</p>
+			<form method="POST" action="?/addTarget" use:enhance class="space-y-3 border-t border-surface-border pt-4">
+				<p class="text-xs font-medium text-text-tertiary">Add Target</p>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					<input
 						type="text"
 						name="name"
 						required
 						placeholder="Name (required)"
-						class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+						class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 					/>
 					<input
 						type="email"
 						name="email"
 						required
 						placeholder="Email (required)"
-						class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+						class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 					/>
 					<input
 						type="text"
 						name="title"
 						placeholder="Title (optional)"
-						class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+						class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 					/>
 					<input
 						type="text"
 						name="district"
 						placeholder="District (optional)"
-						class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
+						class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors"
 					/>
 				</div>
 				<button
@@ -454,20 +454,20 @@
 
 	<!-- Embed widget -->
 	{#if data.campaign.status === 'ACTIVE' || data.campaign.status === 'PAUSED'}
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30">
+		<div class="rounded-xl border border-surface-border bg-surface-base">
 			<button
 				type="button"
 				onclick={() => { embedOpen = !embedOpen; }}
 				class="flex w-full items-center justify-between px-6 py-4 text-left"
 			>
 				<div class="flex items-center gap-3">
-					<svg class="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<svg class="h-4 w-4 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
 					</svg>
-					<span class="text-sm font-medium text-zinc-300">Embed Widget</span>
+					<span class="text-sm font-medium text-text-secondary">Embed Widget</span>
 				</div>
 				<svg
-					class="h-4 w-4 text-zinc-500 transition-transform {embedOpen ? 'rotate-180' : ''}"
+					class="h-4 w-4 text-text-tertiary transition-transform {embedOpen ? 'rotate-180' : ''}"
 					fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
 				>
 					<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -475,16 +475,16 @@
 			</button>
 
 			{#if embedOpen}
-				<div class="border-t border-zinc-800/60 px-6 py-4 space-y-3">
-					<p class="text-xs text-zinc-500">
+				<div class="border-t border-surface-border px-6 py-4 space-y-3">
+					<p class="text-xs text-text-tertiary">
 						Paste this code on your website to embed the campaign action form.
 					</p>
 					<div class="relative">
-						<pre class="overflow-x-auto rounded-lg border border-zinc-700 bg-zinc-950 px-4 py-3 font-mono text-xs text-zinc-300 leading-relaxed">{embedCode}</pre>
+						<pre class="overflow-x-auto rounded-lg border border-surface-border-strong bg-surface-raised px-4 py-3 font-mono text-xs text-text-secondary leading-relaxed">{embedCode}</pre>
 						<button
 							type="button"
 							onclick={copyEmbed}
-							class="absolute right-2 top-2 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
+							class="absolute right-2 top-2 rounded-md border border-surface-border-strong bg-surface-overlay px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-surface-raised transition-colors"
 						>
 							{embedCopied ? 'Copied!' : 'Copy'}
 						</button>
@@ -495,8 +495,8 @@
 	{/if}
 
 	<!-- Metadata footer -->
-	<div class="flex items-center gap-6 text-xs text-zinc-600 border-t border-zinc-800/60 pt-4">
-		<span>ID: <code class="font-mono text-zinc-500">{data.campaign.id}</code></span>
-		<span>Created: <span class="font-mono text-zinc-500">{formatDate(data.campaign.createdAt)}</span></span>
+	<div class="flex items-center gap-6 text-xs text-text-quaternary border-t border-surface-border pt-4">
+		<span>ID: <code class="font-mono text-text-tertiary">{data.campaign.id}</code></span>
+		<span>Created: <span class="font-mono text-text-tertiary">{formatDate(data.campaign.createdAt)}</span></span>
 	</div>
 </div>

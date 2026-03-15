@@ -61,23 +61,23 @@
 <div class="space-y-6">
 	<!-- Header -->
 	<div>
-		<nav class="flex items-center gap-2 text-sm text-zinc-500 mb-4">
-			<a href="/org/{data.org.slug}/supporters" class="hover:text-zinc-300 transition-colors">
+		<nav class="flex items-center gap-2 text-sm text-text-tertiary mb-4">
+			<a href="/org/{data.org.slug}/supporters" class="hover:text-text-secondary transition-colors">
 				Supporters
 			</a>
 			<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
 			</svg>
-			<a href="/org/{data.org.slug}/supporters/import" class="hover:text-zinc-300 transition-colors">
+			<a href="/org/{data.org.slug}/supporters/import" class="hover:text-text-secondary transition-colors">
 				Import
 			</a>
 			<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
 			</svg>
-			<span class="text-zinc-400">Action Network</span>
+			<span class="text-text-tertiary">Action Network</span>
 		</nav>
-		<h1 class="text-xl font-semibold text-zinc-100">Action Network Sync</h1>
-		<p class="text-sm text-zinc-500 mt-1">
+		<h1 class="text-xl font-semibold text-text-primary">Action Network Sync</h1>
+		<p class="text-sm text-text-tertiary mt-1">
 			Connect your Action Network API key to sync supporters, tags, and actions.
 		</p>
 	</div>
@@ -103,7 +103,7 @@
 
 	{#if !isConnected}
 		<!-- ── Connect Form ─────────────────────────────────────── -->
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
+		<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-4">
 			<div class="flex items-center gap-3">
 				<div class="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
 					<svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -111,8 +111,8 @@
 					</svg>
 				</div>
 				<div>
-					<p class="text-sm font-medium text-zinc-200">Connect Action Network</p>
-					<p class="text-xs text-zinc-500">Enter your OSDI API Token to sync supporters.</p>
+					<p class="text-sm font-medium text-text-primary">Connect Action Network</p>
+					<p class="text-xs text-text-tertiary">Enter your OSDI API Token to sync supporters.</p>
 				</div>
 			</div>
 
@@ -129,7 +129,7 @@
 			>
 				<div class="space-y-3">
 					<div>
-						<label for="api-key" class="block text-xs text-zinc-500 mb-1.5">OSDI API Token</label>
+						<label for="api-key" class="block text-xs text-text-tertiary mb-1.5">OSDI API Token</label>
 						<input
 							id="api-key"
 							type="password"
@@ -137,12 +137,12 @@
 							bind:value={apiKeyInput}
 							placeholder="Paste your API key here..."
 							autocomplete="off"
-							class="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors font-mono"
+							class="w-full rounded-lg border border-surface-border-strong bg-surface-raised px-4 py-2.5 text-sm text-text-primary placeholder-text-quaternary focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors font-mono"
 						/>
 					</div>
-					<p class="text-xs text-zinc-600">
+					<p class="text-xs text-text-quaternary">
 						Find your API key at
-						<span class="text-zinc-400">actionnetwork.org &rarr; Start Organizing &rarr; Details &rarr; API &amp; Sync</span>
+						<span class="text-text-tertiary">actionnetwork.org &rarr; Start Organizing &rarr; Details &rarr; API &amp; Sync</span>
 					</p>
 					<button
 						type="submit"
@@ -168,7 +168,7 @@
 		<!-- ── Connected State ──────────────────────────────────── -->
 
 		<!-- Connection status card -->
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
+		<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-4">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-3">
 					<div class="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
@@ -177,8 +177,8 @@
 						</svg>
 					</div>
 					<div>
-						<p class="text-sm font-medium text-zinc-200">Action Network Connected</p>
-						<p class="text-xs text-zinc-500">
+						<p class="text-sm font-medium text-text-primary">Action Network Connected</p>
+						<p class="text-xs text-text-tertiary">
 							Last synced: {relativeTime(sync?.lastSyncAt ?? null)}
 						</p>
 					</div>
@@ -247,8 +247,8 @@
 						<button
 							type="submit"
 							disabled={syncing}
-							class="inline-flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-5 py-2.5 text-sm font-medium text-zinc-200 transition-colors
-							{syncing ? 'opacity-60 cursor-wait' : 'hover:bg-zinc-800 hover:border-zinc-600'}"
+							class="inline-flex items-center gap-2 rounded-lg border border-surface-border-strong bg-surface-raised px-5 py-2.5 text-sm font-medium text-text-primary transition-colors
+							{syncing ? 'opacity-60 cursor-wait' : 'hover:bg-surface-overlay hover:border-text-quaternary'}"
 						>
 							Incremental Sync
 						</button>
@@ -256,7 +256,7 @@
 				{/if}
 			</div>
 
-			<p class="text-xs text-zinc-600">
+			<p class="text-xs text-text-quaternary">
 				Full sync imports all supporters. Incremental sync only imports changes since the last sync.
 			</p>
 		{/if}
@@ -271,7 +271,7 @@
 					</svg>
 					<div>
 						<p class="text-sm font-medium text-teal-300">Sync in progress</p>
-						<p class="text-xs text-zinc-500">
+						<p class="text-xs text-text-tertiary">
 							{sync.syncType === 'incremental' ? 'Incremental' : 'Full'} sync
 							{#if sync.currentResource}
 								&mdash; processing {sync.currentResource}
@@ -284,10 +284,10 @@
 				{#if progressPct !== null}
 					<div class="space-y-1.5">
 						<div class="flex items-center justify-between text-xs">
-							<span class="text-zinc-500">{sync.processedResources.toLocaleString()} / {sync.totalResources.toLocaleString()}</span>
-							<span class="font-mono text-zinc-400">{progressPct}%</span>
+							<span class="text-text-tertiary">{sync.processedResources.toLocaleString()} / {sync.totalResources.toLocaleString()}</span>
+							<span class="font-mono text-text-tertiary">{progressPct}%</span>
 						</div>
-						<div class="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+						<div class="h-1.5 rounded-full bg-surface-overlay overflow-hidden">
 							<div
 								class="h-full rounded-full bg-teal-500 transition-all duration-500"
 								style="width: {progressPct}%"
@@ -295,24 +295,24 @@
 						</div>
 					</div>
 				{:else}
-					<div class="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+					<div class="h-1.5 rounded-full bg-surface-overlay overflow-hidden">
 						<div class="h-full w-1/3 rounded-full bg-teal-500 animate-pulse"></div>
 					</div>
 				{/if}
 
 				<!-- Live counters -->
 				<div class="grid grid-cols-3 gap-3">
-					<div class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-3 text-center">
-						<p class="font-mono tabular-nums text-lg font-bold text-zinc-100">{sync.imported}</p>
-						<p class="text-xs text-zinc-500">Imported</p>
+					<div class="rounded-lg border border-surface-border bg-surface-base p-3 text-center">
+						<p class="font-mono tabular-nums text-lg font-bold text-text-primary">{sync.imported}</p>
+						<p class="text-xs text-text-tertiary">Imported</p>
 					</div>
-					<div class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-3 text-center">
-						<p class="font-mono tabular-nums text-lg font-bold text-zinc-100">{sync.updated}</p>
-						<p class="text-xs text-zinc-500">Updated</p>
+					<div class="rounded-lg border border-surface-border bg-surface-base p-3 text-center">
+						<p class="font-mono tabular-nums text-lg font-bold text-text-primary">{sync.updated}</p>
+						<p class="text-xs text-text-tertiary">Updated</p>
 					</div>
-					<div class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-3 text-center">
-						<p class="font-mono tabular-nums text-lg font-bold text-zinc-100">{sync.skipped}</p>
-						<p class="text-xs text-zinc-500">Skipped</p>
+					<div class="rounded-lg border border-surface-border bg-surface-base p-3 text-center">
+						<p class="font-mono tabular-nums text-lg font-bold text-text-primary">{sync.skipped}</p>
+						<p class="text-xs text-text-tertiary">Skipped</p>
 					</div>
 				</div>
 			</div>
@@ -336,22 +336,22 @@
 				</div>
 
 				<div class="grid grid-cols-3 gap-4">
-					<div class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-3 text-center">
-						<p class="font-mono tabular-nums text-2xl font-bold text-zinc-100">{sync.imported}</p>
-						<p class="text-xs text-zinc-500">Imported</p>
+					<div class="rounded-lg border border-surface-border bg-surface-base p-3 text-center">
+						<p class="font-mono tabular-nums text-2xl font-bold text-text-primary">{sync.imported}</p>
+						<p class="text-xs text-text-tertiary">Imported</p>
 					</div>
-					<div class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-3 text-center">
-						<p class="font-mono tabular-nums text-2xl font-bold text-zinc-100">{sync.updated}</p>
-						<p class="text-xs text-zinc-500">Updated</p>
+					<div class="rounded-lg border border-surface-border bg-surface-base p-3 text-center">
+						<p class="font-mono tabular-nums text-2xl font-bold text-text-primary">{sync.updated}</p>
+						<p class="text-xs text-text-tertiary">Updated</p>
 					</div>
-					<div class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-3 text-center">
-						<p class="font-mono tabular-nums text-2xl font-bold text-zinc-100">{sync.skipped}</p>
-						<p class="text-xs text-zinc-500">Skipped</p>
+					<div class="rounded-lg border border-surface-border bg-surface-base p-3 text-center">
+						<p class="font-mono tabular-nums text-2xl font-bold text-text-primary">{sync.skipped}</p>
+						<p class="text-xs text-text-tertiary">Skipped</p>
 					</div>
 				</div>
 
 				{#if sync.completedAt}
-					<p class="text-xs text-zinc-600">
+					<p class="text-xs text-text-quaternary">
 						{sync.syncType === 'incremental' ? 'Incremental' : 'Full'} sync completed {relativeTime(sync.completedAt)}
 					</p>
 				{/if}
@@ -383,7 +383,7 @@
 
 		<!-- ── Idle / no sync yet ───────────────────────────────── -->
 		{#if sync?.status === 'idle' && !form?.connected}
-			<div class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 px-4 py-3 text-sm text-zinc-400">
+			<div class="rounded-lg border border-surface-border bg-surface-base px-4 py-3 text-sm text-text-tertiary">
 				Ready to sync. Click "Full Sync" to import all supporters from Action Network.
 			</div>
 		{/if}
@@ -393,7 +393,7 @@
 	<div class="pt-2">
 		<a
 			href="/org/{data.org.slug}/supporters/import"
-			class="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+			class="inline-flex items-center gap-2 text-sm text-text-tertiary hover:text-text-secondary transition-colors"
 		>
 			<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />

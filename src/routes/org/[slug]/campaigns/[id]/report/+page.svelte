@@ -42,9 +42,9 @@
 			case 'bounced':
 				return 'bg-red-500/15 text-red-400 border-red-500/20';
 			case 'queued':
-				return 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20';
+				return 'bg-text-tertiary/15 text-text-tertiary border-text-tertiary/20';
 			default:
-				return 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20';
+				return 'bg-text-tertiary/15 text-text-tertiary border-text-tertiary/20';
 		}
 	}
 
@@ -62,20 +62,20 @@
 
 <div class="space-y-6">
 	<!-- Breadcrumb -->
-	<nav class="flex items-center gap-2 text-sm text-zinc-500">
-		<a href="/org/{data.org.slug}/campaigns" class="hover:text-zinc-300 transition-colors">
+	<nav class="flex items-center gap-2 text-sm text-text-tertiary">
+		<a href="/org/{data.org.slug}/campaigns" class="hover:text-text-secondary transition-colors">
 			Campaigns
 		</a>
 		<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 			<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
 		</svg>
-		<a href="/org/{data.org.slug}/campaigns/{data.campaign.id}" class="hover:text-zinc-300 transition-colors">
+		<a href="/org/{data.org.slug}/campaigns/{data.campaign.id}" class="hover:text-text-secondary transition-colors">
 			{data.campaign.title}
 		</a>
 		<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 			<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
 		</svg>
-		<span class="text-zinc-400">Report</span>
+		<span class="text-text-tertiary">Report</span>
 	</nav>
 
 	<!-- Error/success messages -->
@@ -100,14 +100,14 @@
 			await update({ reset: false });
 		};
 	}} class="space-y-6">
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
+		<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-4">
 			<div class="flex items-center justify-between">
-				<p class="text-xs font-mono uppercase tracking-wider text-zinc-500">Sending to</p>
+				<p class="text-xs font-mono uppercase tracking-wider text-text-tertiary">Sending to</p>
 				{#if hasTargets}
 					<button
 						type="button"
 						onclick={toggleAll}
-						class="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+						class="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
 					>
 						{selectedTargets.size === data.targets.length ? 'Deselect all' : 'Select all'}
 					</button>
@@ -116,8 +116,8 @@
 
 			{#if !hasTargets}
 				<div class="py-4 text-center">
-					<p class="text-sm text-zinc-500">No targets configured for this campaign.</p>
-					<p class="text-xs text-zinc-600 mt-1">
+					<p class="text-sm text-text-tertiary">No targets configured for this campaign.</p>
+					<p class="text-xs text-text-quaternary mt-1">
 						Add decision-maker targets in the campaign settings to enable report delivery.
 					</p>
 				</div>
@@ -129,7 +129,7 @@
 							class="flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer transition-colors
 								{isSelected
 									? 'border-teal-500/30 bg-teal-500/5'
-									: 'border-zinc-800/40 bg-zinc-950/30 opacity-60'}"
+									: 'border-surface-border bg-surface-raised opacity-60'}"
 						>
 							<input
 								type="checkbox"
@@ -137,19 +137,19 @@
 								value={target.email}
 								checked={isSelected}
 								onchange={() => toggleTarget(target.email)}
-								class="rounded border-zinc-600 bg-zinc-800 text-teal-500 focus:ring-teal-500/40 focus:ring-offset-0"
+								class="rounded border-text-quaternary bg-surface-overlay text-teal-500 focus:ring-teal-500/40 focus:ring-offset-0"
 							/>
 							<div class="flex-1 min-w-0">
 								<div class="flex items-center gap-2">
-									<span class="text-sm text-zinc-200 truncate">
+									<span class="text-sm text-text-primary truncate">
 										{target.name ?? target.email}
 									</span>
 									{#if target.title}
-										<span class="text-xs text-zinc-500 truncate">{target.title}</span>
+										<span class="text-xs text-text-tertiary truncate">{target.title}</span>
 									{/if}
 								</div>
 								<div class="flex items-center gap-3 mt-0.5">
-									<span class="text-xs font-mono text-zinc-500">{target.email}</span>
+									<span class="text-xs font-mono text-text-tertiary">{target.email}</span>
 									{#if target.district}
 										<span class="text-xs text-teal-500/60">{target.district}</span>
 									{/if}
@@ -162,9 +162,9 @@
 		</div>
 
 		<!-- Email Preview -->
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
-			<p class="text-xs font-mono uppercase tracking-wider text-zinc-500">Email Preview</p>
-			<div class="rounded-lg border border-zinc-800/40 bg-zinc-950/50 overflow-hidden" style="max-height: 600px; overflow-y: auto;">
+		<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-4">
+			<p class="text-xs font-mono uppercase tracking-wider text-text-tertiary">Email Preview</p>
+			<div class="rounded-lg border border-surface-border bg-surface-raised overflow-hidden" style="max-height: 600px; overflow-y: auto;">
 				<iframe
 					srcdoc={data.renderedHtml}
 					title="Report email preview"
@@ -190,7 +190,7 @@
 				</button>
 				<a
 					href="/org/{data.org.slug}/campaigns/{data.campaign.id}"
-					class="rounded-lg bg-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-200 hover:bg-zinc-600 transition-colors"
+					class="rounded-lg bg-surface-overlay px-4 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-raised transition-colors"
 				>
 					Back to dashboard
 				</a>
@@ -198,7 +198,7 @@
 		{:else}
 			<a
 				href="/org/{data.org.slug}/campaigns/{data.campaign.id}"
-				class="inline-flex rounded-lg bg-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-200 hover:bg-zinc-600 transition-colors"
+				class="inline-flex rounded-lg bg-surface-overlay px-4 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-raised transition-colors"
 			>
 				Back to dashboard
 			</a>
@@ -207,28 +207,28 @@
 
 	<!-- Past Deliveries -->
 	{#if data.pastDeliveries.length > 0}
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6 space-y-4">
-			<p class="text-xs font-mono uppercase tracking-wider text-zinc-500">Delivery History</p>
+		<div class="rounded-xl border border-surface-border bg-surface-base p-6 space-y-4">
+			<p class="text-xs font-mono uppercase tracking-wider text-text-tertiary">Delivery History</p>
 
 			<div class="overflow-x-auto">
 				<table class="w-full text-sm">
 					<thead>
-						<tr class="border-b border-zinc-800/60">
-							<th class="text-left text-xs font-mono text-zinc-600 pb-2 pr-4">Recipient</th>
-							<th class="text-left text-xs font-mono text-zinc-600 pb-2 pr-4">Status</th>
-							<th class="text-left text-xs font-mono text-zinc-600 pb-2 pr-4">Sent</th>
-							<th class="text-left text-xs font-mono text-zinc-600 pb-2">District</th>
+						<tr class="border-b border-surface-border">
+							<th class="text-left text-xs font-mono text-text-quaternary pb-2 pr-4">Recipient</th>
+							<th class="text-left text-xs font-mono text-text-quaternary pb-2 pr-4">Status</th>
+							<th class="text-left text-xs font-mono text-text-quaternary pb-2 pr-4">Sent</th>
+							<th class="text-left text-xs font-mono text-text-quaternary pb-2">District</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each data.pastDeliveries as delivery}
-							<tr class="border-b border-zinc-800/30">
+							<tr class="border-b border-surface-border">
 								<td class="py-2.5 pr-4">
-									<div class="text-zinc-200 truncate max-w-[200px]">
+									<div class="text-text-primary truncate max-w-[200px]">
 										{delivery.targetName ?? delivery.targetEmail}
 									</div>
 									{#if delivery.targetName}
-										<div class="text-xs font-mono text-zinc-500 truncate max-w-[200px]">
+										<div class="text-xs font-mono text-text-tertiary truncate max-w-[200px]">
 											{delivery.targetEmail}
 										</div>
 									{/if}
@@ -239,7 +239,7 @@
 									</span>
 								</td>
 								<td class="py-2.5 pr-4">
-									<span class="text-xs font-mono tabular-nums text-zinc-500">
+									<span class="text-xs font-mono tabular-nums text-text-tertiary">
 										{delivery.sentAt ? formatDate(delivery.sentAt) : '\u2014'}
 									</span>
 								</td>

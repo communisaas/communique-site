@@ -73,10 +73,10 @@
 	});
 
 	function qualityColor(val: number | null): string {
-		if (val === null) return '#52525b';
+		if (val === null) return 'oklch(0.55 0.01 55)';
 		if (val >= 0.8) return '#34d399';
 		if (val >= 0.5) return '#2dd4bf';
-		return '#a1a1aa';
+		return 'oklch(0.65 0.01 55)';
 	}
 
 	function fmtScore(val: number | null): string {
@@ -93,20 +93,20 @@
 	);
 </script>
 
-<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/50 p-6 space-y-4">
-	<p class="text-[10px] font-mono uppercase tracking-wider text-zinc-600">Coordination Integrity</p>
+<div class="rounded-xl bg-surface-base border border-surface-border shadow-[var(--shadow-sm)] p-6 space-y-4">
+	<p class="text-[10px] font-mono uppercase tracking-wider text-text-quaternary">Coordination Integrity</p>
 
 	{#if allNull}
 		<div class="py-4 text-center">
-			<p class="text-sm text-zinc-600">Insufficient data for integrity analysis</p>
-			<p class="text-[10px] text-zinc-700 mt-1">Scores appear after enough verified actions accumulate.</p>
+			<p class="text-sm text-text-quaternary">Insufficient data for integrity analysis</p>
+			<p class="text-[10px] text-text-quaternary mt-1">Scores appear after enough verified actions accumulate.</p>
 		</div>
 	{:else}
 		<div class="space-y-3">
 			{#each scores as score}
 				<div class="group" title={score.description}>
 					<div class="flex items-center justify-between mb-1">
-						<span class="text-[10px] font-mono text-zinc-500">{score.label}</span>
+						<span class="text-[10px] font-mono text-text-tertiary">{score.label}</span>
 						<span
 							class="font-mono tabular-nums text-sm font-semibold"
 							style="color: {score.color}"
@@ -117,7 +117,7 @@
 							{/if}
 						</span>
 					</div>
-					<div class="h-2 rounded-full bg-zinc-800/60 overflow-hidden">
+					<div class="h-2 rounded-full bg-surface-raised overflow-hidden">
 						{#if score.value !== null}
 							<div
 								class="h-full rounded-full transition-all duration-700 ease-out"
@@ -129,7 +129,7 @@
 			{/each}
 		</div>
 
-		<p class="text-[9px] text-zinc-700 pt-2">
+		<p class="text-[9px] text-text-quaternary pt-2">
 			Higher scores indicate more organic, geographically diverse participation. Burst velocity is inverted: lower is better.
 		</p>
 	{/if}

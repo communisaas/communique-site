@@ -7,7 +7,7 @@
 	let deleting = $state(false);
 
 	const statusColors: Record<string, string> = {
-		draft: 'bg-zinc-700 text-zinc-300',
+		draft: 'bg-surface-border-strong text-text-secondary',
 		sending: 'bg-yellow-900/50 text-yellow-400',
 		sent: 'bg-green-900/50 text-green-400',
 		failed: 'bg-red-900/50 text-red-400'
@@ -44,10 +44,10 @@
 	<title>SMS Campaign | {data.org.name}</title>
 </svelte:head>
 
-<div class="min-h-screen bg-zinc-950 text-zinc-100">
+<div class="min-h-screen bg-surface-raised text-text-primary">
 	<div class="mx-auto max-w-4xl px-4 py-8">
 		<!-- Back link -->
-		<a href="/org/{data.org.slug}/sms" class="mb-6 inline-block text-sm text-zinc-400 hover:text-zinc-200">
+		<a href="/org/{data.org.slug}/sms" class="mb-6 inline-block text-sm text-text-tertiary hover:text-text-primary">
 			&larr; All SMS Campaigns
 		</a>
 
@@ -55,14 +55,14 @@
 		<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
 			<div>
 				<div class="mb-2 flex items-center gap-3">
-					<h1 class="text-2xl font-bold text-zinc-100">SMS Campaign</h1>
-					<span class="rounded-full px-2.5 py-0.5 text-xs font-medium {statusColors[data.blast.status] ?? 'bg-zinc-700 text-zinc-300'}">
+					<h1 class="text-2xl font-bold text-text-primary">SMS Campaign</h1>
+					<span class="rounded-full px-2.5 py-0.5 text-xs font-medium {statusColors[data.blast.status] ?? 'bg-surface-border-strong text-text-secondary'}">
 						{data.blast.status}
 					</span>
 				</div>
-				<p class="text-sm text-zinc-500">Created {formatDate(data.blast.createdAt)}</p>
+				<p class="text-sm text-text-tertiary">Created {formatDate(data.blast.createdAt)}</p>
 				{#if data.blast.sentAt}
-					<p class="text-sm text-zinc-500">Sent {formatDate(data.blast.sentAt)}</p>
+					<p class="text-sm text-text-tertiary">Sent {formatDate(data.blast.sentAt)}</p>
 				{/if}
 			</div>
 
@@ -82,35 +82,35 @@
 
 		<!-- Metrics -->
 		<div class="mb-6 grid grid-cols-4 gap-3">
-			<div class="rounded-lg border border-zinc-800/60 p-4">
-				<p class="text-xs font-medium text-zinc-500">Recipients</p>
-				<p class="mt-1 text-lg font-bold text-zinc-100">{data.blast.totalRecipients}</p>
+			<div class="rounded-lg border border-surface-border p-4">
+				<p class="text-xs font-medium text-text-tertiary">Recipients</p>
+				<p class="mt-1 text-lg font-bold text-text-primary">{data.blast.totalRecipients}</p>
 			</div>
-			<div class="rounded-lg border border-zinc-800/60 p-4">
-				<p class="text-xs font-medium text-zinc-500">Sent</p>
-				<p class="mt-1 text-lg font-bold text-zinc-100">{data.blast.sentCount}</p>
+			<div class="rounded-lg border border-surface-border p-4">
+				<p class="text-xs font-medium text-text-tertiary">Sent</p>
+				<p class="mt-1 text-lg font-bold text-text-primary">{data.blast.sentCount}</p>
 			</div>
-			<div class="rounded-lg border border-zinc-800/60 p-4">
-				<p class="text-xs font-medium text-zinc-500">Delivered</p>
+			<div class="rounded-lg border border-surface-border p-4">
+				<p class="text-xs font-medium text-text-tertiary">Delivered</p>
 				<p class="mt-1 text-lg font-bold text-green-400">{data.blast.deliveredCount}</p>
 			</div>
-			<div class="rounded-lg border border-zinc-800/60 p-4">
-				<p class="text-xs font-medium text-zinc-500">Failed</p>
+			<div class="rounded-lg border border-surface-border p-4">
+				<p class="text-xs font-medium text-text-tertiary">Failed</p>
 				<p class="mt-1 text-lg font-bold text-red-400">{data.blast.failedCount}</p>
 			</div>
 		</div>
 
 		<!-- Message Body -->
-		<div class="mb-6 rounded-lg border border-zinc-800/60 p-4">
-			<h3 class="mb-3 text-sm font-medium text-zinc-400">Message</h3>
-			<div class="rounded-lg bg-zinc-900/50 px-4 py-3">
-				<p class="whitespace-pre-wrap text-sm text-zinc-200">{data.blast.body}</p>
+		<div class="mb-6 rounded-lg border border-surface-border p-4">
+			<h3 class="mb-3 text-sm font-medium text-text-tertiary">Message</h3>
+			<div class="rounded-lg bg-surface-base px-4 py-3">
+				<p class="whitespace-pre-wrap text-sm text-text-primary">{data.blast.body}</p>
 			</div>
 		</div>
 
 		<!-- Messages -->
 		<div>
-			<h3 class="mb-3 text-sm font-medium text-zinc-400">Delivery Status</h3>
+			<h3 class="mb-3 text-sm font-medium text-text-tertiary">Delivery Status</h3>
 			<SmsMessageTable messages={data.messages} />
 		</div>
 	</div>

@@ -77,13 +77,13 @@
 	}
 </script>
 
-<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/50 p-6 space-y-4">
+<div class="rounded-xl bg-surface-base border border-surface-border shadow-[var(--shadow-sm)] p-6 space-y-4">
 	<div class="flex items-center justify-between">
-		<p class="text-[10px] font-mono uppercase tracking-wider text-zinc-600">Verification Timeline</p>
+		<p class="text-[10px] font-mono uppercase tracking-wider text-text-quaternary">Verification Timeline</p>
 		{#if chartData}
 			<div class="flex items-center gap-4">
-				<span class="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500">
-					<span class="inline-block h-[2px] w-3 bg-zinc-500 rounded"></span> total
+				<span class="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
+					<span class="inline-block h-[2px] w-3 bg-text-tertiary rounded"></span> total
 				</span>
 				<span class="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
 					<span class="inline-block h-[2px] w-3 bg-emerald-500 rounded"></span> verified
@@ -94,24 +94,24 @@
 
 	{#if isEmpty}
 		<div class="py-6 text-center">
-			<p class="text-sm text-zinc-600">No activity recorded yet</p>
+			<p class="text-sm text-text-quaternary">No activity recorded yet</p>
 		</div>
 	{:else if chartData}
 		<!-- Summary -->
 		<div class="flex items-center gap-6">
 			<div>
-				<span class="font-mono tabular-nums text-lg font-semibold text-zinc-100">
+				<span class="font-mono tabular-nums text-lg font-semibold text-text-primary">
 					{chartData.totalActions.toLocaleString()}
 				</span>
-				<span class="text-[10px] text-zinc-600 ml-1">actions</span>
+				<span class="text-[10px] text-text-quaternary ml-1">actions</span>
 			</div>
 			<div>
 				<span class="font-mono tabular-nums text-lg font-semibold text-emerald-400">
 					{chartData.totalVerified.toLocaleString()}
 				</span>
-				<span class="text-[10px] text-zinc-600 ml-1">verified</span>
+				<span class="text-[10px] text-text-quaternary ml-1">verified</span>
 			</div>
-			<div class="text-[10px] font-mono text-zinc-500">
+			<div class="text-[10px] font-mono text-text-tertiary">
 				{timeline.length} day{timeline.length === 1 ? '' : 's'}
 			</div>
 		</div>
@@ -122,7 +122,7 @@
 			<path d={chartData.verifiedArea} fill="rgba(16,185,129,0.1)" />
 
 			<!-- Total line -->
-			<path d={chartData.totalLine} fill="none" stroke="#71717a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+			<path d={chartData.totalLine} fill="none" stroke="var(--text-tertiary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 
 			<!-- Verified line -->
 			<path d={chartData.verifiedLine} fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -133,7 +133,7 @@
 					x={label.x}
 					y={H - 4}
 					text-anchor="middle"
-					class="fill-zinc-600"
+					class="fill-text-quaternary"
 					style="font-size: 10px; font-family: ui-monospace, monospace;"
 				>
 					{label.text}

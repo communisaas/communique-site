@@ -26,7 +26,7 @@
 
 	const roleColors: Record<string, string> = {
 		admin: 'bg-teal-900/50 text-teal-400',
-		member: 'bg-zinc-700 text-zinc-300'
+		member: 'bg-surface-border-strong text-text-secondary'
 	};
 
 	const activeMembers = $derived(data.members.filter((m) => m.status === 'active'));
@@ -115,10 +115,10 @@
 	<title>{data.network.name} | {data.org.name}</title>
 </svelte:head>
 
-<div class="min-h-screen bg-zinc-950 text-zinc-100">
+<div class="min-h-screen bg-surface-raised text-text-primary">
 	<div class="mx-auto max-w-4xl px-4 py-8">
 		<!-- Back link -->
-		<a href="/org/{data.org.slug}/networks" class="mb-6 inline-block text-sm text-zinc-400 hover:text-zinc-200">
+		<a href="/org/{data.org.slug}/networks" class="mb-6 inline-block text-sm text-text-tertiary hover:text-text-primary">
 			&larr; All Networks
 		</a>
 
@@ -126,15 +126,15 @@
 		<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
 			<div>
 				<div class="mb-1 flex items-center gap-3">
-					<h1 class="text-2xl font-bold text-zinc-100">{data.network.name}</h1>
-					<span class="rounded-full px-2.5 py-0.5 text-xs font-medium {statusColors[data.network.status] ?? 'bg-zinc-700 text-zinc-300'}">
+					<h1 class="text-2xl font-bold text-text-primary">{data.network.name}</h1>
+					<span class="rounded-full px-2.5 py-0.5 text-xs font-medium {statusColors[data.network.status] ?? 'bg-surface-border-strong text-text-secondary'}">
 						{data.network.status}
 					</span>
 				</div>
 				{#if data.network.description}
-					<p class="text-sm text-zinc-400">{data.network.description}</p>
+					<p class="text-sm text-text-tertiary">{data.network.description}</p>
 				{/if}
-				<p class="mt-1 text-xs text-zinc-500">
+				<p class="mt-1 text-xs text-text-tertiary">
 					Owned by {data.network.ownerOrg.name}
 				</p>
 			</div>
@@ -149,34 +149,34 @@
 
 		<!-- Stats Cards -->
 		<div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-			<div class="rounded-lg border border-zinc-800/60 p-4">
-				<p class="text-xs font-medium text-zinc-500">Member Orgs</p>
-				<p class="mt-1 text-2xl font-bold text-zinc-100">{data.stats.memberCount}</p>
+			<div class="rounded-lg border border-surface-border p-4">
+				<p class="text-xs font-medium text-text-tertiary">Member Orgs</p>
+				<p class="mt-1 text-2xl font-bold text-text-primary">{data.stats.memberCount}</p>
 			</div>
-			<div class="rounded-lg border border-zinc-800/60 p-4">
-				<p class="text-xs font-medium text-zinc-500">Total Supporters</p>
-				<p class="mt-1 text-2xl font-bold text-zinc-100">{data.stats.totalSupporters.toLocaleString()}</p>
+			<div class="rounded-lg border border-surface-border p-4">
+				<p class="text-xs font-medium text-text-tertiary">Total Supporters</p>
+				<p class="mt-1 text-2xl font-bold text-text-primary">{data.stats.totalSupporters.toLocaleString()}</p>
 			</div>
-			<div class="rounded-lg border border-zinc-800/60 p-4">
-				<p class="text-xs font-medium text-zinc-500">Unique Supporters</p>
+			<div class="rounded-lg border border-surface-border p-4">
+				<p class="text-xs font-medium text-text-tertiary">Unique Supporters</p>
 				<p class="mt-1 text-2xl font-bold text-teal-400">{data.stats.uniqueSupporters.toLocaleString()}</p>
 			</div>
-			<div class="rounded-lg border border-zinc-800/60 p-4">
-				<p class="text-xs font-medium text-zinc-500">Verified</p>
+			<div class="rounded-lg border border-surface-border p-4">
+				<p class="text-xs font-medium text-text-tertiary">Verified</p>
 				<p class="mt-1 text-2xl font-bold text-green-400">{data.stats.verifiedSupporters.toLocaleString()}</p>
 			</div>
 		</div>
 
 		<!-- Member Organizations Table -->
 		<div class="mb-6">
-			<h3 class="mb-3 text-sm font-medium text-zinc-400">Member Organizations ({activeMembers.length})</h3>
+			<h3 class="mb-3 text-sm font-medium text-text-tertiary">Member Organizations ({activeMembers.length})</h3>
 			{#if activeMembers.length === 0}
-				<p class="py-8 text-center text-sm text-zinc-500">No active members</p>
+				<p class="py-8 text-center text-sm text-text-tertiary">No active members</p>
 			{:else}
-				<div class="overflow-x-auto rounded-lg border border-zinc-800/60">
+				<div class="overflow-x-auto rounded-lg border border-surface-border">
 					<table class="w-full text-left text-sm">
 						<thead>
-							<tr class="border-b border-zinc-800/60 text-xs text-zinc-500">
+							<tr class="border-b border-surface-border text-xs text-text-tertiary">
 								<th class="px-4 py-3 font-medium">Organization</th>
 								<th class="px-4 py-3 font-medium">Role</th>
 								<th class="px-4 py-3 font-medium">Supporters</th>
@@ -188,15 +188,15 @@
 						</thead>
 						<tbody>
 							{#each activeMembers as member (member.id)}
-								<tr class="border-b border-zinc-800/40 last:border-0">
-									<td class="px-4 py-3 text-zinc-200">{member.orgName}</td>
+								<tr class="border-b border-surface-border last:border-0">
+									<td class="px-4 py-3 text-text-primary">{member.orgName}</td>
 									<td class="px-4 py-3">
-										<span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {roleColors[member.role] ?? 'bg-zinc-700 text-zinc-300'}">
+										<span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {roleColors[member.role] ?? 'bg-surface-border-strong text-text-secondary'}">
 											{member.role}
 										</span>
 									</td>
-									<td class="px-4 py-3 text-zinc-300">{member.supporterCount.toLocaleString()}</td>
-									<td class="px-4 py-3 text-zinc-500">{formatDate(member.joinedAt)}</td>
+									<td class="px-4 py-3 text-text-secondary">{member.supporterCount.toLocaleString()}</td>
+									<td class="px-4 py-3 text-text-tertiary">{formatDate(member.joinedAt)}</td>
 									{#if data.isAdmin}
 										<td class="px-4 py-3 text-right">
 											{#if !member.isOwnerOrg}
@@ -221,11 +221,11 @@
 		<!-- Pending Invitations (admin only) -->
 		{#if data.isAdmin && pendingMembers.length > 0}
 			<div class="mb-6">
-				<h3 class="mb-3 text-sm font-medium text-zinc-400">Pending Invitations ({pendingMembers.length})</h3>
-				<div class="overflow-x-auto rounded-lg border border-zinc-800/60">
+				<h3 class="mb-3 text-sm font-medium text-text-tertiary">Pending Invitations ({pendingMembers.length})</h3>
+				<div class="overflow-x-auto rounded-lg border border-surface-border">
 					<table class="w-full text-left text-sm">
 						<thead>
-							<tr class="border-b border-zinc-800/60 text-xs text-zinc-500">
+							<tr class="border-b border-surface-border text-xs text-text-tertiary">
 								<th class="px-4 py-3 font-medium">Organization</th>
 								<th class="px-4 py-3 font-medium">Status</th>
 								<th class="px-4 py-3 font-medium">Invited</th>
@@ -233,14 +233,14 @@
 						</thead>
 						<tbody>
 							{#each pendingMembers as member (member.id)}
-								<tr class="border-b border-zinc-800/40 last:border-0">
-									<td class="px-4 py-3 text-zinc-200">{member.orgName}</td>
+								<tr class="border-b border-surface-border last:border-0">
+									<td class="px-4 py-3 text-text-primary">{member.orgName}</td>
 									<td class="px-4 py-3">
 										<span class="inline-flex rounded-full bg-amber-900/50 px-2 py-0.5 text-xs font-medium text-amber-400">
 											pending
 										</span>
 									</td>
-									<td class="px-4 py-3 text-zinc-500">{formatDate(member.joinedAt)}</td>
+									<td class="px-4 py-3 text-text-tertiary">{formatDate(member.joinedAt)}</td>
 								</tr>
 							{/each}
 						</tbody>
@@ -251,14 +251,14 @@
 
 		<!-- Invite Organization (admin only) -->
 		{#if data.isAdmin}
-			<div class="mb-6 rounded-lg border border-zinc-800/60 p-4">
-				<h3 class="mb-3 text-sm font-medium text-zinc-400">Invite Organization</h3>
+			<div class="mb-6 rounded-lg border border-surface-border p-4">
+				<h3 class="mb-3 text-sm font-medium text-text-tertiary">Invite Organization</h3>
 				<div class="flex gap-2">
 					<input
 						type="text"
 						bind:value={inviteSlug}
 						placeholder="Organization slug"
-						class="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-zinc-500 focus:outline-none"
+						class="flex-1 rounded-lg border border-surface-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder-text-quaternary focus:border-text-tertiary focus:outline-none"
 					/>
 					<button
 						onclick={inviteOrg}
@@ -272,13 +272,13 @@
 		{/if}
 
 		<!-- Coalition Report -->
-		<div class="rounded-lg border border-zinc-800/60 p-4">
+		<div class="rounded-lg border border-surface-border p-4">
 			<div class="mb-3 flex items-center justify-between">
-				<h3 class="text-sm font-medium text-zinc-400">Coalition Report</h3>
+				<h3 class="text-sm font-medium text-text-tertiary">Coalition Report</h3>
 				<button
 					onclick={generateReport}
 					disabled={reportLoading}
-					class="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-50"
+					class="rounded-lg border border-surface-border-strong px-3 py-1.5 text-sm text-text-secondary hover:border-text-tertiary hover:text-text-primary disabled:opacity-50"
 				>
 					{reportLoading ? 'Generating...' : 'Generate Report'}
 				</button>

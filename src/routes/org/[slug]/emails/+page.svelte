@@ -10,7 +10,7 @@
 	function statusBadgeClass(status: string): string {
 		switch (status) {
 			case 'draft':
-				return 'bg-zinc-600/20 text-zinc-400 border-zinc-600/30';
+				return 'bg-surface-overlay text-text-tertiary border-surface-border';
 			case 'sending':
 				return 'bg-amber-500/15 text-amber-400 border-amber-500/20';
 			case 'sent':
@@ -18,7 +18,7 @@
 			case 'failed':
 				return 'bg-red-500/15 text-red-400 border-red-500/20';
 			default:
-				return 'bg-zinc-500/15 text-zinc-500 border-zinc-500/20';
+				return 'bg-surface-overlay text-text-tertiary border-surface-border';
 		}
 	}
 
@@ -33,8 +33,8 @@
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-xl font-semibold text-zinc-100">Emails</h1>
-			<p class="text-sm text-zinc-500 mt-1">
+			<h1 class="text-xl font-semibold text-text-primary">Emails</h1>
+			<p class="text-sm text-text-tertiary mt-1">
 				{data.blasts.length} email blast{data.blasts.length === 1 ? '' : 's'}
 			</p>
 		</div>
@@ -53,13 +53,13 @@
 
 	<!-- Blast list -->
 	{#if data.blasts.length === 0}
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-12 text-center">
-			<div class="mx-auto w-12 h-12 rounded-full bg-zinc-800/50 flex items-center justify-center mb-4">
-				<svg class="w-6 h-6 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+		<div class="rounded-xl bg-surface-base border border-surface-border shadow-[var(--shadow-sm)] p-12 text-center">
+			<div class="mx-auto w-12 h-12 rounded-full bg-surface-overlay flex items-center justify-center mb-4">
+				<svg class="w-6 h-6 text-text-quaternary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
 				</svg>
 			</div>
-			<p class="text-sm text-zinc-400">
+			<p class="text-sm text-text-tertiary">
 				No emails sent yet. Compose your first email blast to reach your supporters.
 			</p>
 		</div>
@@ -69,12 +69,12 @@
 				{@const isAb = blast.isAbTest && blast.abVariant === 'A'}
 				<a
 					href="/org/{data.org.slug}/emails/{blast.id}"
-					class="block rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-5 hover:border-zinc-700/60 transition-colors"
+					class="block rounded-xl bg-surface-base border border-surface-border shadow-[var(--shadow-sm)] p-5 hover:border-[var(--coord-route-solid)] transition-colors"
 				>
 					<div class="flex items-start justify-between gap-4">
 						<div class="min-w-0 flex-1">
 							<div class="flex items-center gap-3 mb-2">
-								<h2 class="text-lg font-medium text-zinc-100 truncate">
+								<h2 class="text-lg font-medium text-text-primary truncate">
 									{blast.subject}
 								</h2>
 								{#if isAb}
@@ -87,7 +87,7 @@
 								</span>
 							</div>
 
-							<div class="flex items-center gap-4 text-xs text-zinc-500">
+							<div class="flex items-center gap-4 text-xs text-text-tertiary">
 								{#if blast.campaignTitle}
 									<span class="flex items-center gap-1">
 										<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -107,7 +107,7 @@
 									</span>
 								{/if}
 
-								<span class="font-mono">
+								<span class="font-mono tabular-nums">
 									{formatDate(blast.sentAt ?? blast.createdAt)}
 								</span>
 							</div>

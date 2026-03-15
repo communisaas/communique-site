@@ -24,10 +24,10 @@
 	function statusColor(status: string): string {
 		switch (status) {
 			case 'ACTIVE': return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-			case 'DRAFT': return 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20';
+			case 'DRAFT': return 'text-text-tertiary bg-surface-raised border-surface-border';
 			case 'PAUSED': return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
 			case 'COMPLETE': return 'text-teal-400 bg-teal-500/10 border-teal-500/20';
-			default: return 'text-zinc-500 bg-zinc-500/10 border-zinc-500/20';
+			default: return 'text-text-tertiary bg-surface-raised border-surface-border';
 		}
 	}
 
@@ -37,7 +37,7 @@
 			case 3: return 'bg-emerald-500/70';
 			case 2: return 'bg-teal-500/60';
 			case 1: return 'bg-teal-500/40';
-			default: return 'bg-zinc-600';
+			default: return 'bg-text-quaternary';
 		}
 	}
 
@@ -163,8 +163,8 @@
 <div class="space-y-6">
 	<!-- Page title -->
 	<div>
-		<h1 class="text-xl font-semibold text-zinc-100">Dashboard</h1>
-		<p class="text-sm text-zinc-500 mt-1">Verification signals for {data.org.name}</p>
+		<h1 class="text-xl font-semibold text-text-primary">Dashboard</h1>
+		<p class="text-sm text-text-tertiary mt-1">Verification signals for {data.org.name}</p>
 	</div>
 
 	<!-- ===== Onboarding Checklist (first-run) ===== -->
@@ -177,36 +177,44 @@
 		/>
 	{/if}
 
-	<!-- ===== SECTION 1: Verification Funnel ===== -->
-	<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6">
-		<p class="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-4">Verification Funnel</p>
+	<!-- ===== Verification Packet (primary surface — position 1) ===== -->
+	<VerificationPacket
+		packet={data.packet}
+		label={data.stats.activeCampaigns > 0
+			? `Coordination Integrity \u00b7 ${data.stats.activeCampaigns} active campaign${data.stats.activeCampaigns === 1 ? '' : 's'}`
+			: 'Coordination Integrity'}
+	/>
+
+	<!-- ===== SECTION 2: Verification Funnel ===== -->
+	<div class="rounded-xl bg-surface-base border border-surface-border p-6 shadow-[var(--shadow-sm)]">
+		<p class="text-[10px] font-mono uppercase tracking-wider text-text-tertiary mb-4">Verification Funnel</p>
 
 		{#if funnel.imported === 0}
 			<div class="py-4 text-center">
-				<p class="text-sm text-zinc-600">No supporters yet. Import supporters to see verification progress.</p>
+				<p class="text-sm text-text-quaternary">No supporters yet. Import supporters to see verification progress.</p>
 			</div>
 		{:else}
 			<div class="space-y-3">
 				{#each funnelSteps as step, i}
 					<div class="flex items-center gap-4">
 						<div class="w-32 flex items-center gap-2">
-							<span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono {step.count > 0 ? 'bg-teal-500/20 text-teal-400' : 'bg-zinc-800 text-zinc-600'}">
+							<span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono {step.count > 0 ? 'bg-teal-500/20 text-teal-400' : 'bg-surface-overlay text-text-quaternary'}">
 								{i + 1}
 							</span>
-							<span class="text-xs text-zinc-400 truncate">{step.label}</span>
+							<span class="text-xs text-text-tertiary truncate">{step.label}</span>
 						</div>
-						<div class="flex-1 h-6 rounded bg-zinc-800/60 overflow-hidden relative">
+						<div class="flex-1 h-6 rounded bg-surface-raised overflow-hidden relative">
 							<div
-								class="h-full rounded transition-all duration-700 ease-out {i === 0 ? 'bg-zinc-600' : i === 1 ? 'bg-teal-500/40' : i === 2 ? 'bg-teal-500/60' : 'bg-emerald-500/70'}"
+								class="h-full rounded transition-all duration-700 ease-out {i === 0 ? 'bg-text-quaternary' : i === 1 ? 'bg-teal-500/40' : i === 2 ? 'bg-teal-500/60' : 'bg-emerald-500/70'}"
 								style="width: {Math.max(step.pct, 1)}%"
 							></div>
 							{#if step.count > 0}
-								<span class="absolute inset-0 flex items-center justify-end pr-2 text-[10px] font-mono tabular-nums text-zinc-400">
+								<span class="absolute inset-0 flex items-center justify-end pr-2 text-[10px] font-mono tabular-nums text-text-tertiary">
 									{step.pct}%
 								</span>
 							{/if}
 						</div>
-						<span class="w-16 text-right font-mono tabular-nums text-sm text-zinc-300">
+						<span class="w-16 text-right font-mono tabular-nums text-sm text-text-secondary">
 							{fmt(step.count)}
 						</span>
 					</div>
@@ -215,37 +223,37 @@
 		{/if}
 	</div>
 
-	<!-- ===== SECTION 2: Tier Distribution ===== -->
-	<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6">
+	<!-- ===== SECTION 3: Tier Distribution ===== -->
+	<div class="rounded-xl bg-surface-base border border-surface-border p-6 shadow-[var(--shadow-sm)]">
 		<div class="flex items-center justify-between mb-4">
-			<p class="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Engagement Tier Distribution</p>
+			<p class="text-[10px] font-mono uppercase tracking-wider text-text-tertiary">Engagement Tier Distribution</p>
 			{#if tierTotal > 0}
-				<span class="text-xs font-mono tabular-nums text-zinc-600">{fmt(tierTotal)} actions</span>
+				<span class="text-xs font-mono tabular-nums text-text-quaternary">{fmt(tierTotal)} actions</span>
 			{/if}
 		</div>
 
 		{#if tierTotal === 0}
 			<div class="py-4 text-center">
-				<p class="text-sm text-zinc-600">No campaign actions yet. Tier distribution will appear as supporters take action.</p>
+				<p class="text-sm text-text-quaternary">No campaign actions yet. Tier distribution will appear as supporters take action.</p>
 			</div>
 		{:else}
 			<div class="space-y-2">
 				{#each [...data.tiers].reverse() as tier}
 					<div class="flex items-center gap-3">
-						<span class="w-24 text-[10px] font-mono text-zinc-500 text-right">
+						<span class="w-24 text-[10px] font-mono text-text-tertiary text-right">
 							{tier.label}
-							<span class="text-zinc-700">T{tier.tier}</span>
+							<span class="text-text-quaternary">T{tier.tier}</span>
 						</span>
-						<div class="flex-1 h-5 rounded bg-zinc-800/60 overflow-hidden">
+						<div class="flex-1 h-5 rounded bg-surface-raised overflow-hidden">
 							<div
 								class="h-full rounded {tierColor(tier.tier)} transition-all duration-700 ease-out"
 								style="width: {tier.count > 0 ? Math.max((tier.count / tierMax) * 100, 2) : 0}%"
 							></div>
 						</div>
-						<span class="w-14 text-xs font-mono tabular-nums text-zinc-500 text-right">
+						<span class="w-14 text-xs font-mono tabular-nums text-text-tertiary text-right">
 							{fmt(tier.count)}
 						</span>
-						<span class="w-10 text-[10px] font-mono tabular-nums text-zinc-600 text-right">
+						<span class="w-10 text-[10px] font-mono tabular-nums text-text-quaternary text-right">
 							{Math.round((tier.count / tierTotal) * 100)}%
 						</span>
 					</div>
@@ -254,21 +262,13 @@
 		{/if}
 	</div>
 
-	<!-- ===== Verification Packet (Coordination Integrity) ===== -->
-	<VerificationPacket
-		packet={data.packet}
-		label={data.stats.activeCampaigns > 0
-			? `Coordination Integrity \u00b7 ${data.stats.activeCampaigns} active campaign${data.stats.activeCampaigns === 1 ? '' : 's'}`
-			: 'Coordination Integrity'}
-	/>
-
-	<!-- ===== SECTION 3: Campaign List ===== -->
-	<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6">
+	<!-- ===== SECTION 4: Campaign List ===== -->
+	<div class="rounded-xl bg-surface-base border border-surface-border p-6 shadow-[var(--shadow-sm)]">
 		<div class="flex items-center justify-between mb-4">
-			<p class="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Campaigns</p>
+			<p class="text-[10px] font-mono uppercase tracking-wider text-text-tertiary">Campaigns</p>
 			<a
 				href="/org/{data.org.slug}/campaigns"
-				class="text-xs text-zinc-600 hover:text-teal-400 transition-colors"
+				class="text-xs text-text-quaternary hover:text-teal-500 transition-colors"
 			>
 				View all
 			</a>
@@ -276,7 +276,7 @@
 
 		{#if data.campaigns.length === 0}
 			<div class="py-4 text-center">
-				<p class="text-sm text-zinc-600">No campaigns yet.</p>
+				<p class="text-sm text-text-quaternary">No campaigns yet.</p>
 				<a
 					href="/org/{data.org.slug}/campaigns/new"
 					class="inline-block mt-2 text-xs text-teal-500 hover:text-teal-400 transition-colors"
@@ -289,22 +289,22 @@
 				{#each data.campaigns as campaign (campaign.id)}
 					<a
 						href="/org/{data.org.slug}/campaigns/{campaign.id}"
-						class="flex items-center gap-3 rounded-lg border border-zinc-800/40 bg-zinc-950/40 px-4 py-3 transition-colors hover:border-teal-900/40 group"
+						class="flex items-center gap-3 rounded-lg border border-surface-border bg-surface-raised px-4 py-3 transition-colors hover:border-[var(--coord-route-solid)] group"
 					>
 						<div class="min-w-0 flex-1">
 							<div class="flex items-center gap-2">
-								<p class="text-sm font-medium text-zinc-200 group-hover:text-teal-400 transition-colors truncate">
+								<p class="text-sm font-medium text-text-primary group-hover:text-teal-500 transition-colors truncate">
 									{campaign.title}
 								</p>
 								<span class="text-[10px] font-mono px-1.5 py-0.5 rounded border {statusColor(campaign.status)} flex-shrink-0">
 									{campaign.status}
 								</span>
 							</div>
-							<p class="text-xs text-zinc-600 mt-0.5">
+							<p class="text-xs text-text-quaternary mt-0.5">
 								{campaign.type}
-								<span class="text-zinc-700 mx-1">&middot;</span>
-								{fmt(campaign.verifiedActions)} verified / {fmt(campaign.totalActions)} total
-								<span class="text-zinc-700 mx-1">&middot;</span>
+								<span class="text-surface-border-strong mx-1">&middot;</span>
+								<span class="font-mono tabular-nums">{fmt(campaign.verifiedActions)}</span> verified / <span class="font-mono tabular-nums">{fmt(campaign.totalActions)}</span> total
+								<span class="text-surface-border-strong mx-1">&middot;</span>
 								{relativeTime(campaign.updatedAt)}
 							</p>
 						</div>
@@ -314,12 +314,12 @@
 								<!-- Mini verified-rate ring -->
 								<svg viewBox="0 0 36 36" class="w-12 h-12 -rotate-90">
 									<circle cx="18" cy="18" r="15" fill="none" stroke-width="3"
-										class="stroke-zinc-800" />
+										class="stroke-surface-border" />
 									<circle cx="18" cy="18" r="15" fill="none" stroke-width="3"
 										stroke-dasharray="{pct * 0.942} {(100 - pct) * 0.942}"
 										class="stroke-teal-500/60" />
 								</svg>
-								<span class="absolute inset-0 flex items-center justify-center text-[9px] font-mono tabular-nums text-zinc-400">
+								<span class="absolute inset-0 flex items-center justify-center text-[9px] font-mono tabular-nums text-text-tertiary">
 									{pct}%
 								</span>
 							</div>
@@ -330,89 +330,49 @@
 		{/if}
 	</div>
 
-	<!-- ===== SECTION 4: Quick Actions ===== -->
-	<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-		<a
-			href="/org/{data.org.slug}/campaigns/new"
-			class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-4 text-center hover:border-teal-900/40 transition-colors group"
-		>
-			<svg class="w-5 h-5 mx-auto text-zinc-600 group-hover:text-teal-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-				<path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-			</svg>
-			<p class="text-xs text-zinc-400 mt-2 group-hover:text-zinc-300 transition-colors">Create Campaign</p>
-		</a>
-		<a
-			href="/org/{data.org.slug}/supporters/import"
-			class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-4 text-center hover:border-teal-900/40 transition-colors group"
-		>
-			<svg class="w-5 h-5 mx-auto text-zinc-600 group-hover:text-teal-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-				<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-			</svg>
-			<p class="text-xs text-zinc-400 mt-2 group-hover:text-zinc-300 transition-colors">Import Supporters</p>
-		</a>
-		<a
-			href="/org/{data.org.slug}/emails/compose"
-			class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-4 text-center hover:border-teal-900/40 transition-colors group"
-		>
-			<svg class="w-5 h-5 mx-auto text-zinc-600 group-hover:text-teal-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-				<path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-			</svg>
-			<p class="text-xs text-zinc-400 mt-2 group-hover:text-zinc-300 transition-colors">Compose Email</p>
-		</a>
-		<a
-			href="/org/{data.org.slug}/supporters"
-			class="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-4 text-center hover:border-teal-900/40 transition-colors group"
-		>
-			<svg class="w-5 h-5 mx-auto text-zinc-600 group-hover:text-teal-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-				<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-			</svg>
-			<p class="text-xs text-zinc-400 mt-2 group-hover:text-zinc-300 transition-colors">View Supporters</p>
-		</a>
-	</div>
-
 	<!-- ===== SECTION 5: Recent Activity ===== -->
 	{#if data.recentActivity.length > 0}
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6">
-			<p class="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-4">Recent Activity</p>
+		<div class="rounded-xl bg-surface-base border border-surface-border p-6 shadow-[var(--shadow-sm)]">
+			<p class="text-[10px] font-mono uppercase tracking-wider text-text-tertiary mb-4">Recent Activity</p>
 			<div class="space-y-1">
 				{#each data.recentActivity as item (item.id)}
-					<div class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-800/30 transition-colors">
+					<div class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-raised transition-colors">
 						<!-- I4: Type indicator with label -->
 						{#if item.type === 'action'}
 							<div class="flex items-center gap-1.5 flex-shrink-0 w-16">
-								<div class="w-2 h-2 rounded-full {item.verified ? 'bg-emerald-500' : 'bg-zinc-600'}"></div>
-								<span class="text-[9px] font-mono text-zinc-600">Action</span>
+								<div class="w-2 h-2 rounded-full {item.verified ? 'bg-emerald-500' : 'bg-text-quaternary'}"></div>
+								<span class="text-[9px] font-mono text-text-quaternary">Action</span>
 							</div>
 						{:else}
 							<div class="flex items-center gap-1.5 flex-shrink-0 w-16">
 								<div class="w-2 h-2 rounded-full bg-teal-500/60"></div>
-								<span class="text-[9px] font-mono text-zinc-600">Signup</span>
+								<span class="text-[9px] font-mono text-text-quaternary">Signup</span>
 							</div>
 						{/if}
 
 						<!-- Content -->
 						<div class="min-w-0 flex-1">
-							<p class="text-xs text-zinc-300 truncate">
+							<p class="text-xs text-text-secondary truncate">
 								<span class="font-medium">{item.label}</span>
 								{#if item.type === 'action'}
-									<span class="text-zinc-600"> acted on </span>
-									<span class="text-zinc-400">{item.detail}</span>
+									<span class="text-text-quaternary"> acted on </span>
+									<span class="text-text-tertiary">{item.detail}</span>
 								{:else}
-									<span class="text-zinc-600"> signed up via </span>
-									<span class="text-zinc-400">{item.detail}</span>
+									<span class="text-text-quaternary"> signed up via </span>
+									<span class="text-text-tertiary">{item.detail}</span>
 								{/if}
 							</p>
 						</div>
 
 						<!-- Tier badge (actions only) -->
 						{#if item.type === 'action' && item.tier > 0}
-							<span class="text-[9px] font-mono px-1 py-0.5 rounded bg-zinc-800 text-zinc-500 flex-shrink-0">
+							<span class="text-[9px] font-mono px-1 py-0.5 rounded bg-surface-raised text-text-tertiary flex-shrink-0">
 								T{item.tier}
 							</span>
 						{/if}
 
 						<!-- Timestamp -->
-						<span class="text-[10px] font-mono text-zinc-700 flex-shrink-0">
+						<span class="text-[10px] font-mono text-text-quaternary flex-shrink-0">
 							{relativeTime(item.timestamp)}
 						</span>
 					</div>
@@ -429,12 +389,12 @@
 	{/if}
 
 	<!-- ===== Endorsed Templates ===== -->
-	<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-6">
+	<div class="rounded-xl bg-surface-base border border-surface-border p-6 shadow-[var(--shadow-sm)]">
 		<div class="flex items-center justify-between mb-4">
-			<p class="text-sm font-medium text-zinc-300">
+			<p class="text-sm font-medium text-text-secondary">
 				Endorsed Templates
 				{#if endorsedList.length > 0}
-					<span class="text-zinc-600 ml-1">&middot; {endorsedList.length}</span>
+					<span class="text-text-quaternary ml-1">&middot; {endorsedList.length}</span>
 				{/if}
 			</p>
 		</div>
@@ -442,18 +402,18 @@
 		{#if endorsedList.length > 0}
 			<div class="space-y-2 mb-4">
 				{#each endorsedList as item (item.templateId)}
-					<div class="group flex items-center gap-3 rounded-lg border border-zinc-800/40 bg-zinc-950/40 px-4 py-3 transition-colors hover:border-teal-900/40">
+					<div class="group flex items-center gap-3 rounded-lg border border-surface-border bg-surface-raised px-4 py-3 transition-colors hover:border-[var(--coord-route-solid)]">
 						<div class="w-0.5 h-8 rounded-full bg-teal-500/60 flex-shrink-0"></div>
 						<div class="min-w-0 flex-1">
-							<a href="/s/{item.slug}" class="text-sm font-medium text-zinc-200 hover:text-teal-400 transition-colors line-clamp-1">
+							<a href="/s/{item.slug}" class="text-sm font-medium text-text-primary hover:text-teal-500 transition-colors line-clamp-1">
 								{item.title}
 							</a>
-							<p class="text-xs text-zinc-600 mt-0.5">
-								{fmt(item.sends)} sends &middot; {fmt(item.districts)} districts
+							<p class="text-xs text-text-quaternary mt-0.5">
+								<span class="font-mono tabular-nums">{fmt(item.sends)}</span> sends &middot; <span class="font-mono tabular-nums">{fmt(item.districts)}</span> districts
 							</p>
 						</div>
 						<button
-							class="text-xs text-zinc-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+							class="text-xs text-text-quaternary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
 							onclick={() => removeEndorsement(item.templateId)}
 						>
 							Remove
@@ -462,32 +422,32 @@
 				{/each}
 			</div>
 		{:else}
-			<p class="text-xs text-zinc-600 mb-4">No endorsed templates yet. Endorse public templates to signal coalition support.</p>
+			<p class="text-xs text-text-quaternary mb-4">No endorsed templates yet. Endorse public templates to signal coalition support.</p>
 		{/if}
 
 		<!-- Search to endorse -->
 		<div class="relative">
 			<input
 				type="text"
-				class="w-full rounded-lg border border-zinc-800/60 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-teal-800/60 transition-colors"
+				class="participation-input text-sm"
 				placeholder="Search templates to endorse..."
 				value={searchQuery}
 				oninput={handleSearchInput}
 			/>
 			{#if searchResults.length > 0}
-				<div class="absolute left-0 right-0 top-full mt-1 rounded-lg border border-zinc-800/60 bg-zinc-900 shadow-xl z-10 overflow-hidden">
+				<div class="absolute left-0 right-0 top-full mt-1 rounded-lg border border-surface-border bg-surface-base shadow-[var(--shadow-lg)] z-10 overflow-hidden">
 					{#each searchResults as t (t.id)}
 						<button
-							class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30 last:border-0"
+							class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-raised transition-colors border-b border-surface-border last:border-0"
 							onclick={() => endorseTemplate(t.id)}
 						>
 							<div class="min-w-0 flex-1">
-								<p class="text-sm text-zinc-200 line-clamp-1">{t.title}</p>
-								<p class="text-xs text-zinc-600 mt-0.5">
-									{fmt(t.verified_sends)} sends
+								<p class="text-sm text-text-primary line-clamp-1">{t.title}</p>
+								<p class="text-xs text-text-quaternary mt-0.5">
+									<span class="font-mono tabular-nums">{fmt(t.verified_sends)}</span> sends
 									{#if t.similarity != null}
-										<span class="text-zinc-700 mx-1">&middot;</span>
-										<span class="text-teal-700">{Math.round(t.similarity * 100)}% match</span>
+										<span class="text-surface-border-strong mx-1">&middot;</span>
+										<span class="text-teal-600">{Math.round(t.similarity * 100)}% match</span>
 									{/if}
 								</p>
 							</div>
@@ -498,7 +458,7 @@
 			{/if}
 			{#if searching}
 				<div class="absolute right-3 top-1/2 -translate-y-1/2">
-					<div class="w-3 h-3 border border-zinc-600 border-t-teal-500 rounded-full animate-spin"></div>
+					<div class="w-3 h-3 border border-text-quaternary border-t-teal-500 rounded-full animate-spin"></div>
 				</div>
 			{/if}
 		</div>

@@ -34,7 +34,7 @@
 			case 'canceled':
 				return 'bg-red-500/15 text-red-400 border-red-500/20';
 			default:
-				return 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20';
+				return 'bg-surface-overlay text-text-tertiary border-surface-border';
 		}
 	}
 
@@ -105,8 +105,8 @@
 <div class="space-y-8">
 	<!-- Header -->
 	<div>
-		<h1 class="text-xl font-semibold text-zinc-100">Settings</h1>
-		<p class="text-sm text-zinc-500 mt-1">Manage your organization's billing and team.</p>
+		<h1 class="text-xl font-semibold text-text-primary">Settings</h1>
+		<p class="text-sm text-text-tertiary mt-1">Manage your organization's billing and team.</p>
 	</div>
 
 	<!-- Billing status banner -->
@@ -116,18 +116,18 @@
 		</div>
 	{/if}
 	{#if billingCanceled}
-		<div class="rounded-lg border border-zinc-700/50 bg-zinc-800/50 px-4 py-3 text-sm text-zinc-400">
+		<div class="rounded-lg border border-surface-border-strong bg-surface-overlay px-4 py-3 text-sm text-text-tertiary">
 			Checkout was canceled. Your plan has not changed.
 		</div>
 	{/if}
 
 	<!-- Current Plan + Usage -->
-	<section class="rounded-xl border border-zinc-800/60 bg-zinc-900/50 p-6 space-y-5">
+	<section class="rounded-xl bg-surface-base border border-surface-border shadow-[var(--shadow-sm)] p-6 space-y-5">
 		<div class="flex items-center justify-between">
 			<div>
-				<h2 class="text-sm font-medium text-zinc-300 uppercase tracking-wider">Current Plan</h2>
+				<h2 class="text-sm font-medium text-text-secondary uppercase tracking-wider">Current Plan</h2>
 				<div class="flex items-center gap-3 mt-2">
-					<span class="text-2xl font-semibold text-zinc-100 capitalize">{planName}</span>
+					<span class="text-2xl font-semibold text-text-primary capitalize">{planName}</span>
 					{#if data.subscription}
 						<span class="inline-flex items-center px-2 py-0.5 rounded text-xs border {statusBadgeClass(data.subscription.status)}">
 							{data.subscription.status}
@@ -135,7 +135,7 @@
 					{/if}
 				</div>
 				{#if data.subscription?.currentPeriodEnd}
-					<p class="text-xs text-zinc-500 mt-1">
+					<p class="text-xs text-text-tertiary mt-1">
 						{data.subscription.status === 'canceled' ? 'Access until' : 'Renews'} {formatDate(data.subscription.currentPeriodEnd)}
 					</p>
 				{/if}
@@ -144,7 +144,7 @@
 				<button
 					onclick={openPortal}
 					disabled={portalLoading}
-					class="px-4 py-2 text-sm border border-zinc-700 text-zinc-300 rounded-lg hover:bg-zinc-800 transition-colors disabled:opacity-50"
+					class="px-4 py-2 text-sm border border-surface-border-strong text-text-secondary rounded-lg hover:bg-surface-raised transition-colors disabled:opacity-50"
 				>
 					{portalLoading ? 'Opening...' : 'Manage Billing'}
 				</button>
@@ -155,12 +155,12 @@
 		<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
 			<div class="space-y-2">
 				<div class="flex justify-between text-xs">
-					<span class="text-zinc-400">Verified Actions</span>
-					<span class="text-zinc-300 tabular-nums">
+					<span class="text-text-tertiary">Verified Actions</span>
+					<span class="text-text-secondary font-mono tabular-nums">
 						{data.usage.verifiedActions.toLocaleString()} / {data.usage.maxVerifiedActions.toLocaleString()}
 					</span>
 				</div>
-				<div class="h-2 rounded-full bg-zinc-800 overflow-hidden">
+				<div class="h-2 rounded-full bg-surface-overlay overflow-hidden">
 					<div
 						class="h-full rounded-full transition-all {usageBarClass(actionsPercent)}"
 						style="width: {actionsPercent}%"
@@ -169,12 +169,12 @@
 			</div>
 			<div class="space-y-2">
 				<div class="flex justify-between text-xs">
-					<span class="text-zinc-400">Emails Sent</span>
-					<span class="text-zinc-300 tabular-nums">
+					<span class="text-text-tertiary">Emails Sent</span>
+					<span class="text-text-secondary font-mono tabular-nums">
 						{data.usage.emailsSent.toLocaleString()} / {data.usage.maxEmails.toLocaleString()}
 					</span>
 				</div>
-				<div class="h-2 rounded-full bg-zinc-800 overflow-hidden">
+				<div class="h-2 rounded-full bg-surface-overlay overflow-hidden">
 					<div
 						class="h-full rounded-full transition-all {usageBarClass(emailsPercent)}"
 						style="width: {emailsPercent}%"
@@ -187,7 +187,7 @@
 	<!-- Plan Selection -->
 	{#if isOwner}
 		<section class="space-y-4">
-			<h2 class="text-sm font-medium text-zinc-300 uppercase tracking-wider">Plans</h2>
+			<h2 class="text-sm font-medium text-text-secondary uppercase tracking-wider">Plans</h2>
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 				{#each plans as plan}
 					{@const isCurrent = planName === plan.slug}
@@ -195,17 +195,17 @@
 					<div
 						class="rounded-xl border p-5 space-y-4 {isCurrent
 							? 'border-teal-500/40 bg-teal-500/5'
-							: 'border-zinc-800/60 bg-zinc-900/50'}"
+							: 'border-surface-border bg-surface-base'}"
 					>
 						<div>
-							<h3 class="text-base font-semibold text-zinc-100">{plan.name}</h3>
-							<p class="text-xl font-bold text-zinc-100 mt-1">
-								{plan.price}<span class="text-xs font-normal text-zinc-500">/mo</span>
+							<h3 class="text-base font-semibold text-text-primary">{plan.name}</h3>
+							<p class="text-xl font-bold text-text-primary mt-1">
+								{plan.price}<span class="text-xs font-normal text-text-tertiary">/mo</span>
 							</p>
 						</div>
 						<ul class="space-y-1.5">
 							{#each plan.features as feature}
-								<li class="text-xs text-zinc-400 flex items-start gap-1.5">
+								<li class="text-xs text-text-tertiary flex items-start gap-1.5">
 									<svg class="w-3.5 h-3.5 text-teal-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 										<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 									</svg>
@@ -233,26 +233,26 @@
 	<!-- Team Members -->
 	<section class="space-y-4">
 		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-medium text-zinc-300 uppercase tracking-wider">Team</h2>
-			<span class="text-xs text-zinc-500">{data.members.length} member{data.members.length !== 1 ? 's' : ''}</span>
+			<h2 class="text-sm font-medium text-text-secondary uppercase tracking-wider">Team</h2>
+			<span class="text-xs text-text-tertiary">{data.members.length} member{data.members.length !== 1 ? 's' : ''}</span>
 		</div>
-		<div class="rounded-xl border border-zinc-800/60 bg-zinc-900/50 divide-y divide-zinc-800/40">
+		<div class="rounded-xl border border-surface-border bg-surface-base divide-y divide-surface-border">
 			{#each data.members as member}
 				<div class="flex items-center gap-3 px-5 py-3">
 					{#if member.avatar}
 						<img src={member.avatar} alt="" class="w-8 h-8 rounded-full" />
 					{:else}
-						<div class="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-zinc-300 text-xs font-medium">
+						<div class="w-8 h-8 rounded-full bg-surface-border-strong flex items-center justify-center text-text-secondary text-xs font-medium">
 							{(member.name ?? member.email).charAt(0).toUpperCase()}
 						</div>
 					{/if}
 					<div class="min-w-0 flex-1">
-						<p class="text-sm text-zinc-200 truncate">{member.name ?? member.email}</p>
+						<p class="text-sm text-text-primary truncate">{member.name ?? member.email}</p>
 						{#if member.name}
-							<p class="text-xs text-zinc-500 truncate">{member.email}</p>
+							<p class="text-xs text-text-tertiary truncate">{member.email}</p>
 						{/if}
 					</div>
-					<span class="text-xs px-2 py-0.5 rounded border bg-zinc-800/50 border-zinc-700/50 text-zinc-400 capitalize">
+					<span class="text-xs px-2 py-0.5 rounded border bg-surface-overlay border-surface-border-strong text-text-tertiary capitalize">
 						{member.role}
 					</span>
 				</div>
@@ -262,12 +262,12 @@
 		<!-- Pending Invites -->
 		{#if data.invites.length > 0}
 			<div class="space-y-2">
-				<h3 class="text-xs text-zinc-500 font-medium">Pending Invites</h3>
-				<div class="rounded-lg border border-zinc-800/40 bg-zinc-900/30 divide-y divide-zinc-800/30">
+				<h3 class="text-xs text-text-tertiary font-medium">Pending Invites</h3>
+				<div class="rounded-lg border border-surface-border bg-surface-base divide-y divide-surface-border">
 					{#each data.invites as invite}
 						<div class="flex items-center justify-between px-4 py-2.5 text-sm">
-							<span class="text-zinc-400">{invite.email}</span>
-							<span class="text-xs text-zinc-600">expires {formatDate(invite.expiresAt)}</span>
+							<span class="text-text-tertiary">{invite.email}</span>
+							<span class="text-xs text-text-quaternary">expires {formatDate(invite.expiresAt)}</span>
 						</div>
 					{/each}
 				</div>

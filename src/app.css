@@ -61,7 +61,7 @@
 
 	:root {
 		/*
-		=== COMMUNIQUE DESIGN SYSTEM ===
+		=== COMMONS DESIGN SYSTEM ===
 		"The weight of numbers."
 
 		Coordination graph aesthetic derived from RelayLoom.
@@ -173,7 +173,7 @@
 		- Cold/clinical emotional temperature
 		- Maximum contrast = eye strain
 
-		Communiqué is about COLLECTIVE HUMAN ACTION.
+		Commons is about COLLECTIVE HUMAN ACTION.
 		Visual foundation should feel: warm, alive, inhabited.
 
 		oklch color space for perceptual uniformity.
@@ -247,6 +247,15 @@
 		--header-transition-slow: 320ms;
 		--header-easing: cubic-bezier(0.4, 0, 0.2, 1);
 		--header-easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+		/* === ORG SIDEBAR — Warm Dark Navigation === */
+		--org-sidebar-bg: oklch(0.16 0.015 55);
+		--org-sidebar-border: oklch(0.28 0.02 55 / 0.6);
+		--org-sidebar-text: oklch(0.92 0.005 55);
+		--org-sidebar-text-muted: oklch(0.6 0.01 55);
+		--org-sidebar-text-dim: oklch(0.45 0.01 55);
+		--org-sidebar-hover: oklch(0.22 0.02 55);
+		--org-sidebar-active: oklch(0.25 0.02 55);
 	}
 }
 
@@ -589,5 +598,30 @@
 		90% {
 			transform: translateY(-2px);
 		}
+	}
+
+	/* Org card hover — subtle lift with warm shadow */
+	.org-card {
+		transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1),
+			box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	.org-card:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 8px 24px -8px oklch(0.15 0.02 60 / 0.2);
+	}
+
+	.org-card:active {
+		transform: translateY(0);
+	}
+}
+
+/* Reduced motion — disable all org transitions */
+@media (prefers-reduced-motion: reduce) {
+	.org-card,
+	.org-card:hover,
+	.org-card:active {
+		transition: none;
+		transform: none;
 	}
 }
