@@ -2,7 +2,7 @@
  * Noir Prover Shim
  *
  * Provides runtime-safe factory functions for all circuit provers used in
- * communique. Each factory tries the npm package (@voter-protocol/noir-prover)
+ * commons. Each factory tries the npm package (@voter-protocol/noir-prover)
  * first, then fails with a clear error if the export is unavailable.
  *
  * HISTORY:

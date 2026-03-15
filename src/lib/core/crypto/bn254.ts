@@ -5,7 +5,7 @@
  * All ZK circuit field elements must be in [0, p).
  *
  * This module is the single source of truth for BN254 constants in the
- * communique codebase. Do NOT import BN254_MODULUS from @voter-protocol/*
+ * commons codebase. Do NOT import BN254_MODULUS from @voter-protocol/*
  * packages — the npm builds may not export it.
  */
 

@@ -20,7 +20,7 @@
 import type { CachedSearchResult, CachedEmbedding, RankedTemplate } from './types';
 
 export class SearchCache {
-	private dbName = 'communique-search-cache';
+	private dbName = 'commons-search-cache';
 	private dbVersion = 1;
 	private db: IDBDatabase | null = null;
 

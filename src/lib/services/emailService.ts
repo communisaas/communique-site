@@ -300,7 +300,7 @@ export function generateMailtoUrl(
 			// District attestation footer for Tier 2+ verified constituents
 			// Only include verify URL when a real credential hash is available
 			if (trustTier >= 2 && user?.credentialHash) {
-				footer += `\n[District: Verified Constituent | communique.io/verify/${user.credentialHash}]`;
+				footer += `\n[District: Verified Constituent | commons.email/verify/${user.credentialHash}]`;
 			} else if (trustTier >= 2) {
 				footer += '\n[District: Verified Constituent]';
 			}

@@ -19,8 +19,8 @@ export interface PasskeyRPConfig {
 /**
  * Get the Relying Party configuration for WebAuthn operations.
  *
- * - rpID: the hostname portion of the origin (e.g., "communique.site" or "localhost")
- * - origin: full origin URL (e.g., "https://communique.site" or "http://localhost:5173")
+ * - rpID: the hostname portion of the origin (e.g., "commons.email" or "localhost")
+ * - origin: full origin URL (e.g., "https://commons.email" or "http://localhost:5173")
  * - rpName: display name shown in the browser passkey prompt
  */
 export function getPasskeyRPConfig(): PasskeyRPConfig {
@@ -48,7 +48,7 @@ export function getPasskeyRPConfig(): PasskeyRPConfig {
 	}
 
 	return {
-		rpName: 'Communique',
+		rpName: 'Commons',
 		rpID,
 		origin
 	};

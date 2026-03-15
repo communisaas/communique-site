@@ -52,7 +52,7 @@ interface AddressDB extends DBSchema {
 // Database
 // ============================================================================
 
-const DB_NAME = 'communique-address';
+const DB_NAME = 'commons-address';
 const DB_VERSION = 1;
 const STORE_NAME = 'addresses';
 /** 6 months in milliseconds */

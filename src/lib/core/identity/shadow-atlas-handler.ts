@@ -6,17 +6,17 @@
  * 1. User completes identity verification (Digital Credentials API / mDL)
  * 2. Browser generates user_secret and registration_salt
  * 3. Browser computes leaf = Poseidon2_H4(user_secret, cell_id, registration_salt, authority_level)
- * 4. Browser sends ONLY the leaf hash to communique server
+ * 4. Browser sends ONLY the leaf hash to commons server
  * 5. Server proxies to Shadow Atlas POST /v1/register → Tree 1 proof
  * 6. Browser requests Tree 2 cell proof (separate call)
  * 7. Tree 3 (engagement) starts with defaults (tier 0), updated by civic actions
  * 8. All credentials stored encrypted in IndexedDB
  *
- * PRIVACY: The communique server never receives user_secret, cell_id,
+ * PRIVACY: The commons server never receives user_secret, cell_id,
  * or registration_salt. It sees only the leaf hash.
  *
  * SPEC REFERENCE: WAVE-17-19-IMPLEMENTATION-PLAN.md Section 17c
- * SPEC REFERENCE: COMMUNIQUE-INTEGRATION-SPEC.md Section 2.3
+ * SPEC REFERENCE: COMMONS-INTEGRATION-SPEC.md Section 2.3
  */
 
 import {

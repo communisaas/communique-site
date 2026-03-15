@@ -37,7 +37,7 @@ import { BN254_MODULUS } from '$lib/core/crypto/bn254';
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const PROTOCOL_VERSION = 'communique.v1';
+const PROTOCOL_VERSION = 'commons.v1';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES

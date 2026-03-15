@@ -237,7 +237,7 @@ import { sequence } from '@sveltejs/kit/hooks';
  *   ---------+---------------------------+--------------+--------------+------------------------------------------
  *   P1       | /api/identity/            | 10 req/min   | IP           | Brute-force verification, QR spam
  *   P1       | /api/shadow-atlas/register| 5 req/min    | User         | Shadow Atlas registration abuse
- *   P1       | /api/congressional/submit | 3 req/hour   | User         | Congressional submission spam
+ *   P1       | /api/legislative/submit   | 3 req/hour   | User         | Legislative submission spam
  *   P2       | /api/submissions/         | 5 req/min    | IP           | CWC submission spam
  *
  * ALGORITHM: Sliding Window Log

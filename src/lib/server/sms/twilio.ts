@@ -1,35 +1,33 @@
 /**
- * Twilio client wrapper — SMS sending + patch-through calling.
+ * Twilio REST API client — SMS sending + patch-through calling.
  *
- * Follows the lazy-init client pattern from ses.ts.
- * Uses dynamic import to avoid bundling in non-Twilio deployments.
+ * Direct REST calls via fetch() — zero SDK dependency.
+ * The Twilio Node SDK is 15 MB; these three operations are simple
+ * HTTP calls with Basic Auth + form encoding.
  */
 import { env } from '$env/dynamic/private';
+import { createHmac } from 'node:crypto';
 import type { SmsSendResult, CallInitResult } from './types';
 
-let twilioClient: any = null;
+const TWILIO_API_BASE = 'https://api.twilio.com/2010-04-01/Accounts';
 
-async function getClient() {
-	if (!twilioClient) {
-		const accountSid = env.TWILIO_ACCOUNT_SID;
-		const authToken = env.TWILIO_AUTH_TOKEN;
-		if (!accountSid || !authToken) {
-			throw new Error('TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN env vars are required');
-		}
-		// Dynamic import with variable path — prevents esbuild/Vite from
-		// statically resolving and bundling the 6.7 MiB Twilio SDK.
-		// SMS is feature-gated; this only runs when FEATURES.SMS is enabled.
-		const pkg = 'twilio';
-		const twilio = await import(/* @vite-ignore */ pkg);
-		twilioClient = twilio.default(accountSid, authToken);
+function getCredentials(): { accountSid: string; authToken: string } {
+	const accountSid = env.TWILIO_ACCOUNT_SID;
+	const authToken = env.TWILIO_AUTH_TOKEN;
+	if (!accountSid || !authToken) {
+		throw new Error('TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN env vars are required');
 	}
-	return twilioClient;
+	return { accountSid, authToken };
 }
 
 function getFromNumber(): string {
 	const num = env.TWILIO_PHONE_NUMBER;
 	if (!num) throw new Error('TWILIO_PHONE_NUMBER env var is required');
 	return num;
+}
+
+function authHeader(accountSid: string, authToken: string): string {
+	return 'Basic ' + btoa(`${accountSid}:${authToken}`);
 }
 
 /**
@@ -40,21 +38,40 @@ export function isValidE164(phone: string): boolean {
 }
 
 /**
- * Send a single SMS via Twilio
+ * Send a single SMS via Twilio REST API.
+ *
+ * POST /2010-04-01/Accounts/{SID}/Messages.json
+ * Body: application/x-www-form-urlencoded
  */
 export async function sendSms(to: string, body: string, fromNumber?: string): Promise<SmsSendResult> {
 	if (!isValidE164(to)) {
 		return { success: false, error: 'Invalid phone number format (E.164 required)' };
 	}
 	try {
-		const client = await getClient();
-		const message = await client.messages.create({
-			to,
-			from: fromNumber || getFromNumber(),
-			body,
-			statusCallback: `${env.PUBLIC_BASE_URL || ''}/api/sms/webhook`
+		const { accountSid, authToken } = getCredentials();
+		const params = new URLSearchParams();
+		params.set('To', to);
+		params.set('From', fromNumber || getFromNumber());
+		params.set('Body', body);
+		const callbackBase = env.PUBLIC_BASE_URL || '';
+		if (callbackBase) {
+			params.set('StatusCallback', `${callbackBase}/api/sms/webhook`);
+		}
+
+		const res = await fetch(`${TWILIO_API_BASE}/${accountSid}/Messages.json`, {
+			method: 'POST',
+			headers: {
+				'Authorization': authHeader(accountSid, authToken),
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body: params.toString()
 		});
-		return { success: true, sid: message.sid };
+
+		const data = await res.json();
+		if (!res.ok) {
+			return { success: false, error: data.message || `Twilio API error (${res.status})` };
+		}
+		return { success: true, sid: data.sid };
 	} catch (err) {
 		const error = err instanceof Error ? err.message : 'Unknown Twilio error';
 		return { success: false, error };
@@ -64,6 +81,9 @@ export async function sendSms(to: string, body: string, fromNumber?: string): Pr
 /**
  * Initiate a patch-through call connecting a supporter to a decision-maker.
  * Flow: Twilio calls the supporter -> plays message -> dials the target.
+ *
+ * POST /2010-04-01/Accounts/{SID}/Calls.json
+ * Body: application/x-www-form-urlencoded
  */
 export async function initiatePatchThroughCall(
 	callerPhone: string,
@@ -76,7 +96,7 @@ export async function initiatePatchThroughCall(
 		return { success: false, error: 'Invalid phone number format (E.164 required)' };
 	}
 	try {
-		const client = await getClient();
+		const { accountSid, authToken } = getCredentials();
 		const greeting = targetName
 			? `Connecting you with ${targetName}.`
 			: 'Connecting you with your representative.';
@@ -86,14 +106,30 @@ export async function initiatePatchThroughCall(
 
 		const twiml = `<Response><Say>${greeting}${districtMsg} Please hold.</Say><Dial callerId="${getFromNumber()}">${targetPhone}</Dial></Response>`;
 
-		const call = await client.calls.create({
-			to: callerPhone,
-			from: getFromNumber(),
-			twiml,
-			statusCallback: callbackUrl,
-			statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed']
+		const params = new URLSearchParams();
+		params.set('To', callerPhone);
+		params.set('From', getFromNumber());
+		params.set('Twiml', twiml);
+		params.set('StatusCallback', callbackUrl);
+		// Repeated params for array values
+		for (const event of ['initiated', 'ringing', 'answered', 'completed']) {
+			params.append('StatusCallbackEvent', event);
+		}
+
+		const res = await fetch(`${TWILIO_API_BASE}/${accountSid}/Calls.json`, {
+			method: 'POST',
+			headers: {
+				'Authorization': authHeader(accountSid, authToken),
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body: params.toString()
 		});
-		return { success: true, callSid: call.sid };
+
+		const data = await res.json();
+		if (!res.ok) {
+			return { success: false, error: data.message || `Twilio API error (${res.status})` };
+		}
+		return { success: true, callSid: data.sid };
 	} catch (err) {
 		const error = err instanceof Error ? err.message : 'Unknown Twilio error';
 		return { success: false, error };
@@ -101,18 +137,31 @@ export async function initiatePatchThroughCall(
 }
 
 /**
- * Validate Twilio webhook signature
+ * Validate Twilio webhook signature (HMAC-SHA1).
+ *
+ * Pure crypto — no SDK dependency.
+ * Algorithm: HMAC-SHA1(authToken, url + sortedParams) → base64
  */
-export async function validateTwilioSignature(
+export function validateTwilioSignature(
 	signature: string,
 	url: string,
 	params: Record<string, string>
-): Promise<boolean> {
+): boolean {
 	try {
 		const authToken = env.TWILIO_AUTH_TOKEN;
 		if (!authToken) return false;
-		const twilio = await import('twilio');
-		return twilio.validateRequest(authToken, signature, url, params);
+
+		const sortedKeys = Object.keys(params).sort();
+		let data = url;
+		for (const key of sortedKeys) {
+			data += key + params[key];
+		}
+
+		const computed = createHmac('sha1', authToken)
+			.update(data)
+			.digest('base64');
+
+		return computed === signature;
 	} catch {
 		return false;
 	}

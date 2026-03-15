@@ -22,12 +22,13 @@
 // Constants
 // ============================================================================
 
-const KEY_DB_NAME = 'communique-keystore';
+const KEY_DB_NAME = 'commons-keystore';
 const KEY_STORE_NAME = 'encryption-keys';
 const DEVICE_KEY_ID = 'device-credential-key';
 const DERIVATION_KEY_ID = 'device-derivation-key-v2';
 
-const HKDF_SALT = new TextEncoder().encode('communique-credential-v2');
+// FROZEN: changing this salt would break decryption of all existing encrypted credentials
+const HKDF_SALT = new TextEncoder().encode('commons-credential-v2');
 
 /** Current encryption version for migration support */
 const ENCRYPTION_VERSION = 2;
@@ -189,7 +190,7 @@ async function getOrCreateMasterBytes(): Promise<ArrayBuffer> {
 /**
  * Derive a per-user AES-256-GCM key via HKDF.
  *
- * HKDF(SHA-256, masterKey, salt="communique-credential-v2", info=userId) -> AES-256-GCM
+ * HKDF(SHA-256, masterKey, salt="commons-credential-v2", info=userId) -> AES-256-GCM
  *
  * The derived key is:
  * - Deterministic: same master + same userId = same key (survives page reload)

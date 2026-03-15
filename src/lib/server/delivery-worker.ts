@@ -19,9 +19,10 @@
  */
 
 import type { PrismaClient } from '@prisma/client';
-import { decryptWitness, type EncryptedWitnessPayload } from '$lib/server/witness-decryption';
+import { getConstituentResolver } from '$lib/server/tee';
 import { getOfficials, type Official } from '$lib/core/shadow-atlas/client';
-import { cwcClient, type CongressionalOffice } from '$lib/core/congress/cwc-client';
+import { cwcClient } from '$lib/core/legislative/cwc-client';
+import type { LegislativeOffice } from '$lib/core/legislative/types';
 import type { CwcTemplate } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
 import { dev } from '$app/environment';
@@ -85,42 +86,36 @@ export async function processSubmissionDelivery(
 			};
 		}
 
-		// Step 3: Decrypt witness
+		// Step 3: Resolve constituent data via TEE abstraction
+		// MVP: in-process decryption. PII is function-scoped, never persisted in plaintext.
+		// Future: NitroEnclaveResolver — PII never leaves enclave boundary.
 		if (!submission.witness_nonce || !submission.ephemeral_public_key) {
 			throw new Error('Missing encryption metadata (nonce or ephemeral key)');
 		}
 
-		const encrypted: EncryptedWitnessPayload = {
+		const resolver = getConstituentResolver();
+		const resolved = await resolver.resolve({
 			ciphertext: submission.encrypted_witness,
 			nonce: submission.witness_nonce,
 			ephemeralPublicKey: submission.ephemeral_public_key
+		});
+
+		if (!resolved.success || !resolved.constituent) {
+			throw new Error(resolved.error || 'Failed to resolve constituent data');
+		}
+
+		const deliveryAddress = {
+			name: resolved.constituent.name,
+			email: resolved.constituent.email,
+			street: resolved.constituent.address.street,
+			city: resolved.constituent.address.city,
+			state: resolved.constituent.address.state,
+			zip: resolved.constituent.address.zip,
+			phone: resolved.constituent.phone,
+			congressional_district: resolved.constituent.congressionalDistrict
 		};
 
-		const witness = await decryptWitness(encrypted);
-
-		// Step 4: Extract delivery address from decrypted witness
-		const deliveryAddress = witness.deliveryAddress as
-			| {
-					name: string;
-					email: string;
-					street: string;
-					city: string;
-					state: string;
-					zip: string;
-					phone?: string;
-					congressional_district?: string;
-			  }
-			| undefined;
-
-		if (!deliveryAddress) {
-			throw new Error('No delivery address in decrypted witness');
-		}
-
-		if (!deliveryAddress.street || !deliveryAddress.city || !deliveryAddress.state || !deliveryAddress.zip) {
-			throw new Error('Incomplete delivery address: missing required fields (street, city, state, or zip)');
-		}
-
-		console.debug('[Delivery] Decrypted delivery address for:', {
+		console.debug('[Delivery] Resolved constituent data for:', {
 			submissionId,
 			state: deliveryAddress.state,
 			district: deliveryAddress.congressional_district || 'unknown'
@@ -193,7 +188,7 @@ export async function processSubmissionDelivery(
 		const messageIds: string[] = [];
 
 		for (const rep of representatives) {
-			const office: CongressionalOffice = {
+			const office: LegislativeOffice = {
 				bioguideId: rep.bioguide_id,
 				name: rep.name,
 				chamber: rep.chamber,
@@ -206,22 +201,25 @@ export async function processSubmissionDelivery(
 			try {
 				const message = cwcTemplate.message_body || cwcTemplate.description || '';
 
-				let result;
+				// Pre-check: ~45% of Senate offices don't accept CWC.
+				// Skip with a clear status instead of wasting an API call.
 				if (rep.chamber === 'senate') {
-					result = await cwcClient.submitToSenate(
-						cwcTemplate,
-						cwcUser,
-						office,
-						message
-					);
-				} else {
-					result = await cwcClient.submitToHouse(
-						cwcTemplate,
-						cwcUser,
-						office,
-						message
-					);
+					const cwcEnabled = await cwcClient.isSenateOfficeActive(rep.office_code);
+					if (!cwcEnabled) {
+						console.debug(`[Delivery] Senate office ${rep.office_code} (${rep.name}) does not accept CWC — skipping`);
+						results.push({
+							office: rep.name,
+							chamber: rep.chamber,
+							status: 'cwc_unavailable',
+							error: `Senate office ${rep.name} does not accept CWC messages`
+						});
+						continue;
+					}
 				}
+
+				const result = rep.chamber === 'senate'
+					? await cwcClient.submitToSenate(cwcTemplate, cwcUser, office, message)
+					: await cwcClient.submitToHouse(cwcTemplate, cwcUser, office, message);
 
 				results.push({
 					office: rep.name,
@@ -247,11 +245,14 @@ export async function processSubmissionDelivery(
 		}
 
 		// Step 9: Determine overall status
-		// CWC returns 'submitted' | 'queued' | 'failed' | 'rejected'.
-		// 'rejected' is a terminal failure (e.g., office not accepting messages),
-		// so treat it the same as 'failed' when computing overall status.
-		const anySuccess = results.some((r) => r.status === 'submitted' || r.status === 'queued');
-		const allFailed = results.every((r) => r.status === 'failed' || r.status === 'rejected');
+		// Statuses: 'submitted' | 'queued' | 'failed' | 'rejected' | 'cwc_unavailable'.
+		// 'cwc_unavailable' = Senate office doesn't accept CWC (expected, not a failure).
+		// 'rejected' = terminal failure (e.g., validation error).
+		const deliverable = results.filter((r) => r.status !== 'cwc_unavailable');
+		const anySuccess = deliverable.some((r) => r.status === 'submitted' || r.status === 'queued');
+		const allFailed = deliverable.length > 0
+			? deliverable.every((r) => r.status === 'failed' || r.status === 'rejected')
+			: results.length > 0; // all were cwc_unavailable → treat as failed
 
 		const overallStatus = allFailed ? 'failed' : anySuccess ? 'delivered' : 'partial';
 

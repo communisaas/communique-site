@@ -42,7 +42,7 @@ export interface LayerResolution {
 // Constants
 // ============================================================================
 
-const STORAGE_KEY = 'communique_bubble';
+const STORAGE_KEY = 'commons_bubble';
 const DEFAULT_RADIUS = 2000; // 2km initial bubble
 
 // ============================================================================
@@ -272,25 +272,6 @@ function createBubbleState() {
 				);
 			} catch {
 				// localStorage full or unavailable — non-fatal
-			}
-		},
-
-		/** Restore bubble from localStorage (instant). Does NOT re-fetch geometry. */
-		restoreBubble(): boolean {
-			if (!browser) return false;
-			try {
-				const raw = localStorage.getItem(STORAGE_KEY);
-				if (!raw) return false;
-				const saved = JSON.parse(raw);
-				if (typeof saved?.center?.lat !== 'number' || typeof saved?.center?.lng !== 'number') return false;
-
-				center = saved.center;
-				radius = saved.radius ?? DEFAULT_RADIUS;
-				postalCode = saved.postalCode ?? null;
-				phase = 'idle'; // Not "ready" until geometry is loaded
-				return true;
-			} catch {
-				return false;
 			}
 		},
 

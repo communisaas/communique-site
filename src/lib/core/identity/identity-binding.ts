@@ -65,7 +65,8 @@ export function computeIdentityCommitment(
 	documentType: string
 ): string {
 	// Domain separation prefix prevents cross-protocol hash collisions
-	const DOMAIN_PREFIX = 'communique-identity-v1';
+	// FROZEN: changing this prefix would invalidate all existing identity commitments
+	const DOMAIN_PREFIX = 'commons-identity-v1';
 
 	// BR6-002: Platform salt prevents offline passport enumeration attacks.
 	// Without salt, an attacker with passport databases could precompute

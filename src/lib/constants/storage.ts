@@ -5,9 +5,6 @@
  * This ensures consistency across the application and makes it easier
  * to manage storage resources.
  *
- * Note: Server-side MongoDB collection names are defined in
- * src/lib/server/mongodb/schema.ts to maintain separation of concerns.
- *
  * Usage:
  * ```typescript
  * import { DB_NAMES, STORES, LOCAL_STORAGE_KEYS } from '$lib/constants/storage';
@@ -21,16 +18,16 @@
  */
 export const DB_NAMES = {
 	/** Main application database */
-	MAIN: 'communique',
+	MAIN: 'commons',
 
 	/** Session credentials storage (encrypted verification data) */
-	SESSIONS: 'communique-sessions',
+	SESSIONS: 'commons-sessions',
 
 	/** Encryption key storage (device-bound keys) */
-	KEYSTORE: 'communique-keystore',
+	KEYSTORE: 'commons-keystore',
 
 	/** Location signals and inferred location data */
-	LOCATION: 'communique-location'
+	LOCATION: 'commons_location'
 } as const;
 
 /**
@@ -49,10 +46,10 @@ export const STORES = {
  */
 export const LOCAL_STORAGE_KEYS = {
 	/** Guest template state */
-	GUEST_STATE: 'communique_guest_template',
+	GUEST_STATE: 'commons_guest_template',
 
-	/** Prefix for all communique localStorage items */
-	PREFIX: 'communique'
+	/** Prefix for all commons localStorage items */
+	PREFIX: 'commons'
 } as const;
 
 /** Type for accessing DB_NAMES values */

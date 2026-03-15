@@ -370,7 +370,7 @@ export class SlidingWindowRateLimiter {
  * BA-014 Requirements:
  * 1. /api/identity/* - 10 requests/minute per IP
  * 2. /api/shadow-atlas/register - 5 requests/minute per user
- * 3. /api/congressional/submit - 3 requests/hour per user
+ * 3. /api/legislative/submit - 3 requests/hour per user
  * 4. /api/submissions/* - 5 requests/minute per IP
  *
  * Anti-Astroturf (Cycle 3, G-02/G-10):
@@ -408,7 +408,7 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		includeGet: true
 	},
 	{
-		pattern: '/api/congressional/submit',
+		pattern: '/api/legislative/submit',
 		maxRequests: 3,
 		windowMs: 60 * 60 * 1000, // 1 hour
 		keyStrategy: 'user'

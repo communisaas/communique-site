@@ -47,7 +47,7 @@ function createGuestState() {
 
 			// Persist to localStorage for cross-session continuity
 			if (browser) {
-				localStorage.setItem('communique_guest_template', JSON.stringify(newState));
+				localStorage.setItem('commons_guest_template', JSON.stringify(newState));
 			}
 		},
 
@@ -59,7 +59,7 @@ function createGuestState() {
 			state = updated;
 
 			if (browser) {
-				localStorage.setItem('communique_guest_template', JSON.stringify(updated));
+				localStorage.setItem('commons_guest_template', JSON.stringify(updated));
 			}
 		},
 
@@ -67,14 +67,14 @@ function createGuestState() {
 		clear(): void {
 			state = null;
 			if (browser) {
-				localStorage.removeItem('communique_guest_template');
+				localStorage.removeItem('commons_guest_template');
 			}
 		},
 
 		// Restore from localStorage on app load
 		restore(): void {
 			if (browser) {
-				const stored = localStorage.getItem('communique_guest_template');
+				const stored = localStorage.getItem('commons_guest_template');
 				if (stored) {
 					try {
 						const parsed = JSON.parse(stored);
@@ -85,15 +85,15 @@ function createGuestState() {
 							if (Date.now() - result.data.timestamp < 7 * 24 * 60 * 60 * 1000) {
 								state = result.data;
 							} else {
-								localStorage.removeItem('communique_guest_template');
+								localStorage.removeItem('commons_guest_template');
 							}
 						} else {
 							console.warn('[GuestState] Invalid stored state:', result.error.flatten());
-							localStorage.removeItem('communique_guest_template');
+							localStorage.removeItem('commons_guest_template');
 						}
 					} catch (error) {
 						console.warn('[GuestState] Failed to parse stored state:', error);
-						localStorage.removeItem('communique_guest_template');
+						localStorage.removeItem('commons_guest_template');
 					}
 				}
 			}

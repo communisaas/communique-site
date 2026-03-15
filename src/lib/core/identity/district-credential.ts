@@ -35,7 +35,7 @@ export interface DistrictMembership {
 export interface DistrictResidencyCredential {
 	'@context': ['https://www.w3.org/ns/credentials/v2'];
 	type: ['VerifiableCredential', 'DistrictResidencyCredential'];
-	issuer: string; // 'did:web:communique.io'
+	issuer: string; // 'did:web:commons.email'
 	issuanceDate: string; // ISO 8601
 	expirationDate: string; // ISO 8601 (6 months from issuance)
 	credentialSubject: {
@@ -64,7 +64,7 @@ export interface IssueDistrictCredentialParams {
 // Constants
 // ============================================================================
 
-const ISSUER_DID = 'did:web:communique.io';
+const ISSUER_DID = 'did:web:commons.email';
 const VERIFICATION_METHOD = `${ISSUER_DID}#district-attestation-key`;
 
 // ============================================================================
@@ -171,7 +171,7 @@ function buildCredentialBody(
 		issuanceDate,
 		expirationDate,
 		credentialSubject: {
-			id: params.didKey ?? `urn:communique:user:${params.userId}`,
+			id: params.didKey ?? `urn:commons:user:${params.userId}`,
 			districtMembership: membership
 		}
 	};

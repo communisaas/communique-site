@@ -2,24 +2,32 @@
  * Cache Invalidation Utilities
  *
  * Handles clearing of client-side caches for:
- * 1. Address/location updates (invalidate stale location data)
+ * 1. Address/location updates (invalidate ALL location-bearing state)
  * 2. Logout (clear all user-specific cached data)
  *
  * Caches managed:
- * - communique-sessions (IndexedDB): Session credentials with district info
- * - communique-location (IndexedDB): Location signals and inferred location
- * - communique_guest_template (localStorage): Guest state with address
+ * - commons-session (IndexedDB): Live session credentials with district/tree state
+ * - commons-sessions (IndexedDB): Legacy session cache (deprecated)
+ * - commons-address (IndexedDB): Encrypted constituent address (6-month TTL)
+ * - commons_location (IndexedDB): Location signals and inferred location
+ * - commons_guest_template (localStorage): Guest state with address
+ * - commons_bubble (localStorage): Postal bubble center/radius
+ * - commons_location_scope (localStorage): Homepage scope filter
  */
 
 import { z } from 'zod';
 import { browser } from '$app/environment';
 
 // IndexedDB database names
-const SESSION_DB_NAME = 'communique-sessions';
-const LOCATION_DB_NAME = 'communique-location';
+const SESSION_DB_NAME_LEGACY = 'commons-sessions';
+const SESSION_DB_NAME = 'commons-session';
+const ADDRESS_DB_NAME = 'commons-address';
+const LOCATION_DB_NAME = 'commons_location';
 
 // localStorage keys
-const GUEST_STATE_KEY = 'communique_guest_template';
+const GUEST_STATE_KEY = 'commons_guest_template';
+const BUBBLE_KEY = 'commons_bubble';
+const SCOPE_KEY = 'commons_location_scope';
 
 // =============================================================================
 // ZOD SCHEMA
@@ -30,70 +38,122 @@ const GuestStateSchema = z.object({
 }).passthrough(); // Allow additional fields
 
 /**
- * Clear all location-related caches
- * Call when user updates their address
+ * Clear ALL location-bearing client state.
+ * Call when user updates their address.
+ *
+ * This clears every cache that could reassert a stale location:
+ * - Location signals + inferred location (IndexedDB)
+ * - Encrypted constituent address (IndexedDB, 6-month TTL)
+ * - Session tree state with district (IndexedDB, 6-month TTL)
+ * - Guest state address (localStorage)
+ * - Bubble center/radius (localStorage)
+ * - Location scope filter (localStorage)
  */
-export async function invalidateLocationCaches(): Promise<void> {
+export async function invalidateLocationCaches(userId?: string): Promise<void> {
 	if (!browser) return;
 
-	console.debug('[CacheInvalidation] Clearing location caches...');
+	console.debug('[CacheInvalidation] Clearing ALL location-bearing state...');
 
+	// 1. Location signals + inferred location (IndexedDB)
 	try {
-		// Clear location storage (location signals, inferred location)
 		const { locationStorage } = await import('$lib/core/location/storage');
 		await locationStorage.clearAll();
-		console.debug('[CacheInvalidation] Cleared location storage');
 	} catch (error) {
 		console.error('[CacheInvalidation] Failed to clear location storage:', error);
 	}
 
+	// 2. Encrypted constituent address (IndexedDB, 6-month TTL)
+	// This is the #1 source of stale location reassertion for Tier 2+ users
 	try {
-		// Clear guest state address
+		if (userId) {
+			const { clearConstituentAddress } = await import('$lib/core/identity/constituent-address');
+			await clearConstituentAddress(userId);
+		} else {
+			await clearDatabase(ADDRESS_DB_NAME);
+		}
+	} catch (error) {
+		console.error('[CacheInvalidation] Failed to clear constituent address:', error);
+	}
+
+	// 3. Session tree state with district (IndexedDB, 6-month TTL)
+	// Tree state holds congressionalDistrict — must be re-derived after address change
+	try {
+		if (userId) {
+			const { clearTreeState } = await import('$lib/core/identity/session-credentials');
+			await clearTreeState(userId);
+		} else {
+			// No userId — clear the entire live session DB
+			await clearDatabase(SESSION_DB_NAME);
+		}
+	} catch (error) {
+		console.error('[CacheInvalidation] Failed to clear session tree state:', error);
+	}
+
+	// 4. Guest state address (localStorage)
+	try {
 		const storedState = localStorage.getItem(GUEST_STATE_KEY);
 		if (storedState) {
 			const parsed = JSON.parse(storedState);
 			const validationResult = GuestStateSchema.safeParse(parsed);
 
 			if (!validationResult.success) {
-				console.warn(
-					'[CacheInvalidation] Invalid guest state structure:',
-					validationResult.error.flatten()
-				);
-				// Remove invalid data entirely
 				localStorage.removeItem(GUEST_STATE_KEY);
 			} else if (validationResult.data.address) {
 				delete validationResult.data.address;
 				localStorage.setItem(GUEST_STATE_KEY, JSON.stringify(validationResult.data));
-				console.debug('[CacheInvalidation] Cleared guest state address');
 			}
 		}
 	} catch (error) {
 		console.error('[CacheInvalidation] Failed to clear guest state address:', error);
 	}
+
+	// 5. Bubble center/radius (localStorage)
+	try {
+		localStorage.removeItem(BUBBLE_KEY);
+	} catch (error) {
+		console.error('[CacheInvalidation] Failed to clear bubble state:', error);
+	}
+
+	// 6. Location scope filter (localStorage)
+	try {
+		localStorage.removeItem(SCOPE_KEY);
+	} catch (error) {
+		console.error('[CacheInvalidation] Failed to clear location scope:', error);
+	}
+
+	console.debug('[CacheInvalidation] All location-bearing state cleared');
 }
 
 /**
  * Clear session credentials cache for a specific user
  * Call when user's verification/identity changes
+ *
+ * Clears BOTH the live session DB (commons-session) and
+ * the legacy session DB (commons-sessions) to prevent stale
+ * credentials from either store reasserting old state.
  */
 export async function invalidateSessionCredentials(userId?: string): Promise<void> {
 	if (!browser) return;
 
 	console.debug('[CacheInvalidation] Clearing session credentials...');
 
+	// Clear live session DB (commons-session)
 	try {
 		if (userId) {
-			// Clear specific user's credentials
-			const { deleteSessionCredential } = await import('$lib/core/identity/session-cache');
-			await deleteSessionCredential(userId);
-			console.debug('[CacheInvalidation] Cleared session credential for user:', userId);
+			const { clearSessionCredential } = await import('$lib/core/identity/session-credentials');
+			await clearSessionCredential(userId);
 		} else {
-			// Clear all session credentials (nuclear option)
 			await clearDatabase(SESSION_DB_NAME);
-			console.debug('[CacheInvalidation] Cleared all session credentials');
 		}
 	} catch (error) {
-		console.error('[CacheInvalidation] Failed to clear session credentials:', error);
+		console.error('[CacheInvalidation] Failed to clear live session credentials:', error);
+	}
+
+	// Clear legacy session DB (commons-sessions) — may still exist on returning users
+	try {
+		await clearDatabase(SESSION_DB_NAME_LEGACY);
+	} catch (error) {
+		console.error('[CacheInvalidation] Failed to clear legacy session credentials:', error);
 	}
 }
 
@@ -122,11 +182,11 @@ export async function clearAllClientCaches(): Promise<void> {
 
 	// Clear any other localStorage items specific to the user
 	try {
-		// Only clear communique-prefixed items
+		// Only clear commons-prefixed items
 		const keysToRemove: string[] = [];
 		for (let i = 0; i < localStorage.length; i++) {
 			const key = localStorage.key(i);
-			if (key && key.startsWith('communique')) {
+			if (key && key.startsWith('commons')) {
 				keysToRemove.push(key);
 			}
 		}

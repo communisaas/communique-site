@@ -8,7 +8,7 @@
  * SSR-safe: all operations check for `indexedDB` availability and return
  * graceful fallbacks (null / false / 0) when running on the server.
  *
- * Database: 'communique-credentials', Version: 2
+ * Database: 'commons-credentials', Version: 2
  * Object Store: 'credentials', Key: recordId (HMAC-based)
  */
 
@@ -56,7 +56,7 @@ interface LegacyRecord {
 // Constants
 // ============================================================================
 
-const DB_NAME = 'communique-credentials';
+const DB_NAME = 'commons-credentials';
 const DB_VERSION = 2;
 const STORE_NAME = 'credentials';
 

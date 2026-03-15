@@ -614,7 +614,7 @@ export class ThoughtEmitter {
 		// Otherwise infer from IDs/URL
 		if (source.mongoId) return 'intelligence';
 		if (source.documentId) return 'document';
-		if (source.url?.includes('communique.vote')) return 'organization';
+		if (source.url?.includes('commons.email')) return 'organization';
 		return 'web';
 	}
 }

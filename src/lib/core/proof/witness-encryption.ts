@@ -11,7 +11,7 @@
  * 4. Encrypt witness with XChaCha20-Poly1305 (24-byte nonce)
  * 5. Return ciphertext + nonce + ephemeral public key
  *
- * Per COMMUNIQUE-ZK-IMPLEMENTATION-SPEC.md Phase 2
+ * Per COMMONS-ZK-IMPLEMENTATION-SPEC.md Phase 2
  */
 
 import sodium from 'libsodium-wrappers';
@@ -198,7 +198,8 @@ export async function encryptWitness(witness: WitnessData): Promise<EncryptedWit
 		const encryptionKey = sodium.crypto_generichash(
 			32, // 32 bytes for XChaCha20-Poly1305
 			sharedSecret,
-			sodium.from_string('communique-witness-encryption')
+			// FROZEN: changing this domain would break decryption of existing witness ciphertexts
+			sodium.from_string('commons-witness-encryption-v1')
 		);
 
 		// Step 5: Generate random 24-byte nonce (full XChaCha20 nonce, no truncation)

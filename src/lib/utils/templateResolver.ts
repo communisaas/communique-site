@@ -277,7 +277,7 @@ export function resolveTemplate(
 	if (isCongressional) {
 		// Congressional routing via CWC API, include anon when user is null
 		const userPart = user?.id ?? 'anon';
-		routingEmail = `congress+${template.id}-${userPart}@communique.org`;
+		routingEmail = `congress+${template.id}-${userPart}@commons.email`;
 	}
 
 	return {

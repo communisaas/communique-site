@@ -1,5 +1,5 @@
 /**
- * Unified API Client for Communique
+ * Unified API Client for Commons
  *
  * Consolidated API client combining the best features from both implementations:
  * - Comprehensive error handling with typed errors

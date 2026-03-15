@@ -770,7 +770,8 @@ async function computeIdentityCommitmentInBoundary(
 	documentNumber: string,
 	birthYear: number
 ): Promise<string> {
-	const DOMAIN_PREFIX = 'communique-identity-v1';
+	// FROZEN: changing this prefix would invalidate all existing identity commitments
+	const DOMAIN_PREFIX = 'commons-identity-v1';
 	const COMMITMENT_SALT = process.env.IDENTITY_COMMITMENT_SALT;
 
 	if (!COMMITMENT_SALT) {

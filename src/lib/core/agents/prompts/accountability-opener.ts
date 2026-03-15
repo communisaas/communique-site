@@ -10,7 +10,7 @@
  * This is a single LLM call with structured output — NOT per-person calls.
  * Cost: ~$0.01-0.02 per template. Zero marginal cost per citizen.
  *
- * Voice rules (from communique design system):
+ * Voice rules (from commons design system):
  * - Confident & direct. State what is.
  * - No flattery, no hedging, no emotional manipulation.
  * - No adjectives (no "dedicated", "committed", "important").

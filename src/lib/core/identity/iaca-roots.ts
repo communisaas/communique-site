@@ -733,7 +733,7 @@ export const IACA_ROOTS: Record<string, IACACertificate[]> = {
  */
 export const DEV_IACA_ROOT: IACACertificate = {
 	state: 'XX',
-	issuer: 'Communique Development IACA Root (NOT FOR PRODUCTION)',
+	issuer: 'Commons Development IACA Root (NOT FOR PRODUCTION)',
 	certificateB64: '',
 	expiresAt: '2099-12-31T23:59:59Z'
 };

@@ -106,7 +106,7 @@ export function validateBN254HexArray(values: string[], label: string): void {
 
 /**
  * FIPS state codes → two-letter postal abbreviations.
- * Used to convert substrate's district ID format (cd-0601) to communique's (CA-01).
+ * Used to convert substrate's district ID format (cd-0601) to commons' (CA-01).
  */
 const FIPS_TO_STATE: Record<string, string> = {
 	'01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA',
@@ -124,7 +124,7 @@ const FIPS_TO_STATE: Record<string, string> = {
 };
 
 /**
- * Convert substrate's district ID format to communique's format.
+ * Convert substrate's district ID format to commons' format.
  * "cd-0601" → "CA-01", "cd-5000" → "VT-AL"
  */
 function convertDistrictId(substrateId: string): string {
@@ -148,7 +148,7 @@ const STATE_TO_FIPS: Record<string, string> = Object.fromEntries(
 );
 
 /**
- * Convert communique's district code to substrate's IPFS key format.
+ * Convert commons' district code to substrate's IPFS key format.
  * "CA-12" → "cd-0612", "VT-AL" → "cd-5000"
  * Used for officials dataset lookup (keyed by substrate format).
  */
@@ -492,7 +492,7 @@ export async function registerLeaf(leaf: string, options?: { attestationHash?: s
 
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
-		'X-Client-Version': 'communique-v1',
+		'X-Client-Version': 'commons-v1',
 	};
 	if (WRITE_RELAY_TOKEN) {
 		headers['Authorization'] = `Bearer ${WRITE_RELAY_TOKEN}`;
@@ -556,7 +556,7 @@ export async function registerLeaf(leaf: string, options?: { attestationHash?: s
  * browser clear / device loss.
  *
  * Authorization boundary: Shadow Atlas validates API access (Bearer token).
- * Per-leaf ownership is enforced by communique (OAuth session + Postgres).
+ * Per-leaf ownership is enforced by commons (OAuth session + Postgres).
  *
  * @param newLeaf - Hex-encoded new leaf hash (with 0x prefix)
  * @param oldLeafIndex - Index of the old leaf to zero
@@ -572,7 +572,7 @@ export async function replaceLeaf(
 
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
-		'X-Client-Version': 'communique-v1',
+		'X-Client-Version': 'commons-v1',
 	};
 	if (WRITE_RELAY_TOKEN) {
 		headers['Authorization'] = `Bearer ${WRITE_RELAY_TOKEN}`;
@@ -694,7 +694,7 @@ export async function registerEngagement(
 
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
-		'X-Client-Version': 'communique-v1',
+		'X-Client-Version': 'commons-v1',
 	};
 	if (WRITE_RELAY_TOKEN) {
 		headers['Authorization'] = `Bearer ${WRITE_RELAY_TOKEN}`;
@@ -777,7 +777,7 @@ export async function getEngagementPath(leafIndex: number): Promise<EngagementPa
 	const response = await fetch(url, {
 		headers: {
 			Accept: 'application/json',
-			'X-Client-Version': 'communique-v1',
+			'X-Client-Version': 'commons-v1',
 		},
 		signal: AbortSignal.timeout(10_000),
 	});
@@ -833,7 +833,7 @@ export async function getEngagementMetrics(identityCommitment: string): Promise<
 	const response = await fetch(url, {
 		headers: {
 			Accept: 'application/json',
-			'X-Client-Version': 'communique-v1',
+			'X-Client-Version': 'commons-v1',
 		},
 		signal: AbortSignal.timeout(10_000),
 	});
@@ -895,7 +895,7 @@ export async function getEngagementBreakdown(identityCommitment: string): Promis
 	const response = await fetch(url, {
 		headers: {
 			Accept: 'application/json',
-			'X-Client-Version': 'communique-v1',
+			'X-Client-Version': 'commons-v1',
 		},
 		signal: AbortSignal.timeout(10_000),
 	});
@@ -973,7 +973,7 @@ export async function getOfficials(districtCode: string): Promise<OfficialsRespo
 			const dataset = await getOfficialsDataset();
 
 			// IPFS officials dataset is keyed by substrate format (cd-0612).
-			// Callers may pass communique format (CA-12). Try substrate key first,
+			// Callers may pass commons format (CA-12). Try substrate key first,
 			// then fall back to the raw key for forward compatibility.
 			const substrateKey = toSubstrateDistrictKey(districtCode);
 			const entry = dataset.districts[substrateKey] ?? dataset.districts[districtCode];

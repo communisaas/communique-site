@@ -20,7 +20,7 @@ interface DraftStorage {
 }
 
 // Storage key for localStorage
-const STORAGE_KEY = 'communique_template_drafts';
+const STORAGE_KEY = 'commons_template_drafts';
 
 // Auto-save interval (30 seconds)
 const AUTO_SAVE_INTERVAL = 30 * 1000;

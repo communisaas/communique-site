@@ -57,7 +57,8 @@ export async function decryptWitness(
 	// The third arg to sodium.crypto_generichash is a key, mapped to BLAKE2b's `key` option
 	const encryptionKey = blake2b(sharedSecret, {
 		dkLen: 32,
-		key: new TextEncoder().encode('communique-witness-encryption')
+		// FROZEN: must match client-side domain in witness-encryption.ts
+		key: new TextEncoder().encode('commons-witness-encryption-v1')
 	});
 
 	// Step 3: Decrypt with XChaCha20-Poly1305

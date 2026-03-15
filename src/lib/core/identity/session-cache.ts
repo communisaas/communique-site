@@ -87,7 +87,7 @@ interface StoredCredential {
 // IndexedDB Setup
 // ============================================================================
 
-const DB_NAME = 'communique-sessions';
+const DB_NAME = 'commons-sessions';
 const DB_VERSION = 2; // Bumped for encryption migration
 const STORE_NAME = 'verification-credentials';
 

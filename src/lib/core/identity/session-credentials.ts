@@ -241,7 +241,7 @@ interface SessionCredentialDB extends DBSchema {
 // Database Management
 // ============================================================================
 
-const DB_NAME = 'communique-session';
+const DB_NAME = 'commons-session';
 const DB_VERSION = 3; // Bumped for per-user isolation + identity/tree-state split
 const STORE_NAME = 'credentials';
 

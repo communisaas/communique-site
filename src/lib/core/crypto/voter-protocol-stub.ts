@@ -2,7 +2,7 @@
  * Stub for @voter-protocol/noir-prover — used in CI/test environments
  * where the local package isn't linked.
  *
- * Exports only the symbols actually imported by communique source files.
+ * Exports only the symbols actually imported by commons source files.
  * Real implementation lives in ../voter-protocol/packages/noir-prover.
  */
 

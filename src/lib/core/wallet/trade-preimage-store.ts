@@ -67,7 +67,7 @@ export interface TradePreimage {
 // INDEXEDDB HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const DB_NAME = 'communique-trade-preimages';
+const DB_NAME = 'commons-trade-preimages';
 const DB_VERSION = 1;
 const STORE_NAME = 'preimages';
 
