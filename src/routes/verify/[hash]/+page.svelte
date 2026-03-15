@@ -10,7 +10,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.credential ? 'Verified Constituent' : 'Verification'} | Communique</title>
+	<title>{data.credential ? 'Verified Constituent' : 'Verification'} | Commons</title>
 </svelte:head>
 
 <div class="mx-auto max-w-lg px-4 py-16">
@@ -56,7 +56,7 @@
 
 	<div class="mt-8 text-center">
 		<a href="/" class="text-sm text-slate-500 underline hover:text-slate-700">
-			Back to Communique
+			Back to Commons
 		</a>
 	</div>
 </div>

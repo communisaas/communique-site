@@ -1,6 +1,6 @@
 # ThoughtStream 2.0 Integration Guide
 
-Complete integration example for Communique agent visualization.
+Complete integration example for Commons agent visualization.
 
 ## Full Integration Example
 

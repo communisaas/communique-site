@@ -109,15 +109,17 @@
 	<!-- Embed and campaign pages: Own layout, no root chrome -->
 	{@render children()}
 {:else}
-	<!-- HeaderSystem handles context-aware header rendering -->
-	<!-- HeaderTemplate is a structural subset of Template — handler only reads common fields at runtime -->
-	<HeaderSystem user={data.user as HeaderUser | null} template={(data as Record<string, unknown>).template as HeaderTemplate | null} onTemplateUse={handleTemplateUse} />
+	{#if !isOrgPage}
+		<!-- HeaderSystem handles context-aware header rendering -->
+		<!-- HeaderTemplate is a structural subset of Template — handler only reads common fields at runtime -->
+		<HeaderSystem user={data.user as HeaderUser | null} template={(data as Record<string, unknown>).template as HeaderTemplate | null} onTemplateUse={handleTemplateUse} />
 
-	<!-- Credential expiry nudge: fixed banner below header, shows when credential nears expiration -->
-	<CredentialExpiryNudge
-		credential={layoutCredential}
-		onReverify={() => goto('/profile')}
-	/>
+		<!-- Credential expiry nudge: fixed banner below header, shows when credential nears expiration -->
+		<CredentialExpiryNudge
+			credential={layoutCredential}
+			onReverify={() => goto('/profile')}
+		/>
+	{/if}
 
 	{#if (data.user as Record<string, unknown> | null)?.id === 'user-seed-1'}
 		<div class="pointer-events-none fixed top-0 left-0 right-0 z-[9999] bg-amber-500/10 text-amber-200 text-center text-xs py-1 font-mono tracking-wide">

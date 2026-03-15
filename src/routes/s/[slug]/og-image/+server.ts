@@ -155,7 +155,7 @@ export const GET: RequestHandler = async ({ params }) => {
 									width: '100%'
 								},
 								children: [
-									// Communiqué Branding
+									// Commons Branding
 									{
 										type: 'div',
 										props: {
@@ -181,7 +181,7 @@ export const GET: RequestHandler = async ({ params }) => {
 													type: 'div',
 													props: {
 														style: { fontSize: '32px', fontWeight: 700, color: '#1E293B' },
-														children: 'Communiqué'
+														children: 'Commons'
 													}
 												}
 											]

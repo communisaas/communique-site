@@ -37,7 +37,7 @@
 			<Users class="h-10 w-10 text-emerald-600 opacity-90" strokeWidth={1.5} />
 		</div>
 	</div>
-	<h2 class="mb-2 text-2xl font-bold text-slate-900">Welcome to Communiqué</h2>
+	<h2 class="mb-2 text-2xl font-bold text-slate-900">Welcome to Commons</h2>
 </div>
 
 <!-- Auth Options -->

@@ -6,14 +6,14 @@
 	 * It answers: "Who made this?" and "Can I contact them?"
 	 * Everything else is cognitive surplus.
 	 *
-	 * Visual bookends: Hero opens with "communiqué", footer closes with it.
+	 * Visual bookends: Hero opens with "commons", footer closes with it.
 	 */
 </script>
 
 <footer class="footer-coda">
 	<div class="footer-coda__inner">
 		<!-- Brand closure: matches hero overture -->
-		<p class="footer-coda__brand">communiqué</p>
+		<p class="footer-coda__brand">commons</p>
 
 		<!-- Contact row: individual + org surfaces -->
 		<div class="footer-coda__links">
@@ -23,7 +23,7 @@
 		</div>
 
 		<!-- Legal minimum -->
-		<p class="footer-coda__legal">© {new Date().getFullYear()} Communiqué PBC</p>
+		<p class="footer-coda__legal">© {new Date().getFullYear()} Commons PBC</p>
 	</div>
 </footer>
 
@@ -47,7 +47,7 @@
 	 * Brand whisper: echoes hero overture
 	 *
 	 * Same warm human tone, quieter presence.
-	 * Visual bookend: opens with communiqué, closes with communiqué
+	 * Visual bookend: opens with commons, closes with commons
 	 * The warmth carries through - people at both ends.
 	 */
 	.footer-coda__brand {

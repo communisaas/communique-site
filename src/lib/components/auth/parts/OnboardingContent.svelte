@@ -30,7 +30,7 @@
 	// Check if user has seen onboarding before
 	const _hasSeenOnboarding = $derived.by(() => {
 		if (typeof window === 'undefined') return false;
-		return localStorage.getItem('communique_has_seen_onboarding') === 'true';
+		return localStorage.getItem('commons_has_seen_onboarding') === 'true';
 	});
 
 	// Dynamic messaging based on source and template type
@@ -163,7 +163,7 @@
 	async function handleAuth(provider: string) {
 		// Mark user as having seen onboarding
 		if (typeof window !== 'undefined') {
-			localStorage.setItem('communique_has_seen_onboarding', 'true');
+			localStorage.setItem('commons_has_seen_onboarding', 'true');
 		}
 
 		// Store the template context before redirecting

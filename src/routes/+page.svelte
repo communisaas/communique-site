@@ -75,7 +75,7 @@
 	let userInitiatedSelection = $state(false);
 
 	// Location scope state (user-selected geographic filter for templates)
-	const SCOPE_STORAGE_KEY = 'communique_location_scope';
+	const SCOPE_KEY = 'commons_location_scope';
 	const SCOPE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 	let selectedScope = $state<GeoScope | null>(null);
@@ -87,11 +87,11 @@
 		if (browser) {
 			if (scope) {
 				localStorage.setItem(
-					SCOPE_STORAGE_KEY,
+					SCOPE_KEY,
 					JSON.stringify({ scope, timestamp: Date.now() })
 				);
 			} else {
-				localStorage.removeItem(SCOPE_STORAGE_KEY);
+				localStorage.removeItem(SCOPE_KEY);
 			}
 		}
 	}
@@ -145,14 +145,14 @@
 		// Restore location scope from localStorage
 		let restoredFromStorage = false;
 		try {
-			const stored = localStorage.getItem(SCOPE_STORAGE_KEY);
+			const stored = localStorage.getItem(SCOPE_KEY);
 			if (stored) {
 				const { scope, timestamp } = JSON.parse(stored);
 				if (Date.now() - timestamp < SCOPE_MAX_AGE_MS && scope?.type) {
 					selectedScope = scope as GeoScope;
 					restoredFromStorage = true;
 				} else {
-					localStorage.removeItem(SCOPE_STORAGE_KEY);
+					localStorage.removeItem(SCOPE_KEY);
 				}
 			}
 		} catch {
@@ -442,7 +442,7 @@
 </script>
 
 <svelte:head>
-	<title>Communiqué — Write once, send together</title>
+	<title>Commons — Write once, send together</title>
 	<meta
 		name="description"
 		content="Write once, share the link, everyone can send it. Coordinated messages make impact."

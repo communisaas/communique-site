@@ -55,7 +55,7 @@ function checkRateLimit(debateId: string): string | null {
  * Rate limited: 1 concurrent per debate, 5-min debounce, 10/hour global.
  *
  * NOTE: @voter-protocol/ai-evaluator is imported dynamically since it lives
- * in the voter-protocol monorepo, not the communique workspace.
+ * in the voter-protocol monorepo, not the commons workspace.
  */
 export const POST: RequestHandler = async ({ params, request }) => {
 	const { debateId } = params;

@@ -29,7 +29,7 @@
 	}
 
 	function _shareOnSocial(platform: 'twitter' | 'facebook' | 'linkedin') {
-		const text = `Check out "${template?.title}" on Communiqué`;
+		const text = `Check out "${template?.title}" on Commons`;
 		const encodedUrl = encodeURIComponent(shareUrl);
 		const encodedText = encodeURIComponent(text);
 

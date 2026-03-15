@@ -103,7 +103,7 @@
 			{#if backConfig.show}
 				<HeaderBackButton href={backConfig.href} label={backConfig.label} />
 			{:else}
-				<a href="/" class="identity-strip__brand"> Communique </a>
+				<a href="/" class="identity-strip__brand"> Commons </a>
 			{/if}
 		</div>
 

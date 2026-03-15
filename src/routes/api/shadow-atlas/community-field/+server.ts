@@ -100,7 +100,7 @@ export const POST: RequestHandler = async (event) => {
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
 			Accept: 'application/json',
-			'X-Client-Version': 'communique-v1',
+			'X-Client-Version': 'commons-v1',
 			'X-Forwarded-For': clientIp,
 			'X-Request-ID': requestId
 		};

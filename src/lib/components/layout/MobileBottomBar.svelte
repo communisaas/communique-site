@@ -31,7 +31,7 @@
 	async function handleShare(): Promise<void> {
 		const shareData = {
 			title: template.title,
-			text: `Check out "${template.title}" on Communique`,
+			text: `Check out "${template.title}" on Commons`,
 			url: shareUrl
 		};
 

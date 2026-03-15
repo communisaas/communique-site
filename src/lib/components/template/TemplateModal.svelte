@@ -399,6 +399,15 @@
 			verified: data.verified
 		});
 
+		// Invalidate stale location caches from prior address
+		// Pass userId so encrypted constituent address + session tree state are cleared
+		try {
+			const { invalidateLocationCaches } = await import('$lib/core/identity/cache-invalidation');
+			await invalidateLocationCaches(user?.id);
+		} catch {
+			// Non-fatal
+		}
+
 		// Store structured address in component state for ProofGenerator
 		verifiedAddress = {
 			street: data.streetAddress,
@@ -429,19 +438,13 @@
 		if (user?.id && template.deliveryMethod === 'cwc') {
 			const alreadyVerified = (user.trust_tier ?? 0) >= 2;
 
-			if (alreadyVerified) {
-				// Already district-verified (re-entering address on new device/cleared store)
-				// Skip credential issuance — just need the address for CWC delivery
-				console.log('[Template Modal] Tier 2+ re-entering address — skipping verification');
-				handleSendConfirmation(true);
-				return;
-			}
-
 			try {
 				trustUpgradePhase = 'simulating';
 				modalActions.setState('trust-upgrade');
 
-				// Call verify-address to set verified_at + identity_commitment + persist representatives
+				// Always call verify-address — even for Tier 2+ users re-entering address.
+				// This updates district_hash, user_representatives, and credential on the server.
+				// Without this, a user who moves districts keeps their old district forever.
 				const verifyRes = await fetch('/api/identity/verify-address', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -455,19 +458,32 @@
 
 				if (!verifyResult.success) {
 					console.error('[Template Modal] verify-address failed:', verifyResult.error);
-					// Fall back to mailto
-					await handleUnifiedEmailFlow();
+					if (alreadyVerified) {
+						// Tier 2+ can still proceed — they have a valid (possibly stale) credential
+						handleSendConfirmation(true);
+					} else {
+						await handleUnifiedEmailFlow();
+					}
 					return;
 				}
 
-				// Refresh server data so locals.user has verified_at set
+				// Refresh server data so locals.user has updated district_hash
 				await invalidateAll();
 
-				// Proceed to ZKP flow
-				submitCongressionalMessage();
+				if (alreadyVerified) {
+					// Already verified — proceed directly to send
+					handleSendConfirmation(true);
+				} else {
+					// New verification — proceed to ZKP flow
+					submitCongressionalMessage();
+				}
 			} catch (e) {
 				console.error('[Template Modal] Address verification failed:', e);
-				await handleUnifiedEmailFlow();
+				if (alreadyVerified) {
+					handleSendConfirmation(true);
+				} else {
+					await handleUnifiedEmailFlow();
+				}
 			}
 			return;
 		}

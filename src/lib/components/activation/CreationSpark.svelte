@@ -167,7 +167,7 @@
 <div class="creation-spark" class:activated={isActivated} class:has-content={hasContent}>
 	<!-- Brand + Headline integrated into creation surface -->
 	<div class="spark-header">
-		<p class="brand-mark">communiqué</p>
+		<p class="brand-mark">commons</p>
 		<h1 class="headline">
 			Write once.
 			<span class="accent">Send together.</span>

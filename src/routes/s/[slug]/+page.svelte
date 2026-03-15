@@ -512,6 +512,11 @@
 		try {
 			_isUpdatingAddress = true;
 
+			// Invalidate stale location caches before setting new address
+			// Pass userId so encrypted constituent address + session tree state are cleared
+			const { invalidateLocationCaches } = await import('$lib/core/identity/cache-invalidation');
+			await invalidateLocationCaches(data.user?.id);
+
 			// Cache address locally (Cypherpunk: no PII on User model)
 			guestState.setAddress(detail.address);
 
@@ -569,7 +574,7 @@
 </script>
 
 <svelte:head>
-	<title>{template.title} - Communiqué</title>
+	<title>{template.title} - Commons</title>
 	<meta name="description" content={template.description} />
 
 	<!-- Open Graph / Facebook -->
@@ -577,11 +582,11 @@
 	<meta property="og:url" content={shareUrl} />
 	<meta property="og:title" content={template.title} />
 	<meta property="og:description" content={socialProofDescription} />
-	<meta property="og:site_name" content="Communiqué" />
+	<meta property="og:site_name" content="Commons" />
 	<meta property="og:image" content="{shareUrl.split('?')[0]}/og-image" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
-	<meta property="og:image:alt" content="{template.title} - Join the movement on Communiqué" />
+	<meta property="og:image:alt" content="{template.title} - Join the movement on Commons" />
 
 	<!-- Twitter -->
 	<meta property="twitter:card" content="summary_large_image" />
@@ -589,7 +594,7 @@
 	<meta property="twitter:title" content={template.title} />
 	<meta property="twitter:description" content={socialProofDescription} />
 	<meta property="twitter:image" content="{shareUrl.split('?')[0]}/og-image" />
-	<meta property="twitter:image:alt" content="{template.title} - Join the movement on Communiqué" />
+	<meta property="twitter:image:alt" content="{template.title} - Join the movement on Commons" />
 </svelte:head>
 
 <!-- Template content with zoned layout: Orient → Commit → Act -->

@@ -36,9 +36,9 @@ export const GET: RequestHandler = async ({ locals }) => {
 	const timestamp = new Date(now).toISOString();
 
 	const message = [
-		'Communique Wallet Verification',
+		'Commons Wallet Verification',
 		'',
-		'I am connecting this wallet to my Communique account.',
+		'I am connecting this wallet to my Commons account.',
 		'',
 		`Nonce: ${nonce}`,
 		`Timestamp: ${timestamp}`

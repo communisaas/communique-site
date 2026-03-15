@@ -20,7 +20,7 @@
  * - address data (stored only in browser IndexedDB)
  *
  * SPEC REFERENCE: WAVE-17-19-IMPLEMENTATION-PLAN.md Section 17c
- * SPEC REFERENCE: COMMUNIQUE-INTEGRATION-SPEC.md Section 2.1
+ * SPEC REFERENCE: COMMONS-INTEGRATION-SPEC.md Section 2.1
  */
 
 import { json } from '@sveltejs/kit';

@@ -180,7 +180,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
 			headers: {
-				'User-Agent': 'Communique/1.0 (https://commons.email)'
+				'User-Agent': 'Commons/1.0 (https://commons.email)'
 			},
 			signal: AbortSignal.timeout(10_000)
 		});
