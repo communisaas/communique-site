@@ -32,12 +32,12 @@ describe('contracts constants', () => {
 	// ── Default values (no env overrides) ──────────────────────────────
 
 	describe('default values', () => {
-		it('DEBATE_MARKET_ADDRESS defaults to Scroll Sepolia v6.2 deployment', () => {
-			expect(DEBATE_MARKET_ADDRESS).toBe('0xAa1e5CcA6377c7c2E4dE2Df15dC87c51ccb9B751');
+		it('DEBATE_MARKET_ADDRESS defaults to Scroll Sepolia V11 deployment', () => {
+			expect(DEBATE_MARKET_ADDRESS).toBe('0xA07D6F620FEc31A163E1F888956e4c98D522B906');
 		});
 
-		it('DISTRICT_GATE_ADDRESS defaults to Scroll Sepolia deployment', () => {
-			expect(DISTRICT_GATE_ADDRESS).toBe('0xC5efdBE8A11d3EA1dD326360f43F159D9dfF684f');
+		it('DISTRICT_GATE_ADDRESS defaults to Scroll Sepolia V11 deployment', () => {
+			expect(DISTRICT_GATE_ADDRESS).toBe('0x139F96f38931cF2C2E1B4D285028d748F9DCA157');
 		});
 
 		it('SCROLL_CHAIN_ID defaults to 534351 (Scroll Sepolia)', () => {
@@ -52,8 +52,8 @@ describe('contracts constants', () => {
 			expect(TOKEN_SYMBOL).toBe('USDC');
 		});
 
-		it('STAKING_TOKEN_ADDRESS defaults to zero address (placeholder)', () => {
-			expect(STAKING_TOKEN_ADDRESS).toBe('0x0000000000000000000000000000000000000000');
+		it('STAKING_TOKEN_ADDRESS defaults to Scroll Sepolia V11 tUSDC', () => {
+			expect(STAKING_TOKEN_ADDRESS).toBe('0xe70623c79E3b3F7909bd3e989E50a18DdB13C95d');
 		});
 	});
 

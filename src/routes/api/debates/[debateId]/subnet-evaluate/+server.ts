@@ -42,6 +42,39 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		}>;
 		minerCount: number;
 		consensusAchieved: boolean;
+		// Level 3 miner transparency — per-miner raw evaluations with grounding evidence
+		minerEvaluations?: Array<{
+			minerUid: number;
+			inference: string;
+			argumentEvaluations: Array<{
+				argumentIndex: number;
+				scores: {
+					reasoning: number;
+					accuracy: number;
+					evidence: number;
+					constructiveness: number;
+					feasibility: number;
+				};
+				grounding?: {
+					claimVerdicts: Array<{
+						claim: string;
+						verdict: string;
+						sourceIndices: number[];
+						reasoning: string;
+					}>;
+					sourceVerdicts: Array<{
+						sourceIndex: number;
+						url: string;
+						title: string;
+						reliability: number;
+						groundingDistance: number;
+						integrityFlags: string[];
+						note: string;
+					}>;
+					accuracyJustification: string;
+				};
+			}>;
+		}>;
 	};
 
 	try {
@@ -161,7 +194,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 				scores: body.argumentScores,
 				minerCount: body.minerCount,
 				consensusAchieved: body.consensusAchieved,
-				evaluatedAt: new Date().toISOString()
+				evaluatedAt: new Date().toISOString(),
+				// Level 3: per-miner raw evaluations with grounding evidence
+				...(body.minerEvaluations ? { minerEvaluations: body.minerEvaluations } : {})
 			} as object,
 			ai_panel_consensus: overallAgreement,
 			resolution_method: 'ai_community',

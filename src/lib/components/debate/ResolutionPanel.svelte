@@ -22,6 +22,7 @@
 	import AIScoreBreakdown from './AIScoreBreakdown.svelte';
 	import ModelAgreementDots from './ModelAgreementDots.svelte';
 	import AppealBanner from './AppealBanner.svelte';
+	import EvidencePanel from './EvidencePanel.svelte';
 	import type { DebateData, ArgumentData } from '$lib/stores/debateState.svelte';
 	import { Trophy, ChevronDown, ChevronUp } from '@lucide/svelte';
 
@@ -84,6 +85,8 @@
 				: 'under_appeal'}
 			resolutionMethod={resolution?.resolutionMethod}
 			appealDeadline={resolution?.appealDeadline}
+			source={resolution?.source}
+			minerCount={resolution?.minerCount}
 		/>
 
 		{#if resolution}
@@ -221,6 +224,15 @@
 					<div class="px-5 py-4 bg-slate-50/50 border-t border-slate-100 space-y-4">
 						<!-- Dimension breakdown -->
 						<AIScoreBreakdown scores={dimensions} />
+
+						<!-- Level 3: Miner evidence (when subnet evaluation data exists) -->
+						{#if resolution?.minerEvaluations}
+							<EvidencePanel
+								argumentIndex={arg.argumentIndex}
+								minerEvaluations={resolution.minerEvaluations}
+								medianScores={dimensions}
+							/>
+						{/if}
 
 						<!-- Full alpha blend -->
 						<AlphaBlendBar

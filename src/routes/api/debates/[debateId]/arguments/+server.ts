@@ -19,7 +19,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
 	const debate = await prisma.debate.findUnique({
 		where: { id: debateId },
-		select: { id: true }
+		select: { id: true, proposition_text: true }
 	});
 
 	if (!debate) {
@@ -43,6 +43,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	});
 
 	return json({
+		proposition: debate.proposition_text,
 		arguments: arguments_.map((arg) => ({
 			id: arg.id,
 			argumentIndex: arg.argument_index,

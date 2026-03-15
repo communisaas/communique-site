@@ -44,7 +44,7 @@ vi.mock('$env/dynamic/private', () => ({
 }));
 
 vi.mock('$lib/core/contracts', () => ({
-	DEBATE_MARKET_ADDRESS: '0xAa1e5CcA6377c7c2E4dE2Df15dC87c51ccb9B751'
+	DEBATE_MARKET_ADDRESS: '0xA07D6F620FEc31A163E1F888956e4c98D522B906'
 }));
 
 // Mock $types

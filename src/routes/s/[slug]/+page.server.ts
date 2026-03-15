@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import type { AIResolutionData, ArgumentAIScore } from '$lib/stores/debateState.svelte';
+import type { AIResolutionData, ArgumentAIScore, MinerEvaluation } from '$lib/stores/debateState.svelte';
 import { prisma } from '$lib/core/db';
 import { getPositionCounts, getEngagementByDistrict } from '$lib/services/positionService';
 import { parseRecipientConfig } from '$lib/types/template';
@@ -30,8 +30,10 @@ function buildAIResolution(
 	const blob = (dbDebate.ai_resolution ?? {}) as Record<string, unknown>;
 	const models = (blob.models ?? []) as Array<unknown>;
 
-	const argumentScores: ArgumentAIScore[] = dbDebate.arguments
-		.filter((a) => a.ai_scores != null)
+	const scoredArgs = dbDebate.arguments.filter((a) => a.ai_scores != null);
+	const maxWeightedScore = Math.max(...scoredArgs.map((a) => Number(a.weighted_score ?? 0)), 1);
+
+	const argumentScores: ArgumentAIScore[] = scoredArgs
 		.map((a) => {
 			const dims = (a.ai_scores ?? {}) as Record<string, number>;
 			return {
@@ -44,20 +46,27 @@ function buildAIResolution(
 					feasibility: dims.feasibility ?? 0
 				},
 				weightedAIScore: a.ai_weighted ?? 0,
-				communityScore: Number(a.weighted_score ?? 0),
+				communityScore: Math.round((Number(a.weighted_score ?? 0) / maxWeightedScore) * 10000),
 				finalScore: a.final_score ?? 0,
 				modelAgreement: a.model_agreement ?? 0
 			};
 		});
 
+	const source = (blob.source as string) ?? 'ai_panel';
+	const minerCount = (blob.minerCount as number) ?? undefined;
+	const rawMinerEvals = blob.minerEvaluations as MinerEvaluation[] | undefined;
+
 	return {
 		argumentScores,
 		alphaWeight: 4000,
-		modelCount: models.length || 5,
+		modelCount: source === 'bittensor_subnet' ? (minerCount ?? 0) : (models.length || 5),
 		signatureCount: dbDebate.ai_signature_count ?? 0,
 		quorumRequired: 4,
 		resolutionMethod: (dbDebate.resolution_method as AIResolutionData['resolutionMethod']) ?? 'ai_community',
 		evaluatedAt: (blob.evaluatedAt as string) ?? undefined,
+		source: source as AIResolutionData['source'],
+		minerCount,
+		minerEvaluations: rawMinerEvals,
 		appealDeadline: dbDebate.appeal_deadline?.toISOString(),
 		hasAppeal: false,
 		governanceJustification: dbDebate.governance_justification ?? undefined

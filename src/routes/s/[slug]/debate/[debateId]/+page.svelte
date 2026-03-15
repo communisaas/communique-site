@@ -5,6 +5,7 @@
 	import { debateState } from '$lib/stores/debateState.svelte';
 	import type { DebateData } from '$lib/stores/debateState.svelte';
 	import { invalidateAll, goto } from '$app/navigation';
+	import { untrack } from 'svelte';
 	import { ArrowLeft } from '@lucide/svelte';
 	import { FEATURES } from '$lib/config/features';
 
@@ -42,13 +43,19 @@
 				debate.status === 'awaiting_governance');
 
 		if (shouldStream) {
-			debateState.connectSSE(debate.debateIdOnchain);
-			if (debate.marketStatus === 'active') {
-				debateState.startEpochCountdown();
-			}
+			// untrack: connectSSE/disconnectSSE read/write sseConnection ($state)
+			// which would create an infinite re-trigger cycle if tracked
+			const id = debate.debateIdOnchain;
+			const marketActive = debate.marketStatus === 'active';
+			untrack(() => {
+				debateState.connectSSE(id);
+				if (marketActive) {
+					debateState.startEpochCountdown();
+				}
+			});
 		}
 		return () => {
-			debateState.disconnectSSE();
+			untrack(() => debateState.disconnectSSE());
 		};
 	});
 </script>
@@ -100,8 +107,7 @@
 			}
 		}}
 		onEscalate={() => {
-			// Navigate to governance dashboard (placeholder)
-			window.location.href = '/governance';
+			window.location.href = `/governance?debate=${debate.id}`;
 		}}
 		onParticipate={() => {
 			modalActions.openModal('debate-modal', 'debate', {

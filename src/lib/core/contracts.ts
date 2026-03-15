@@ -24,17 +24,17 @@
 import { env } from '$env/dynamic/public';
 import { FEATURES } from '$lib/config/features';
 
-/** DebateMarket contract (Scroll Sepolia v8 default — needs update after deploy). */
+/** DebateMarket contract (Scroll Sepolia V11 — hardened, parameterized timelocks). */
 export const DEBATE_MARKET_ADDRESS =
-	env.PUBLIC_DEBATE_MARKET_ADDRESS ?? '0xAa1e5CcA6377c7c2E4dE2Df15dC87c51ccb9B751';
+	env.PUBLIC_DEBATE_MARKET_ADDRESS ?? '0xA07D6F620FEc31A163E1F888956e4c98D522B906';
 
-/** DistrictGate verifier contract (Scroll Sepolia default). */
+/** DistrictGate verifier contract (Scroll Sepolia V11). */
 export const DISTRICT_GATE_ADDRESS =
-	env.PUBLIC_DISTRICT_GATE_ADDRESS ?? '0xC5efdBE8A11d3EA1dD326360f43F159D9dfF684f';
+	env.PUBLIC_DISTRICT_GATE_ADDRESS ?? '0x139F96f38931cF2C2E1B4D285028d748F9DCA157';
 
-/** ERC-20 staking token address (USDC on Scroll Sepolia — needs update after deploy). */
+/** ERC-20 staking token address (tUSDC on Scroll Sepolia V11). */
 export const STAKING_TOKEN_ADDRESS =
-	env.PUBLIC_STAKING_TOKEN_ADDRESS ?? '0x0000000000000000000000000000000000000000';
+	env.PUBLIC_STAKING_TOKEN_ADDRESS ?? '0xe70623c79E3b3F7909bd3e989E50a18DdB13C95d';
 
 if (!env.PUBLIC_STAKING_TOKEN_ADDRESS && FEATURES.WALLET) {
 	console.warn(

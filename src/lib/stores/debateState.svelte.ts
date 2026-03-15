@@ -93,10 +93,59 @@ export interface AIResolutionData {
 	quorumRequired: number;
 	resolutionMethod: 'ai_community' | 'governance_override' | 'community_only';
 	evaluatedAt?: string;
+	// Evaluation source attribution
+	source?: 'bittensor_subnet' | 'ai_panel';
+	minerCount?: number;
+	// Level 3 miner transparency — per-miner raw evaluations with grounding evidence
+	minerEvaluations?: MinerEvaluation[];
 	// Appeal state
 	appealDeadline?: string;
 	hasAppeal?: boolean;
 	governanceJustification?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MINER EVIDENCE TYPES — Level 3 transparency
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** A single miner's full evaluation (scores + grounding evidence per argument) */
+export interface MinerEvaluation {
+	minerUid: number;
+	inference: string; // "groq" | "gemini" | "ollama"
+	argumentEvaluations: MinerArgumentEvaluation[];
+}
+
+/** One miner's evaluation of one argument */
+export interface MinerArgumentEvaluation {
+	argumentIndex: number;
+	scores: DimensionScores;
+	grounding?: ArgumentGrounding;
+}
+
+/** Grounding evidence for one argument from one miner's research */
+export interface ArgumentGrounding {
+	claimVerdicts: ClaimVerdict[];
+	sourceVerdicts: SourceVerdict[];
+	accuracyJustification: string;
+}
+
+/** Verdict on a factual claim, backed by retrieved sources */
+export interface ClaimVerdict {
+	claim: string;
+	verdict: 'CONFIRMED' | 'CONTRADICTED' | 'PARTIALLY_CONFIRMED' | 'UNVERIFIED';
+	sourceIndices: number[];
+	reasoning: string;
+}
+
+/** Integrity assessment of a retrieved source */
+export interface SourceVerdict {
+	sourceIndex: number;
+	url: string;
+	title: string;
+	reliability: number; // 0-10000 bp
+	groundingDistance: number; // 0-3 layers from direct evidence
+	integrityFlags: string[];
+	note: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -473,14 +522,19 @@ function createDebateState() {
 						};
 					});
 
+				const source = (aiResolution.source as AIResolutionData['source']) ?? 'ai_panel';
+				const resMinerCount = (aiResolution.minerCount as number) ?? undefined;
+
 				const resolution: AIResolutionData = {
 					argumentScores,
 					alphaWeight: 4000,
-					modelCount: 5,
+					modelCount: source === 'bittensor_subnet' ? (resMinerCount ?? 0) : 5,
 					signatureCount: aiResolution.signatureCount ?? 0,
 					quorumRequired: 4,
 					resolutionMethod: aiResolution.resolutionMethod ?? 'ai_community',
 					evaluatedAt: aiResolution.resolvedAt ?? undefined,
+					source,
+					minerCount: resMinerCount,
 					appealDeadline: aiResolution.appealDeadline ?? undefined,
 					hasAppeal: false,
 					governanceJustification: aiResolution.governanceJustification ?? undefined

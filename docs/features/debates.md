@@ -5,8 +5,8 @@
 **Status:** Deployed to Scroll Sepolia testnet. Frontend, API, and on-chain contract integration wired end-to-end. AI evaluation pipeline operational via `@voter-protocol/ai-evaluator`. Automated daily resolution cron at 02:00 UTC.
 **Tier Requirement:** 3+ (ZK-verified identity)
 **Contract:** `voter-protocol/contracts/src/DebateMarket.sol` (1897 lines, 193 tests across 4 test files)
-**Deployed:** `0x95F878b0c0AF38C445d0F776DF4f37d2660DaFF4` (Scroll Sepolia)
-**Staking Token:** `0x87848199926E9F77D5e8e3048bD319Db0af06B86` (MockERC20, 6 decimals)
+**Deployed:** `0xA07D6F620FEc31A163E1F888956e4c98D522B906` (Scroll Sepolia V11)
+**Staking Token:** `0xe70623c79E3b3F7909bd3e989E50a18DdB13C95d` (tUSDC, 6 decimals)
 **Spec:** `voter-protocol/specs/DEBATE-MARKET-SPEC.md`
 
 ---
@@ -450,7 +450,7 @@ Intentional departures from `DEBATE-MARKET-SPEC.md`:
 | **Tier threshold** | Tier 1+ (`engagement_tier >= 1`) | Tier 3+ (`trust_tier >= 3`) | Intentional tightening. Only identity-verified participants can create or participate in debates. Prevents Sybil attacks on market signal. |
 | **AI panel** | Decentralized panel with on-chain model registry, M-of-N from distinct providers, provider diversity enforced at contract level | Centralized server calling 5 LLMs via `@voter-protocol/ai-evaluator` with CRON_SECRET auth | Pragmatic Phase 1 implementation. The evaluator runs server-side and signs EIP-712 attestations. Model registry governance deferred. |
 | **Phase coverage** | Three deployment phases: Phase 1 (commit-reveal LMSR), Phase 2 (shielded position pool), Phase 3 (flow-encrypted batches) | Phase 1 and Phase 2 implemented. Phase 3 (flow-encrypted batches with ElGamal + threshold decryption) not implemented. | Phase 3 requires DKG ceremony infrastructure and threshold key management. |
-| **Contract deployment** | Design status | Deployed to Scroll Sepolia at `0x95F878b0c0AF38C445d0F776DF4f37d2660DaFF4` | Testnet deployment; mainnet pending audit. |
+| **Contract deployment** | Design status | Deployed to Scroll Sepolia at `0xA07D6F620FEc31A163E1F888956e4c98D522B906` (V11, hardened) | Testnet deployment; mainnet pending audit. |
 | **Resolution timing** | 24h evaluation window after trade close | Daily cron at 02:00 UTC + on-demand via evaluate endpoint | Batched resolution is simpler operationally and reduces gas costs. |
 
 ---

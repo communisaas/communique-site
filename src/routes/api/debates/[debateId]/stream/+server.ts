@@ -215,6 +215,7 @@ export const GET: RequestHandler = async ({ params }) => {
 	const wrappedStream = new ReadableStream({
 		start(controller) {
 			const reader = originalStream.getReader();
+			let controllerClosed = false;
 			(async () => {
 				try {
 					while (true) {
@@ -222,9 +223,9 @@ export const GET: RequestHandler = async ({ params }) => {
 						if (done) break;
 						controller.enqueue(value);
 					}
-					controller.close();
+					if (!controllerClosed) { controllerClosed = true; controller.close(); }
 				} catch {
-					controller.close();
+					if (!controllerClosed) { controllerClosed = true; controller.close(); }
 				} finally {
 					closed = true;
 					if (pollTimer) {

@@ -11,8 +11,8 @@
  * - Reuses the DistrictGate circuit breaker and balance monitoring (same RPC)
  * - EIP-712 signatures target DistrictGate (proof verification delegation)
  *
- * DEPLOYED CONTRACTS (v6.2):
- * - DebateMarket: 0xAa1e5CcA6377c7c2E4dE2Df15dC87c51ccb9B751 (Scroll Sepolia)
+ * DEPLOYED CONTRACTS (V11 — hardened, 6 cycles):
+ * - DebateMarket: 0xA07D6F620FEc31A163E1F888956e4c98D522B906 (Scroll Sepolia)
  *
  * @see STAKED-DEBATE-PROTOCOL-SPEC.md
  * @see DebateMarket.sol
