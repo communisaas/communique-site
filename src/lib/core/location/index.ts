@@ -18,7 +18,6 @@ export type {
 	JurisdictionType,
 	ScoredTemplate,
 	OAuthLocationData,
-	CensusGeocodingResponse
 } from './types';
 
 export {
@@ -75,15 +74,13 @@ export {
 } from './template-filter';
 
 // ============================================================================
-// Census API
+// Browser Location Utilities
 // ============================================================================
 
 export {
 	getBrowserGeolocation,
-	getTimezoneLocation,
-	censusAPI,
-	CensusAPIClient
-} from './census-api';
+	getTimezoneLocation
+} from './browser-location';
 
 // ============================================================================
 // Location Resolution (GeoScope utilities)

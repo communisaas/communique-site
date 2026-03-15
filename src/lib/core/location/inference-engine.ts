@@ -12,7 +12,7 @@
  */
 
 import { locationStorage } from './storage';
-import { getBrowserGeolocation, getTimezoneLocation } from './census-api';
+import { getBrowserGeolocation, getTimezoneLocation } from './browser-location';
 import {
 	calculateWeightedConfidence,
 	type LocationSignal,
