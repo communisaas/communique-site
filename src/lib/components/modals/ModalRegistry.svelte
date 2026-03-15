@@ -12,6 +12,7 @@
 	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
 	import DebateModal from '$lib/components/debate/DebateModal.svelte';
 	import WalletConnect from '$lib/components/wallet/WalletConnect.svelte';
+	import GovernmentCredentialVerification from '$lib/components/auth/GovernmentCredentialVerification.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import type { ComponentTemplate } from '$lib/types/component-props';
 	import type { DebateData } from '$lib/stores/debateState.svelte';
@@ -85,9 +86,9 @@
 		<div class="overflow-hidden rounded-xl bg-white">
 			<AddressCollectionForm
 				_template={getTemplate(data) || { title: '', deliveryMethod: '' }}
-				oncomplete={(detail) => {
+				oncomplete={async (detail) => {
 					const onComplete = getCallback<(d: unknown) => void>(data, 'onComplete');
-					onComplete?.(detail);
+					await onComplete?.(detail);
 					modalActions.closeModal('address-modal');
 				}}
 			/>
@@ -188,3 +189,32 @@
 	{/snippet}
 </UnifiedModal>
 {/if}
+
+<!-- Identity Verification Modal (mDL) -->
+<UnifiedModal
+	id="identity-verification-modal"
+	type="identity-verification"
+	size="sm"
+	showCloseButton={true}
+	closeOnBackdrop={false}
+	closeOnEscape={true}
+>
+	{#snippet children(data)}
+		{#if data?.userId}
+			<GovernmentCredentialVerification
+				userId={data.userId as string}
+				templateSlug={data.templateSlug as string | undefined}
+				oncomplete={async () => {
+					const onComplete = getCallback<() => void>(data, 'onComplete');
+					await onComplete?.();
+					modalActions.closeModal('identity-verification-modal');
+				}}
+				onerror={(err) => {
+					const onError = data?.onError as ((e: { message: string }) => void) | undefined;
+					onError?.(err);
+				}}
+				oncancel={() => modalActions.closeModal('identity-verification-modal')}
+			/>
+		{/if}
+	{/snippet}
+</UnifiedModal>

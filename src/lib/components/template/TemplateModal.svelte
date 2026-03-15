@@ -54,7 +54,6 @@
 		storeConstituentAddress,
 		getConstituentAddress
 	} from '$lib/core/identity/constituent-address';
-	import { dev } from '$app/environment';
 	import type { ComponentTemplate } from '$lib/types/component-props';
 	import type { Representative } from '$lib/types/any-replacements';
 	import type { Representative as ProviderRepresentative } from '$lib/core/legislative/types';
@@ -461,12 +460,6 @@
 					return;
 				}
 
-				// Bootstrap ZK credential from the new identity_commitment
-				if (verifyResult.identity_commitment) {
-					const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
-					await bootstrapDemoCredential(user.id, verifyResult.identity_commitment);
-				}
-
 				// Refresh server data so locals.user has verified_at set
 				await invalidateAll();
 
@@ -497,14 +490,14 @@
 	}
 
 	/**
-	 * Attempt real mDL wallet verification, falling back to demo on failure.
+	 * Attempt real mDL wallet verification.
 	 *
 	 * Flow:
 	 * 1. Call /api/identity/verify-mdl/start for DeviceRequest config
 	 * 2. Trigger navigator.credentials.get() — iOS shows wallet prompt
 	 * 3. If wallet succeeds: verify on server, proceed to ZKP
 	 * 4. If wallet fails (not enrolled, unsupported): show brief error,
-	 *    then simulate via /demo/verify-identity + bootstrap credential → ZKP
+ *    then offer to use another method.
 	 */
 	async function attemptWalletVerification() {
 		trustUpgradePhase = 'wallet-requesting';
@@ -562,15 +555,8 @@
 			}
 
 			// Real verification succeeded — proceed to ZKP
-			if (user?.id) {
-				try {
-					const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
-					const verification = await verifyResponse.json();
-					await bootstrapDemoCredential(user.id, verification.credentialHash);
-				} catch (e) {
-					console.error('[mDL] Credential bootstrap failed:', e);
-				}
-			}
+			// Consume response body
+			verifyResponse.json().catch(() => {});
 
 			// Refresh server data so locals.user has verified_at set
 			await invalidateAll();
@@ -582,38 +568,6 @@
 			trustUpgradePhase = 'wallet-failed';
 		}
 	}
-
-	/**
-	 * After wallet fails, simulate identity verification via demo endpoint
-	 * and proceed to ZKP flow.
-	 */
-	async function simulateAfterWalletFailure() {
-		trustUpgradePhase = 'simulating';
-
-		try {
-			const res = await fetch('/demo/verify-identity', { method: 'POST' });
-			const result = await res.json();
-
-			if (result.identity_commitment && user?.id) {
-				const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
-				await bootstrapDemoCredential(user.id, result.identity_commitment);
-			}
-
-			// Brief pause to let the user see "simulating" state
-			await new Promise(resolve => setTimeout(resolve, 800));
-
-			// Refresh server data so locals.user has verified_at set
-			await invalidateAll();
-
-			// Proceed to ZKP flow
-			submitCongressionalMessage();
-		} catch (e) {
-			console.error('[Demo] Simulation failed:', e);
-			walletErrorMessage = 'Demo simulation failed';
-			trustUpgradePhase = 'wallet-failed';
-		}
-	}
-
 	/**
 	 * Submit Congressional message via ZK proof flow.
 	 * Triggers ProofGenerator component for proof generation + encrypted submission.
@@ -1225,17 +1179,16 @@
 							Your message was delivered as a constituent. Verify your identity to send with a zero-knowledge proof next time — unfakeable, unbottable.
 						</p>
 						<button
-							onclick={async () => {
+							onclick={() => {
 								onclose?.();
-								const res = await fetch('/demo/verify-identity', { method: 'POST' });
-								const result = await res.json();
-								if (result.identity_commitment && user?.id) {
-									try {
-										const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
-										await bootstrapDemoCredential(user.id, result.identity_commitment);
-									} catch (e) {
-										console.error('[Demo] Credential bootstrap failed:', e);
-									}
+								if (user?.id) {
+									modalActions.openModal('identity-verification-modal', 'identity-verification', {
+										userId: user.id,
+										templateSlug: template.slug,
+										onComplete: async () => {
+											await invalidateAll();
+										}
+									});
 								}
 							}}
 							class="w-full rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-purple-700 active:scale-[0.98]"
@@ -1468,30 +1421,12 @@
 						{walletErrorMessage || 'Digital ID verification requires enrollment with your state DMV.'}
 					</p>
 
-					{#if dev}
-						<div class="w-full space-y-3">
-							<button
-								onclick={() => simulateAfterWalletFailure()}
-								class="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-purple-700 active:scale-[0.98]"
-							>
-								<ShieldCheck class="h-4 w-4" />
-								Simulate verified credential
-							</button>
-							<button
-								onclick={() => { trustUpgradePhase = 'choice'; }}
-								class="w-full text-center text-sm text-slate-500 hover:text-slate-700"
-							>
-								Back
-							</button>
-						</div>
-					{:else}
 						<button
 							onclick={() => { trustUpgradePhase = 'choice'; }}
 							class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
 						>
 							Try another method
 						</button>
-					{/if}
 				</div>
 
 			{:else if trustUpgradePhase === 'simulating'}

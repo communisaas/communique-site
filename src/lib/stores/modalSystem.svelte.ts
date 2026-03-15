@@ -20,7 +20,8 @@ export type ModalType =
 	| 'template_modal'
 	| 'sign-in'
 	| 'debate'
-	| 'wallet-connect';
+	| 'wallet-connect'
+	| 'identity-verification';
 
 // Modal State Interface
 interface ModalState {

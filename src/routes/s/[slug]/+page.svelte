@@ -158,6 +158,10 @@
 
 	interface AddressModalDetail {
 		address: string;
+		streetAddress?: string;
+		city?: string;
+		state?: string;
+		zip?: string;
 		[key: string]: unknown;
 	}
 
@@ -188,7 +192,7 @@
 				source,
 				mode: 'collection',
 				onComplete: async (detail: AddressModalDetail) => {
-					await _handleAddressSubmit(detail.address);
+					await _handleAddressSubmit(detail);
 				}
 			});
 		} else {
@@ -221,7 +225,7 @@
 
 	// Identity commitment for position registration
 	const identityCommitment = $derived(
-		data.user?.identity_commitment ?? (data.user ? `demo-${data.user.id}` : null)
+		data.user?.identity_commitment ?? null
 	);
 
 	// UI state
@@ -504,22 +508,44 @@
 		}
 	}
 
-	async function _handleAddressSubmit(address: string) {
+	async function _handleAddressSubmit(detail: AddressModalDetail) {
 		try {
 			_isUpdatingAddress = true;
 
 			// Cache address locally (Cypherpunk: no PII on User model)
-			guestState.setAddress(address);
+			guestState.setAddress(detail.address);
 
-			// Bump trust_tier to 2 (Constituent) on the server
-			// Production: mDL Digital Credentials API does this via callback
-			// Demo: explicit endpoint
-			if (data.user) {
-				await fetch('/demo/verify-address', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ address })
-				});
+			// Bump trust_tier to 2 (Constituent) on the server via real address verification
+			if (data.user && detail.streetAddress && detail.city && detail.state && detail.zip) {
+				try {
+					// Resolve address to get district code
+					const resolveRes = await fetch('/api/location/resolve-address', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							street: detail.streetAddress,
+							city: detail.city,
+							state: detail.state,
+							zip: detail.zip
+						})
+					});
+					if (resolveRes.ok) {
+						const resolved = await resolveRes.json();
+						if (resolved.resolved && resolved.district?.code) {
+							await fetch('/api/identity/verify-address', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({
+									district: resolved.district.code,
+									verification_method: 'civic_api',
+									officials: resolved.officials ?? []
+								})
+							});
+						}
+					}
+				} catch {
+					// Non-fatal: tier bump failed, proceed with local cache
+				}
 			}
 
 			// Close address modal and proceed to template modal
@@ -699,7 +725,7 @@
 										source,
 										mode: 'collection',
 										onComplete: async (detail: AddressModalDetail) => {
-											await _handleAddressSubmit(detail.address);
+											await _handleAddressSubmit(detail);
 										}
 									})}
 								classNames="ml-auto"
@@ -747,35 +773,24 @@
 				<TrustJourney
 					trustTier={data.user.trust_tier ?? 1}
 					onVerifyAddress={FEATURES.ADDRESS_SPECIFICITY === 'district' ? () => {
-						modalActions.openModal('address-modal', 'address', {
-							template,
-							source,
-							mode: 'collection',
-							onComplete: async (detail: AddressModalDetail) => {
-								guestState.setAddress(detail.address);
-								await fetch('/demo/verify-address', {
-									method: 'POST',
-									headers: { 'Content-Type': 'application/json' },
-									body: JSON.stringify({ address: detail.address })
-								});
-								modalActions.closeModal('address-modal');
-								await invalidateAll();
-							}
-						});
-					} : undefined}
-					onVerifyIdentity={async () => {
-						const res = await fetch('/demo/verify-identity', { method: 'POST' });
-						const result = await res.json();
-						if (result.identity_commitment && data.user?.id) {
-							try {
-								const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
-								await bootstrapDemoCredential(data.user.id, result.identity_commitment);
-							} catch (e) {
-								console.error('[Demo] Credential bootstrap failed:', e);
-							}
+					modalActions.openModal('address-modal', 'address', {
+						template,
+						source,
+						mode: 'collection',
+						onComplete: async (detail: AddressModalDetail) => {
+							await _handleAddressSubmit(detail);
 						}
-						await invalidateAll();
-					}}
+					});
+				} : undefined}
+				onVerifyIdentity={data.user ? () => {
+					modalActions.openModal('identity-verification-modal', 'identity-verification', {
+						userId: data.user!.id,
+						templateSlug: template.slug,
+						onComplete: async () => {
+							await invalidateAll();
+						}
+					});
+				} : undefined}
 					onGenerateProof={FEATURES.CONGRESSIONAL ? () => {
 						modalActions.openModal('template-modal', 'template_modal', {
 							template,
@@ -814,7 +829,7 @@
 							source,
 							mode: 'collection',
 							onComplete: async (detail: AddressModalDetail) => {
-								await _handleAddressSubmit(detail.address);
+								await _handleAddressSubmit(detail);
 							}
 						});
 					} : undefined}
@@ -873,8 +888,8 @@
 							cosignArgumentIndex: argumentIndex
 						});
 					}}
-					onVerifyIdentity={async () => {
-						if (data.user?.trust_tier != null && data.user.trust_tier < 2) {
+					onVerifyIdentity={data.user ? () => {
+						if (data.user!.trust_tier != null && data.user!.trust_tier < 2) {
 							// Tier 0-1: need address first
 							modalActions.openModal('address-modal', 'address', {
 								template,
@@ -882,20 +897,16 @@
 								context: 'debate'
 							});
 						} else {
-							// Tier 2: identity verification
-							const res = await fetch('/demo/verify-identity', { method: 'POST' });
-							const result = await res.json();
-							if (result.identity_commitment && data.user?.id) {
-								try {
-									const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
-									await bootstrapDemoCredential(data.user.id, result.identity_commitment);
-								} catch (e) {
-									console.error('[Demo] Credential bootstrap failed:', e);
+							// Tier 2+: open real mDL identity verification
+							modalActions.openModal('identity-verification-modal', 'identity-verification', {
+								userId: data.user!.id,
+								templateSlug: template.slug,
+								onComplete: async () => {
+									await invalidateAll();
 								}
-							}
-							await invalidateAll();
+							});
 						}
-					}}
+					} : undefined}
 				/>
 			{/if}
 		</div>

@@ -120,27 +120,23 @@
 				cosignArgumentIndex: argumentIndex
 			});
 		}}
-		onVerifyIdentity={async () => {
-			if (data.user?.trust_tier != null && data.user.trust_tier < 2) {
+		onVerifyIdentity={data.user ? () => {
+			if (data.user!.trust_tier != null && data.user!.trust_tier < 2) {
 				modalActions.openModal('address-modal', 'address', {
 					template,
 					user: data.user,
 					context: 'debate'
 				});
 			} else {
-				const res = await fetch('/demo/verify-identity', { method: 'POST' });
-				const result = await res.json();
-				if (result.identity_commitment && data.user?.id) {
-					try {
-						const { bootstrapDemoCredential } = await import('$lib/core/demo/bootstrap-credential');
-						await bootstrapDemoCredential(data.user.id, result.identity_commitment);
-					} catch (e) {
-						console.error('[Demo] Credential bootstrap failed:', e);
+				// Tier 2+: open real mDL identity verification
+				modalActions.openModal('identity-verification-modal', 'identity-verification', {
+					userId: data.user!.id,
+					onComplete: async () => {
+						await invalidateAll();
 					}
-				}
-				await invalidateAll();
+				});
 			}
-		}}
+		} : undefined}
 		onCommit={async (trade) => {
 			const res = await fetch(`/api/debates/${debate.id}/commit`, {
 				method: 'POST',

@@ -72,7 +72,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	const userId = locals.user?.id;
 	const userDistrictHash = locals.user?.district_hash;
 	const identityCommitment =
-		locals.user?.identity_commitment ?? (userId ? `demo-${userId}` : null);
+		locals.user?.identity_commitment ?? null;
 
 	// Batch 1: All independent queries in parallel
 	const [
