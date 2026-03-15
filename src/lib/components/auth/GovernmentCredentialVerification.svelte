@@ -221,6 +221,42 @@
 		startVerification();
 	}
 
+	// Platform detection for wallet copy
+	type Platform = 'android' | 'ios' | 'desktop';
+
+	function detectPlatform(): Platform {
+		if (typeof navigator === 'undefined') return 'desktop';
+		const ua = navigator.userAgent;
+		// Prefer userAgentData when available (Chromium 90+)
+		const uadPlatform = (navigator as Navigator & { userAgentData?: { platform?: string } })
+			.userAgentData?.platform?.toLowerCase() ?? '';
+		if (uadPlatform === 'android' || ua.includes('Android')) return 'android';
+		if (/iPhone|iPad/.test(ua)) return 'ios';
+		return 'desktop';
+	}
+
+	const platform = $derived(detectPlatform());
+
+	const walletName = $derived(
+		platform === 'android' ? 'Google Wallet' : platform === 'ios' ? 'Apple Wallet' : 'your digital wallet'
+	);
+
+	const walletInstruction = $derived(
+		platform === 'android'
+			? 'Your device will show Google Wallet'
+			: platform === 'ios'
+				? 'Your device will show Apple Wallet'
+				: 'Your device will show your digital wallet'
+	);
+
+	const waitingLabel = $derived(
+		platform === 'android'
+			? 'Waiting for Google Wallet...'
+			: platform === 'ios'
+				? 'Waiting for Apple Wallet...'
+				: 'Waiting for wallet...'
+	);
+
 	// Mobile verification fallback for unsupported browsers
 	let mobileVerifyUrl = $state<string | null>(null);
 	let qrSvg = $state<string | null>(null);
@@ -319,7 +355,7 @@
 					>
 						2
 					</span>
-					<span>Your device will show your digital wallet</span>
+					<span>{walletInstruction}</span>
 				</li>
 				<li class="flex items-start gap-3">
 					<span
@@ -358,7 +394,7 @@
 					<Loader2 class="h-5 w-5 animate-spin text-blue-600" />
 				</div>
 			</div>
-			<p class="text-lg font-semibold text-slate-900">Waiting for wallet...</p>
+			<p class="text-lg font-semibold text-slate-900">{waitingLabel}</p>
 			<p class="mt-2 max-w-xs text-center text-sm text-slate-600">
 				Your device will prompt you to share <strong>only</strong> your postal code, city, and state
 			</p>
@@ -470,31 +506,49 @@
 			{/if}
 		</div>
 	{:else if verificationState === 'unsupported'}
-		<!-- Unsupported Browser — Mobile QR Fallback -->
+		<!-- Unsupported Browser — Platform-aware fallback -->
 		<div class="space-y-4">
 			<div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
 				<div class="flex items-start gap-3">
 					<Info class="h-5 w-5 flex-shrink-0 text-amber-600" />
 					<div class="flex-1">
-						<p class="text-sm font-medium text-amber-900">
-							Continue on your phone
-						</p>
-						<p class="mt-1 text-sm text-amber-700">
-							This browser doesn't support digital ID verification.
-							Scan the code below with your phone to verify using your wallet app.
-						</p>
+						{#if platform === 'android'}
+							<p class="text-sm font-medium text-amber-900">
+								Open in Chrome to continue
+							</p>
+							<p class="mt-1 text-sm text-amber-700">
+								This browser doesn't support digital ID verification.
+								Copy the link below and open it in Chrome 141 or later to verify with Google Wallet.
+							</p>
+						{:else if platform === 'ios'}
+							<p class="text-sm font-medium text-amber-900">
+								Open in Safari to continue
+							</p>
+							<p class="mt-1 text-sm text-amber-700">
+								This browser doesn't support digital ID verification.
+								Copy the link below and open it in Safari 26 or later to verify with Apple Wallet.
+							</p>
+						{:else}
+							<p class="text-sm font-medium text-amber-900">
+								Continue on your phone
+							</p>
+							<p class="mt-1 text-sm text-amber-700">
+								This browser doesn't support digital ID verification.
+								Scan the code below with your phone to verify using your wallet app.
+							</p>
+						{/if}
 					</div>
 				</div>
 			</div>
 
-			<!-- QR Code -->
-			{#if qrSvg}
+			<!-- QR Code — desktop only (mobile users are already on their phone) -->
+			{#if platform === 'desktop' && qrSvg}
 				<div class="flex flex-col items-center gap-3 rounded-lg border border-slate-200 bg-white p-6">
 					<div class="rounded-lg bg-white p-2">
 						{@html qrSvg}
 					</div>
-					<p class="text-sm font-medium text-slate-700">Scan with your phone to verify</p>
-					<p class="text-xs text-slate-500">Your phone's wallet app can complete verification</p>
+					<p class="text-sm font-medium text-slate-700">Scan with your phone's wallet app</p>
+					<p class="text-xs text-slate-500">Open the code with Google Wallet or Apple Wallet</p>
 				</div>
 			{/if}
 
@@ -516,7 +570,13 @@
 			{/if}
 
 			<p class="text-center text-xs text-slate-400">
-				Supported browsers: Chrome 141+ or Safari 26+
+				{#if platform === 'android'}
+					Requires Chrome 141 or later
+				{:else if platform === 'ios'}
+					Requires Safari 26 or later
+				{:else}
+					Supported browsers: Chrome 141+ or Safari 26+
+				{/if}
 			</p>
 
 			{#if oncancel}

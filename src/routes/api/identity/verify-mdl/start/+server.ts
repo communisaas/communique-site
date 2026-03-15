@@ -116,7 +116,7 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 			protocol: 'openid4vp',
 			data: {
 				// DCQL (Digital Credentials Query Language) format
-				client_id: process.env.PUBLIC_APP_URL ?? 'https://communique.cc',
+				client_id: platform?.env?.PUBLIC_APP_URL ?? 'https://commons.email',
 				nonce,
 				dcql_query: {
 					credentials: [
