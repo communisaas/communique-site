@@ -4,12 +4,13 @@ import { getRateLimiter } from '$lib/core/security/rate-limiter';
 import { FEATURES } from '$lib/config/features';
 import { z } from 'zod';
 import type { RequestHandler } from './$types';
+import { resolveAddress } from '$lib/core/shadow-atlas/client';
 
 /**
  * POST /api/c/[slug]/verify-district
  *
  * Public (unauthenticated) district verification for campaign action flow.
- * Proxies address geocoding to resolve a congressional district code.
+ * Resolves address to congressional district via Shadow Atlas (self-hosted).
  *
  * Gated behind FEATURES.ADDRESS_SPECIFICITY === 'district'.
  * Rate limited: 5 req/min per IP (matches /api/location/ pattern).
@@ -64,54 +65,15 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
 
 		const { street, city, state, zip } = parseResult.data;
 
-		// Census Bureau geocoder (public infrastructure, no API key needed)
-		const url = new URL('https://geocoding.geo.census.gov/geocoder/geographies/address');
-		url.searchParams.set('street', street);
-		url.searchParams.set('city', city);
-		url.searchParams.set('state', state);
-		url.searchParams.set('zip', zip);
-		url.searchParams.set('benchmark', '4');
-		url.searchParams.set('vintage', '4');
-		url.searchParams.set('format', 'json');
+		// Shadow Atlas: self-hosted Nominatim geocoding + R-tree district lookup
+		const result = await resolveAddress({ street, city, state, zip });
 
-		const censusRes = await fetch(url.toString(), {
-			signal: AbortSignal.timeout(15000)
-		});
+		const districtCode = result.officials?.district_code ?? null;
+		const stateCode = result.officials?.state ?? state.toUpperCase();
 
-		if (!censusRes.ok) {
-			return json({ resolved: false, error: 'Address resolution service unavailable' }, { status: 502 });
-		}
-
-		const censusData = await censusRes.json();
-		const matches = censusData?.result?.addressMatches;
-
-		if (!matches || matches.length === 0) {
-			return json({ resolved: false, error: 'Address not found. Please check and try again.' });
-		}
-
-		const match = matches[0];
-		const geographies = match.geographies;
-
-		// Extract congressional district
-		const districts = geographies?.['119th Congressional Districts'];
-		const district = districts?.[0];
-		const states = geographies?.['States'];
-		const stateGeo = states?.[0];
-		const stateCode = stateGeo?.STUSAB || null;
-
-		if (!district || !stateCode) {
+		if (!districtCode) {
 			return json({ resolved: false, error: 'Congressional district could not be determined.' });
 		}
-
-		const districtNumber = district.CD119 ?? district.GEOID?.slice(2) ?? null;
-		if (districtNumber == null) {
-			return json({ resolved: false, error: 'Congressional district could not be determined.' });
-		}
-
-		let paddedDistrict = String(districtNumber).padStart(2, '0');
-		if (paddedDistrict === '98') paddedDistrict = '00';
-		const normalizedDistrict = paddedDistrict === '00' ? 'AL' : paddedDistrict;
-		const districtCode = `${stateCode}-${normalizedDistrict}`;
 
 		console.info(`[verify-district] Resolved district=${districtCode} campaign=${params.slug}`);
 

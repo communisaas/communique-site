@@ -9,11 +9,12 @@ import { lookupDistrict, getOfficials, resolveLocation } from '$lib/core/shadow-
  * Unified coordinate → district resolution endpoint.
  *
  * Architecture:
- *   1. Census Bureau (coordinates → block GEOID / cell_id)
- *   2. Shadow Atlas (cell_id → 24-slot district array + Merkle proof + officials)
+ *   Shadow Atlas handles all resolution (cell_id, district, officials)
+ *   via H3 + R-tree spatial index and pre-ingested IPFS data.
+ *   Zero external government API calls.
  *
- * The client sends ONLY coordinates. This endpoint handles all external calls
- * server-side — Census Bureau for cell_id, Shadow Atlas for everything else.
+ * The client sends ONLY coordinates. This endpoint handles all calls
+ * server-side via Shadow Atlas.
  *
  * PRIVACY:
  * - Accepts COORDINATES only — never addresses.
@@ -27,64 +28,9 @@ const resolveSchema = z.object({
 	lng: z.number().min(-180).max(180),
 	signal_type: z.enum(['browser', 'verified']),
 	confidence: z.number().min(0).max(1),
-	cell_id: z.string().regex(/^\d{11,15}$/).optional(),
-	district_code: z.string().regex(/^[A-Z]{2}-(\d{2}|AL|00)$/).optional(),
+	cell_id: z.string().regex(/^[0-9a-fA-F]{11,15}$/).optional(),
 	country_code: z.string().length(2).optional()
 });
-
-/**
- * Resolve cell_id (Census block/tract GEOID) from coordinates via Census Bureau.
- * Returns null on failure — non-fatal, we can still resolve district via Shadow Atlas.
- */
-async function resolveCellId(lat: number, lng: number): Promise<{
-	cellId: string | null;
-	districtCode: string | null;
-	stateCode: string | null;
-	countyFips: string | null;
-}> {
-	try {
-		const url = new URL('https://geocoding.geo.census.gov/geocoder/geographies/coordinates');
-		url.searchParams.set('x', String(lng));
-		url.searchParams.set('y', String(lat));
-		url.searchParams.set('benchmark', '4');
-		url.searchParams.set('vintage', '4');
-		url.searchParams.set('format', 'json');
-
-		const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15000) });
-		if (!res.ok) return { cellId: null, districtCode: null, stateCode: null, countyFips: null };
-
-		const data = await res.json();
-		const geographies = data?.result?.geographies;
-		if (!geographies) return { cellId: null, districtCode: null, stateCode: null, countyFips: null };
-
-		const blocks = geographies['2020 Census Blocks'];
-		const block = blocks?.[0];
-		const cellId = block?.GEOID || null;
-
-		const districts = geographies['119th Congressional Districts'];
-		const district = districts?.[0];
-		const states = geographies['States'];
-		const state = states?.[0];
-		const counties = geographies['Counties'];
-		const county = counties?.[0];
-
-		const stateCode = state?.STUSAB || null;
-		const districtNumber = district?.GEOID?.slice(2) || null;
-		const districtCode = stateCode && districtNumber
-			? `${stateCode}-${districtNumber.padStart(2, '0')}`
-			: null;
-
-		return {
-			cellId,
-			districtCode,
-			stateCode,
-			countyFips: county?.GEOID || null
-		};
-	} catch (e) {
-		console.warn('[resolve] Census coordinate lookup failed:', e instanceof Error ? e.message : e);
-		return { cellId: null, districtCode: null, stateCode: null, countyFips: null };
-	}
-}
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Auth check
@@ -119,31 +65,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		const { lat, lng, signal_type, confidence, country_code: _country_code } = parseResult.data;
-		let { cell_id, district_code: rawDistrictCode } = parseResult.data;
-
-		// Resolve cell_id server-side if not provided by client
-		if (!cell_id) {
-			const census = await resolveCellId(lat, lng);
-			if (census.cellId) {
-				// Use tract GEOID (first 11 chars) as cell_id for Shadow Atlas
-				cell_id = census.cellId.length >= 11 ? census.cellId.slice(0, 11) : census.cellId;
-			}
-			if (!rawDistrictCode && census.districtCode) {
-				rawDistrictCode = census.districtCode;
-			}
-		}
-
-		// Normalize Census at-large format: XX-00 → XX-AL
-		const district_code = rawDistrictCode?.endsWith('-00')
-			? rawDistrictCode.replace(/-00$/, '-AL')
-			: rawDistrictCode;
+		const { lat, lng, signal_type, confidence, cell_id: clientCellId, country_code: _country_code } = parseResult.data;
 
 		// District resolution
 		let resolvedDistrictCode: string | null = null;
 		let districtName: string | null = null;
 		let districtState: string | null = null;
-		let districtSource: 'shadow_atlas' | 'client_census' = 'shadow_atlas';
+		let resolvedCellId: string | null = clientCellId ?? null;
 
 		// Officials resolution
 		let officials: Array<{
@@ -165,63 +93,64 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		} | null = null;
 		let officialsResolved = false;
 
-		if (district_code) {
-			// Client provided district from Census geocoding
-			resolvedDistrictCode = district_code;
-			districtState = district_code.split('-')[0];
-			districtSource = 'client_census';
-		} else {
-			// Try composite call first (saves a round-trip vs. separate lookup + officials)
+		// Try composite call first (saves a round-trip vs. separate lookup + officials)
+		try {
+			const composite = await resolveLocation(lat, lng);
+			resolvedDistrictCode = composite.district.district.id;
+			districtName = composite.district.district.name;
+			const parts = resolvedDistrictCode.split('-');
+			if (parts.length >= 2) {
+				districtState = parts[0];
+			}
+
+			// Use cell_id from Shadow Atlas if client didn't provide one
+			if (!resolvedCellId && composite.district.cell_id) {
+				resolvedCellId = composite.district.cell_id;
+			}
+
+			// Officials already resolved in composite response
+			if (composite.officials) {
+				officialsResolved = true;
+				if (composite.officials.special_status) {
+					specialStatus = composite.officials.special_status;
+				}
+				officials = composite.officials.officials.map((official) => ({
+					name: official.name,
+					office: official.office,
+					chamber: official.chamber,
+					party: official.party,
+					state: official.state,
+					district:
+						official.chamber === 'house'
+							? composite.officials!.district_code ||
+								`${official.state}-${official.district || '00'}`
+							: official.state,
+					bioguide_id: official.bioguide_id,
+					is_voting_member: official.is_voting ?? true,
+					delegate_type: official.delegate_type,
+				}));
+				console.log('[Location Resolve] District + officials resolved via composite call');
+			}
+		} catch {
+			// Fallback to separate lookupDistrict call
 			try {
-				const composite = await resolveLocation(lat, lng);
-				resolvedDistrictCode = composite.district.district.id;
-				districtName = composite.district.district.name;
-				districtSource = 'shadow_atlas';
+				const lookupResult = await lookupDistrict(lat, lng);
+				resolvedDistrictCode = lookupResult.district.id;
+				districtName = lookupResult.district.name;
 				const parts = resolvedDistrictCode.split('-');
 				if (parts.length >= 2) {
 					districtState = parts[0];
 				}
 
-				// Officials already resolved in composite response
-				if (composite.officials) {
-					officialsResolved = true;
-					if (composite.officials.special_status) {
-						specialStatus = composite.officials.special_status;
-					}
-					officials = composite.officials.officials.map((official) => ({
-						name: official.name,
-						office: official.office,
-						chamber: official.chamber,
-						party: official.party,
-						state: official.state,
-						district:
-							official.chamber === 'house'
-								? composite.officials!.district_code ||
-									`${official.state}-${official.district || '00'}`
-								: official.state,
-						bioguide_id: official.bioguide_id,
-						is_voting_member: official.is_voting ?? true,
-						delegate_type: official.delegate_type,
-					}));
-					console.log('[Location Resolve] District + officials resolved via composite call');
+				// Use cell_id from Shadow Atlas lookup if client didn't provide one
+				if (!resolvedCellId && lookupResult.cell_id) {
+					resolvedCellId = lookupResult.cell_id;
 				}
-			} catch {
-				// Fallback to separate calls (existing logic)
-				try {
-					const lookupResult = await lookupDistrict(lat, lng);
-					resolvedDistrictCode = lookupResult.district.id;
-					districtName = lookupResult.district.name;
-					districtSource = 'shadow_atlas';
-					const parts = resolvedDistrictCode.split('-');
-					if (parts.length >= 2) {
-						districtState = parts[0];
-					}
-				} catch (lookupError) {
-					console.warn(
-						'[Location Resolve] Shadow Atlas district lookup failed:',
-						lookupError instanceof Error ? lookupError.message : lookupError
-					);
-				}
+			} catch (lookupError) {
+				console.warn(
+					'[Location Resolve] Shadow Atlas district lookup failed:',
+					lookupError instanceof Error ? lookupError.message : lookupError
+				);
 			}
 		}
 
@@ -233,12 +162,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				special_status: null,
 				zk_eligible: false,
 				confidence,
-				signal_type,
-				district_source: 'shadow_atlas'
+				signal_type
 			});
 		}
 
-		// Fetch officials separately if not already resolved (fallback path or client-provided district)
+		// Fetch officials separately if not already resolved (fallback path)
 		if (!officialsResolved) {
 			try {
 				const officialsResponse = await getOfficials(resolvedDistrictCode);
@@ -273,7 +201,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// ZK eligibility: requires cell_id
-		const zk_eligible = cell_id != null;
+		const zk_eligible = resolvedCellId != null;
 
 		return json({
 			resolved: true,
@@ -285,10 +213,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			officials,
 			special_status: specialStatus,
 			zk_eligible,
-			...(cell_id ? { cell_id } : {}),
+			...(resolvedCellId ? { cell_id: resolvedCellId } : {}),
 			confidence,
-			signal_type,
-			district_source: districtSource
+			signal_type
 		});
 	} catch (error) {
 		console.error(

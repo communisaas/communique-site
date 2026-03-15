@@ -55,7 +55,7 @@ export type MdlVerificationResult =
 			identityCommitment?: string;
 			/**
 			 * Census tract GEOID (11-digit) for Shadow Atlas Tree 2 cell mapping.
-			 * Resolved from postal_code + city + state via Census Bureau geocoding
+			 * Resolved from postal_code + city + state via Shadow Atlas geocoding
 			 * INSIDE the privacy boundary. Null if geocoding failed (non-fatal).
 			 */
 			cellId?: string;
@@ -673,19 +673,15 @@ function base64urlDecodeString(str: string): string {
 }
 
 /**
- * Resolve congressional district AND Census tract GEOID from address.
+ * Resolve congressional district AND cell ID from address.
  *
- * Single Census Bureau geocode call returns both lat/lng (for SA district lookup)
- * and tract GEOID (for Shadow Atlas Tree 2 cell mapping).
+ * Fully sovereign pipeline via Shadow Atlas:
+ *   1. Nominatim geocode (city, state, zip → coordinates)
+ *   2. H3 + IPFS district lookup (coordinates → district + cell_id)
  *
- * Resolution chain:
- * 1. Census Bureau geocode (city, state, zip → lat, lng, geographies)
- * 2. Primary district: Shadow Atlas H3 lookup from coordinates (fully sovereign)
- * 3. Fallback district: Census Bureau 119th Congressional Districts from geocode response
- * 4. cellId: Census tract GEOID from geocode geographies
- *
- * PRIVACY: Called INSIDE the privacy boundary — city/state/zip sent to Census
- * Bureau (federal government service). Only district code and tract GEOID returned.
+ * PRIVACY: Called INSIDE the privacy boundary — city/state/zip sent to
+ * self-hosted Nominatim (no external API calls). Only district code
+ * and cell ID returned.
  */
 async function resolveLocationFromAddress(
 	postalCode: string,
@@ -693,36 +689,20 @@ async function resolveLocationFromAddress(
 	state: string
 ): Promise<{ district: string | null; cellId: string | null }> {
 	try {
-		// Single Census Bureau geocode call
-		const geocodeResult = await censusGeocode(postalCode, city, state);
+		const { resolveAddress } = await import('$lib/core/shadow-atlas/client');
+		const result = await resolveAddress({
+			street: '',
+			city,
+			state,
+			zip: postalCode
+		});
 
-		if (!geocodeResult) {
-			return { district: null, cellId: null };
-		}
-
-		const { lat, lng, cellId, censusDistrict } = geocodeResult;
-
-		// Primary district resolution: Shadow Atlas H3 lookup (fully sovereign)
-		let district: string | null = null;
-		try {
-			const { lookupDistrict } = await import('$lib/core/shadow-atlas/client');
-			const result = await lookupDistrict(lat, lng);
-			if (result.district) {
-				district = result.district;
-			}
-		} catch (saErr) {
-			console.warn('[mDL] Shadow Atlas district lookup failed, using Census fallback:',
-				saErr instanceof Error ? saErr.message : saErr);
-		}
-
-		// Fallback: Census Bureau congressional district from geocode response
-		if (!district && censusDistrict) {
-			district = censusDistrict;
-		}
+		const district = result.officials?.district_code ?? result.district?.id ?? null;
+		const cellId = result.cell_id ?? null;
 
 		// Final fallback: at-large district for the state
 		if (!district) {
-			district = `${state.toUpperCase()}-AL`;
+			return { district: `${state.toUpperCase()}-AL`, cellId };
 		}
 
 		return { district, cellId };
@@ -733,118 +713,10 @@ async function resolveLocationFromAddress(
 }
 
 /**
- * Census Bureau geocoding — single call returns coordinates, district, and tract.
- *
- * Tries structured address endpoint first, then onelineaddress fallback.
- * Extracts lat/lng, 119th Congressional District, and Census tract GEOID.
- */
-async function censusGeocode(
-	postalCode: string,
-	city: string,
-	state: string
-): Promise<{
-	lat: number;
-	lng: number;
-	cellId: string | null;
-	censusDistrict: string | null;
-} | null> {
-	// Try structured address endpoint first
-	const result = await tryCensusEndpoint(
-		'https://geocoding.geo.census.gov/geocoder/geographies/address',
-		{ city, state, zip: postalCode }
-	);
-	if (result) return result;
-
-	// Fallback: onelineaddress
-	const fallback = await tryCensusEndpoint(
-		'https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress',
-		{ address: `${city}, ${state} ${postalCode}` }
-	);
-	if (fallback) return fallback;
-
-	console.warn('[mDL] Census geocoding: no match for', `${city}, ${state} ${postalCode}`);
-	return null;
-}
-
-/**
- * Try a Census Bureau geocoding endpoint and extract location data.
- */
-async function tryCensusEndpoint(
-	baseUrl: string,
-	params: Record<string, string>
-): Promise<{
-	lat: number;
-	lng: number;
-	cellId: string | null;
-	censusDistrict: string | null;
-} | null> {
-	try {
-		const url = new URL(baseUrl);
-		for (const [key, value] of Object.entries(params)) {
-			url.searchParams.set(key, value);
-		}
-		url.searchParams.set('benchmark', '4');
-		url.searchParams.set('vintage', '4');
-		url.searchParams.set('format', 'json');
-
-		const res = await fetch(url.toString(), { signal: AbortSignal.timeout(10000) });
-		if (!res.ok) {
-			console.warn('[mDL] Census geocoding HTTP error:', res.status);
-			return null;
-		}
-
-		const data = await res.json();
-		const match = data?.result?.addressMatches?.[0];
-		if (!match) return null;
-
-		// Extract coordinates
-		const lat = match.coordinates?.y;
-		const lng = match.coordinates?.x;
-		if (typeof lat !== 'number' || typeof lng !== 'number') return null;
-
-		const geographies = match.geographies ?? {};
-
-		// Extract Census tract GEOID (11 digits)
-		let cellId: string | null = null;
-		const tracts = geographies['Census Tracts'];
-		if (tracts?.[0]?.GEOID) {
-			cellId = tracts[0].GEOID.slice(0, 11);
-		} else {
-			const blocks = geographies['2020 Census Blocks'];
-			if (blocks?.[0]?.GEOID?.length >= 11) {
-				cellId = blocks[0].GEOID.slice(0, 11);
-			}
-		}
-
-		// Extract congressional district from Census response (fallback)
-		let censusDistrict: string | null = null;
-		const districts = geographies['119th Congressional Districts'];
-		if (districts?.[0]) {
-			const d = districts[0];
-			const cd = d.CD119 ?? (d.GEOID ? d.GEOID.slice(-2) : null);
-			if (cd !== undefined && cd !== null) {
-				const stateGeo = geographies['States']?.[0];
-				const stateCode = stateGeo?.STUSAB ?? params.state?.toUpperCase() ?? '';
-				const paddedCd = String(cd).padStart(2, '0');
-				const normalizedCd = paddedCd === '98' || paddedCd === '00' ? 'AL' : paddedCd;
-				if (stateCode) {
-					censusDistrict = `${stateCode}-${normalizedCd}`;
-				}
-			}
-		}
-
-		return { lat, lng, cellId, censusDistrict };
-	} catch (err) {
-		console.warn('[mDL] Census endpoint failed:', err instanceof Error ? err.message : err);
-		return null;
-	}
-}
-
-/**
- * Resolve Census tract GEOID from address via Census Bureau geocoding API.
+ * Resolve cell ID from address via Shadow Atlas geocoding.
  *
  * Exported for backward compatibility and direct use by tests.
- * Internally delegates to the unified censusGeocode function.
+ * Delegates to Shadow Atlas's sovereign Nominatim + H3 pipeline.
  *
  * Non-fatal: returns null on any failure. Shadow Atlas registration is deferred.
  */
@@ -853,8 +725,8 @@ export async function resolveCellIdFromAddress(
 	city: string,
 	state: string
 ): Promise<string | null> {
-	const result = await censusGeocode(postalCode, city, state);
-	return result?.cellId ?? null;
+	const result = await resolveLocationFromAddress(postalCode, city, state);
+	return result.cellId;
 }
 
 /**

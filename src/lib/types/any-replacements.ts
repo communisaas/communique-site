@@ -162,13 +162,13 @@ export interface CampaignMetrics {
 
 export interface AddressVerificationResult {
 	verified: boolean;
-	/** Census Bureau standardized address (e.g. "12 MINT PLZ, SAN FRANCISCO, CA, 94103"). */
+	/** Geocoder-standardized address (e.g. "12 MINT PLZ, SAN FRANCISCO, CA, 94103"). */
 	correctedAddress?: string;
 	representatives?: Representative[];
 	zk_eligible?: boolean;
 	zk_warning?: string;
 	error?: string;
-	district_source?: 'shadow_atlas' | 'client_census' | 'census';
+	district_source?: 'shadow_atlas';
 	special_status?: {
 		type: string;
 		message: string;
