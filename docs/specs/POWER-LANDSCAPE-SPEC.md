@@ -378,7 +378,7 @@ No celebration animation. No confetti. No "Great job!" The interface reports wha
 
 ### Data Model Changes
 
-#### Enhanced ProcessedDecisionMaker (communique)
+#### Enhanced ProcessedDecisionMaker (commons)
 
 ```typescript
 // src/lib/types/template.ts — extend existing type
@@ -572,7 +572,7 @@ GET  /api/positions/count/[templateId]
 
 **Goal:** Establish the data model, enhance the decision-maker agent to produce accountability openers and role categories, and create the position registration API.
 
-**Files to create/modify (communique):**
+**Files to create/modify (commons):**
 
 | File | Action | Description |
 |------|--------|-------------|
@@ -628,7 +628,7 @@ Examples of BAD openers (violate voice):
 
 **Goal:** Replace the existing ActionBar with stance registration as the primary CTA. Display live position counts. Handle the post-registration state transition that prepares for the power landscape (Cycle 39).
 
-**Files to create/modify (communique):**
+**Files to create/modify (commons):**
 
 | File | Action | Description |
 |------|--------|-------------|
@@ -713,7 +713,7 @@ Display value: `Math.round($displayCount).toLocaleString()` in JetBrains Mono wi
 
 **Goal:** Build the PowerLandscape component — the grouped, progressively-revealed decision-maker visualization that appears after position registration. Includes the merge of template decision-makers with district officials, the role-grouped layout, and the batch registration affordance.
 
-**Files to create/modify (communique):**
+**Files to create/modify (commons):**
 
 | File | Action | Description |
 |------|--------|-------------|
@@ -853,7 +853,7 @@ const ROLE_LABELS: Record<RoleCategory, string> = {
 
 **Goal:** Build the compose experience — the three-zone pane where the citizen writes to a specific decision-maker, with accountability opener + personal space + template body + attestation footer. Integrate personalized mailto generation. Track sent state.
 
-**Files to create/modify (communique):**
+**Files to create/modify (commons):**
 
 | File | Action | Description |
 |------|--------|-------------|

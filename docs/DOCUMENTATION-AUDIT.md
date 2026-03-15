@@ -134,7 +134,7 @@ These root-level `.md` files are implementation artifacts that belong in `docs/`
 |---|---|
 | `ZK-PROVER-INTEGRATION-SUMMARY.md` | Move to `docs/implementation/` |
 | `CONGRESSIONAL-SUBMIT-IMPLEMENTATION.md` | Move to `docs/implementation/` |
-| `communique-desktop-a11y.md` | Investigate — likely abandoned |
+| `commons-desktop-a11y.md` | Investigate — likely abandoned |
 | `E2E-TESTING-GUIDE.md` | Move to `docs/testing/` |
 | `DEPLOYMENT_CHECKLIST.md` | Rename to clarify it's Firecrawl-specific |
 
@@ -240,7 +240,7 @@ Stop the bleeding. Fix the README, deployment docs, and the most misleading stru
 - `ZK-PROVER-INTEGRATION-SUMMARY.md` → `docs/implementation/zk-prover-integration.md`
 - `CONGRESSIONAL-SUBMIT-IMPLEMENTATION.md` → `docs/implementation/congressional-submit.md`
 - `E2E-TESTING-GUIDE.md` → `docs/testing/e2e-testing-guide.md`
-- `communique-desktop-a11y.md` → archived (Playwright a11y tree snapshot, zero references in src/)
+- `commons-desktop-a11y.md` → archived (Playwright a11y tree snapshot, zero references in src/)
 
 **1.5 — Fix broken references (found during review)** ✅
 Review cycle found 10 broken internal references from moved/archived files. All fixed:

@@ -70,7 +70,7 @@ DSCs. Non-fatal on parse failure for backward compatibility with minimal test ce
 `extractEcPublicKeyFromDER()` will fail. No states known to use non-P-256 IACA roots.
 
 **Bypass logic in mDL verification:**
-`/Users/noot/Documents/communique/src/lib/core/identity/mdl-verification.ts`,
+`/Users/noot/Documents/commons/src/lib/core/identity/mdl-verification.ts`,
 lines 166-183. With roots now loaded, `getIACARootsForVerification()` returns
 non-empty → enters verification path. `SKIP_ISSUER_VERIFICATION=true` bypass
 remains for dev/test only.
@@ -261,9 +261,9 @@ Wallet. Multiple standalone apps (LA Wallet, MyColorado, state Idemia apps).
 
 ### Relevant Files
 
-- `/Users/noot/Documents/communique/src/lib/core/identity/iaca-roots.ts` (lines 51-60, 73-81, 87-127)
-- `/Users/noot/Documents/communique/src/lib/core/identity/cose-verify.ts` (lines 82-238, 257-319, 373-394, 405-446)
-- `/Users/noot/Documents/communique/src/lib/core/identity/mdl-verification.ts` (lines 161-237)
+- `/Users/noot/Documents/commons/src/lib/core/identity/iaca-roots.ts` (lines 51-60, 73-81, 87-127)
+- `/Users/noot/Documents/commons/src/lib/core/identity/cose-verify.ts` (lines 82-238, 257-319, 373-394, 405-446)
+- `/Users/noot/Documents/commons/src/lib/core/identity/mdl-verification.ts` (lines 161-237)
 
 ### References
 
@@ -286,7 +286,7 @@ Wallet. Multiple standalone apps (LA Wallet, MyColorado, state Idemia apps).
 ### Current State
 
 Engagement tier derivation runs entirely server-side in the voter-protocol
-Shadow Atlas. The communique client receives a pre-computed `engagementTier`
+Shadow Atlas. The commons client receives a pre-computed `engagementTier`
 (0-4) from the `/api/shadow-atlas/engagement` endpoint but has no visibility
 into the underlying metrics or how the tier was derived.
 
@@ -323,7 +323,7 @@ participation, campaign support, governance vote) requires a server-side
 for all users (line 119: "If not provided, diversityScore will be 0").
 
 **Client consumption:**
-`/Users/noot/Documents/communique/src/routes/api/shadow-atlas/engagement/+server.ts`
+`/Users/noot/Documents/commons/src/routes/api/shadow-atlas/engagement/+server.ts`
 returns `engagementTier`, `actionCount`, and `diversityScore` as opaque
 strings (lines 131-138). The client (ProofGenerator.svelte, prover-client.ts)
 passes these values directly into the witness without interpreting them.
@@ -363,8 +363,8 @@ passes these values directly into the witness without interpreting them.
 
 - `/Users/noot/Documents/voter-protocol/packages/crypto/engagement.ts` (lines 113-180)
 - `/Users/noot/Documents/voter-protocol/packages/shadow-atlas/src/engagement-tree-builder.ts` (lines 77-101, 110-245)
-- `/Users/noot/Documents/communique/src/routes/api/shadow-atlas/engagement/+server.ts` (lines 1-152)
-- `/Users/noot/Documents/communique/src/lib/core/shadow-atlas/client.ts` (lines 1-57)
+- `/Users/noot/Documents/commons/src/routes/api/shadow-atlas/engagement/+server.ts` (lines 1-152)
+- `/Users/noot/Documents/commons/src/lib/core/shadow-atlas/client.ts` (lines 1-57)
 
 ---
 
@@ -405,7 +405,7 @@ The full mDL → identity commitment → Shadow Atlas registration pipeline is w
 ### Current State
 
 A centralized modal system exists in
-`/Users/noot/Documents/communique/src/lib/stores/modalSystem.svelte.ts` with a
+`/Users/noot/Documents/commons/src/lib/stores/modalSystem.svelte.ts` with a
 `ModalType` registry (lines 13-25) and a unified `UnifiedModal` component. However,
 the system carries a parallel legacy API that duplicates state management.
 
@@ -418,14 +418,14 @@ with its own `LegacyModalState` type (lines 45-55) that includes states like
 `'cwc-submission'`, `'proof-generation'`, and `'celebration'`.
 
 **ModalRegistry (partial migration):**
-`/Users/noot/Documents/communique/src/lib/components/modals/ModalRegistry.svelte`
+`/Users/noot/Documents/commons/src/lib/components/modals/ModalRegistry.svelte`
 registers five modals through the unified system: onboarding, sign-in, address,
 template, and progressive-form. But several modal components still exist as
 standalone implementations:
-- `TouchModal.svelte` -- `/Users/noot/Documents/communique/src/lib/components/ui/TouchModal.svelte`
-- `SimpleModal.svelte` -- `/Users/noot/Documents/communique/src/lib/components/modals/SimpleModal.svelte`
-- `TemplateSuccessModal.svelte` -- `/Users/noot/Documents/communique/src/lib/components/modals/TemplateSuccessModal.svelte`
-- `ProfileEditModal.svelte` -- `/Users/noot/Documents/communique/src/lib/components/profile/ProfileEditModal.svelte`
+- `TouchModal.svelte` -- `/Users/noot/Documents/commons/src/lib/components/ui/TouchModal.svelte`
+- `SimpleModal.svelte` -- `/Users/noot/Documents/commons/src/lib/components/modals/SimpleModal.svelte`
+- `TemplateSuccessModal.svelte` -- `/Users/noot/Documents/commons/src/lib/components/modals/TemplateSuccessModal.svelte`
+- `ProfileEditModal.svelte` -- `/Users/noot/Documents/commons/src/lib/components/profile/ProfileEditModal.svelte`
 
 These standalone modals manage their own open/close state and do not participate
 in the centralized z-index stack or the body scroll lock coordination.
@@ -464,14 +464,14 @@ The store file exports individual reactive getters (`activeModals`, `topModal`,
 
 ### Relevant Files
 
-- `/Users/noot/Documents/communique/src/lib/stores/modalSystem.svelte.ts` (lines 13-25, 44-64, 210-302, 344-433)
-- `/Users/noot/Documents/communique/src/lib/components/modals/ModalRegistry.svelte` (lines 1-140)
-- `/Users/noot/Documents/communique/src/lib/components/ui/UnifiedModal.svelte` (lines 1-141)
-- `/Users/noot/Documents/communique/src/lib/components/ui/TouchModal.svelte`
-- `/Users/noot/Documents/communique/src/lib/components/modals/SimpleModal.svelte`
-- `/Users/noot/Documents/communique/src/lib/components/modals/TemplateSuccessModal.svelte`
-- `/Users/noot/Documents/communique/src/lib/components/profile/ProfileEditModal.svelte`
-- `/Users/noot/Documents/communique/src/lib/types/modal.ts` (line 1-5)
+- `/Users/noot/Documents/commons/src/lib/stores/modalSystem.svelte.ts` (lines 13-25, 44-64, 210-302, 344-433)
+- `/Users/noot/Documents/commons/src/lib/components/modals/ModalRegistry.svelte` (lines 1-140)
+- `/Users/noot/Documents/commons/src/lib/components/ui/UnifiedModal.svelte` (lines 1-141)
+- `/Users/noot/Documents/commons/src/lib/components/ui/TouchModal.svelte`
+- `/Users/noot/Documents/commons/src/lib/components/modals/SimpleModal.svelte`
+- `/Users/noot/Documents/commons/src/lib/components/modals/TemplateSuccessModal.svelte`
+- `/Users/noot/Documents/commons/src/lib/components/profile/ProfileEditModal.svelte`
+- `/Users/noot/Documents/commons/src/lib/types/modal.ts` (line 1-5)
 
 ---
 
@@ -484,7 +484,7 @@ data to a TEE public key using X25519 ECDH + XChaCha20-Poly1305 via libsodium.
 However, the server-side TEE components do not exist.
 
 **Client-side encryption (complete):**
-`/Users/noot/Documents/communique/src/lib/core/proof/witness-encryption.ts`
+`/Users/noot/Documents/commons/src/lib/core/proof/witness-encryption.ts`
 implements the full encryption flow:
 - `WitnessData` interface (lines 25-87) with three-tree proof inputs, delivery
   address, and engagement data.
@@ -501,7 +501,7 @@ has been created for it. The `getTEEPublicKey()` function will throw
 "Witness encryption service unavailable" after 3 retry attempts.
 
 **TEE architecture (documented, not deployed):**
-`/Users/noot/Documents/communique/docs/architecture/tee-systems.md` describes
+`/Users/noot/Documents/commons/docs/architecture/tee-systems.md` describes
 the TEE as being used exclusively for message delivery (decrypting congressional
 messages for CWC API delivery), not for ZK proof generation. Target platform
 is AWS Nitro Enclaves at approximately $350-400/month. The document indicates
@@ -549,15 +549,15 @@ the TEE boundary. Without the TEE, this data cannot flow through the system.
 - Attestation verification (proving the key was generated inside a genuine
   enclave) is needed for production trust but is a significant implementation
   effort.
-- The blob encryption module (`/Users/noot/Documents/communique/src/lib/core/identity/blob-encryption.ts`)
+- The blob encryption module (`/Users/noot/Documents/commons/src/lib/core/identity/blob-encryption.ts`)
   also references TEE infrastructure and may share key management requirements.
 
 ### Relevant Files
 
-- `/Users/noot/Documents/communique/src/lib/core/proof/witness-encryption.ts` (lines 25-87, 106-169, 180-234)
-- `/Users/noot/Documents/communique/docs/architecture/tee-systems.md` (lines 1-60)
-- `/Users/noot/Documents/communique/src/lib/core/identity/blob-encryption.ts`
-- `/Users/noot/Documents/communique/src/routes/api/` (missing `tee/public-key` route)
+- `/Users/noot/Documents/commons/src/lib/core/proof/witness-encryption.ts` (lines 25-87, 106-169, 180-234)
+- `/Users/noot/Documents/commons/docs/architecture/tee-systems.md` (lines 1-60)
+- `/Users/noot/Documents/commons/src/lib/core/identity/blob-encryption.ts`
+- `/Users/noot/Documents/commons/src/routes/api/` (missing `tee/public-key` route)
 
 ---
 
@@ -571,7 +571,7 @@ Google's implementation (Chrome on Android) does not have this requirement -- an
 
 ### What's Needed
 
-1. **Apple Business Connect enrollment.** Register Communique PBC as a verified merchant at `https://businessconnect.apple.com/`. This requires:
+1. **Apple Business Connect enrollment.** Register Commons PBC as a verified merchant at `https://businessconnect.apple.com/`. This requires:
    - Apple Developer account (existing or new)
    - Business verification (D-U-N-S number or equivalent)
    - Merchant category assignment
@@ -588,8 +588,8 @@ Google's implementation (Chrome on Android) does not have this requirement -- an
 
 ### Relevant Files
 
-- `/Users/noot/Documents/communique/src/lib/core/identity/digital-credentials-api.ts` (feature detection, request construction)
-- `/Users/noot/Documents/communique/src/lib/components/auth/GovernmentCredentialVerification.svelte` (error handling for iOS)
+- `/Users/noot/Documents/commons/src/lib/core/identity/digital-credentials-api.ts` (feature detection, request construction)
+- `/Users/noot/Documents/commons/src/lib/components/auth/GovernmentCredentialVerification.svelte` (error handling for iOS)
 
 ---
 
@@ -598,7 +598,7 @@ Google's implementation (Chrome on Android) does not have this requirement -- an
 **Last updated:** 2026-02-25
 **Canonical source of truth** for what blocks production launch.
 
-Cross-references: voter-protocol `MEMORY.md`, communique `implementation-status.md`
+Cross-references: voter-protocol `MEMORY.md`, commons `implementation-status.md`
 
 ### P0: Launch Blockers (must complete before any production traffic)
 
@@ -606,33 +606,33 @@ Cross-references: voter-protocol `MEMORY.md`, communique `implementation-status.
 |---|------|-----------|--------|------------|
 | L-01 | Deploy contracts to Scroll mainnet | voter-protocol | **NOT STARTED** | Compiled + tested (473 Solidity tests, v4 Sepolia verified) |
 | L-02 | `registerVerifier()` + `sealGenesis()` on mainnet | voter-protocol | **NOT STARTED** | Depends on L-01 |
-| L-03 | IACA root certificate ingestion (Gap 1) | communique | **RESOLVED** (Cycle 41) | DSC→IACA chain verification + CA/NM roots loaded. 31 tests, real cert self-sig verified. Expansion via VICAL parser for remaining states. |
-| L-04 | mDL → identity commitment → Shadow Atlas registration (Gap 3) | communique | **RESOLVED** (Cycle 42) | Census tract resolution in privacy boundary, cellId threaded through client pipeline, registration status UI. 9 tests. |
-| L-05 | TEE infrastructure for witness decryption (Gap 5) | communique | **NOT STARTED** | AWS Nitro Enclave provisioning; `/api/tee/public-key` route; key management |
+| L-03 | IACA root certificate ingestion (Gap 1) | commons | **RESOLVED** (Cycle 41) | DSC→IACA chain verification + CA/NM roots loaded. 31 tests, real cert self-sig verified. Expansion via VICAL parser for remaining states. |
+| L-04 | mDL → identity commitment → Shadow Atlas registration (Gap 3) | commons | **RESOLVED** (Cycle 42) | Census tract resolution in privacy boundary, cellId threaded through client pipeline, registration status UI. 9 tests. |
+| L-05 | TEE infrastructure for witness decryption (Gap 5) | commons | **NOT STARTED** | AWS Nitro Enclave provisioning; `/api/tee/public-key` route; key management |
 | L-06 | Production secrets + Shadow Atlas server deployment | voter-protocol | **NOT STARTED** | Server binary ready; needs hosting + DNS + TLS |
-| L-07 | Update communique `file:` paths → npm registry refs | communique | **NOT STARTED** | @voter-protocol packages published (crypto@0.1.3, noir-prover@0.2.0) |
+| L-07 | Update commons `file:` paths → npm registry refs | commons | **NOT STARTED** | @voter-protocol packages published (crypto@0.1.3, noir-prover@0.2.0) |
 
 ### P1: Pre-Production (should complete before public announcement)
 
 | # | Item | Owner Repo | Status | Dependency |
 |---|------|-----------|--------|------------|
-| L-08 | Apple Business Connect registration (Gap 6) | communique | **NOT STARTED** | Apple enrollment process (days-to-weeks) |
-| L-09 | Engagement tier explanation UI (Gap 2) | communique + voter-protocol | **NOT STARTED** | Shadow Atlas API surface expansion |
-| L-10 | Debate on-chain settlement | voter-protocol + communique | **NOT STARTED** | Depends on L-01 (mainnet DebateMarket.sol deployment) |
-| L-11 | Debate auto-resolution cron | communique | **NOT STARTED** | None |
+| L-08 | Apple Business Connect registration (Gap 6) | commons | **NOT STARTED** | Apple enrollment process (days-to-weeks) |
+| L-09 | Engagement tier explanation UI (Gap 2) | commons + voter-protocol | **NOT STARTED** | Shadow Atlas API surface expansion |
+| L-10 | Debate on-chain settlement | voter-protocol + commons | **NOT STARTED** | Depends on L-01 (mainnet DebateMarket.sol deployment) |
+| L-11 | Debate auto-resolution cron | commons | **NOT STARTED** | None |
 | L-12 | CampaignRegistry timelock risk review (D4) | voter-protocol | **DEFERRED** | Audit resolution decision accepted risk; re-review before mainnet |
 
 ### P2: Post-Launch
 
 | # | Item | Owner Repo | Notes |
 |---|------|-----------|-------|
-| L-13 | Modal system full unification (Gap 4) | communique | Technical debt, no user regression |
-| L-14 | Congressional office dashboard | communique | Not started |
-| L-15 | IPFS migration for encrypted blobs | communique | 99.97% cost reduction |
+| L-13 | Modal system full unification (Gap 4) | commons | Technical debt, no user regression |
+| L-14 | Congressional office dashboard | commons | Not started |
+| L-15 | IPFS migration for encrypted blobs | commons | 99.97% cost reduction |
 | L-16 | On-chain reputation (ERC-8004) | voter-protocol | Designed, not deployed |
-| L-17 | Debate co-sign UI + event indexer | communique | API exists, UI missing |
-| L-18 | Persistent rate limiting (Redis) | communique | In-memory currently |
-| L-19 | Salt rotation automation | communique | Manual currently |
+| L-17 | Debate co-sign UI + event indexer | commons | API exists, UI missing |
+| L-18 | Persistent rate limiting (Redis) | commons | In-memory currently |
+| L-19 | Salt rotation automation | commons | Manual currently |
 | L-20 | BA-017 (depth-24 env-blocked) | voter-protocol | Backlog |
 
 ### Critical Path

@@ -50,7 +50,7 @@ Trust tiers (0-5) are the user-facing concept. Authority levels (1-5) are the on
 
 ## The Template Link: Primary Trust Graduation Surface
 
-Most users encounter communique through a shared template link (`/s/[slug]`). This is where trust graduation happens — not in a settings page, not in a profile flow, but in the moment someone wants to take civic action. The template link is the ramp.
+Most users encounter Commons through a shared template link (`/s/[slug]`). This is where trust graduation happens — not in a settings page, not in a profile flow, but in the moment someone wants to take civic action. The template link is the ramp.
 
 ### Design principle: action first, trust graduation after
 
@@ -269,7 +269,7 @@ User provides address (street, city, state, zip)
       {
         "@context": ["https://www.w3.org/ns/credentials/v2"],
         "type": ["VerifiableCredential", "DistrictResidencyCredential"],
-        "issuer": "did:web:communique.io",
+        "issuer": "did:web:commons.email",
         "credentialSubject": {
           "id": <user's did:key from Tier 1>,
           "districtMembership": {

@@ -1,0 +1,175 @@
+- generic [ref=e2]:
+  - button "Sign in to your account" [ref=e87] [cursor=pointer]: Sign in
+  - generic [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - paragraph [ref=e9]: commons
+        - heading "Your voice. Sent together." [level=1] [ref=e10]:
+          - text: Your voice.
+          - generic [ref=e11]: Sent together.
+        - paragraph [ref=e12]: Write it once. Share the link. Everyone can send it.
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: What needs to change?
+          - generic [ref=e88]:
+            - img [ref=e89]
+            - generic [ref=e90]: saved 20 hours ago
+        - region "Your saved draft" [ref=e91]:
+          - blockquote [ref=e93]: "\"Rent keeps going up but wages stay the same in Los Angeles\""
+          - generic [ref=e94]:
+            - generic [ref=e95]: Continue where you left off, or
+            - button "start fresh" [ref=e96] [cursor=pointer]
+        - generic [ref=e97]:
+          - button "Continue to decision-makers" [ref=e98] [cursor=pointer]:
+            - generic [ref=e99]: Continue to decision-makers
+            - img [ref=e100]
+          - paragraph [ref=e102]:
+            - text: Press
+            - generic [ref=e103]: ⌘
+            - generic [ref=e104]: Enter
+            - text: to continue
+      - generic [ref=e21]: or join an existing campaign →
+      - link "hello@communi.email" [ref=e23] [cursor=pointer]:
+        - /url: mailto:hello@communi.email
+        - generic [ref=e24]: hello@communi.email
+        - img [ref=e25]
+    - generic [ref=e27]:
+      - generic [ref=e29]:
+        - button "How coordination works One message gets buried. Coordinated voices make impact. See how" [ref=e30] [cursor=pointer]:
+          - generic [ref=e31]:
+            - heading "How coordination works" [level=2] [ref=e32]
+            - paragraph [ref=e33]: One message gets buried. Coordinated voices make impact.
+          - generic [ref=e34]:
+            - generic [ref=e35]: See how
+            - img [ref=e36]
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: "1"
+            - generic [ref=e41]:
+              - strong [ref=e42]: Write once
+              - generic [ref=e43]: Describe your message. Pick who decides.
+          - generic [ref=e44]:
+            - generic [ref=e45]: "2"
+            - generic [ref=e46]:
+              - strong [ref=e47]: Share the link
+              - generic [ref=e48]: Anyone who shares your problem can send it too.
+          - generic [ref=e49]:
+            - generic [ref=e50]: "3"
+            - generic [ref=e51]:
+              - strong [ref=e52]: Impact together
+              - generic [ref=e53]: Decision-makers see coordinated voices, not isolated messages.
+      - generic [ref=e105]:
+        - navigation "Geographic scope navigation" [ref=e106]:
+          - button "Filter by United States" [ref=e108] [cursor=pointer]:
+            - generic [ref=e109]: United States
+          - img [ref=e110]
+          - button "Filter by California" [ref=e113] [cursor=pointer]:
+            - generic [ref=e114]: California
+          - img [ref=e115]
+          - button "Find your Congressional District" [ref=e117] [cursor=pointer]:
+            - img [ref=e118]
+            - generic [ref=e120]: Your District
+        - generic [ref=e121]:
+          - link "Your location preferences stay in your browser" [ref=e122] [cursor=pointer]:
+            - /url: /privacy
+            - img [ref=e123]
+            - generic [ref=e125]: Your location, your control
+            - generic: Uses IP address and timezone automatically. Enter your address for precise results. Stored only in your browser.
+          - group [ref=e126]:
+            - generic "Details" [ref=e127] [cursor=pointer]:
+              - generic [ref=e128]:
+                - img [ref=e129]
+                - text: Details
+      - generic [ref=e69]:
+        - generic [ref=e71]:
+          - generic [ref=e132]:
+            - img
+            - searchbox "Search templates..." [ref=e133]
+          - generic [ref=e134]:
+            - generic [ref=e135]:
+              - heading "All Templates" [level=3] [ref=e136]
+              - generic [ref=e137]: 1 template
+            - button "Mayor Lurie, Director of Transportation Kirschbaum +1 more The daily chaos and human tragedy on our streets The user is demanding that city leadership address the combined crisis of unmanageable traffic congestion and the visible suffering of people on the streets." [ref=e138]:
+              - generic [ref=e139]:
+                - generic [ref=e140]:
+                  - img [ref=e141]
+                  - generic [ref=e142]: Mayor Lurie, Director of Transportation Kirschbaum
+                  - generic [ref=e143]: +1 more
+                - heading "The daily chaos and human tragedy on our streets" [level=3] [ref=e144]
+                - paragraph [ref=e145]: The user is demanding that city leadership address the combined crisis of unmanageable traffic congestion and the visible suffering of people on the streets.
+        - region "Template preview" [ref=e146]:
+          - region "Template preview navigation" [ref=e147]:
+            - button "Share this template" [ref=e150] [cursor=pointer]:
+              - generic [ref=e151]:
+                - generic [ref=e152]:
+                  - img [ref=e154]
+                  - img [ref=e156]
+                - generic:
+                  - generic: Share
+                  - generic: Copied!
+            - generic [ref=e157]:
+              - img [ref=e158]
+              - generic [ref=e159]: Mayor Lurie, Director of Transportation Kirschbaum
+              - generic [ref=e160]: +1 more
+              - button "3 recipients" [ref=e161] [cursor=pointer]:
+                - button "3 recipients" [ref=e162]
+            - generic [ref=e164]:
+              - generic [ref=e165]:
+                - generic [ref=e167]:
+                  - img [ref=e168]
+                  - text: Subject Line
+                - generic [ref=e169]: The daily chaos and human tragedy on our streets
+              - generic [ref=e172]:
+                - text: It is becoming difficult to recognize our city through the 'absolute insane chaos' that has taken over so many of our streets. It isn’t just about the time lost to gridlock; it’s the visceral, polarizing experience of being stuck in unmanageable traffic while witnessing the profound human tragedy of people struggling to survive on those same sidewalks.
+                - 'button "Edit Personal Connection: Describe a specific intersection or neighborhood where you feel the collision of traffic chaos and the human crisis most acutely. variable" [ref=e175] [cursor=pointer]':
+                  - 'button "Edit Personal Connection: Describe a specific intersection or neighborhood where you feel the collision of traffic chaos and the human crisis most acutely. variable" [ref=e176]':
+                    - generic [ref=e177]: "Personal Connection: Describe a specific intersection or neighborhood where you feel the collision of traffic chaos and the human crisis most acutely."
+                - text: We are living through a record-breaking collapse of urban mobility, with commuters losing more time to traffic than ever before
+                - button "Edit 2 variable" [ref=e180] [cursor=pointer]:
+                  - button "Edit 2 variable" [ref=e181]:
+                    - generic [ref=e182]: "2"
+                - text: . In San Francisco, this gridlock is more than an inconvenience—it is a public safety failure. When over 40% of first responders identify traffic as their primary challenge, we are effectively choosing chaos over life-saving response times
+                - button "Edit 4 variable" [ref=e185] [cursor=pointer]:
+                  - button "Edit 4 variable" [ref=e186]:
+                    - generic [ref=e187]: "4"
+                - text: . This friction is amplified by a national affordability crisis that has pushed homelessness to record highs
+                - button "Edit 3 variable" [ref=e190] [cursor=pointer]:
+                  - button "Edit 3 variable" [ref=e191]:
+                    - generic [ref=e192]: "3"
+                - text: ", creating a environment where our transportation infrastructure and the safety of our most vulnerable neighbors are in constant, dangerous conflict"
+                - button "Edit 1 variable" [ref=e195] [cursor=pointer]:
+                  - button "Edit 1 variable" [ref=e196]:
+                    - generic [ref=e197]: "1"
+                - text: . I am asking you to stop treating traffic management and the homelessness crisis as separate departmental issues. We need an integrated emergency street-management strategy that prioritizes clear transit corridors for emergency vehicles and public transit, paired with immediate, visible social service interventions in the city’s most congested zones. We cannot continue to accept this level of disorder as the status quo.
+                - button "Edit Name variable" [ref=e200] [cursor=pointer]:
+                  - button "Edit Name variable" [ref=e201]:
+                    - img [ref=e202]
+                    - generic [ref=e203]: Name
+                - button "Edit Address variable" [ref=e206] [cursor=pointer]:
+                  - button "Edit Address variable" [ref=e207]:
+                    - img [ref=e208]
+                    - generic [ref=e209]: Address
+                - text: "--- REFERENCES ---"
+                - button "Edit 1 variable" [ref=e212] [cursor=pointer]:
+                  - button "Edit 1 variable" [ref=e213]:
+                    - generic [ref=e214]: "1"
+                - text: Promising Practices for Transportation Agencies to Address Road Safety among People Experiencing Homelessness https://highways.dot.gov/media/56771
+                - button "Edit 2 variable" [ref=e217] [cursor=pointer]:
+                  - button "Edit 2 variable" [ref=e218]:
+                    - generic [ref=e219]: "2"
+                - text: Traffic congestion hits record high, but travel patterns are changing, report finds https://stories.tamu.edu/news/2025/11/05/traffic-congestion-hits-record-high-but-travel-patterns-are-changing-report-finds/
+                - button "Edit 3 variable" [ref=e222] [cursor=pointer]:
+                  - button "Edit 3 variable" [ref=e223]:
+                    - generic [ref=e224]: "3"
+                - text: "State of Homelessness: 2025 Edition https://endhomelessness.org/state-of-homelessness/"
+                - button "Edit 4 variable" [ref=e227] [cursor=pointer]:
+                  - button "Edit 4 variable" [ref=e228]:
+                    - generic [ref=e229]: "4"
+                - text: The growing challenge of traffic congestion on emergency response times https://www.smartcitiesdive.com/news/archive-acc-the-growing-challenge-of-traffic-congestion-on-emergency-response-times/754760/
+            - generic [ref=e230]:
+              - generic [ref=e231]:
+                - generic:
+                  - img
+                - button "Send to Decision-Makers" [ref=e232] [cursor=pointer]:
+                  - generic [ref=e233]: Send to Decision-Makers
+              - paragraph [ref=e235]: Sent via email without cryptographic verification

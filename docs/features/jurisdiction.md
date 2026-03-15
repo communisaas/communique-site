@@ -209,7 +209,7 @@ async function lookupCityPopulation(
 - Caching: IndexedDB (1-year cache expiry)
 
 **IndexedDB Cache:**
-- Database: `communique_census_cache`
+- Database: `commons_census_cache`
 - Store: `fips_population`
 - Expiry: 365 days
 - Browser-only (server-side calls skip cache)

@@ -227,7 +227,7 @@ await prisma.$transaction(async (tx) => {
 
 ## Files Modified
 
-### 1. `/Users/noot/Documents/communique/prisma/schema.prisma`
+### 1. `/Users/noot/Documents/commons/prisma/schema.prisma`
 
 **Changes:**
 - Line 1343: Added `@unique` constraint to `Submission.nullifier`
@@ -249,7 +249,7 @@ model Submission {
 
 ---
 
-### 2. `/Users/noot/Documents/communique/src/routes/api/identity/verify/+server.ts`
+### 2. `/Users/noot/Documents/commons/src/routes/api/identity/verify/+server.ts`
 
 **Changes:**
 - Lines 87-143: Wrapped identity verification in `prisma.$transaction()`
@@ -276,7 +276,7 @@ await prisma.$transaction(async (tx) => {
 
 ---
 
-### 3. `/Users/noot/Documents/communique/src/routes/api/submissions/create/+server.ts`
+### 3. `/Users/noot/Documents/commons/src/routes/api/submissions/create/+server.ts`
 
 **Changes:**
 - Line 49: Added `idempotencyKey` to request body destructuring

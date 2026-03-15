@@ -8,7 +8,7 @@
 
 ## Problem Statement
 
-Communique's address verification pipeline has four structural defects:
+Commons's address verification pipeline has four structural defects:
 
 1. **Double Census API hit.** `api/address/verify/+server.ts` calls Census Bureau directly (line 49), then `addressLookupService.lookupRepsByAddress()` calls Census *again* internally via `addressToDistrict()` (line 342 of `address-lookup.ts`). Every address verification triggers two identical geocoding requests.
 
@@ -60,14 +60,14 @@ The privacy boundary is clean. Shadow Atlas currently sees: leaf hashes (Tree 1)
 **What goes where:**
 ```
 Browser:     Full address (encrypted IndexedDB) → Census geocoding → coordinates + cell_id
-Communique:  cell_id → Shadow Atlas for reps + district proof
+Commons:  cell_id → Shadow Atlas for reps + district proof
 Shadow Atlas: cell_id → officials from Postgres + Tree 2 SMT proof
 ```
 
 ### Target Data Flow
 
 ```
-Browser                     Communique Server               Shadow Atlas
+Browser                     Commons Server               Shadow Atlas
 ───────                     ─────────────────               ────────────
 User enters address ──→  POST /api/address/verify
                                │
@@ -87,7 +87,7 @@ User enters address ──→  POST /api/address/verify
 
 ## Implementation Phases
 
-### Phase A: Fix Communique Pipeline (this repo)
+### Phase A: Fix Commons Pipeline (this repo)
 
 Eliminate the double Census hit and Congress.gov runtime dependency. Ship an in-process member cache so address verification works immediately, even before shadow-atlas endpoints exist.
 
@@ -123,7 +123,7 @@ New SQLite tables and API endpoints in shadow-atlas. (Adapted from original Post
 - [x] `federal_members` table (bioguide_id PK, name, party, chamber, state, district, phone, office_address, contact_form_url, cwc_code, cd_geoid, state_fips, is_voting, delegate_type, updated_at)
 - [x] `state_legislators` table (openstates_id PK) — schema defined, ingestion deferred to Phase B+
 - [x] `ingestion_log` table (source, status, records_upserted, records_deleted, duration_ms, error)
-- [ ] `geocode_cache` table — deferred (Census geocoding stays in Communique verify endpoint for now)
+- [ ] `geocode_cache` table — deferred (Census geocoding stays in Commons verify endpoint for now)
 
 **Files:**
 - `packages/shadow-atlas/src/db/officials-schema.sql` (new)
@@ -163,7 +163,7 @@ New SQLite tables and API endpoints in shadow-atlas. (Adapted from original Post
 
 **File:** `packages/shadow-atlas/src/__tests__/unit/serving/officials-service.test.ts` (new)
 
-### Phase C: Communique Switchover
+### Phase C: Commons Switchover
 
 Replace Congress.gov integration with shadow-atlas calls.
 
@@ -224,7 +224,7 @@ src/lib/core/location/census-api.ts              ← remove JSONP
 
 ## Implementation Log
 
-### Cycle 1: Phase A — Fix Communique Pipeline
+### Cycle 1: Phase A — Fix Commons Pipeline
 **Started:** 2026-02-22
 **Status:** Complete
 
@@ -267,7 +267,7 @@ The architecture doc originally specified Postgres tables. Shadow-atlas uses SQL
 - [x] B4: Tests — 26 unit tests all passing (officials service + API response formatting)
 - [x] Dry-run validated: correct CWC codes, delegate types, FIPS mappings, special status for DC/territories
 
-### Cycle 3: Phase C — Communique Switchover (C1 + C2)
+### Cycle 3: Phase C — Commons Switchover (C1 + C2)
 **Started:** 2026-02-22
 **Status:** Complete (C1 + C2 done; C3 dead code deletion and C4 JSONP removal deferred)
 

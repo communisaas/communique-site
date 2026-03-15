@@ -261,7 +261,7 @@ interface DiditVerificationResult {
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                      Communique                          │
+│                       Commons                             │
 ├─────────────────────────────────────────────────────────┤
 │                 IdentityVerificationFlow                 │
 │  ┌─────────────────┐        ┌─────────────────┐         │
@@ -285,7 +285,7 @@ If decentralized identity is required before Alien releases SDK:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                      Communique                          │
+│                       Commons                             │
 ├─────────────────────────────────────────────────────────┤
 │                 IdentityVerificationFlow                 │
 │  ┌───────────────────┐    ┌─────────────────┐           │
@@ -312,7 +312,7 @@ Status: POSSIBLE - Humanity Protocol has public APIs
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                      Communique                          │
+│                       Commons                             │
 ├─────────────────────────────────────────────────────────┤
 │           IdentityProviderAbstraction Layer              │
 │  ┌──────────────────────────────────────────────────┐   │
@@ -351,7 +351,7 @@ Status: POSSIBLE - Humanity Protocol has public APIs
 | **Privacy** | Maximum (no PII stored) | Standard (encrypted PII) |
 | **Regulatory Compliance** | Unclear | GDPR, SOC 2, etc. |
 
-### For Communique's Use Case (Congressional Delivery)
+### For Commons's Use Case (Congressional Delivery)
 
 | Requirement | Alien | Didit.me |
 |-------------|-------|----------|
@@ -403,7 +403,7 @@ const identityCommitment = poseidon([
 ### Didit.me ZK Integration (Current Implementation)
 
 ```typescript
-// Current Communique implementation
+// Current Commons implementation
 // See: /docs/design/patterns/identity-verification.md
 
 // From Didit verification result
@@ -420,7 +420,7 @@ const identityCommitment = poseidon([
 
 ## 8. Authority Level Mapping (Tier 1-5)
 
-### Communique Authority Tiers (Reference)
+### Commons Authority Tiers (Reference)
 
 From existing architecture:
 - **Tier 1:** Unverified (anonymous)
@@ -670,7 +670,7 @@ async function getVerifiedIdentity(userId: string): Promise<Identity | null> {
 - [Humanity Protocol Documentation](https://docs.humanity.org/)
 - [Humanity Protocol Developer Portal](https://www.humanity.org/developers)
 
-### Communique Internal References
+### Commons Internal References
 - `/docs/design/patterns/identity-verification.md` - Current UI components
 - `/docs/specs/portable-identity.md` - IPFS + on-chain identity architecture
 - `/docs/specs/universal-credibility.md` - Authority tier system

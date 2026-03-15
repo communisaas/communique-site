@@ -423,7 +423,7 @@ See `/docs/congressional/dashboard.md` for office dashboard setup (view messages
         <Timestamp>2025-10-12T19:35:00Z</Timestamp>
         <DeliveryAgent>
             <Name>Commons Advocacy Platform</Name>
-            <Email>cwc@communique.org</Email>
+            <Email>cwc@commons.email</Email>
             <Phone>+1-555-CWC-MAIL</Phone>
         </DeliveryAgent>
         <OfficeCode>CA12_HOUSE</OfficeCode>
@@ -465,7 +465,7 @@ Jane Constituent</Body>
     <DeliveryId>comm_1234567890_tpl_abc123_sen_S000123</DeliveryId>
     <DeliveryAgent>
         <Name>Commons Advocacy Platform</Name>
-        <Email>cwc@communique.org</Email>
+        <Email>cwc@commons.email</Email>
         <Phone>+1-555-CWC-MAIL</Phone>
     </DeliveryAgent>
     <Constituent>

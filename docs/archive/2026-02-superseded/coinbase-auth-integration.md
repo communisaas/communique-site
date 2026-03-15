@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Integrate Coinbase OAuth2 as the highest-trust authentication provider for Communique. Coinbase offers **KYC-verified identity** (government ID + biometric verification) with 100M+ verified users, providing superior Sybil resistance compared to all current OAuth providers.
+Integrate Coinbase OAuth2 as the highest-trust authentication provider for Commons. Coinbase offers **KYC-verified identity** (government ID + biometric verification) with 100M+ verified users, providing superior Sybil resistance compared to all current OAuth providers.
 
 ### Why Coinbase?
 
@@ -47,7 +47,7 @@ Integrate Coinbase OAuth2 as the highest-trust authentication provider for Commu
 
 ```
 ┌─────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
-│  communique │────▶│ login.coinbase.com  │────▶│ api.coinbase.com    │
+│   commons  │────▶│ login.coinbase.com  │────▶│ api.coinbase.com    │
 │   frontend  │     │    /oauth2/auth     │     │      /v2/user       │
 └─────────────┘     └─────────────────────┘     └─────────────────────┘
        │                      │                          │

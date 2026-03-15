@@ -353,7 +353,7 @@ TOTAL COST:
 └─────────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│ COMMUNIQUE BACKEND (SvelteKit API Routes)                        │
+│ COMMONS BACKEND (SvelteKit API Routes)                           │
 ├─────────────────────────────────────────────────────────────────┤
 │ • POST /api/identity/store-blob (store encrypted address)        │
 │ • GET /api/tee/public-key (fetch TEE public key for encryption)  │

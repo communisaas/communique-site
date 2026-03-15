@@ -1,8 +1,8 @@
-# Codebase Ownership: voter-protocol vs communique
+# Codebase Ownership: voter-protocol vs commons
 
 > **SUPERSEDED** — This document contains extensive stale references (Halo2, @voter-protocol/client, wrong contract paths, wrong TEE provider). Do not use as implementation reference. Current integration spec: see voter-protocol `specs/COMMUNIQUE-INTEGRATION-SPEC.md`.
 
-**Purpose:** Define clear engineering boundaries between protocol layer (voter-protocol) and application layer (communique)
+**Purpose:** Define clear engineering boundaries between protocol layer (voter-protocol) and application layer (commons)
 **Principle:** Protocol primitives vs. application implementation
 
 ---
@@ -10,7 +10,7 @@
 ## Engineering Philosophy
 
 **voter-protocol:** Protocol-level primitives, reusable across any application
-**communique:** First application built on VOTER Protocol (congressional advocacy)
+**commons:** First application built on VOTER Protocol (congressional advocacy)
 
 Think: Ethereum (protocol) vs. Uniswap (application)
 
@@ -33,7 +33,7 @@ Think: Ethereum (protocol) vs. Uniswap (application)
 
 ```
 contracts/scroll/
-├── CommuniqueCoreV2.sol          # Civic action certification
+├── CommonsCoreV2.sol             # Civic action certification
 ├── VOTERToken.sol                # ERC-20 token
 ├── UnifiedRegistry.sol           # Challenge markets + reputation
 ├── ChallengeMarket.sol           # Truth verification via staking
@@ -131,7 +131,7 @@ packages/types/
 
 ---
 
-## 🏛️ communique Repository (Application Layer)
+## 🏛️ commons Repository (Application Layer)
 
 ### Purpose
 **Congressional advocacy application** built on VOTER Protocol. First of many apps that will use the protocol.
@@ -139,7 +139,7 @@ packages/types/
 ### What Belongs Here
 
 #### 1. Application-Specific Features
-**Location:** `communique/src/lib/`
+**Location:** `commons/src/lib/`
 
 ```
 src/lib/
@@ -166,27 +166,27 @@ src/lib/
         └── voter-protocol/       # WRAPPER around @voter-protocol/client
 ```
 
-**Ownership:** communique
+**Ownership:** commons
 **Why:** Congressional advocacy is one application. Protocol is reusable for any democratic action.
 
 #### 2. Integration Layer (Wrapper)
-**Location:** `communique/src/lib/core/integrations/voter-protocol/`
+**Location:** `commons/src/lib/core/integrations/voter-protocol/`
 
 ```
 integrations/voter-protocol/
 ├── browser-prover-wrapper.ts     # Browser WASM proof generation wrapper with UI
 ├── shadow-atlas-manager.ts       # Shadow Atlas loading/caching manager
 ├── congressional-certification.ts # Certify messages to Congress
-└── reputation-display.ts         # Show reputation in Communique UI
+└── reputation-display.ts         # Show reputation in Commons UI
 ```
 
 **Pattern:**
 ```typescript
-// communique wraps protocol SDK with app-specific logic
+// commons wraps protocol SDK with app-specific logic
 import { BrowserProver } from '@voter-protocol/client';
 import { db } from '$lib/core/db';
 
-export class CommuniqueBrowserProverWrapper {
+export class CommonsBrowserProverWrapper {
   private prover: BrowserProver;
 
   async generateProofWithUI(userId: string, address: string, district: string) {
@@ -217,11 +217,11 @@ export class CommuniqueBrowserProverWrapper {
 }
 ```
 
-**Ownership:** communique
+**Ownership:** commons
 **Why:** Application-specific usage patterns, UI state management, user experience wrapping protocol primitives. Database stores ONLY metadata (verified status, timestamps), never PII.
 
 #### 3. Database Schema (Application Data)
-**Location:** `communique/prisma/schema.prisma`
+**Location:** `commons/prisma/schema.prisma`
 
 ```prisma
 model User {
@@ -251,11 +251,11 @@ model Template {
 }
 ```
 
-**Ownership:** communique
+**Ownership:** commons
 **Why:** Application data model. Other apps would have different schemas. Database stores ONLY metadata and public content, NEVER addresses or PII.
 
 #### 4. Feature Flags & Config
-**Location:** `communique/src/lib/features/`
+**Location:** `commons/src/lib/features/`
 
 ```
 features/
@@ -264,25 +264,25 @@ features/
 └── experimental/                 # Research features
 ```
 
-**Ownership:** communique
+**Ownership:** commons
 **Why:** Application-specific features, not protocol concerns.
 
 ---
 
 ## 🔄 Integration Pattern
 
-### How communique Uses voter-protocol
+### How commons Uses voter-protocol
 
 ```typescript
 // 1. Install protocol SDK
 npm install @voter-protocol/client @voter-protocol/crypto @voter-protocol/types
 
-// 2. Use in communique application
+// 2. Use in commons application
 import { BrowserProver } from '@voter-protocol/client';
 import { generatePoseidonCommitment } from '@voter-protocol/crypto';
 
 // 3. Wrap with application logic
-export class CommuniqueUser {
+export class CommonsUser {
   async verifyDistrict(userId: string, address: string, district: string) {
     // Protocol: Load Shadow Atlas, generate Halo2 proof in browser (600ms-10s device-dependent)
     const prover = new BrowserProver();
@@ -324,7 +324,7 @@ export class CommuniqueUser {
 - ❌ Email delivery timing
 - ❌ PII storage (addresses never stored anywhere)
 
-### Application Layer (communique)
+### Application Layer (commons)
 **Responsibility:** "Congressional advocacy user experience built on protocol primitives"
 **Not Responsible:** "How encryption works, how ZK proofs are generated"
 
@@ -355,7 +355,7 @@ export class CommuniqueUser {
 
 **Priority:** Build browser WASM Halo2 prover + Shadow Atlas IPFS distribution + Scroll smart contracts
 
-### communique (PARTIALLY COMPLETE)
+### commons (PARTIALLY COMPLETE)
 ```
 ✅ src/lib/core/blockchain/rpc/        # RPC abstraction (correct)
 ✅ src/lib/core/auth/                  # OAuth + passkey auth (correct)
@@ -403,7 +403,7 @@ export class CommuniqueUser {
    @voter-protocol/types
    ```
 
-### Phase 2: Integrate in Communique (communique)
+### Phase 2: Integrate in Commons (commons)
 **Timeline:** 2-3 weeks
 
 1. **Install Protocol SDK**
@@ -431,7 +431,7 @@ export class CommuniqueUser {
 **Timeline:** 1-2 weeks
 
 1. Deploy Scroll smart contracts to mainnet
-2. Update communique to use mainnet contracts
+2. Update commons to use mainnet contracts
 3. Load test browser WASM proving on various devices (desktop, mobile, budget)
 4. Verify Shadow Atlas IPFS distribution and caching
 5. Launch
@@ -458,9 +458,9 @@ voter-protocol/
 └── turbo.json                    # Turborepo config
 ```
 
-### communique Application
+### commons Application
 ```
-communique/
+commons/
 ├── src/
 │   ├── lib/
 │   │   ├── core/
@@ -490,7 +490,7 @@ communique/
 - ✅ Cryptographic primitives
 - ✅ Core data structures
 
-**Application (communique):**
+**Application (commons):**
 - ✅ Congressional-specific features
 - ✅ UI/UX implementation
 - ✅ Database schema
@@ -523,7 +523,7 @@ communique/
 5. Implement Shadow Atlas IPFS loader with IndexedDB caching
 6. Begin Scroll smart contract implementation
 
-### This Week (communique):
+### This Week (commons):
 1. Update Prisma schema to remove all PII fields
 2. Add `district_verified` and `last_proof_timestamp` fields
 3. Prepare UI for 600ms-10s device-dependent proof generation progress indicators
@@ -533,13 +533,13 @@ communique/
 1. Complete Halo2 circuit + WASM build (voter-protocol)
 2. Deploy DistrictGate.sol to Scroll testnet (voter-protocol)
 3. Publish `@voter-protocol/crypto` package with browser WASM prover
-4. Integrate browser WASM Halo2 prover in communique
+4. Integrate browser WASM Halo2 prover in commons
 5. End-to-end testing on testnet (verify device performance ranges)
 
 ---
 
 **Principle:** Protocol primitives enable applications. Don't build application logic into protocol. Don't rebuild protocol primitives in applications. Addresses NEVER leave browser (not even encrypted), NEVER transmitted anywhere, NEVER stored in any database.
 
-**Current Blocker:** voter-protocol needs to build browser WASM Halo2 prover + Shadow Atlas IPFS distribution before communique can integrate.
+**Current Blocker:** voter-protocol needs to build browser WASM Halo2 prover + Shadow Atlas IPFS distribution before commons can integrate.
 
 **Next Step:** Build Halo2 two-tier Merkle circuit, compile to WebAssembly, implement Shadow Atlas IPFS loader with IndexedDB caching, test 600ms-10s device-dependent proving time, publish SDK.

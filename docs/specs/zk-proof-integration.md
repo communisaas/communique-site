@@ -141,7 +141,7 @@
 └─────────────────────────────────────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────────────────────────────────────┐
-│ COMMUNIQUE BACKEND (SvelteKit API Routes)                           │
+│ COMMONS BACKEND (SvelteKit API Routes)                              │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │ STEP 7: Store Encrypted Blobs (Postgres via Prisma)                 │

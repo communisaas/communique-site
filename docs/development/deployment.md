@@ -10,7 +10,7 @@
 npm run build                                              # Build for production
 npm run test                                               # Verify tests pass
 npx wrangler pages deploy .svelte-kit/cloudflare \
-  --project-name communique-site --branch production       # Deploy
+  --project-name commons --branch production       # Deploy
 ```
 
 ---
@@ -47,7 +47,7 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 Set via Cloudflare dashboard or CLI:
 
 ```bash
-npx wrangler pages secret put <KEY> --project-name communique-site
+npx wrangler pages secret put <KEY> --project-name commons
 ```
 
 Required secrets:
@@ -113,14 +113,14 @@ The production `DATABASE_URL` should point to the Hyperdrive connection string f
 
 ```bash
 npm run build && npx wrangler pages deploy .svelte-kit/cloudflare \
-  --project-name communique-site --branch production
+  --project-name commons --branch production
 ```
 
 ### Preview Deploy (non-production branch)
 
 ```bash
 npx wrangler pages deploy .svelte-kit/cloudflare \
-  --project-name communique-site --branch feature-name
+  --project-name commons --branch feature-name
 ```
 
 ### Rollback
@@ -131,8 +131,8 @@ Use the Cloudflare Pages dashboard to roll back to a previous deployment. Each d
 
 ## Monitoring
 
-- **Cloudflare Dashboard** → Workers & Pages → communique-site → Logs
-- **Real-time logs**: `npx wrangler pages deployment tail --project-name communique-site`
+- **Cloudflare Dashboard** → Workers & Pages → commons → Logs
+- **Real-time logs**: `npx wrangler pages deployment tail --project-name commons`
 - **KV metrics**: Dashboard → Workers & Pages → KV → namespace → Metrics
 
 ---

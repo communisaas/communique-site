@@ -37,7 +37,7 @@ System Checks:
   - Generate mailto URL with ALL recipients
     ↓
 Mailto URL Opens:
-  TO: epa@epa.gov, biden@whitehouse.gov, congress+slug+userId@communique.org
+  TO: epa@epa.gov, biden@whitehouse.gov, congress+slug+userId@commons.email
   SUBJECT: Climate action now
   BODY: [Template message]
     ↓
@@ -46,11 +46,11 @@ User Sends from Mail App
 Email Splits:
   - epa@epa.gov → Delivered directly
   - biden@whitehouse.gov → Delivered directly
-  - congress+slug+userId@communique.org → Mail Receiver
+  - congress+slug+userId@commons.email → Mail Receiver
     ↓
 Mail Receiver Flow:
   1. Receives email from user's mail app
-  2. Parses: congress+climate-action+user123@communique.org
+  2. Parses: congress+climate-action+user123@commons.email
   3. Looks up template + user address from database
   4. Resolves congressional representatives (2 Senators + 1 House Rep)
   5. Generates CWC XML for each representative
@@ -78,7 +78,7 @@ model CongressionalSubmission {
   id                String    @id @default(cuid())
 
   // Tracking identifiers
-  tracking_email    String    @unique // "congress+slug+userId@communique.org"
+  tracking_email    String    @unique // "congress+slug+userId@commons.email"
   template_id       String
   user_id           String    // REQUIRED (no guest support)
 
@@ -166,7 +166,7 @@ interface TemplateRecipient {
   ]
 }
 ```
-→ User sends to: `congress+slug+userId@communique.org`
+→ User sends to: `congress+slug+userId@commons.email`
 
 ### **Email-Only Template** (existing)
 ```json
@@ -210,7 +210,7 @@ interface TemplateRecipient {
   ]
 }
 ```
-→ User sends to: `congress+slug+userId@communique.org, epa@epa.gov, biden@whitehouse.gov`
+→ User sends to: `congress+slug+userId@commons.email, epa@epa.gov, biden@whitehouse.gov`
 
 **Key insight**: Congressional receiver email is just another recipient in the mailto URL.
 
@@ -304,7 +304,7 @@ async function handleSendConfirmation(sent: boolean) {
     await api.post('/congressional/submissions/track', {
       templateId: template.id,
       userId: user.id,
-      trackingEmail: `congress+${template.slug}+${user.id}@communique.org`,
+      trackingEmail: `congress+${template.slug}+${user.id}@commons.email`,
       userAddress: {
         street: currentUser.street,
         city: currentUser.city,
@@ -358,7 +358,7 @@ export function analyzeEmailFlow(template: Template, user: User | null): EmailFl
       };
     }
 
-    const trackingEmail = `congress+${template.slug}+${user.id}@communique.org`;
+    const trackingEmail = `congress+${template.slug}+${user.id}@commons.email`;
     recipients.push(trackingEmail);
   }
 
@@ -383,12 +383,12 @@ export function analyzeEmailFlow(template: Template, user: User | null): EmailFl
 ### **Infrastructure: SendGrid Inbound Parse**
 
 **Setup**:
-1. Configure SendGrid domain: `communique.org`
-2. Set up Inbound Parse webhook: `https://communique.org/api/email/receive`
-3. All emails to `congress+*@communique.org` → webhook
+1. Configure SendGrid domain: `commons.email`
+2. Set up Inbound Parse webhook: `https://commons.email/api/email/receive`
+3. All emails to `congress+*@commons.email` → webhook
 
 **Alternative (AWS SES)**:
-1. Configure SES to receive emails for `communique.org`
+1. Configure SES to receive emails for `commons.email`
 2. SES → Lambda → POST to `/api/email/receive`
 
 **Hackathon decision**: Use SendGrid (faster setup, 3rd-party dependency OK for MVP)
@@ -406,7 +406,7 @@ import { submitToCongressViaLambda } from '$lib/core/congress/mail-receiver-subm
 /**
  * Inbound Email Webhook (SendGrid Inbound Parse)
  *
- * Receives emails sent to congress+{slug}+{userId}@communique.org
+ * Receives emails sent to congress+{slug}+{userId}@commons.email
  * Submits to CWC API via Lambda workers
  */
 export const POST: RequestHandler = async ({ request }) => {
@@ -417,14 +417,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
     // Extract tracking email from TO field
     const trackingMatch = email.to.find(addr =>
-      addr.match(/congress\+(.+?)\+(.+?)@communique\.org/)
+      addr.match(/congress\+(.+?)\+(.+?)@commons\.email/)
     );
 
     if (!trackingMatch) {
       throw error(400, 'Not a congressional tracking email');
     }
 
-    const match = trackingMatch.match(/congress\+(.+?)\+(.+?)@communique\.org/);
+    const match = trackingMatch.match(/congress\+(.+?)\+(.+?)@commons\.email/);
     if (!match) {
       throw error(400, 'Invalid tracking email format');
     }
@@ -969,7 +969,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
   - [ ] Test end-to-end mailto flow
 
 - [ ] **Day 5: Testing & Bug Fixes**
-  - [ ] Send test email to `congress+test+userId@communique.org`
+  - [ ] Send test email to `congress+test+userId@commons.email`
   - [ ] Verify mail receiver intercepts
   - [ ] Verify SQS submission
   - [ ] Verify Lambda worker processing
@@ -1069,7 +1069,7 @@ npm run test:e2e tests/e2e/multi-target-delivery.spec.ts
 
 ### **Still Open**:
 1. **Should congressional receiver email be visible in mailto?**
-   - Option A: Show `congress+slug+userId@communique.org` (transparent)
+   - Option A: Show `congress+slug+userId@commons.email` (transparent)
    - Option B: Hide it somehow (better UX, but how?)
    - **Recommendation**: Show it. Transparency > magic.
 

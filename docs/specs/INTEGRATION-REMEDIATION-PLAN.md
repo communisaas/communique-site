@@ -54,9 +54,9 @@
 
 ### Documentation Created
 
-- `communique/WS1.2-IMPLEMENTATION-SUMMARY.md`
-- `communique/WS1.2-CODE-REMOVAL-AUDIT.md`
-- `communique/ARCHITECTURE-BEFORE-AFTER.md`
+- `commons/WS1.2-IMPLEMENTATION-SUMMARY.md`
+- `commons/WS1.2-CODE-REMOVAL-AUDIT.md`
+- `commons/ARCHITECTURE-BEFORE-AFTER.md`
 - `voter-protocol/contracts/SA-001-ACTIONDOMAIN-WHITELIST-SUMMARY.md`
 - `voter-protocol/contracts/SA-001-VERIFICATION-CHECKLIST.md`
 - `voter-protocol/contracts/SA-004-IMPLEMENTATION-SUMMARY.md`
@@ -99,9 +99,9 @@ Week 3:
 | Workstream | Agent | Outcome | Key Files |
 |------------|-------|---------|-----------|
 | WS2.1: Alien Protocol Research | `aa83958` | Research complete (no SDK available) | Archived: `docs/archive/2026-03-documentation-audit/ALIEN-PROTOCOL-INTEGRATION-RESEARCH.md` |
-| WS2.2: ~~Didit.me SDK~~ (removed Cycle 15; replaced by mDL) | `ad25c30` | Didit.me integration removed; mDL via Digital Credentials API is sole provider | `communique/src/lib/core/identity/didit-client.ts` removed |
-| WS2.3: Browser WASM Prover | `a572e80` | Complete prover integration | `communique/src/lib/core/zkp/` (1,106 lines), `docs/architecture/zk-prover-integration.md` |
-| WS2.4: Congressional Submit | `aedd846` | Full endpoint + blockchain client | `communique/src/routes/api/congressional/submit/+server.ts`, `docs/congressional/congressional-submit.md` |
+| WS2.2: ~~Didit.me SDK~~ (removed Cycle 15; replaced by mDL) | `ad25c30` | Didit.me integration removed; mDL via Digital Credentials API is sole provider | `commons/src/lib/core/identity/didit-client.ts` removed |
+| WS2.3: Browser WASM Prover | `a572e80` | Complete prover integration | `commons/src/lib/core/zkp/` (1,106 lines), `docs/architecture/zk-prover-integration.md` |
+| WS2.4: Congressional Submit | `aedd846` | Full endpoint + blockchain client | `commons/src/routes/api/congressional/submit/+server.ts`, `docs/congressional/congressional-submit.md` |
 | WS2.5: Security SA-004/005/006/007 | `a3cfaa0` | All fixes verified | `voter-protocol/SECURITY-FIXES-SA-004-007.md`, 101 tests pass |
 
 ### Wave 2 Key Achievements
@@ -125,7 +125,7 @@ Week 3:
 > **SUPERSEDED (Cycle 15, 2026-02-24):** self.xyz was removed as an identity provider. mDL via Digital Credentials API is now the sole identity verification method. The original workstream description is retained below for historical context.
 
 **Agent:** `software-architect-mcp`
-**Repository:** communique
+**Repository:** commons
 **Duration:** 5 days
 
 #### Objective
@@ -141,7 +141,7 @@ Week 3:
 > **SUPERSEDED (Cycle 15, 2026-02-24):** Didit.me was removed as an identity provider. mDL via Digital Credentials API is now the sole identity verification method. The original workstream description is retained below for historical context.
 
 **Agent:** `software-architect-mcp`
-**Repository:** communique
+**Repository:** commons
 **Duration:** 5 days
 
 #### Objective
@@ -155,7 +155,7 @@ Week 3:
 ### WS2.3: Browser WASM Prover Wiring
 
 **Agent:** `software-architect-mcp`
-**Repository:** communique
+**Repository:** commons
 **Duration:** 3 days
 
 #### Objective
@@ -254,7 +254,7 @@ const { proof, publicInputs } = await prover.generateProof({
 ### WS2.4: Congressional Submit Endpoint
 
 **Agent:** `software-architect-mcp`
-**Repository:** communique
+**Repository:** commons
 **Duration:** 3 days
 
 #### Objective
@@ -518,7 +518,7 @@ cd packages/noir-prover && npm test
 - `/api/congressional/submit` - 3 requests/hour per user
 
 **Files Changed:**
-- `communique/src/hooks.server.ts` - Added `handleRateLimit` hook
+- `commons/src/hooks.server.ts` - Added `handleRateLimit` hook
 - `voter-protocol/packages/shadow-atlas/src/security/rate-limiter.ts` - Fixed `consume()` to actually consume tokens
 
 **Tests:** 32 rate-limiter tests passing
@@ -772,7 +772,7 @@ describe('Proof E2E', () => {
 
 ## Environment Variables
 
-### communique `.env`
+### commons `.env`
 
 ```bash
 # Shadow Atlas API

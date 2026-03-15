@@ -154,7 +154,7 @@ This is structurally different from "please complete your profile." The bubble m
 ANY LOCATION SIGNAL (postal code, GPS, city name, country)
     │
     ▼
-communique: Bubble is born
+commons: Bubble is born
     │  center = signal centroid
     │  radius = signal extent
     │
@@ -441,7 +441,7 @@ const MUTED_TERRAIN_STYLE: maplibregl.StyleSpecification = {
   sources: {
     protomaps: {
       type: 'vector',
-      url: 'pmtiles://https://cdn.communique.vote/tiles/na.pmtiles',
+      url: 'pmtiles://https://cdn.commons.email/tiles/na.pmtiles',
       attribution: '© OpenStreetMap'
     }
   },
@@ -795,7 +795,7 @@ Note: AU (4-digit) vs partial US ZIP (4-digit, happens with leading zero ZIPs li
 
 ---
 
-## 5. COMMUNIQUE: The Bubble Component
+## 5. COMMONS: The Bubble Component
 
 ### Component Architecture
 
@@ -1022,7 +1022,7 @@ interface StoredBubble {
 
 **What is NOT stored**: The raw postal code is not used for anything after the bubble is seeded. The bubble's center and radius are the canonical representation. The postal code is a convenience hint for display ("94103") but the system uses the geometry, not the string.
 
-**Stored WHERE**: In the communique database on the `User` model (new fields: `bubble_lat`, `bubble_lng`, `bubble_radius`, `bubble_updated_at`, `bubble_seed_source`). Client-side also cached in localStorage for instant render before the profile loads.
+**Stored WHERE**: In the commons database on the `User` model (new fields: `bubble_lat`, `bubble_lng`, `bubble_radius`, `bubble_updated_at`, `bubble_seed_source`). Client-side also cached in localStorage for instant render before the profile loads.
 
 **Re-seeding**: The user can re-enter a postal code at any time. The bubble animates to the new location and size. The old bubble is gone — there is only one bubble, one geographic self.
 
@@ -1045,7 +1045,7 @@ The experience:
 4. All fences now outside the bubble → all layers resolve → status badges fill
 5. The bubble is now very small, very precise — and still the user's
 
-The shadow-atlas doesn't need a special ZIP+4 handler. The communique client:
+The shadow-atlas doesn't need a special ZIP+4 handler. The commons client:
 1. Re-queries `/v1/bubble-query` with the ZIP+4 centroid and the tighter radius
 2. The response confirms all districts are resolved (zero fences inside the tiny bubble)
 3. Client-side geometry math confirms: bubble fits entirely within one district per layer
@@ -1127,7 +1127,7 @@ src/db/schema.sql               ← Add fences table DDL
 
 **New database table:** `fences` + `fence_rtree` (see Section 4). Pre-computed during `build-district-db.ts`. Adds ~2MB to the database for US + CA fences.
 
-### communique (frontend)
+### commons (frontend)
 
 **New files:**
 ```
@@ -1313,7 +1313,7 @@ Spatial filtering via bbox overlap makes this O(n log n) rather than O(n²).
 **Goal**: Postal code → API call → client-side geometry → reactive bubble state with derived precision.
 
 ```
-communique/src/lib/
+commons/src/lib/
 ├── components/bubble/
 │   ├── bubble-state.svelte.ts     ← NEW: reactive state (Svelte 5 runes)
 │   └── bubble-geometry.ts         ← NEW: ~80 lines, zero deps (Section 3A)
@@ -1353,7 +1353,7 @@ Steps:
 **Goal**: Muted terrain, pinchable circle, fence visualization, spring physics — a geographic identity object that lives under the user's thumb.
 
 ```
-communique/src/lib/components/bubble/
+commons/src/lib/components/bubble/
 ├── Bubble.svelte              ← THE bubble: SVG circle + gesture layer
 ├── BubbleTerrain.svelte       ← MapLibre GL JS, 5-layer muted style, non-interactive
 ├── BubbleStatus.svelte        ← Resolved/ambiguous layer readout, precision bar
@@ -1364,7 +1364,7 @@ communique/src/lib/components/bubble/
 ├── bubble-spring.ts           ← NEW: WAAPI spring animations
 └── bubble-terrain-style.ts    ← NEW: MapLibre 5-layer style JSON
 
-communique/src/routes/
+commons/src/routes/
 └── +page.svelte               ← MODIFY: remove LocationFilter, add Bubble
 ```
 
@@ -1465,7 +1465,7 @@ Steps:
 5. **PMTiles preparation**:
    - Extract North America tiles from Protomaps planet: `pmtiles extract planet.pmtiles na.pmtiles --bbox=-170,15,-50,72 --maxzoom=14`
    - Upload to Cloudflare R2 bucket
-   - Configure CORS headers for communique domain
+   - Configure CORS headers for commons domain
    - Add `Content-Type: application/octet-stream` for Range Requests
 
 6. **Performance validation**:

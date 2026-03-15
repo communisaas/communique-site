@@ -1,6 +1,6 @@
-# Core Communique Concept: Dual Delivery Channels
+# Core Commons Concept: Dual Delivery Channels
 
-The Communique platform has two primary message delivery channels that are triggered from the same `mailto:` interaction design. It is critical to understand the distinction between them when working on any feature related to message templates, creation, or sending.
+The Commons platform has two primary message delivery channels that are triggered from the same `mailto:` interaction design. It is critical to understand the distinction between them when working on any feature related to message templates, creation, or sending.
 
 The delivery channel is determined by `context.channelId`. The UI and logic, particularly in components like `MessageEditor.svelte`, often use a reactive variable `isCongressional` which is true when `context.channelId === 'certified'`.
 
@@ -38,7 +38,7 @@ This is a general-purpose channel for less formal communication.
 
 ## **Instruction for AI**
 
-When generating or modifying any code, **you must first determine which delivery channel is relevant**. Always check for conditional logic based on `isCongressional` or `context.channelId`. The distinction between these two channels is fundamental to the Communique project.
+When generating or modifying any code, **you must first determine which delivery channel is relevant**. Always check for conditional logic based on `isCongressional` or `context.channelId`. The distinction between these two channels is fundamental to the Commons project.
 description:
 globs:
 alwaysApply: false

@@ -131,8 +131,8 @@ openssl rand -base64 32
 ### Additional CWC Configuration
 
 ```bash
-CWC_CAMPAIGN_ID=communique-2025
-CWC_DELIVERY_AGENT_ID=COMMUNIQUE_PBC
+CWC_CAMPAIGN_ID=commons-2025
+CWC_DELIVERY_AGENT_ID=COMMONS_PBC
 CWC_DELIVERY_AGENT_NAME="Commons PBC"
 CWC_DELIVERY_AGENT_CONTACT=hello@commons.email
 CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL=noreply@commons.email
@@ -387,7 +387,7 @@ wrangler pages secret put VOTER_API_KEY
 
 ### Setting Secrets via Cloudflare Dashboard
 
-1. Navigate to **Cloudflare Dashboard** > **Pages** > **communique-site**
+1. Navigate to **Cloudflare Dashboard** > **Pages** > **commons**
 2. Go to **Settings** > **Environment variables**
 3. Add each secret under **Production** environment
 4. Click **Encrypt** for sensitive values (API keys, secrets)

@@ -143,12 +143,12 @@ npm run db:start
 npm run db:push
 
 # Apply pgvector indexes and hybrid search function
-psql postgresql://communique:communique@localhost:5432/communique \
+psql postgresql://commons:commons@localhost:5432/commons \
   -f prisma/migrations/20260205_add_intelligence_pgvector/migration.sql
 ```
 
 The `docker/init-db.sql` script automatically runs `CREATE EXTENSION vector`
-on both the `communique` and `test` databases.
+on both the `commons` and `test` databases.
 
 ### 3. Environment Variables
 
@@ -159,7 +159,7 @@ Add to your `.env`:
 VOYAGE_API_KEY=your-voyage-api-key-here
 
 # Database (set automatically by docker-compose)
-DATABASE_URL=postgresql://communique:communique@localhost:5432/communique
+DATABASE_URL=postgresql://commons:commons@localhost:5432/commons
 ```
 
 No MongoDB credentials, no Atlas Admin API keys. One database.

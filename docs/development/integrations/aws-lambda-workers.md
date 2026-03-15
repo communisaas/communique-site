@@ -128,7 +128,7 @@ SQS FIFO Queue → Lambda Function → Senate CWC API → Senate Offices
 | ---------------------------- | -------------------------------- | -------- | -------------------------------- |
 | `CWC_API_KEY`                | Senate CWC API key               | Yes      | -                                |
 | `CWC_API_BASE_URL`           | CWC API base URL                 | Yes      | `https://soapbox.senate.gov/api` |
-| `DYNAMO_TABLE_NAME`          | DynamoDB table for rate limiting | Yes      | `communique-rate-limits`         |
+| `DYNAMO_TABLE_NAME`          | DynamoDB table for rate limiting | Yes      | `commons-rate-limits`         |
 | `JOB_STATUS_API_URL`         | Commons job status API URL    | Yes      | -                                |
 | `LAMBDA_WEBHOOK_SECRET`      | Secret for job status API auth   | Yes      | -                                |
 | `MAX_RETRIES`                | Maximum retry attempts           | No       | `3`                              |
@@ -197,7 +197,7 @@ SQS FIFO Queue → Lambda Function → Senate CWC API → Senate Offices
 #### Table Structure
 
 ```yaml
-Table Name: communique-rate-limits (Senate) / cwc-rate-limits (House)
+Table Name: commons-rate-limits (Senate) / cwc-rate-limits (House)
 Partition Key: userId (String) OR pk (String)
 Sort Key: action (String) OR sk (String)
 Billing Mode: On-Demand
@@ -225,7 +225,7 @@ TTL Attribute: ttl
 		{
 			"Effect": "Allow",
 			"Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem"],
-			"Resource": "arn:aws:dynamodb:region:account:table/communique-rate-limits"
+			"Resource": "arn:aws:dynamodb:region:account:table/commons-rate-limits"
 		}
 	]
 }
@@ -493,13 +493,13 @@ Store sensitive configuration in AWS Systems Manager Parameter Store or AWS Secr
 ```bash
 # Store CWC API key
 aws ssm put-parameter \
-  --name "/communique/lambda/cwc-api-key" \
+  --name "/commons/lambda/cwc-api-key" \
   --value "your-api-key" \
   --type "SecureString"
 
 # Store webhook secret
 aws ssm put-parameter \
-  --name "/communique/lambda/webhook-secret" \
+  --name "/commons/lambda/webhook-secret" \
   --value "your-webhook-secret" \
   --type "SecureString"
 ```
@@ -666,8 +666,8 @@ Messages in the DLQ require manual intervention:
 
 ### Contact
 
-- **Development Team**: `dev@communique.com`
-- **Operations**: `ops@communique.com`
+- **Development Team**: `dev@commons.email`
+- **Operations**: `ops@commons.email`
 - **Emergency**: Use AWS Support for critical infrastructure issues
 
 ---

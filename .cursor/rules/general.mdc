@@ -2,7 +2,7 @@
 
 ## About the Project
 
-Communique is a SvelteKit application using TypeScript, Prisma for the database ORM, Tailwind CSS for styling, and Playwright for e2e testing. The goal of the project is to provide a platform for constituents to easily communicate with their elected representatives.
+Commons is a SvelteKit application using TypeScript, Prisma for the database ORM, Tailwind CSS for styling, and Playwright for e2e testing. The goal of the project is to provide a platform for constituents to easily communicate with their elected representatives.
 
 ## Development Workflow
 

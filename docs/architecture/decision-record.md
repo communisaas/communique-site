@@ -225,7 +225,7 @@ Encrypted data today may become decryptable tomorrow:
 - WASM compilation pipeline (Barretenberg)
 - NPM package: `@voter-protocol/crypto`
 
-**Browser WASM Integration (communiqué):**
+**Browser WASM Integration (Commons):**
 - WASM loader with progressive enhancement
 - Shadow Atlas IPFS client (district tree fetching)
 - Web Workers for parallel Poseidon hashing

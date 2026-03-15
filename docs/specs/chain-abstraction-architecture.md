@@ -269,33 +269,33 @@ Code locations for each layer (not exhaustive — entry points only):
 
 ### Layer 0: Identity
 - ZK circuits: `voter-protocol/circuits/` (Noir)
-- Proof generation: `communique/src/lib/core/zkp/prover-client.ts`
-- Identity binding: `communique/src/lib/core/identity/identity-binding.ts`
+- Proof generation: `commons/src/lib/core/zkp/prover-client.ts`
+- Identity binding: `commons/src/lib/core/identity/identity-binding.ts`
 
 ### Layer 1: Signing
-- Interface: `communique/src/lib/core/wallet/types.ts` → `WalletProvider`
-- EVM: `communique/src/lib/core/wallet/evm-provider.ts` → `EVMWalletProvider`
-- NEAR: `communique/src/lib/core/wallet/near-provider.ts` → `NEARWalletProvider`
-- Chain Sig: `communique/src/lib/core/near/chain-signatures.ts` → `signWithChainSignatures()`
-- Operator: `communique/src/lib/core/wallet/operator.ts` → `OperatorWallet`
-- EIP-712: `communique/src/lib/core/wallet/eip712.ts` → `buildProofAuthorizationData()`
+- Interface: `commons/src/lib/core/wallet/types.ts` → `WalletProvider`
+- EVM: `commons/src/lib/core/wallet/evm-provider.ts` → `EVMWalletProvider`
+- NEAR: `commons/src/lib/core/wallet/near-provider.ts` → `NEARWalletProvider`
+- Chain Sig: `commons/src/lib/core/near/chain-signatures.ts` → `signWithChainSignatures()`
+- Operator: `commons/src/lib/core/wallet/operator.ts` → `OperatorWallet`
+- EIP-712: `commons/src/lib/core/wallet/eip712.ts` → `buildProofAuthorizationData()`
 
 ### Layer 2: Gas Abstraction
-- NEAR meta-tx: `communique/src/lib/core/near/meta-transactions.ts` → `relayDelegateAction()`
-- Sponsor endpoint: `communique/src/routes/api/wallet/near/sponsor/+server.ts`
-- NEAR account mgmt: `communique/src/lib/core/near/account.ts` → `createNearAccount()`
-- Pimlico client: `communique/src/lib/core/gas/pimlico.ts` → `PimlicoClient`
-- UserOp builder: `communique/src/lib/core/gas/user-operation.ts` → `buildUserOperation()`
+- NEAR meta-tx: `commons/src/lib/core/near/meta-transactions.ts` → `relayDelegateAction()`
+- Sponsor endpoint: `commons/src/routes/api/wallet/near/sponsor/+server.ts`
+- NEAR account mgmt: `commons/src/lib/core/near/account.ts` → `createNearAccount()`
+- Pimlico client: `commons/src/lib/core/gas/pimlico.ts` → `PimlicoClient`
+- UserOp builder: `commons/src/lib/core/gas/user-operation.ts` → `buildUserOperation()`
 
 ### Layer 3: Funding
-- Onramp widget: `communique/src/lib/components/wallet/OnrampWidget.svelte`
-- Balance display: `communique/src/lib/components/wallet/BalanceDisplay.svelte`
-- Balance API: `communique/src/routes/api/wallet/balance/+server.ts`
+- Onramp widget: `commons/src/lib/components/wallet/OnrampWidget.svelte`
+- Balance display: `commons/src/lib/components/wallet/BalanceDisplay.svelte`
+- Balance API: `commons/src/routes/api/wallet/balance/+server.ts`
 
 ### Layer 4: UX
-- Wallet connection: `communique/src/lib/components/wallet/WalletConnect.svelte`
-- Wallet status: `communique/src/lib/components/wallet/WalletStatus.svelte`
-- Wallet state: `communique/src/lib/stores/walletState.svelte.ts`
+- Wallet connection: `commons/src/lib/components/wallet/WalletConnect.svelte`
+- Wallet status: `commons/src/lib/components/wallet/WalletStatus.svelte`
+- Wallet state: `commons/src/lib/stores/walletState.svelte.ts`
 
 ### Contracts
 - DebateMarket: `voter-protocol/contracts/src/DebateMarket.sol`

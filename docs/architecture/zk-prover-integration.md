@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-02
 **Mission:** Wire Browser WASM Prover for ZK Proof Generation
-**Working Directory:** `/Users/noot/Documents/communique`
+**Working Directory:** `/Users/noot/Documents/commons`
 
 ---
 
@@ -570,7 +570,7 @@ describe('Full Proof Flow', () => {
 ## File Structure
 
 ```
-/Users/noot/Documents/communique/
+/Users/noot/Documents/commons/
 ├── src/lib/core/zkp/
 │   ├── prover-client.ts           (307 lines) - Prover wrapper & validation
 │   ├── witness-builder.ts         (239 lines) - Input construction
@@ -725,7 +725,7 @@ The ZK prover browser WASM integration is complete and production-ready. The imp
 ## Contact & Support
 
 **Package:** `@voter-protocol/noir-prover@^0.1.4`
-**Documentation:** `/Users/noot/Documents/communique/src/lib/core/zkp/README.md`
-**Examples:** `/Users/noot/Documents/communique/src/lib/core/zkp/example-usage.ts`
+**Documentation:** `/Users/noot/Documents/commons/src/lib/core/zkp/README.md`
+**Examples:** `/Users/noot/Documents/commons/src/lib/core/zkp/example-usage.ts`
 
 For issues or questions, refer to the voter-protocol repository or package documentation.

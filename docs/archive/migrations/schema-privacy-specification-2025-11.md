@@ -369,7 +369,7 @@ Amplifiers (activists, journalists, influencers) can CHOOSE to share participati
 ```
 User completes verification → User ID: abc123 (private)
 User opts into amplifier program → Creates separate AmplifierOptIn record
-User shares: "I'm @activist using Communiqué"
+User shares: "I'm @activist using Commons"
 Platform shows amplifier profile → NO connection to User ID abc123
 ```
 

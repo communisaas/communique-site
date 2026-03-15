@@ -1,7 +1,7 @@
 # Congressional Dashboard Implementation Plan
 
 **Timeline:** Week 15-16 (immediately before Phase 2 launch)
-**Purpose:** Give congressional offices a dedicated interface to manage constituent messages from Communiqué
+**Purpose:** Give congressional offices a dedicated interface to manage constituent messages from Commons
 **Status:** Not started - detailed plan for future implementation
 
 ---
@@ -424,7 +424,7 @@ function isValidCongressionalEmail(email: string): boolean {
 
 **Flow:**
 ```
-Communiqué TEE → CWC API → Congressional Office Email
+Commons TEE → CWC API → Congressional Office Email
                     ↓
               (webhook callback)
                     ↓
@@ -480,7 +480,7 @@ Date,Template,Category,Constituent Count,Verified Count,District,Priority,Status
 ## Future Enhancements (Phase 2+)
 
 **Advanced features (not Week 15-16):**
-- **Reply functionality** - Staff can respond via Communiqué platform
+- **Reply functionality** - Staff can respond via Commons platform
 - **Auto-tagging** - AI categorization of messages by policy area
 - **Sentiment analysis** - Track constituent sentiment trends
 - **Collaboration** - Multiple staff members per office
@@ -499,7 +499,7 @@ Date,Template,Category,Constituent Count,Verified Count,District,Priority,Status
 2. **Message retention** - How long should messages stay in dashboard? 90 days? 1 year?
 3. **Privacy controls** - Should constituents opt-in to dashboard visibility?
 4. **Multi-office access** - Should state directors see messages from all districts?
-5. **Branding** - White-label for individual offices or Communiqué-branded?
+5. **Branding** - White-label for individual offices or Commons-branded?
 
 ---
 

@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This audit deployed 8 specialized analysis agents to investigate the Communique codebase from different expert perspectives. The findings reveal a sophisticated privacy architecture that exists largely on paper—implementation trails design significantly.
+This audit deployed 8 specialized analysis agents to investigate the Commons codebase from different expert perspectives. The findings reveal a sophisticated privacy architecture that exists largely on paper—implementation trails design significantly.
 
 ### Key Findings
 

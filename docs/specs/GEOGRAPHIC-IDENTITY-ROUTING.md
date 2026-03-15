@@ -691,7 +691,7 @@ GEOGRAPHIC IDENTITY PROOF (core system):
 └─────────────────────────────────────────────────────────┘
                            │
                            ▼
-COMMUNIQUE (downstream application):
+COMMONS (downstream application):
 ┌─────────────────────────────────────────────────────────┐
 │  PURPOSE: Route messages to representatives             │
 │                                                         │
@@ -712,4 +712,4 @@ COMMUNIQUE (downstream application):
 
 **Authors:** Claude Code
 **License:** MIT
-**Repository:** https://github.com/communisaas/communique
+**Repository:** https://github.com/communisaas/commons

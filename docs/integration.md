@@ -182,8 +182,8 @@ Content-Type: application/json
 ```bash
 # .env
 CWC_API_KEY=your-cwc-api-key
-CWC_CAMPAIGN_ID=communique-2025
-CWC_DELIVERY_AGENT_ID=COMMUNIQUE_PBC
+CWC_CAMPAIGN_ID=commons-2025
+CWC_DELIVERY_AGENT_ID=COMMONS_PBC
 CWC_DELIVERY_AGENT_NAME="Commons PBC"
 CWC_DELIVERY_AGENT_CONTACT=contact@commons.email
 ```
@@ -654,8 +654,8 @@ VOTER_API_KEY=your-voter-protocol-api-key
 
 # CWC API
 CWC_API_KEY=your-cwc-api-key
-CWC_CAMPAIGN_ID=communique-2025
-CWC_DELIVERY_AGENT_ID=COMMUNIQUE_PBC
+CWC_CAMPAIGN_ID=commons-2025
+CWC_DELIVERY_AGENT_ID=COMMONS_PBC
 
 # OAuth
 OAUTH_REDIRECT_BASE_URL=https://commons.email
@@ -677,13 +677,13 @@ TEE_PUBLIC_KEY=<base64-encoded-X25519-public-key>
 
 **Cross-reference:** `voter-protocol/specs/COORDINATION-INTEGRITY-SPEC.md`, `voter-protocol/specs/COMMUNIQUE-INTEGRATION-SPEC.md` Section 15
 
-This section documents critical integration findings from the 2026-02-08 coordination integrity review. These affect how communique generates, submits, and delivers verified messages.
+This section documents critical integration findings from the 2026-02-08 coordination integrity review. These affect how Commons generates, submits, and delivers verified messages.
 
 ### Finding: Proof and Message Are Unbound
 
 The ZK proof generated in `ProofGenerator.svelte` is not cryptographically bound to the message content. The EIP-712 signature covers `proofHash` and `publicInputsHash` but not the message body. A valid proof for action domain X can be paired with arbitrary message content.
 
-**Why this is acceptable for Phase 1:** The `action_domain = keccak256("communique.v1" || jurisdiction || template_id || session_id)` binds the proof to a specific campaign context. Per-message content binding is deferred to Phase 2 TEE delivery (where the TEE verifies message-template correspondence server-side).
+**Why this is acceptable for Phase 1:** The `action_domain = keccak256("commons.v1" || jurisdiction || template_id || session_id)` binds the proof to a specific campaign context. Per-message content binding is deferred to Phase 2 TEE delivery (where the TEE verifies message-template correspondence server-side).
 
 **Why contentHash on-chain is rejected:** Templates are public. On-chain content hashes would enable a **template fingerprinting attack** — an adversary precomputes `keccak256(template_text)` for every template and correlates on-chain hashes with political positions, deanonymizing users. This is documented in COORDINATION-INTEGRITY-SPEC.md Section 3.
 

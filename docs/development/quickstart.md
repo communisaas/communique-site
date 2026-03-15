@@ -92,7 +92,7 @@ npm run preview          # Preview production build
 
 ```bash
 # Database (pgvector via Docker Compose or managed Neon)
-DATABASE_URL=postgresql://communique:communique@localhost:5432/communique
+DATABASE_URL=postgresql://commons:commons@localhost:5432/commons
 
 # Congressional Delivery (Optional)
 CWC_API_KEY=your-cwc-api-key
@@ -749,7 +749,7 @@ export default {
 
 Build and deploy:
 ```bash
-npm run build && npx wrangler pages deploy .svelte-kit/cloudflare --project-name communique-site
+npm run build && npx wrangler pages deploy .svelte-kit/cloudflare --project-name commons
 ```
 
 ### Database Migrations (Production)

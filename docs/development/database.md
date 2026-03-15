@@ -77,7 +77,7 @@ The `driverAdapters` preview feature is required for `@prisma/adapter-pg`, which
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "870ed0ebca654838bc0df0d83c4e2645"
-localConnectionString = "postgresql://communique:communique@localhost:5432/communique"
+localConnectionString = "postgresql://commons:commons@localhost:5432/commons"
 ```
 
 ---

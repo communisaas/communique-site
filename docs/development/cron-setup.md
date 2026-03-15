@@ -50,7 +50,7 @@ Go to your repo Settings > Secrets and variables > Actions, add:
 | Secret Name | Value |
 |-------------|-------|
 | `CRON_SECRET` | The same secret from Step 1 |
-| `APP_URL` | Your Cloudflare Pages URL (e.g., `https://communique.pages.dev`) |
+| `APP_URL` | Your Cloudflare Pages URL (e.g., `https://commons.pages.dev`) |
 
 ### Step 4: Create GitHub Workflow
 
@@ -60,7 +60,7 @@ The workflow file should already exist at `.github/workflows/analytics-snapshot.
 
 1. Create free account at [cron-job.org](https://cron-job.org)
 2. Add new cron job:
-   - **URL**: `https://communique.pages.dev/api/cron/analytics-snapshot`
+   - **URL**: `https://commons.pages.dev/api/cron/analytics-snapshot`
    - **Schedule**: `10 0 * * *` (00:10 UTC - 5 min after GitHub Actions)
    - **Request Method**: GET
    - **Headers**: `Authorization: Bearer <your-cron-secret>`
@@ -145,7 +145,7 @@ If a day is missed, manually trigger the endpoint:
 ```bash
 # Trigger yesterday's snapshot (default behavior)
 curl -H "Authorization: Bearer $CRON_SECRET" \
-  https://communique.pages.dev/api/cron/analytics-snapshot
+  https://commons.pages.dev/api/cron/analytics-snapshot
 
 # Check response
 # Success: {"success":true,"date":"2025-01-11","snapshots_created":5,"epsilon_spent":0.5,"budget_remaining":0.5}
@@ -185,7 +185,7 @@ SELECT cron.schedule(
   '5 0 * * *',
   $$
   SELECT net.http_get(
-    'https://communique.pages.dev/api/cron/analytics-snapshot',
+    'https://commons.pages.dev/api/cron/analytics-snapshot',
     headers := '{"Authorization": "Bearer YOUR_SECRET"}'::jsonb
   )
   $$
@@ -237,7 +237,7 @@ Consider:
 
 # Test locally
 curl -v -H "Authorization: Bearer $CRON_SECRET" \
-  https://communique.pages.dev/api/cron/analytics-snapshot
+  https://commons.pages.dev/api/cron/analytics-snapshot
 ```
 
 ### 500 Internal Server Error

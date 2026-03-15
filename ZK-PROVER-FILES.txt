@@ -56,7 +56,7 @@ DOCUMENTATION & EXAMPLES
 FILE TREE
 ---------
 
-/Users/noot/Documents/communique/
+/Users/noot/Documents/commons/
 ├── src/
 │   └── lib/
 │       ├── core/
@@ -74,7 +74,7 @@ VERIFICATION COMMANDS
 ---------------------
 
 # Check TypeScript compilation
-cd /Users/noot/Documents/communique
+cd /Users/noot/Documents/commons
 npm run check
 
 # Build project

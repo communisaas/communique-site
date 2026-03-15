@@ -49,7 +49,7 @@ await prisma.encryptedDeliveryData.create({
 
 **Problems:**
 1. **Vendor lock-in:** Users can't leave platform without losing delivery capability
-2. **Platform control:** Communique controls access to encrypted blobs
+2. **Platform control:** Commons controls access to encrypted blobs
 3. **Single point of failure:** Database breach exposes all encrypted data
 4. **Scaling costs:** $50/month per 1,000 users just for blob storage
 

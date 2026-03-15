@@ -511,7 +511,7 @@ Final review gate. Verify the entire codebase builds and deploys cleanly.
 |------|---------|--------|
 | Opus review | — | Review all Cycle 10 changes. Focus: Workers runtime compatibility, Svelte 5 migration completeness, type safety improvements, build output size. |
 | svelte-check | — | Target: 0 errors (fix the 2 pre-existing if feasible: PrismaClient cast in db.ts, data.user in layout.svelte). |
-| CF build + deploy dry run | — | `ADAPTER=cloudflare npm run build && npx wrangler pages deploy .svelte-kit/cloudflare --project-name communique-site --branch staging --dry-run` |
+| CF build + deploy dry run | — | `ADAPTER=cloudflare npm run build && npx wrangler pages deploy .svelte-kit/cloudflare --project-name commons --branch staging --dry-run` |
 | Document remaining gaps | `.planning/production-gaps.md` | Honest list of what's NOT production-ready: IACA root certificates, COSE_Sign1 verification, OpenID4VP, Ed25519 credential signing (currently HMAC), Nitro Enclave deployment. |
 
 **Verification:** `ADAPTER=cloudflare npm run build` succeeds. `svelte-check` clean (0 or 2 pre-existing only). No `createEventDispatcher` remaining in auth components. No legacy single-tree code. All env vars documented.
@@ -704,7 +704,7 @@ Replace HMAC-SHA256 with proper Ed25519 digital signatures for district residenc
 | Task | Detail |
 |------|--------|
 | Add Ed25519 signing | Import `ed25519` from `@noble/curves/ed25519`. New `getSigningKeyPair()` from `IDENTITY_SIGNING_KEY` env var (hex-encoded 32-byte seed). Replace `crypto.subtle.sign('HMAC', ...)` with `ed25519.sign(bodyBytes, privateKey)`. |
-| Fix proof type label | `proof.type` already says `'Ed25519Signature2020'` — now the signature actually matches. The verificationMethod already points to `did:web:communique.io#district-attestation-key`. |
+| Fix proof type label | `proof.type` already says `'Ed25519Signature2020'` — now the signature actually matches. The verificationMethod already points to `did:web:commons.email#district-attestation-key`. |
 | Add backward-compatible verification | `verifyDistrictCredential()` tries Ed25519 first, falls back to HMAC if Ed25519 fails. This allows existing HMAC-signed credentials to remain valid during the migration window. After 90 days (credential TTL), all credentials will be Ed25519. |
 | Update tests | Update `district-credential.test.ts`: change `IDENTITY_HASH_SALT` setup to `IDENTITY_SIGNING_KEY` (hex seed). Verify Ed25519 signatures are correct length (64 bytes). Add test for HMAC fallback verification. |
 | Update env documentation | Document new `IDENTITY_SIGNING_KEY` env var in wrangler.toml (as placeholder) and deployment docs. |
@@ -856,4 +856,4 @@ Five sequential cycles to close every remaining gap between "functionally comple
 
 ---
 
-*Communique PBC | Implementation Plan | 2026-02-18*
+*Commons PBC | Implementation Plan | 2026-02-18*

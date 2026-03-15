@@ -24,7 +24,7 @@ GOOGLE_AI_API_KEY=...
 DATABASE_URL=postgresql://...
 REDIS_URL=redis://...
 
-# Communique Core
+# Commons Core
 NODE_ENV=production
 PORT=3001
 ```
@@ -36,7 +36,7 @@ PORT=3001
 ANTHROPIC_API_KEY=... # For Q4 2025
 
 # Monitoring
-METRICS_ENDPOINT=https://metrics.communique.ai/ingest
+METRICS_ENDPOINT=https://metrics.commons.email/ingest
 SENTRY_DSN=...
 LOG_LEVEL=info
 
@@ -237,10 +237,10 @@ CWC API (Congressional Web Contact)
 # Create VPC
 aws ec2 create-vpc \
     --cidr-block 10.0.0.0/16 \
-    --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=communique-tee-vpc}]'
+    --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=commons-tee-vpc}]'
 
 export VPC_ID=$(aws ec2 describe-vpcs \
-    --filters "Name=tag:Name,Values=communique-tee-vpc" \
+    --filters "Name=tag:Name,Values=commons-tee-vpc" \
     --query "Vpcs[0].VpcId" --output text)
 
 # Create public subnet
@@ -248,18 +248,18 @@ aws ec2 create-subnet \
     --vpc-id $VPC_ID \
     --cidr-block 10.0.1.0/24 \
     --availability-zone us-east-1a \
-    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=communique-tee-subnet}]'
+    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=commons-tee-subnet}]'
 
 export SUBNET_ID=$(aws ec2 describe-subnets \
-    --filters "Name=tag:Name,Values=communique-tee-subnet" \
+    --filters "Name=tag:Name,Values=commons-tee-subnet" \
     --query "Subnets[0].SubnetId" --output text)
 
 # Create internet gateway
 aws ec2 create-internet-gateway \
-    --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=communique-tee-igw}]'
+    --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=commons-tee-igw}]'
 
 export IGW_ID=$(aws ec2 describe-internet-gateways \
-    --filters "Name=tag:Name,Values=communique-tee-igw" \
+    --filters "Name=tag:Name,Values=commons-tee-igw" \
     --query "InternetGateways[0].InternetGatewayId" --output text)
 
 # Attach internet gateway to VPC
@@ -270,10 +270,10 @@ aws ec2 attach-internet-gateway \
 # Create route table
 aws ec2 create-route-table \
     --vpc-id $VPC_ID \
-    --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=communique-tee-rtb}]'
+    --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=commons-tee-rtb}]'
 
 export RTB_ID=$(aws ec2 describe-route-tables \
-    --filters "Name=tag:Name,Values=communique-tee-rtb" \
+    --filters "Name=tag:Name,Values=commons-tee-rtb" \
     --query "RouteTables[0].RouteTableId" --output text)
 
 # Add route to internet gateway
@@ -293,12 +293,12 @@ aws ec2 associate-route-table \
 ```bash
 # Create security group
 aws ec2 create-security-group \
-    --group-name communique-tee-sg \
-    --description "Security group for Communique TEE instances" \
+    --group-name commons-tee-sg \
+    --description "Security group for Commons TEE instances" \
     --vpc-id $VPC_ID
 
 export SG_ID=$(aws ec2 describe-security-groups \
-    --filters "Name=group-name,Values=communique-tee-sg" \
+    --filters "Name=group-name,Values=commons-tee-sg" \
     --query "SecurityGroups[0].GroupId" --output text)
 
 # Allow HTTPS (443) from anywhere
@@ -328,7 +328,7 @@ aws ec2 authorize-security-group-ingress \
 ```bash
 # Create IAM role for EC2 instance
 aws iam create-role \
-    --role-name CommuniqueTEEInstanceRole \
+    --role-name CommonsTEEInstanceRole \
     --assume-role-policy-document '{
         "Version": "2012-10-17",
         "Statement": [{
@@ -340,16 +340,16 @@ aws iam create-role \
 
 # Attach managed policies
 aws iam attach-role-policy \
-    --role-name CommuniqueTEEInstanceRole \
+    --role-name CommonsTEEInstanceRole \
     --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
 aws iam attach-role-policy \
-    --role-name CommuniqueTEEInstanceRole \
+    --role-name CommonsTEEInstanceRole \
     --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
 
 # Create custom policy for S3 enclave image access
 aws iam create-policy \
-    --policy-name CommuniqueEnclaveImageAccess \
+    --policy-name CommonsEnclaveImageAccess \
     --policy-document '{
         "Version": "2012-10-17",
         "Statement": [{
@@ -359,43 +359,43 @@ aws iam create-policy \
                 "s3:ListBucket"
             ],
             "Resource": [
-                "arn:aws:s3:::communique-nitro-enclaves/*",
-                "arn:aws:s3:::communique-nitro-enclaves"
+                "arn:aws:s3:::commons-nitro-enclaves/*",
+                "arn:aws:s3:::commons-nitro-enclaves"
             ]
         }]
     }'
 
 export POLICY_ARN=$(aws iam list-policies \
-    --query "Policies[?PolicyName=='CommuniqueEnclaveImageAccess'].Arn" \
+    --query "Policies[?PolicyName=='CommonsEnclaveImageAccess'].Arn" \
     --output text)
 
 aws iam attach-role-policy \
-    --role-name CommuniqueTEEInstanceRole \
+    --role-name CommonsTEEInstanceRole \
     --policy-arn $POLICY_ARN
 
 # Create instance profile
 aws iam create-instance-profile \
-    --instance-profile-name CommuniqueTEEInstanceProfile
+    --instance-profile-name CommonsTEEInstanceProfile
 
 aws iam add-role-to-instance-profile \
-    --instance-profile-name CommuniqueTEEInstanceProfile \
-    --role-name CommuniqueTEEInstanceRole
+    --instance-profile-name CommonsTEEInstanceProfile \
+    --role-name CommonsTEEInstanceRole
 ```
 
 ### 4. Create S3 Bucket for Enclave Images
 
 ```bash
 # Create S3 bucket
-aws s3 mb s3://communique-nitro-enclaves --region us-east-1
+aws s3 mb s3://commons-nitro-enclaves --region us-east-1
 
 # Enable versioning
 aws s3api put-bucket-versioning \
-    --bucket communique-nitro-enclaves \
+    --bucket commons-nitro-enclaves \
     --versioning-configuration Status=Enabled
 
 # Block public access
 aws s3api put-public-access-block \
-    --bucket communique-nitro-enclaves \
+    --bucket commons-nitro-enclaves \
     --public-access-block-configuration \
         BlockPublicAcls=true,\
 IgnorePublicAcls=true,\
@@ -438,19 +438,19 @@ CMD ["node", "src/index.js"]
 
 ```bash
 # Build Docker image
-docker build -f Dockerfile.nitro-enclave -t communique-tee:latest .
+docker build -f Dockerfile.nitro-enclave -t commons-tee:latest .
 
 # Tag for ECR
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-docker tag communique-tee:latest \
-    $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/communique-tee:latest
+docker tag commons-tee:latest \
+    $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/commons-tee:latest
 
 # Push to ECR
 aws ecr get-login-password --region us-east-1 | \
     docker login --username AWS --password-stdin \
     $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
 
-docker push $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/communique-tee:latest
+docker push $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/commons-tee:latest
 ```
 
 ### 3. Build Enclave Image File (.eif)
@@ -460,8 +460,8 @@ docker push $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/communique-tee:lates
 ```bash
 # On Amazon Linux 2023 instance with Nitro CLI installed
 nitro-cli build-enclave \
-    --docker-uri $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/communique-tee:latest \
-    --output-file communique-tee.eif
+    --docker-uri $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/commons-tee:latest \
+    --output-file commons-tee.eif
 
 # Output:
 # Enclave Image successfully created.
@@ -488,11 +488,11 @@ echo "PCR2=1a1b1c1d1e1f..." >> .env.production
 
 ```bash
 # Upload enclave image to S3
-aws s3 cp communique-tee.eif \
-    s3://communique-nitro-enclaves/enclaves/communique-tee.eif
+aws s3 cp commons-tee.eif \
+    s3://commons-nitro-enclaves/enclaves/commons-tee.eif
 
 # Verify upload
-aws s3 ls s3://communique-nitro-enclaves/enclaves/
+aws s3 ls s3://commons-nitro-enclaves/enclaves/
 ```
 
 ---
@@ -530,11 +530,11 @@ nitro-cli-config -t 2 -m 4096
 systemctl enable --now docker
 
 # Download enclave image from S3
-aws s3 cp s3://communique-nitro-enclaves/enclaves/communique-tee.eif /opt/communique-tee.eif
+aws s3 cp s3://commons-nitro-enclaves/enclaves/commons-tee.eif /opt/commons-tee.eif
 
 # Run enclave
 nitro-cli run-enclave \
-    --eif-path /opt/communique-tee.eif \
+    --eif-path /opt/commons-tee.eif \
     --cpu-count 2 \
     --memory 4096 \
     --enclave-cid 16
@@ -588,14 +588,14 @@ aws ec2 run-instances \
     --key-name your-key-pair \
     --subnet-id $SUBNET_ID \
     --security-group-ids $SG_ID \
-    --iam-instance-profile Name=CommuniqueTEEInstanceProfile \
+    --iam-instance-profile Name=CommonsTEEInstanceProfile \
     --enclave-options Enabled=true \
     --user-data file://user-data.sh \
-    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=communique-tee-production}]'
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=commons-tee-production}]'
 
 # Get instance ID
 export INSTANCE_ID=$(aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=communique-tee-production" \
+    --filters "Name=tag:Name,Values=commons-tee-production" \
     --query "Reservations[0].Instances[0].InstanceId" \
     --output text)
 
@@ -634,7 +634,7 @@ nitro-cli describe-enclaves
 #     "EnclaveCID": 16,
 #     "EnclaveID": "i-0abcdef1234567890-enc9876543210abcd",
 #     "ProcessID": 12345,
-#     "EnclaveName": "communique-tee",
+#     "EnclaveName": "commons-tee",
 #     "State": "RUNNING",
 #     "Flags": "NONE",
 #     "CPUCount": 2,
@@ -769,7 +769,7 @@ sudo systemctl enable certbot-renew.timer
 
 ### 3. Update Environment Variables
 
-Update `.env.production` in Communiqué repository:
+Update `.env.production` in Commons repository:
 
 ```bash
 # TEE Configuration
@@ -782,7 +782,7 @@ TEE_EXPECTED_CODE_HASH=sha256:1a1b1c1d1e1f...  # From PCR2
 ### 4. Deploy Application Updates
 
 ```bash
-# On Communiqué app server (Cloudflare Pages)
+# On Commons app server (Cloudflare Pages)
 # Deploy via Cloudflare Pages CI/CD pipeline
 
 # Verify TEE integration
@@ -798,7 +798,7 @@ curl https://commons.email/api/health/tee
 ```bash
 # Create CloudWatch log group
 aws logs create-log-group \
-    --log-group-name /aws/nitro-enclaves/communique-tee
+    --log-group-name /aws/nitro-enclaves/commons-tee
 
 # Install CloudWatch agent on EC2 instance
 sudo yum install -y amazon-cloudwatch-agent
@@ -811,8 +811,8 @@ sudo cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'
       "files": {
         "collect_list": [
           {
-            "file_path": "/var/log/nitro_enclaves/communique-tee.log",
-            "log_group_name": "/aws/nitro-enclaves/communique-tee",
+            "file_path": "/var/log/nitro_enclaves/commons-tee.log",
+            "log_group_name": "/aws/nitro-enclaves/commons-tee",
             "log_stream_name": "{instance_id}"
           }
         ]
