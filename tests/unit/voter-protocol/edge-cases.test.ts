@@ -1,7 +1,7 @@
 /**
  * Edge Cases E2E Tests
  *
- * Tests boundary conditions and edge cases for the Communique ↔ voter-protocol integration:
+ * Tests boundary conditions and edge cases for the Commons ↔ voter-protocol integration:
  * - Boundary coordinates (exactly on district line)
  * - Maximum tree depth (depth-20 with 1M leaves)
  * - Authority level boundaries (1-5)

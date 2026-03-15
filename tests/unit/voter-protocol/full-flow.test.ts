@@ -1,7 +1,7 @@
 /**
  * Full Flow E2E Tests: Identity → Registration → Proof → Submission
  *
- * Tests the complete happy path for the Communique ↔ voter-protocol integration:
+ * Tests the complete happy path for the Commons ↔ voter-protocol integration:
  * 1. User verifies identity via mDL (Digital Credentials API)
  * 2. User registers with Shadow Atlas for district lookup
  * 3. User generates ZK proof of district membership

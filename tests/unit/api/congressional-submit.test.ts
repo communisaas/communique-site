@@ -74,15 +74,15 @@ vi.mock('$lib/server/billing/plans', () => ({
 	getPlanForOrg: (...args: unknown[]) => mockGetPlanForOrg(...args)
 }));
 
-vi.mock('$lib/core/congressional/submission-handler', () => ({
+vi.mock('$lib/core/legislative/submission', () => ({
 	handleSubmission: (...args: unknown[]) => mockHandleSubmission(...args)
 }));
 
 // Mock $types
-vi.mock('../../../../src/routes/api/congressional/submit/$types', () => ({}));
+vi.mock('../../../../src/routes/api/legislative/submit/$types', () => ({}));
 
 // Import handler AFTER mocks
-const { POST } = await import('../../../src/routes/api/congressional/submit/+server');
+const { POST } = await import('../../../src/routes/api/legislative/submit/+server');
 
 // =============================================================================
 // HELPERS

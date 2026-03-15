@@ -141,11 +141,11 @@ describe('GET /api/wallet/nonce', () => {
 		expect(data.nonce).toMatch(/^[0-9a-f]{64}$/);
 	});
 
-	it('message contains "Communique Wallet Verification" and the nonce', async () => {
+	it('message contains "Commons Wallet Verification" and the nonce', async () => {
 		const response = await nonceGET(makeNonceEvent({ user: { id: 'user-123' } }));
 		const data = await response.json();
 
-		expect(data.message).toContain('Communique Wallet Verification');
+		expect(data.message).toContain('Commons Wallet Verification');
 		expect(data.message).toContain(data.nonce);
 	});
 
@@ -173,7 +173,7 @@ describe('POST /api/wallet/connect', () => {
 	const USER_ID = 'user-abc';
 	const NONCE = 'a'.repeat(64);
 	const SIGNATURE = '0xfakesignature';
-	const MESSAGE = 'Communique Wallet Verification\n\nNonce: ' + NONCE;
+	const MESSAGE = 'Commons Wallet Verification\n\nNonce: ' + NONCE;
 
 	function seedNonceStore(overrides: Partial<{ userId: string; expiresAt: number }> = {}) {
 		nonceStore.set(NONCE, {

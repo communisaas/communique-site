@@ -59,7 +59,7 @@ vi.mock('$lib/core/db', () => ({
 
 vi.mock('$lib/core/identity/passkey-rp-config', () => ({
 	getPasskeyRPConfig: () => ({
-		rpName: 'Communique',
+		rpName: 'Commons',
 		rpID: 'localhost',
 		origin: 'http://localhost:5173'
 	})
@@ -93,7 +93,7 @@ const MOCK_CHALLENGE = 'dGVzdC1jaGFsbGVuZ2UtYmFzZTY0dXJs';
 
 const MOCK_REGISTRATION_OPTIONS = {
 	challenge: MOCK_CHALLENGE,
-	rp: { name: 'Communique', id: 'localhost' },
+	rp: { name: 'Commons', id: 'localhost' },
 	user: { id: 'dXNlci1yZWctMDAx', name: 'alice@example.com', displayName: 'alice@example.com' },
 	pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
 	timeout: 60000,
@@ -236,7 +236,7 @@ describe('generatePasskeyRegistrationOptions', () => {
 
 			expect(mockGenerateRegistrationOptions).toHaveBeenCalledWith(
 				expect.objectContaining({
-					rpName: 'Communique',
+					rpName: 'Commons',
 					rpID: 'localhost',
 					userName: TEST_USER.email,
 					attestationType: 'none'

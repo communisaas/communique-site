@@ -2,7 +2,7 @@
  * E2E Test Utilities for Voter Protocol Integration
  *
  * Provides shared setup/teardown, mock server configuration, and helper functions
- * for the Communique ↔ voter-protocol integration tests.
+ * for the Commons ↔ voter-protocol integration tests.
  *
  * Architecture:
  * - Uses MSW (Mock Service Worker) for API mocking

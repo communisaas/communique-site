@@ -97,7 +97,7 @@ const TEST_USER_ID = 'user-addr-001';
 const MOCK_CREDENTIAL = {
 	'@context': ['https://www.w3.org/ns/credentials/v2'],
 	type: ['VerifiableCredential', 'DistrictResidencyCredential'],
-	issuer: 'did:web:communique.io',
+	issuer: 'did:web:commons.email',
 	issuanceDate: '2026-01-15T00:00:00.000Z',
 	expirationDate: '2026-04-15T00:00:00.000Z',
 	credentialSubject: {
@@ -107,7 +107,7 @@ const MOCK_CREDENTIAL = {
 	proof: {
 		type: 'Ed25519Signature2020',
 		created: '2026-01-15T00:00:00.000Z',
-		verificationMethod: 'did:web:communique.io#district-attestation-key',
+		verificationMethod: 'did:web:commons.email#district-attestation-key',
 		proofPurpose: 'assertionMethod',
 		proofValue: 'mock-signature-base64url'
 	}

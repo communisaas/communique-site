@@ -10,7 +10,7 @@
 import { PrismaClient } from '@prisma/client';
 
 const testDb = new PrismaClient({
-	datasourceUrl: process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/test',
+	datasourceUrl: process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/test',
 	log: ['error']
 });
 

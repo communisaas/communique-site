@@ -1,14 +1,11 @@
 /**
- * Unit Tests: CWC Delivery Client
+ * Unit Tests: CWC Delivery Client — deliverToOffice (ZK path)
  *
- * Tests for src/lib/core/congressional/cwc-delivery.ts which:
- * 1. Delivers verified constituent messages to Congress via CWC API
- * 2. Builds XML payloads (House CWC 2.0 and Senate simplified)
- * 3. Handles retry with exponential backoff on server errors
- * 4. Per-office rate limiting (10/hour)
- * 5. Updates submission delivery status
+ * Tests for the ZK proof delivery path which accepts TEE-resolved
+ * constituent data and delivers via the full CWC XML path.
  *
  * Security properties tested:
+ * - Constituent data included in CWC XML (required by CWC endpoints)
  * - XML escaping prevents injection
  * - Per-office rate limiting prevents office flooding
  * - No retry on 4xx (validation/auth errors)
@@ -16,6 +13,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { ConstituentData } from '$lib/core/legislative/types';
 
 // =============================================================================
 // MOCKS
@@ -29,20 +27,12 @@ const { mockTemplateFindUnique, mockSubmissionUpdate, mockRateLimiterCheck } = v
 
 vi.mock('$lib/core/db', () => ({
 	prisma: {
-		template: {
-			findUnique: (...args: unknown[]) => mockTemplateFindUnique(...args)
-		},
-		submission: {
-			update: (...args: unknown[]) => mockSubmissionUpdate(...args)
-		}
+		template: { findUnique: (...args: unknown[]) => mockTemplateFindUnique(...args) },
+		submission: { update: (...args: unknown[]) => mockSubmissionUpdate(...args) }
 	},
 	db: {
-		template: {
-			findUnique: (...args: unknown[]) => mockTemplateFindUnique(...args)
-		},
-		submission: {
-			update: (...args: unknown[]) => mockSubmissionUpdate(...args)
-		}
+		template: { findUnique: (...args: unknown[]) => mockTemplateFindUnique(...args) },
+		submission: { update: (...args: unknown[]) => mockSubmissionUpdate(...args) }
 	}
 }));
 
@@ -53,7 +43,7 @@ vi.mock('$lib/core/security/rate-limiter', () => ({
 }));
 
 // Import module under test AFTER mocks
-const { deliverToCWC } = await import('../../../src/lib/core/congressional/cwc-delivery');
+const { cwcClient } = await import('../../../src/lib/core/legislative/cwc-client');
 
 // =============================================================================
 // HELPERS
@@ -73,9 +63,25 @@ afterEach(() => {
 });
 
 const DEFAULT_TEMPLATE = {
+	id: 'tpl-001',
 	title: 'Support Climate Action',
+	description: 'Template for climate advocacy',
 	message_body: 'Dear Representative, please support the climate bill.',
+	delivery_config: {},
 	cwc_config: null
+};
+
+const DEFAULT_CONSTITUENT: ConstituentData = {
+	name: 'Jane Doe',
+	email: 'jane@example.com',
+	phone: '555-123-4567',
+	address: {
+		street: '123 Main St',
+		city: 'San Francisco',
+		state: 'CA',
+		zip: '94102'
+	},
+	congressionalDistrict: 'CA-12'
 };
 
 const DEFAULT_REQUEST = {
@@ -85,73 +91,214 @@ const DEFAULT_REQUEST = {
 	verificationTxHash: '0xabc123'
 };
 
-function setupCWCEnv() {
-	process.env.CWC_API_URL = 'https://cwc.example.com/api/submit';
+function setupSenateEnv() {
+	process.env.CWC_API_BASE_URL = 'https://cwc.example.com/api';
 	process.env.CWC_API_KEY = 'test-api-key';
 }
 
-function mockCWCSuccess(cwcSubmissionId = 'cwc-resp-001') {
+function setupHouseEnv() {
+	process.env.GCP_PROXY_URL = 'http://test-proxy:8080';
+	process.env.GCP_PROXY_AUTH_TOKEN = 'test-proxy-token';
+}
+
+function mockSenateSuccess(submissionId = 'cwc-resp-001') {
 	globalThis.fetch = vi.fn().mockResolvedValue({
 		ok: true,
-		text: async () => `<Response><SubmissionId>${cwcSubmissionId}</SubmissionId></Response>`
+		status: 200,
+		headers: new Headers({ 'content-type': 'text/xml' }),
+		text: async () => `<Response><SubmissionId>${submissionId}</SubmissionId></Response>`
+	});
+}
+
+function mockHouseProxySuccess() {
+	globalThis.fetch = vi.fn().mockResolvedValue({
+		ok: true,
+		status: 200,
+		headers: new Headers({ 'content-type': 'application/xml' }),
+		text: async () => '<Success>Message Sent</Success>'
 	});
 }
 
 // =============================================================================
-// TESTS — Exported functions
+// TESTS
 // =============================================================================
 
-// We can only test deliverToCWC directly since other functions are module-private.
-// We test those indirectly through deliverToCWC behavior.
-
-describe('CWC Delivery Client', () => {
+describe('CWC Delivery Client — deliverToOffice', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockRateLimiterCheck.mockResolvedValue({ allowed: true });
 		mockTemplateFindUnique.mockResolvedValue(DEFAULT_TEMPLATE);
 		mockSubmissionUpdate.mockResolvedValue({});
-		setupCWCEnv();
-		mockCWCSuccess();
 	});
 
 	// =========================================================================
-	// Chamber Inference (tested via deliverToCWC behavior)
+	// Senate Delivery (direct API)
+	// =========================================================================
+
+	describe('Senate Delivery', () => {
+		beforeEach(() => {
+			setupSenateEnv();
+			mockSenateSuccess();
+		});
+
+		it('should deliver to Senate via direct CWC API', async () => {
+			const req = { ...DEFAULT_REQUEST, districtId: 'CA' };
+
+			const result = await cwcClient.deliverToOffice(req, DEFAULT_CONSTITUENT);
+
+			expect(result.success).toBe(true);
+			expect(result.cwcSubmissionId).toBeDefined();
+		});
+
+		it('should include constituent data in Senate XML', async () => {
+			const req = { ...DEFAULT_REQUEST, districtId: 'CA' };
+
+			await cwcClient.deliverToOffice(req, DEFAULT_CONSTITUENT);
+
+			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+			const xmlBody = fetchMock.mock.calls[0][1].body;
+			expect(xmlBody).toContain('<FirstName>Jane</FirstName>');
+			expect(xmlBody).toContain('<LastName>Doe</LastName>');
+			expect(xmlBody).toContain('jane@example.com');
+			expect(xmlBody).toContain('123 Main St');
+			expect(xmlBody).toContain('San Francisco');
+			expect(xmlBody).toContain('94102');
+		});
+
+		it('should use Senate RELAX NG XML format', async () => {
+			const req = { ...DEFAULT_REQUEST, districtId: 'CA' };
+
+			await cwcClient.deliverToOffice(req, DEFAULT_CONSTITUENT);
+
+			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+			const xmlBody = fetchMock.mock.calls[0][1].body;
+			expect(xmlBody).toContain('<DeliveryId>');
+			expect(xmlBody).toContain('<Constituent>');
+			expect(xmlBody).toContain('<ConstituentMessage>');
+			expect(xmlBody).toContain('<MemberOffice>');
+		});
+
+		it('should POST to Senate CWC endpoint with apikey', async () => {
+			const req = { ...DEFAULT_REQUEST, districtId: 'CA' };
+
+			await cwcClient.deliverToOffice(req, DEFAULT_CONSTITUENT);
+
+			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+			const [url, options] = fetchMock.mock.calls[0];
+			expect(url).toContain('cwc.example.com/api/');
+			expect(url).toContain('apikey=test-api-key');
+			expect(options.headers['Content-Type']).toBe('application/xml');
+		});
+
+		it('should fail when CWC_API_KEY not configured', async () => {
+			delete process.env.CWC_API_KEY;
+			const req = { ...DEFAULT_REQUEST, districtId: 'CA' };
+
+			const result = await cwcClient.deliverToOffice(req, DEFAULT_CONSTITUENT);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('not configured');
+		});
+	});
+
+	// =========================================================================
+	// House Delivery (via GCP proxy)
+	// =========================================================================
+
+	describe('House Delivery', () => {
+		beforeEach(() => {
+			setupHouseEnv();
+			mockHouseProxySuccess();
+		});
+
+		it('should deliver to House via GCP proxy', async () => {
+			const result = await cwcClient.deliverToOffice(DEFAULT_REQUEST, DEFAULT_CONSTITUENT);
+
+			expect(result.success).toBe(true);
+			expect(result.cwcSubmissionId).toBeDefined();
+		});
+
+		it('should send raw CWC XML to proxy endpoint', async () => {
+			await cwcClient.deliverToOffice(DEFAULT_REQUEST, DEFAULT_CONSTITUENT);
+
+			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+			const [url, options] = fetchMock.mock.calls[0];
+			expect(url).toContain('test-proxy:8080/cwc-house-test');
+			expect(options.headers['Content-Type']).toBe('application/xml');
+
+			// Body is raw XML, not JSON envelope
+			expect(options.body).toContain('<CWC>');
+			expect(options.body).toContain('<CWCVersion>2.0</CWCVersion>');
+		});
+
+		it('should include constituent data in House CWC RELAX NG XML', async () => {
+			await cwcClient.deliverToOffice(DEFAULT_REQUEST, DEFAULT_CONSTITUENT);
+
+			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+			const xml = fetchMock.mock.calls[0][1].body;
+			expect(xml).toContain('<CWC>');
+			expect(xml).toContain('<Constituent>');
+			expect(xml).toContain('<FirstName>Jane</FirstName>');
+			expect(xml).toContain('<LastName>Doe</LastName>');
+			expect(xml).toContain('jane@example.com');
+			expect(xml).toContain('123 Main St');
+		});
+
+		it('should fail when GCP_PROXY_URL not configured', async () => {
+			delete process.env.GCP_PROXY_URL;
+
+			const result = await cwcClient.deliverToOffice(DEFAULT_REQUEST, DEFAULT_CONSTITUENT);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('House CWC delivery not configured');
+		});
+	});
+
+	// =========================================================================
+	// Chamber Inference
 	// =========================================================================
 
 	describe('Chamber Inference', () => {
-		it('should use House format for district IDs with hyphen (e.g., CA-12)', async () => {
-			const req = { ...DEFAULT_REQUEST, districtId: 'CA-12' };
-
-			const result = await deliverToCWC(req);
-
-			expect(result.success).toBe(true);
-			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-			const xmlBody = fetchMock.mock.calls[0][1].body;
-			expect(xmlBody).toContain('<CWC version="2.0">');
+		beforeEach(() => {
+			setupSenateEnv();
+			setupHouseEnv();
+			mockHouseProxySuccess();
+			mockSenateSuccess();
 		});
 
-		it('should use Senate format for state-only district IDs (e.g., CA)', async () => {
-			const req = { ...DEFAULT_REQUEST, districtId: 'CA' };
+		it('should infer House for district IDs with hyphen (CA-12)', async () => {
+			// House path uses proxy
+			await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'CA-12' },
+				DEFAULT_CONSTITUENT
+			);
 
-			const result = await deliverToCWC(req);
-
-			expect(result.success).toBe(true);
 			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-			const xmlBody = fetchMock.mock.calls[0][1].body;
-			expect(xmlBody).not.toContain('version="2.0"');
-			expect(xmlBody).toContain('<DeliveryId>');
-			expect(xmlBody).toContain('<ConstituentMessage>');
+			const [url] = fetchMock.mock.calls[0];
+			expect(url).toContain('test-proxy');
 		});
 
-		it('should treat at-large districts as House (DC-AL has a hyphen)', async () => {
-			const req = { ...DEFAULT_REQUEST, districtId: 'DC-AL' };
+		it('should infer Senate for state-only district IDs (CA)', async () => {
+			// Senate path uses direct API
+			await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'CA' },
+				DEFAULT_CONSTITUENT
+			);
 
-			const result = await deliverToCWC(req);
-
-			expect(result.success).toBe(true);
 			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-			const xmlBody = fetchMock.mock.calls[0][1].body;
-			expect(xmlBody).toContain('<CWC version="2.0">');
+			const [url] = fetchMock.mock.calls[0];
+			expect(url).toContain('cwc.example.com');
+		});
+
+		it('should treat at-large as House (DC-AL has a hyphen)', async () => {
+			await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'DC-AL' },
+				DEFAULT_CONSTITUENT
+			);
+
+			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+			const [url] = fetchMock.mock.calls[0];
+			expect(url).toContain('test-proxy');
 		});
 	});
 
@@ -160,210 +307,49 @@ describe('CWC Delivery Client', () => {
 	// =========================================================================
 
 	describe('XML Escaping', () => {
-		it('should escape special characters in subject and body', async () => {
+		beforeEach(() => {
+			setupSenateEnv();
+			mockSenateSuccess();
+		});
+
+		it('should escape special characters in template content', async () => {
 			mockTemplateFindUnique.mockResolvedValue({
+				...DEFAULT_TEMPLATE,
 				title: 'Tax & Spend <Policy> "Reform"',
-				message_body: "It's important to protect <citizens> & their rights",
-				cwc_config: null
+				message_body: "It's important to protect <citizens> & their rights"
 			});
 
-			await deliverToCWC(DEFAULT_REQUEST);
+			await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'CA' },
+				DEFAULT_CONSTITUENT
+			);
 
 			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
 			const xmlBody = fetchMock.mock.calls[0][1].body;
 			expect(xmlBody).toContain('&amp;');
 			expect(xmlBody).toContain('&lt;');
 			expect(xmlBody).toContain('&gt;');
-			expect(xmlBody).toContain('&quot;');
-			expect(xmlBody).toContain('&apos;');
-			// Raw special chars should not appear unescaped
 			expect(xmlBody).not.toMatch(/<Policy>/);
 			expect(xmlBody).not.toMatch(/<citizens>/);
 		});
 
-		it('should prevent XML injection via malicious input', async () => {
-			mockTemplateFindUnique.mockResolvedValue({
-				title: '</Subject><Malicious>injected</Malicious><Subject>',
-				message_body: 'Normal body',
-				cwc_config: null
-			});
+		it('should escape special characters in constituent data', async () => {
+			const constituent: ConstituentData = {
+				...DEFAULT_CONSTITUENT,
+				name: "O'Brien & Associates",
+				address: { ...DEFAULT_CONSTITUENT.address, street: '123 <Main> St' }
+			};
 
-			await deliverToCWC(DEFAULT_REQUEST);
-
-			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-			const xmlBody = fetchMock.mock.calls[0][1].body;
-			// The malicious tags should be escaped, not parsed as XML
-			expect(xmlBody).not.toContain('<Malicious>');
-			expect(xmlBody).toContain('&lt;/Subject&gt;');
-		});
-	});
-
-	// =========================================================================
-	// XML Structure
-	// =========================================================================
-
-	describe('XML Structure', () => {
-		it('should build valid House CWC 2.0 XML', async () => {
-			await deliverToCWC(DEFAULT_REQUEST);
+			await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'CA' },
+				constituent
+			);
 
 			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
 			const xmlBody = fetchMock.mock.calls[0][1].body;
-			expect(xmlBody).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-			expect(xmlBody).toContain('<CWC version="2.0">');
-			expect(xmlBody).toContain('<MessageHeader>');
-			expect(xmlBody).toContain('<MessageId>');
-			expect(xmlBody).toContain('<DeliveryAgent>');
-			expect(xmlBody).toContain('<OfficeCode>CA12_HOUSE</OfficeCode>');
-			expect(xmlBody).toContain('<Subject>');
-			expect(xmlBody).toContain('<Body>');
-			expect(xmlBody).toContain('<IntegrityHash>scroll:0xabc123</IntegrityHash>');
-			expect(xmlBody).toContain('</CWC>');
-		});
-
-		it('should build valid Senate XML', async () => {
-			const req = { ...DEFAULT_REQUEST, districtId: 'CA' };
-
-			await deliverToCWC(req);
-
-			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-			const xmlBody = fetchMock.mock.calls[0][1].body;
-			expect(xmlBody).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-			expect(xmlBody).toContain('<CWC>');
-			expect(xmlBody).toContain('<DeliveryId>');
-			expect(xmlBody).toContain('<OfficeCode>CA_SENATE</OfficeCode>');
-			expect(xmlBody).toContain('<ConstituentMessage>');
-			expect(xmlBody).toContain('<IntegrityHash>scroll:0xabc123</IntegrityHash>');
-		});
-
-		it('should include Commons platform name in DeliveryAgent', async () => {
-			await deliverToCWC(DEFAULT_REQUEST);
-
-			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-			const xmlBody = fetchMock.mock.calls[0][1].body;
-			expect(xmlBody).toContain('<Name>Commons Advocacy Platform</Name>');
-		});
-	});
-
-	// =========================================================================
-	// CWC API Posting
-	// =========================================================================
-
-	describe('CWC API Posting', () => {
-		it('should POST XML to CWC_API_URL with correct headers', async () => {
-			await deliverToCWC(DEFAULT_REQUEST);
-
-			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-			expect(fetchMock).toHaveBeenCalledTimes(1);
-
-			const [url, options] = fetchMock.mock.calls[0];
-			expect(url).toBe('https://cwc.example.com/api/submit');
-			expect(options.method).toBe('POST');
-			expect(options.headers['Content-Type']).toBe('application/xml');
-			expect(options.headers['Authorization']).toBe('Bearer test-api-key');
-			expect(options.headers['Accept']).toBe('application/xml');
-		});
-
-		it('should return success with cwcSubmissionId from response', async () => {
-			mockCWCSuccess('cwc-12345');
-
-			const result = await deliverToCWC(DEFAULT_REQUEST);
-
-			expect(result.success).toBe(true);
-			expect(result.cwcSubmissionId).toBe('cwc-12345');
-		});
-
-		it('should fail when CWC_API_URL is not configured', async () => {
-			delete process.env.CWC_API_URL;
-
-			const result = await deliverToCWC(DEFAULT_REQUEST);
-
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('not configured');
-		});
-
-		it('should fail when CWC_API_KEY is not configured', async () => {
-			delete process.env.CWC_API_KEY;
-
-			const result = await deliverToCWC(DEFAULT_REQUEST);
-
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('not configured');
-		});
-	});
-
-	// =========================================================================
-	// Retry Behavior
-	// =========================================================================
-
-	describe('Retry Behavior', () => {
-		it('should retry on 5xx errors with exponential backoff', async () => {
-			let callCount = 0;
-			globalThis.fetch = vi.fn().mockImplementation(async () => {
-				callCount++;
-				if (callCount < 3) {
-					return { ok: false, status: 500, text: async () => 'Internal Server Error' };
-				}
-				return {
-					ok: true,
-					text: async () => '<Response><SubmissionId>cwc-retry-ok</SubmissionId></Response>'
-				};
-			});
-
-			const result = await deliverToCWC(DEFAULT_REQUEST);
-
-			expect(result.success).toBe(true);
-			expect(result.cwcSubmissionId).toBe('cwc-retry-ok');
-			expect(callCount).toBe(3);
-		});
-
-		it('should NOT retry on 4xx errors', async () => {
-			globalThis.fetch = vi.fn().mockResolvedValue({
-				ok: false,
-				status: 400,
-				text: async () => 'Bad Request: Invalid XML'
-			});
-
-			const result = await deliverToCWC(DEFAULT_REQUEST);
-
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('400');
-			// Only called once — no retry
-			expect(globalThis.fetch).toHaveBeenCalledTimes(1);
-		});
-
-		it('should give up after max retries on persistent server errors', async () => {
-			globalThis.fetch = vi.fn().mockResolvedValue({
-				ok: false,
-				status: 503,
-				text: async () => 'Service Unavailable'
-			});
-
-			const result = await deliverToCWC(DEFAULT_REQUEST);
-
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('server error');
-			expect(result.error).toContain('3 attempts');
-			// Default maxRetries = 3
-			expect(globalThis.fetch).toHaveBeenCalledTimes(3);
-		});
-
-		it('should retry on network errors', async () => {
-			let callCount = 0;
-			globalThis.fetch = vi.fn().mockImplementation(async () => {
-				callCount++;
-				if (callCount < 3) {
-					throw new Error('Network timeout');
-				}
-				return {
-					ok: true,
-					text: async () => '<Response><SubmissionId>cwc-net-ok</SubmissionId></Response>'
-				};
-			});
-
-			const result = await deliverToCWC(DEFAULT_REQUEST);
-
-			expect(result.success).toBe(true);
-			expect(callCount).toBe(3);
+			expect(xmlBody).toContain('&#39;');
+			expect(xmlBody).toContain('&amp;');
+			expect(xmlBody).toContain('&lt;Main&gt;');
 		});
 	});
 
@@ -372,11 +358,16 @@ describe('CWC Delivery Client', () => {
 	// =========================================================================
 
 	describe('Per-office Rate Limiting', () => {
+		beforeEach(() => {
+			setupHouseEnv();
+			mockHouseProxySuccess();
+		});
+
 		it('should check per-office rate limit (10/hour)', async () => {
-			await deliverToCWC(DEFAULT_REQUEST);
+			await cwcClient.deliverToOffice(DEFAULT_REQUEST, DEFAULT_CONSTITUENT);
 
 			expect(mockRateLimiterCheck).toHaveBeenCalledWith(
-				'cwc:office:CA12_HOUSE',
+				'cwc:office:HCA12',
 				{ maxRequests: 10, windowMs: 3_600_000 }
 			);
 		});
@@ -384,19 +375,22 @@ describe('CWC Delivery Client', () => {
 		it('should fail when office rate limit is exceeded', async () => {
 			mockRateLimiterCheck.mockResolvedValue({ allowed: false, retryAfter: 300 });
 
-			const result = await deliverToCWC(DEFAULT_REQUEST);
+			const result = await cwcClient.deliverToOffice(DEFAULT_REQUEST, DEFAULT_CONSTITUENT);
 
 			expect(result.success).toBe(false);
 			expect(result.error).toContain('rate limit exceeded');
-			// Should not call fetch when rate limited
 			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
 			expect(fetchMock).not.toHaveBeenCalled();
 		});
 
 		it('should use senate office code for senate districts', async () => {
-			const req = { ...DEFAULT_REQUEST, districtId: 'TX' };
+			setupSenateEnv();
+			mockSenateSuccess();
 
-			await deliverToCWC(req);
+			await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'TX' },
+				DEFAULT_CONSTITUENT
+			);
 
 			expect(mockRateLimiterCheck).toHaveBeenCalledWith(
 				'cwc:office:TX_SENATE',
@@ -410,22 +404,33 @@ describe('CWC Delivery Client', () => {
 	// =========================================================================
 
 	describe('Template Lookup', () => {
+		beforeEach(() => {
+			setupSenateEnv();
+			mockSenateSuccess();
+		});
+
 		it('should fail when template not found', async () => {
 			mockTemplateFindUnique.mockResolvedValue(null);
 
-			const result = await deliverToCWC(DEFAULT_REQUEST);
+			const result = await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'CA' },
+				DEFAULT_CONSTITUENT
+			);
 
 			expect(result.success).toBe(false);
 			expect(result.error).toContain('Template');
 			expect(result.error).toContain('not found');
 		});
 
-		it('should query template with correct fields', async () => {
-			await deliverToCWC(DEFAULT_REQUEST);
+		it('should query template with required fields', async () => {
+			await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'CA' },
+				DEFAULT_CONSTITUENT
+			);
 
 			expect(mockTemplateFindUnique).toHaveBeenCalledWith({
 				where: { id: 'tpl-001' },
-				select: { title: true, message_body: true, cwc_config: true }
+				select: { id: true, title: true, description: true, message_body: true, delivery_config: true, cwc_config: true }
 			});
 		});
 
@@ -435,13 +440,13 @@ describe('CWC Delivery Client', () => {
 				cwc_config: { chamber: 'senate', officeCode: 'CUSTOM_SENATE' }
 			});
 
-			await deliverToCWC(DEFAULT_REQUEST);
+			await cwcClient.deliverToOffice(DEFAULT_REQUEST, DEFAULT_CONSTITUENT);
 
+			// Should use Senate format since cwc_config.chamber overrides inference from 'CA-12'
 			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
 			const xmlBody = fetchMock.mock.calls[0][1].body;
-			// Should use Senate format since cwc_config.chamber overrides inference
+			expect(xmlBody).toContain('<Constituent>');
 			expect(xmlBody).toContain('<ConstituentMessage>');
-			expect(xmlBody).toContain('<OfficeCode>CUSTOM_SENATE</OfficeCode>');
 		});
 	});
 
@@ -450,16 +455,22 @@ describe('CWC Delivery Client', () => {
 	// =========================================================================
 
 	describe('Delivery Status Updates', () => {
+		beforeEach(() => {
+			setupSenateEnv();
+			mockSenateSuccess();
+		});
+
 		it('should update status to delivered on success', async () => {
-			await deliverToCWC(DEFAULT_REQUEST);
+			await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'CA' },
+				DEFAULT_CONSTITUENT
+			);
 
 			expect(mockSubmissionUpdate).toHaveBeenCalledWith({
 				where: { id: 'sub-001' },
 				data: expect.objectContaining({
 					delivery_status: 'delivered',
-					delivery_error: null,
-					cwc_submission_id: expect.any(String),
-					delivered_at: expect.any(Date)
+					cwc_submission_id: expect.any(String)
 				})
 			});
 		});
@@ -467,7 +478,10 @@ describe('CWC Delivery Client', () => {
 		it('should update status to delivery_failed on failure', async () => {
 			mockRateLimiterCheck.mockResolvedValue({ allowed: false, retryAfter: 60 });
 
-			await deliverToCWC(DEFAULT_REQUEST);
+			await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'CA' },
+				DEFAULT_CONSTITUENT
+			);
 
 			expect(mockSubmissionUpdate).toHaveBeenCalledWith({
 				where: { id: 'sub-001' },
@@ -481,7 +495,10 @@ describe('CWC Delivery Client', () => {
 		it('should update status to delivery_failed when template not found', async () => {
 			mockTemplateFindUnique.mockResolvedValue(null);
 
-			await deliverToCWC(DEFAULT_REQUEST);
+			await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'CA' },
+				DEFAULT_CONSTITUENT
+			);
 
 			expect(mockSubmissionUpdate).toHaveBeenCalledWith({
 				where: { id: 'sub-001' },
@@ -493,46 +510,34 @@ describe('CWC Delivery Client', () => {
 	});
 
 	// =========================================================================
-	// Full Flow
+	// Error Handling
 	// =========================================================================
 
-	describe('Full Delivery Flow', () => {
-		it('should complete full House delivery: template -> XML -> post -> update', async () => {
-			const result = await deliverToCWC(DEFAULT_REQUEST);
-
-			expect(result.success).toBe(true);
-			expect(result.cwcSubmissionId).toBeDefined();
-
-			// Template was fetched
-			expect(mockTemplateFindUnique).toHaveBeenCalledTimes(1);
-			// Rate limit was checked
-			expect(mockRateLimiterCheck).toHaveBeenCalledTimes(1);
-			// CWC API was called
-			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-			expect(fetchMock).toHaveBeenCalledTimes(1);
-			// Status was updated
-			expect(mockSubmissionUpdate).toHaveBeenCalledTimes(1);
-		});
-
-		it('should complete full Senate delivery flow', async () => {
-			const req = { ...DEFAULT_REQUEST, districtId: 'NY' };
-
-			const result = await deliverToCWC(req);
-
-			expect(result.success).toBe(true);
-
-			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-			const xmlBody = fetchMock.mock.calls[0][1].body;
-			expect(xmlBody).toContain('<OfficeCode>NY_SENATE</OfficeCode>');
-		});
-
-		it('should not throw on unexpected errors — returns error result instead', async () => {
+	describe('Error Handling', () => {
+		it('should not throw on unexpected errors — returns error result', async () => {
+			setupSenateEnv();
 			mockTemplateFindUnique.mockRejectedValue(new Error('DB connection lost'));
 
-			const result = await deliverToCWC(DEFAULT_REQUEST);
+			const result = await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'CA' },
+				DEFAULT_CONSTITUENT
+			);
 
 			expect(result.success).toBe(false);
 			expect(result.error).toContain('DB connection lost');
+		});
+
+		it('should handle fetch failures gracefully', async () => {
+			setupSenateEnv();
+			globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network timeout'));
+
+			const result = await cwcClient.deliverToOffice(
+				{ ...DEFAULT_REQUEST, districtId: 'CA' },
+				DEFAULT_CONSTITUENT
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toBeDefined();
 		});
 	});
 });

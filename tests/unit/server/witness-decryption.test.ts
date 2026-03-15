@@ -63,7 +63,7 @@ function encryptWithNoble(
 
 	const encryptionKey = blake2b(sharedSecret, {
 		dkLen: 32,
-		key: new TextEncoder().encode('communique-witness-encryption')
+		key: new TextEncoder().encode('commons-witness-encryption-v1')
 	});
 
 	const nonce = randomBytes(24);

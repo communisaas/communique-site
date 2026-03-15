@@ -56,7 +56,7 @@ describe.runIf(dbAvailable)('Address Verification E2E Flow', () => {
 		// Create test user
 		testUser = await db.user.create({
 			data: {
-				email: `${uniqueSuffix}@test.communique.io`,
+				email: `${uniqueSuffix}@test.commons.email`,
 				name: 'E2E Test User',
 				did_key: `did:key:z${uniqueSuffix}`,
 				trust_tier: 0,

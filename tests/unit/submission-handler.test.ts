@@ -16,19 +16,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock all external dependencies before importing the module under test.
 // These mocks intercept $lib and $env paths resolved by vitest's sveltekit plugin.
 
-const mockFindFirst = vi.fn();
-const mockCreate = vi.fn();
-const mockUpdate = vi.fn();
+const { mockFindFirst, mockCreate, mockUpdate } = vi.hoisted(() => ({
+	mockFindFirst: vi.fn(),
+	mockCreate: vi.fn(),
+	mockUpdate: vi.fn()
+}));
 
-vi.mock('$lib/core/db', () => ({
-	prisma: {
+vi.mock('$lib/core/db', () => {
+	const mockDb = {
 		submission: {
 			findFirst: (...args: unknown[]) => mockFindFirst(...args),
 			create: (...args: unknown[]) => mockCreate(...args),
 			update: (...args: unknown[]) => mockUpdate(...args)
 		}
-	}
-}));
+	};
+	return { db: mockDb, prisma: mockDb };
+});
 
 vi.mock('$lib/core/blockchain/district-gate-client', () => ({
 	verifyOnChain: vi.fn().mockResolvedValue({ success: true, txHash: '0xabc123' }),
@@ -50,7 +53,17 @@ vi.mock('$lib/core/privacy/pseudonymous-id', () => ({
 	computePseudonymousId: vi.fn((userId: string) => `pseudo-${userId}`)
 }));
 
-import { handleSubmission, type SubmissionRequest } from '$lib/core/congressional/submission-handler';
+vi.mock('$lib/config/features', () => ({
+	FEATURES: { CONGRESSIONAL: true }
+}));
+
+vi.mock('$lib/core/legislative/cwc-client', () => ({
+	cwcClient: {
+		deliverToOffice: vi.fn().mockResolvedValue({ success: true, cwcSubmissionId: 'cwc-test' })
+	}
+}));
+
+import { handleSubmission, type SubmissionRequest } from '$lib/core/legislative/submission';
 import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
 
 /**

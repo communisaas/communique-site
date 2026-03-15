@@ -1,7 +1,7 @@
 /**
  * Error Cases E2E Tests
  *
- * Tests failure scenarios and error handling for the Communique ↔ voter-protocol integration:
+ * Tests failure scenarios and error handling for the Commons ↔ voter-protocol integration:
  * - Invalid proof rejection
  * - Nullifier reuse (double-voting prevention)
  * - Expired session handling

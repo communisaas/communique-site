@@ -417,7 +417,7 @@ describe('SlidingWindowRateLimiter', () => {
 		it('should include route pattern in the key', () => {
 			const key = SlidingWindowRateLimiter.generateKey(
 				{
-					pattern: '/api/congressional/submit',
+					pattern: '/api/legislative/submit',
 					maxRequests: 3,
 					windowMs: 3600000,
 					keyStrategy: 'user'
@@ -425,7 +425,7 @@ describe('SlidingWindowRateLimiter', () => {
 				'1.2.3.4',
 				'user-abc'
 			);
-			expect(key).toContain('/api/congressional/submit');
+			expect(key).toContain('/api/legislative/submit');
 		});
 	});
 });
@@ -449,8 +449,8 @@ describe('findRateLimitConfig', () => {
 		expect(config!.pattern).toBe('/api/submissions/');
 	});
 
-	it('should find config for /api/congressional/submit', () => {
-		const config = findRateLimitConfig('/api/congressional/submit');
+	it('should find config for /api/legislative/submit', () => {
+		const config = findRateLimitConfig('/api/legislative/submit');
 		expect(config).toBeDefined();
 		expect(config!.maxRequests).toBe(3);
 		expect(config!.windowMs).toBe(60 * 60 * 1000); // 1 hour
@@ -508,8 +508,8 @@ describe('findRateLimitConfig', () => {
 		expect(config).toBeUndefined();
 	});
 
-	it('should match exact pattern for /api/congressional/submit', () => {
-		const config = findRateLimitConfig('/api/congressional/submit');
+	it('should match exact pattern for /api/legislative/submit', () => {
+		const config = findRateLimitConfig('/api/legislative/submit');
 		expect(config).toBeDefined();
 	});
 
@@ -678,8 +678,8 @@ describe('ROUTE_RATE_LIMITS', () => {
 		expect(rule!.windowMs).toBe(60 * 1000);
 	});
 
-	it('should include the /api/congressional/submit rule with 3 req/hour', () => {
-		const rule = ROUTE_RATE_LIMITS.find((r) => r.pattern === '/api/congressional/submit');
+	it('should include the /api/legislative/submit rule with 3 req/hour', () => {
+		const rule = ROUTE_RATE_LIMITS.find((r) => r.pattern === '/api/legislative/submit');
 		expect(rule).toBeDefined();
 		expect(rule!.maxRequests).toBe(3);
 		expect(rule!.windowMs).toBe(60 * 60 * 1000);

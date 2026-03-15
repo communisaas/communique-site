@@ -57,10 +57,10 @@ function encryptWithNoble(
 	const serverPubBytes = hexToBytes(serverPublicKeyHex);
 	const sharedSecret = x25519.getSharedSecret(ephemeralPrivate, serverPubBytes);
 
-	// 3. KDF: BLAKE2b with key = 'communique-witness-encryption'
+	// 3. KDF: BLAKE2b with key = 'commons-witness-encryption-v1'
 	const encryptionKey = blake2b(sharedSecret, {
 		dkLen: 32,
-		key: new TextEncoder().encode('communique-witness-encryption')
+		key: new TextEncoder().encode('commons-witness-encryption-v1')
 	});
 
 	// 4. Random 24-byte nonce for XChaCha20

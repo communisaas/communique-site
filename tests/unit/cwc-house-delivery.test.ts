@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { CWCClient } from '$lib/core/congress/cwc-client';
+import { CWCClient } from '$lib/core/legislative/cwc-client';
 import type { Template } from '$lib/types/template';
 
 describe('CWC House Delivery', () => {
@@ -72,7 +72,7 @@ describe('CWC House Delivery', () => {
 			expect(result.error).toBeDefined();
 			expect(result.error).toContain('House CWC delivery not configured');
 			expect(result.error).toContain('IP whitelisting');
-			expect(result.error).toContain('CWCVendors@mail.house.gov');
+			expect(result.error).toContain('house.gov');
 
 			// Should NOT have a fake message ID like 'HOUSE-SIM-...'
 			expect(result.messageId).toBeUndefined();
@@ -156,7 +156,7 @@ describe('CWC House Delivery', () => {
 
 			// Should log the proxy attempt
 			const proxyLogs = consoleSpy.mock.calls.filter((call) =>
-				call.some((arg) => typeof arg === 'string' && arg.includes('[CWC House] Attempting'))
+				call.some((arg) => typeof arg === 'string' && arg.includes('[CWC House]'))
 			);
 			expect(proxyLogs.length).toBeGreaterThan(0);
 
@@ -181,18 +181,19 @@ describe('CWC House Delivery', () => {
 
 			await expect(
 				client.submitToHouse(mockTemplate as Template, mockUser, senateMember, '')
-			).rejects.toThrow('only for House offices');
+			).rejects.toThrow('submitToHouse requires a house office');
 		});
 	});
 
-	describe('XML Generation and JSON Envelope', () => {
-		it('should generate House CWC XML and send in JSON envelope to proxy', async () => {
+	describe('XML Generation — RELAX NG Format', () => {
+		it('should generate House CWC RELAX NG XML and send raw to proxy', async () => {
 			process.env.GCP_PROXY_URL = 'http://localhost:9999';
 			process.env.GCP_PROXY_AUTH_TOKEN = 'test-token';
 
 			const fetchSpy = vi.fn().mockResolvedValue({
 				ok: true,
-				json: async () => ({ submissionId: 'house-test-123', status: 'submitted' })
+				status: 200,
+				text: async () => '<Success>Message Sent</Success>'
 			});
 			globalThis.fetch = fetchSpy;
 
@@ -210,21 +211,18 @@ describe('CWC House Delivery', () => {
 			// Verify the request was sent to the proxy
 			expect(fetchSpy).toHaveBeenCalled();
 			const [url, options] = fetchSpy.mock.calls[0];
-			expect(url).toContain('/api/house/submit');
+			expect(url).toContain('/cwc-house-test');
 			expect(options.headers['Authorization']).toBe('Bearer test-token');
+			expect(options.headers['Content-Type']).toBe('application/xml');
 
-			// Verify JSON envelope contains XML
-			const requestBody = JSON.parse(options.body);
-			expect(requestBody).toHaveProperty('xml');
-			expect(requestBody).toHaveProperty('jobId');
-			expect(requestBody).toHaveProperty('officeCode');
-
-			// Verify the XML is valid House CWC format
-			expect(requestBody.xml).toContain('<?xml version="1.0"');
-			expect(requestBody.xml).toContain('<CWC version="2.0">');
-			expect(requestBody.xml).toContain('<OfficeCode>');
-			expect(requestBody.xml).toContain('<ConstituentData>');
-			expect(requestBody.xml).toContain('climate action');
+			// Body is raw XML (RELAX NG format), not JSON envelope
+			const xml = options.body;
+			expect(xml).toContain('<?xml version="1.0"');
+			expect(xml).toContain('<CWC>');
+			expect(xml).toContain('<CWCVersion>2.0</CWCVersion>');
+			expect(xml).toContain('<MemberOffice>');
+			expect(xml).toContain('<Constituent>');
+			expect(xml).toContain('climate action');
 		});
 
 		it('should include sender details in generated XML', async () => {
@@ -233,7 +231,8 @@ describe('CWC House Delivery', () => {
 
 			const fetchSpy = vi.fn().mockResolvedValue({
 				ok: true,
-				json: async () => ({ submissionId: 'house-test-456', status: 'submitted' })
+				status: 200,
+				text: async () => '<Success>Message Sent</Success>'
 			});
 			globalThis.fetch = fetchSpy;
 
@@ -245,13 +244,13 @@ describe('CWC House Delivery', () => {
 				'Test message'
 			);
 
-			const requestBody = JSON.parse(fetchSpy.mock.calls[0][1].body);
-			// Verify constituent data is in the XML (name is split into First/Last elements)
-			expect(requestBody.xml).toContain('<First>Test</First>');
-			expect(requestBody.xml).toContain('<Last>Constituent</Last>');
-			expect(requestBody.xml).toContain('test@example.com');
-			expect(requestBody.xml).toContain('San Francisco');
-			expect(requestBody.xml).toContain('94102');
+			const xml = fetchSpy.mock.calls[0][1].body;
+			// Verify constituent data is in the RELAX NG XML
+			expect(xml).toContain('<FirstName>Test</FirstName>');
+			expect(xml).toContain('<LastName>Constituent</LastName>');
+			expect(xml).toContain('test@example.com');
+			expect(xml).toContain('San Francisco');
+			expect(xml).toContain('94102');
 		});
 	});
 

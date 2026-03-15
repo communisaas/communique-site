@@ -45,7 +45,7 @@ describe('issueDistrictCredential', () => {
 		expect(vc.type).toEqual(['VerifiableCredential', 'DistrictResidencyCredential']);
 
 		// issuer
-		expect(vc.issuer).toBe('did:web:communique.io');
+		expect(vc.issuer).toBe('did:web:commons.email');
 
 		// issuanceDate / expirationDate are valid ISO 8601
 		expect(() => new Date(vc.issuanceDate)).not.toThrow();
@@ -60,7 +60,7 @@ describe('issueDistrictCredential', () => {
 		// proof
 		expect(vc.proof.type).toBe('Ed25519Signature2020');
 		expect(vc.proof.proofPurpose).toBe('assertionMethod');
-		expect(vc.proof.verificationMethod).toContain('did:web:communique.io');
+		expect(vc.proof.verificationMethod).toContain('did:web:commons.email');
 		expect(typeof vc.proof.proofValue).toBe('string');
 		expect(vc.proof.proofValue.length).toBeGreaterThan(0);
 	});
@@ -93,7 +93,7 @@ describe('issueDistrictCredential', () => {
 			...BASE_PARAMS,
 			didKey: null
 		});
-		expect(vc.credentialSubject.id).toBe(`urn:communique:user:${BASE_PARAMS.userId}`);
+		expect(vc.credentialSubject.id).toBe(`urn:commons:user:${BASE_PARAMS.userId}`);
 	});
 
 	it('should include optional stateSenate and stateAssembly when provided', async () => {

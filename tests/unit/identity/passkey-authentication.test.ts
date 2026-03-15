@@ -61,7 +61,7 @@ vi.mock('$lib/core/auth/auth', () => ({
 
 vi.mock('$lib/core/identity/passkey-rp-config', () => ({
 	getPasskeyRPConfig: () => ({
-		rpName: 'Communique',
+		rpName: 'Commons',
 		rpID: 'localhost',
 		origin: 'http://localhost:5173'
 	})
