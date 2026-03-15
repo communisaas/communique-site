@@ -232,6 +232,8 @@ export interface MerkleProof {
 export interface DistrictLookupResult {
 	district: District;
 	merkleProof: MerkleProof | null;
+	/** H3 cell index used for spatial lookup — serves as cell_id for ZK eligibility */
+	cell_id: string | null;
 }
 
 /**
@@ -407,6 +409,7 @@ export async function lookupDistrict(lat: number, lng: number): Promise<District
 			// Merkle proof: null until cipher integrates client-side path computation.
 			// Callers already handle null proof (serve-only mode).
 			merkleProof: null,
+			cell_id: cellIndex,
 		};
 	} catch (error) {
 		if (error instanceof Error) {
@@ -1063,7 +1066,7 @@ export async function resolveLocation(
 }
 
 // ============================================================================
-// Address Resolution — requires geocoding service (Census Bureau fallback)
+// Address Resolution — Nominatim geocoding + H3 district + officials
 // ============================================================================
 
 /**
@@ -1089,31 +1092,111 @@ export interface AddressResolutionResult {
 	vintage: string;
 }
 
+/** Nominatim geocoding URL — uses Shadow Atlas's self-hosted Nominatim instance */
+const NOMINATIM_URL = env.NOMINATIM_URL || `${SHADOW_ATLAS_URL}/nominatim`;
+
 /**
- * Resolve a structured address to district + officials.
+ * Resolve a structured address to coordinates + district + officials.
  *
- * IPFS-native mode: Nominatim geocoding is no longer available (Shadow Atlas
- * is a build pipeline, not a runtime server). This function throws to trigger
- * the Census Bureau fallback in the route handler.
+ * Fully sovereign pipeline:
+ *   1. Nominatim (self-hosted): address → coordinates
+ *   2. H3 + IPFS: coordinates → district (local, no server call)
+ *   3. IPFS officials dataset: district → representatives (local)
  *
- * @param _address - Structured US address (unused — geocoding not available)
- * @throws Error always — caller should use Census Bureau fallback
+ * Zero external government API calls.
+ *
+ * @param address - Structured address with street, city, state, zip
+ * @returns Geocode + district + officials + cell_id
+ * @throws Error if geocoding or district lookup fails
  */
-export async function resolveAddress(_address: {
+export async function resolveAddress(address: {
 	street: string;
 	city: string;
 	state: string;
 	zip: string;
 	country?: 'US' | 'CA';
 }): Promise<AddressResolutionResult> {
-	// Shadow Atlas Nominatim is no longer available in IPFS-native mode.
-	// The route handler (resolve-address/+server.ts) catches this and falls
-	// through to its Census Bureau geocoder, which then uses H3 for district
-	// resolution via lookupDistrict().
-	throw new Error(
-		'Address geocoding unavailable in IPFS-native mode. ' +
-		'Census Bureau fallback should handle this request.'
-	);
+	const { street, city, state, zip, country } = address;
+	const countryCode = country ?? 'US';
+
+	// Step 1: Geocode via Nominatim
+	const searchUrl = new URL(`${NOMINATIM_URL}/search`);
+	searchUrl.searchParams.set('street', street);
+	searchUrl.searchParams.set('city', city);
+	searchUrl.searchParams.set('state', state);
+	searchUrl.searchParams.set('postalcode', zip);
+	searchUrl.searchParams.set('countrycodes', countryCode.toLowerCase());
+	searchUrl.searchParams.set('format', 'json');
+	searchUrl.searchParams.set('limit', '1');
+	searchUrl.searchParams.set('addressdetails', '1');
+
+	const geocodeRes = await fetch(searchUrl.toString(), {
+		headers: { 'User-Agent': 'commons/1.0' },
+		signal: AbortSignal.timeout(15_000),
+	});
+
+	if (!geocodeRes.ok) {
+		throw new Error(`Nominatim geocoding returned ${geocodeRes.status}`);
+	}
+
+	const geocodeResults = await geocodeRes.json();
+
+	if (!Array.isArray(geocodeResults) || geocodeResults.length === 0) {
+		throw new Error('Address not found. Please check your address and try again.');
+	}
+
+	const match = geocodeResults[0];
+	const lat = parseFloat(match.lat);
+	const lng = parseFloat(match.lon);
+
+	if (isNaN(lat) || isNaN(lng)) {
+		throw new Error('Geocoding returned invalid coordinates');
+	}
+
+	// Build matched address from Nominatim display_name
+	const matchedAddress = match.display_name || `${street}, ${city}, ${state}, ${zip}`;
+
+	// Step 2: District lookup via H3 + IPFS (local, no server call)
+	let district: AddressResolutionResult['district'] = null;
+	let cellId: string | null = null;
+
+	try {
+		const lookupResult = await lookupDistrict(lat, lng);
+		district = {
+			id: lookupResult.district.id,
+			name: lookupResult.district.name,
+			jurisdiction: lookupResult.district.jurisdiction,
+			district_type: lookupResult.district.districtType,
+		};
+		cellId = lookupResult.cell_id;
+	} catch {
+		// District lookup failed — coordinates may be outside coverage.
+		// Return geocode result without district (non-fatal).
+	}
+
+	// Step 3: Officials via IPFS dataset (local, no server call)
+	let officials: OfficialsResponse | null = null;
+	if (district) {
+		try {
+			officials = await getOfficials(district.id);
+		} catch {
+			// Officials unavailable — non-fatal
+		}
+	}
+
+	return {
+		geocode: {
+			lat,
+			lng,
+			matched_address: matchedAddress,
+			confidence: match.importance ?? 0.8,
+			country: countryCode,
+		},
+		district,
+		officials,
+		cell_id: cellId,
+		vintage: 'shadow-atlas-nominatim',
+	};
 }
 
 // ============================================================================
