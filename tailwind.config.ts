@@ -10,7 +10,7 @@ export default {
 	theme: {
 		extend: {
 			/*
-			=== COMMUNIQUE TAILWIND DESIGN SYSTEM ===
+			=== COMMONS TAILWIND DESIGN SYSTEM ===
 			Semantic tokens for global participation infrastructure
 			*/
 

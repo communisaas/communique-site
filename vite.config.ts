@@ -54,9 +54,6 @@ export default defineConfig({
 				// ai-evaluator lives in voter-protocol monorepo, dynamically imported with try/catch fallback.
 				// Not published to npm yet — evaluate endpoint returns 503 when unavailable.
 				'@voter-protocol/ai-evaluator',
-				// Twilio SDK is 6.7 MiB — dynamically imported in sms/twilio.ts.
-				// Externalized to stay under CF Workers 25 MiB bundle limit.
-				'twilio',
 				// Sharp requires native binaries not available on Workers.
 				'sharp',
 				// node-fetch is transitive (via @google/genai → google-auth-library → gaxios,
