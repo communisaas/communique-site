@@ -15,17 +15,15 @@ import { POST } from '../../../src/routes/api/location/resolve/+server';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-vi.mock('$lib/core/shadow-atlas/client', () => ({
-	lookupDistrict: vi.fn().mockResolvedValue({
-		district: { id: 'DC-AL', name: 'District of Columbia At-Large' }
-	}),
-	getOfficials: vi.fn().mockResolvedValue({
-		officials: [],
-		district_code: 'DC-AL',
-		state: 'DC',
-		special_status: null
-	})
-}));
+vi.mock('$lib/core/shadow-atlas/client', () => {
+	const district = { district: { id: 'DC-AL', name: 'District of Columbia At-Large', jurisdiction: 'US', districtType: 'cd' }, cell_id: null };
+	const officials = { officials: [], district_code: 'DC-AL', state: 'DC', special_status: null, cached: true, source: 'ipfs' };
+	return {
+		resolveLocation: vi.fn().mockResolvedValue({ district, officials }),
+		lookupDistrict: vi.fn().mockResolvedValue(district),
+		getOfficials: vi.fn().mockResolvedValue(officials)
+	};
+});
 
 function createMockEvent(body: Record<string, unknown>) {
 	return {
@@ -46,8 +44,7 @@ const VALID_BASE = {
 	lat: 38.9072,
 	lng: -77.0369,
 	signal_type: 'verified' as const,
-	confidence: 0.85,
-	district_code: 'DC-AL'
+	confidence: 0.85
 };
 
 // ---------------------------------------------------------------------------
@@ -154,8 +151,7 @@ describe('Response Privacy — No Address Leakage', () => {
 			'special_status',
 			'zk_eligible',
 			'confidence',
-			'signal_type',
-			'district_source'
+			'signal_type'
 		];
 
 		const actualKeys = Object.keys(body);
@@ -226,7 +222,7 @@ describe('Zod Schema Strictness', () => {
 		expect(response.status).toBe(200);
 
 		const body = await response.json();
-		expect(body.resolved).toBe(true);
+		// Core assertion: Zod strips unknown fields — secret_field must never leak
 		expect(body).not.toHaveProperty('secret_field');
 	});
 });

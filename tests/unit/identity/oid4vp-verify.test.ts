@@ -2,29 +2,30 @@
  * Tests for OpenID4VP response processing in mdl-verification.ts
  *
  * Tests the VP token parsing (JWT, SD-JWT, direct claims) and
- * address field extraction logic without hitting the Google Civic API.
+ * address field extraction logic without hitting external APIs.
  */
 
-import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+
+// Mock Shadow Atlas client BEFORE importing mdl-verification (it uses dynamic import)
+const { mockResolveAddress } = vi.hoisted(() => ({
+	mockResolveAddress: vi.fn()
+}));
+
+vi.mock('$lib/core/shadow-atlas/client', () => ({
+	resolveAddress: (...args: unknown[]) => mockResolveAddress(...args)
+}));
 
 // We test processCredentialResponse which dispatches to processOid4vpResponse
 // Since processOid4vpResponse is internal, we test through the public API
 import { processCredentialResponse } from '$lib/core/identity/mdl-verification';
 
-// Store original fetch to restore later
-const originalFetch = globalThis.fetch;
-
 beforeAll(() => {
-	// District derivation uses Census Bureau geocoding + Shadow Atlas H3 lookup (no API key needed)
+	// District derivation uses Shadow Atlas resolveAddress() (no external API needed)
 });
 
 beforeEach(() => {
-	// Fresh mock for each test
-	globalThis.fetch = vi.fn();
-});
-
-afterEach(() => {
-	globalThis.fetch = originalFetch;
+	vi.clearAllMocks();
 });
 
 // Helper: encode a string as base64url (no padding)
@@ -45,27 +46,15 @@ function buildDisclosure(salt: string, name: string, value: string): string {
 	return base64urlEncode(JSON.stringify([salt, name, value]));
 }
 
-// Mock a successful Census Bureau geocode response returning a district
-function mockCivicApiSuccess(state: string, cd: string) {
-	(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-		ok: true,
-		json: () =>
-			Promise.resolve({
-				result: {
-					addressMatches: [{
-						coordinates: { x: -118.2437, y: 34.0522 },
-						geographies: {
-							'119th Congressional Districts': [{
-								CD119: cd,
-								GEOID: `${state.toUpperCase()}${cd}`
-							}],
-							'States': [{ STUSAB: state.toUpperCase() }],
-							'Census Tracts': [{ GEOID: '06037264000' }],
-							'2020 Census Blocks': [{ GEOID: '060372640001001' }]
-						}
-					}]
-				}
-			})
+/** Mock a successful Shadow Atlas resolveAddress() returning a district + cell_id */
+function mockShadowAtlasSuccess(state: string, cd: string) {
+	const districtCode = `${state.toUpperCase()}-${cd.padStart(2, '0')}`;
+	mockResolveAddress.mockResolvedValueOnce({
+		geocode: { lat: 34.0522, lng: -118.2437, matched_address: 'MATCHED ADDRESS', confidence: 0.95, country: 'US' },
+		district: { id: districtCode, name: `District ${districtCode}`, jurisdiction: 'congressional', district_type: 'congressional' },
+		officials: { district_code: districtCode, state: state.toUpperCase(), officials: [], special_status: null, source: 'congress-legislators', cached: true },
+		cell_id: '872830828ffffff',
+		vintage: 'shadow-atlas-nominatim'
 	});
 }
 
@@ -91,7 +80,7 @@ describe('OpenID4VP response processing', () => {
 			resident_state: 'CA'
 		});
 
-		mockCivicApiSuccess('ca', '12');
+		mockShadowAtlasSuccess('ca', '12');
 
 		const result = await processCredentialResponse(
 			{ vp_token: jwt },
@@ -118,7 +107,7 @@ describe('OpenID4VP response processing', () => {
 			resident_state: 'NY'
 		});
 
-		mockCivicApiSuccess('ny', '10');
+		mockShadowAtlasSuccess('ny', '10');
 
 		const result = await processCredentialResponse(jwt, 'openid4vp', ephemeralKey, nonce);
 
@@ -138,7 +127,7 @@ describe('OpenID4VP response processing', () => {
 		const d3 = buildDisclosure('salt3', 'resident_state', 'TX');
 		const sdJwt = `${jwt}~${d1}~${d2}~${d3}~`;
 
-		mockCivicApiSuccess('tx', '25');
+		mockShadowAtlasSuccess('tx', '25');
 
 		const result = await processCredentialResponse(sdJwt, 'openid4vp', ephemeralKey, nonce);
 
@@ -160,7 +149,7 @@ describe('OpenID4VP response processing', () => {
 			}
 		});
 
-		mockCivicApiSuccess('ca', '36');
+		mockShadowAtlasSuccess('ca', '36');
 
 		const result = await processCredentialResponse(
 			{ vp_token: jwt },
@@ -184,7 +173,7 @@ describe('OpenID4VP response processing', () => {
 			resident_state: 'IL'
 		};
 
-		mockCivicApiSuccess('il', '07');
+		mockShadowAtlasSuccess('il', '07');
 
 		const result = await processCredentialResponse(data, 'openid4vp', ephemeralKey, nonce);
 
@@ -258,10 +247,7 @@ describe('OpenID4VP response processing', () => {
 			resident_state: 'XX'
 		});
 
-		(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-			ok: false,
-			status: 400
-		});
+		mockResolveAddress.mockRejectedValueOnce(new Error('Shadow Atlas unavailable'));
 
 		const result = await processCredentialResponse(
 			{ vp_token: jwt },

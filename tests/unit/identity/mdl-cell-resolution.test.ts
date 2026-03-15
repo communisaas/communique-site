@@ -1,240 +1,101 @@
 /**
- * Tests for Census Bureau tract GEOID resolution in the mDL privacy boundary.
+ * Tests for cell ID resolution in the mDL privacy boundary.
  *
- * resolveCellIdFromAddress() calls the Census Bureau geocoding API to resolve
- * city/state/zip to a Census tract GEOID (11-digit) for Shadow Atlas Tree 2.
+ * resolveCellIdFromAddress() delegates to Shadow Atlas's sovereign
+ * Nominatim + H3 pipeline to resolve city/state/zip to a cell ID
+ * for Shadow Atlas Tree 2.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { resolveCellIdFromAddress } from '$lib/core/identity/mdl-verification';
 
-// Mock global fetch
-const originalFetch = globalThis.fetch;
+// Mock Shadow Atlas client
+vi.mock('$lib/core/shadow-atlas/client', () => ({
+	resolveAddress: vi.fn()
+}));
 
-function mockFetch(handler: (url: string) => Response | Promise<Response>) {
-	globalThis.fetch = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
-		const url = typeof input === 'string' ? input : input.toString();
-		return Promise.resolve(handler(url));
-	}) as unknown as typeof fetch;
-}
-
-function jsonResponse(body: unknown, status = 200): Response {
-	return new Response(JSON.stringify(body), {
-		status,
-		headers: { 'Content-Type': 'application/json' }
-	});
-}
+import { resolveAddress } from '$lib/core/shadow-atlas/client';
+const mockResolveAddress = vi.mocked(resolveAddress);
 
 describe('resolveCellIdFromAddress', () => {
-	afterEach(() => {
-		globalThis.fetch = originalFetch;
-		vi.restoreAllMocks();
+	beforeEach(() => {
+		vi.clearAllMocks();
 	});
 
-	it('should resolve a tract GEOID from Census Bureau address geocoding', async () => {
-		mockFetch((url) => {
-			if (url.includes('/geocoder/geographies/address')) {
-				return jsonResponse({
-					result: {
-						addressMatches: [
-							{
-								matchedAddress: 'Denver, CO 80202',
-								coordinates: { x: -104.9903, y: 39.7392 },
-								geographies: {
-									'Census Tracts': [
-										{ GEOID: '08031000100', NAME: 'Census Tract 1' }
-									]
-								}
-							}
-						]
-					}
-				});
-			}
-			return jsonResponse({}, 404);
+	it('should resolve a cell ID from Shadow Atlas address resolution', async () => {
+		mockResolveAddress.mockResolvedValue({
+			geocode: { lat: 39.7392, lng: -104.9903, matched_address: 'Denver, CO 80202', confidence: 0.9, country: 'US' },
+			district: { id: 'CO-01', name: 'Congressional District 1', jurisdiction: 'US', district_type: 'cd' },
+			officials: { district_code: 'CO-01', state: 'CO', officials: [], special_status: null, cached: true, source: 'ipfs' },
+			cell_id: '08031000100',
+			vintage: 'shadow-atlas-nominatim'
 		});
 
 		const result = await resolveCellIdFromAddress('80202', 'Denver', 'CO');
 		expect(result).toBe('08031000100');
 	});
 
-	it('should extract tract from block GEOID (first 11 digits)', async () => {
-		mockFetch((url) => {
-			if (url.includes('/geocoder/geographies/address')) {
-				return jsonResponse({
-					result: {
-						addressMatches: [
-							{
-								matchedAddress: 'San Francisco, CA 94103',
-								coordinates: { x: -122.4194, y: 37.7749 },
-								geographies: {
-									'2020 Census Blocks': [
-										{ GEOID: '060750176011234' }
-									]
-								}
-							}
-						]
-					}
-				});
-			}
-			return jsonResponse({}, 404);
+	it('should pass correct address fields to resolveAddress', async () => {
+		mockResolveAddress.mockResolvedValue({
+			geocode: { lat: 37.7749, lng: -122.4194, matched_address: 'San Francisco, CA 94103', confidence: 0.9, country: 'US' },
+			district: { id: 'CA-11', name: 'Congressional District 11', jurisdiction: 'US', district_type: 'cd' },
+			officials: null,
+			cell_id: '06075017601',
+			vintage: 'shadow-atlas-nominatim'
 		});
 
-		const result = await resolveCellIdFromAddress('94103', 'San Francisco', 'CA');
-		expect(result).toBe('06075017601');
-		expect(result).toHaveLength(11);
+		await resolveCellIdFromAddress('94103', 'San Francisco', 'CA');
+
+		expect(mockResolveAddress).toHaveBeenCalledWith({
+			street: '',
+			city: 'San Francisco',
+			state: 'CA',
+			zip: '94103'
+		});
 	});
 
-	it('should return null on Census API HTTP error', async () => {
-		mockFetch(() => jsonResponse({ error: 'Internal Server Error' }, 500));
+	it('should return null when Shadow Atlas resolution fails', async () => {
+		mockResolveAddress.mockRejectedValue(new Error('Nominatim geocoding returned 500'));
 
 		const result = await resolveCellIdFromAddress('80202', 'Denver', 'CO');
 		expect(result).toBeNull();
 	});
 
-	it('should return null on Census API timeout', async () => {
-		mockFetch(() => {
-			return new Promise((_, reject) => {
-				setTimeout(() => reject(new DOMException('Aborted', 'AbortError')), 10);
-			});
-		});
-
-		const result = await resolveCellIdFromAddress('80202', 'Denver', 'CO');
-		expect(result).toBeNull();
-	});
-
-	it('should return null when no address matches', async () => {
-		mockFetch((url) => {
-			if (url.includes('/geocoder/geographies/')) {
-				return jsonResponse({
-					result: {
-						addressMatches: []
-					}
-				});
-			}
-			return jsonResponse({}, 404);
-		});
+	it('should return null when address not found', async () => {
+		mockResolveAddress.mockRejectedValue(new Error('Address not found. Please check your address and try again.'));
 
 		const result = await resolveCellIdFromAddress('00000', 'Nowhere', 'XX');
 		expect(result).toBeNull();
 	});
 
-	it('should return null when geographies missing from response', async () => {
-		mockFetch((url) => {
-			if (url.includes('/geocoder/geographies/address')) {
-				return jsonResponse({
-					result: {
-						addressMatches: [
-							{
-								matchedAddress: 'Denver, CO 80202',
-								coordinates: { x: -104.9903, y: 39.7392 },
-								geographies: {}
-							}
-						]
-					}
-				});
-			}
-			// Onelineaddress fallback also empty
-			if (url.includes('/geocoder/geographies/onelineaddress')) {
-				return jsonResponse({
-					result: {
-						addressMatches: []
-					}
-				});
-			}
-			return jsonResponse({}, 404);
+	it('should return null when cell_id not available in response', async () => {
+		mockResolveAddress.mockResolvedValue({
+			geocode: { lat: 39.7392, lng: -104.9903, matched_address: 'Denver, CO 80202', confidence: 0.9, country: 'US' },
+			district: { id: 'CO-01', name: 'Congressional District 1', jurisdiction: 'US', district_type: 'cd' },
+			officials: null,
+			cell_id: null,
+			vintage: 'shadow-atlas-nominatim'
 		});
 
 		const result = await resolveCellIdFromAddress('80202', 'Denver', 'CO');
 		expect(result).toBeNull();
 	});
 
-	it('should use onelineaddress fallback when address endpoint returns no match', async () => {
-		mockFetch((url) => {
-			if (url.includes('/geocoder/geographies/address')) {
-				return jsonResponse({
-					result: { addressMatches: [] }
-				});
-			}
-			if (url.includes('/geocoder/geographies/onelineaddress')) {
-				return jsonResponse({
-					result: {
-						addressMatches: [
-							{
-								matchedAddress: 'Santa Fe, NM 87501',
-								coordinates: { x: -105.9378, y: 35.6870 },
-								geographies: {
-									'Census Tracts': [
-										{ GEOID: '35049000101' }
-									]
-								}
-							}
-						]
-					}
-				});
-			}
-			return jsonResponse({}, 404);
-		});
+	it('should handle timeout errors gracefully', async () => {
+		mockResolveAddress.mockRejectedValue(new DOMException('Aborted', 'AbortError'));
 
-		const result = await resolveCellIdFromAddress('87501', 'Santa Fe', 'NM');
-		expect(result).toBe('35049000101');
+		const result = await resolveCellIdFromAddress('80202', 'Denver', 'CO');
+		expect(result).toBeNull();
 	});
 
-	it('should send correct query parameters to Census Bureau', async () => {
-		const capturedUrls: string[] = [];
-		mockFetch((url) => {
-			capturedUrls.push(url);
-			return jsonResponse({
-				result: {
-					addressMatches: [
-						{
-							coordinates: { x: -122.4194, y: 37.7749 },
-							geographies: {
-								'Census Tracts': [{ GEOID: '06075017601' }]
-							}
-						}
-					]
-				}
-			});
+	it('should resolve DC cell ID correctly', async () => {
+		mockResolveAddress.mockResolvedValue({
+			geocode: { lat: 38.9072, lng: -77.0369, matched_address: 'Washington, DC 20001', confidence: 0.9, country: 'US' },
+			district: { id: 'DC-AL', name: 'At-Large Congressional District', jurisdiction: 'US', district_type: 'cd' },
+			officials: { district_code: 'DC-AL', state: 'DC', officials: [], special_status: { type: 'dc', message: 'DC residents have a non-voting delegate', has_senators: false, has_voting_representative: false }, cached: true, source: 'ipfs' },
+			cell_id: '11001000101',
+			vintage: 'shadow-atlas-nominatim'
 		});
 
-		await resolveCellIdFromAddress('94103', 'San Francisco', 'CA');
-
-		expect(capturedUrls).toHaveLength(1);
-		const url = new URL(capturedUrls[0]);
-		expect(url.hostname).toBe('geocoding.geo.census.gov');
-		expect(url.pathname).toBe('/geocoder/geographies/address');
-		expect(url.searchParams.get('city')).toBe('San Francisco');
-		expect(url.searchParams.get('state')).toBe('CA');
-		expect(url.searchParams.get('zip')).toBe('94103');
-		expect(url.searchParams.get('format')).toBe('json');
-	});
-
-	it('should truncate block GEOID longer than 11 digits to tract', async () => {
-		mockFetch((url) => {
-			if (url.includes('/geocoder/geographies/address')) {
-				return jsonResponse({
-					result: {
-						addressMatches: [
-							{
-								coordinates: { x: -77.0369, y: 38.9072 },
-								geographies: {
-									'Census Tracts': [
-										// 11-digit tract GEOID
-										{ GEOID: '11001000101' }
-									],
-									'2020 Census Blocks': [
-										// 15-digit block GEOID
-										{ GEOID: '110010001011234' }
-									]
-								}
-							}
-						]
-					}
-				});
-			}
-			return jsonResponse({}, 404);
-		});
-
-		// Should prefer Census Tracts (11-digit) over Blocks (15-digit)
 		const result = await resolveCellIdFromAddress('20001', 'Washington', 'DC');
 		expect(result).toBe('11001000101');
 		expect(result).toHaveLength(11);

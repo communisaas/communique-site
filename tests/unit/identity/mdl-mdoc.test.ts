@@ -15,61 +15,49 @@
  * Uses synthetic CBOR data (via cbor-web) -- no real credentials.
  */
 
-import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+
+// Mock Shadow Atlas client BEFORE importing mdl-verification (it uses dynamic import)
+const { mockResolveAddress } = vi.hoisted(() => ({
+	mockResolveAddress: vi.fn()
+}));
+
+vi.mock('$lib/core/shadow-atlas/client', () => ({
+	resolveAddress: (...args: unknown[]) => mockResolveAddress(...args)
+}));
+
 import { processCredentialResponse, type MdlVerificationResult } from '$lib/core/identity/mdl-verification';
 
-// Store original fetch to restore later
-const originalFetch = globalThis.fetch;
-
 beforeAll(() => {
-	// District derivation uses Census Bureau geocoding + Shadow Atlas H3 lookup (no API key needed)
+	// District derivation uses Shadow Atlas resolveAddress() (no external API needed)
 	// Synthetic test data has no real IACA-signed issuerAuth.
 	// Bypass signature verification so field extraction / privacy / district logic can be tested.
 	process.env.SKIP_ISSUER_VERIFICATION = 'true';
 });
 
 beforeEach(() => {
-	globalThis.fetch = vi.fn();
-});
-
-afterEach(() => {
-	globalThis.fetch = originalFetch;
+	vi.clearAllMocks();
 });
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Mock a successful Census Bureau geocode response returning a district + tract */
-function mockCivicApiSuccess(state: string, cd: string) {
-	(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-		ok: true,
-		json: () =>
-			Promise.resolve({
-				result: {
-					addressMatches: [{
-						coordinates: { x: -118.2437, y: 34.0522 },
-						geographies: {
-							'119th Congressional Districts': [{
-								CD119: cd,
-								GEOID: `${state.toUpperCase()}${cd}`
-							}],
-							'States': [{ STUSAB: state.toUpperCase() }],
-							'Census Tracts': [{ GEOID: '06037264000' }],
-							'2020 Census Blocks': [{ GEOID: '060372640001001' }]
-						}
-					}]
-				}
-			})
+/** Mock a successful Shadow Atlas resolveAddress() returning a district + cell_id */
+function mockShadowAtlasSuccess(state: string, cd: string) {
+	const districtCode = cd === '00' ? `${state.toUpperCase()}-AL` : `${state.toUpperCase()}-${cd.padStart(2, '0')}`;
+	mockResolveAddress.mockResolvedValueOnce({
+		geocode: { lat: 34.0522, lng: -118.2437, matched_address: 'MATCHED ADDRESS', confidence: 0.95, country: 'US' },
+		district: { id: districtCode, name: `District ${districtCode}`, jurisdiction: 'congressional', district_type: 'congressional' },
+		officials: { district_code: districtCode, state: state.toUpperCase(), officials: [], special_status: null, source: 'congress-legislators', cached: true },
+		cell_id: '872830828ffffff',
+		vintage: 'shadow-atlas-nominatim'
 	});
 }
 
-/** Mock a Census Bureau geocode failure */
-function mockCivicApiFailure() {
-	(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-		ok: false,
-		status: 500
-	});
+/** Mock a Shadow Atlas resolveAddress() failure */
+function mockShadowAtlasFailure() {
+	mockResolveAddress.mockRejectedValueOnce(new Error('Shadow Atlas unavailable'));
 }
 
 // Ephemeral key (used by the function signature; mdoc path uses it for HPKE)
@@ -179,7 +167,7 @@ describe('mDL mdoc verification', () => {
 				resident_state: 'CA'
 			});
 
-			mockCivicApiSuccess('ca', '12');
+			mockShadowAtlasSuccess('ca', '12');
 
 			const result = await processCredentialResponse(
 				mdocData,
@@ -209,7 +197,7 @@ describe('mDL mdoc verification', () => {
 				resident_state: 'NY'
 			});
 
-			mockCivicApiSuccess('ny', '10');
+			mockShadowAtlasSuccess('ny', '10');
 
 			const result = await processCredentialResponse(
 				mdocData,
@@ -232,8 +220,8 @@ describe('mDL mdoc verification', () => {
 				resident_state: 'TX'
 			});
 
-			mockCivicApiSuccess('tx', '25');
-			mockCivicApiSuccess('tx', '25');
+			mockShadowAtlasSuccess('tx', '25');
+			mockShadowAtlasSuccess('tx', '25');
 
 			const result1 = await processCredentialResponse(
 				mdocData,
@@ -267,7 +255,7 @@ describe('mDL mdoc verification', () => {
 				resident_state: 'IL'
 			});
 
-			mockCivicApiSuccess('il', '07');
+			mockShadowAtlasSuccess('il', '07');
 
 			const result = await processCredentialResponse(
 				mdocData,
@@ -289,26 +277,8 @@ describe('mDL mdoc verification', () => {
 				resident_state: 'VT'
 			});
 
-			// Census returns at-large district (CD119 = '00' → normalized to 'AL')
-			(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-				ok: true,
-				json: () =>
-					Promise.resolve({
-						result: {
-							addressMatches: [{
-								coordinates: { x: -73.2126, y: 44.4759 },
-								geographies: {
-									'119th Congressional Districts': [{
-										CD119: '00',
-										GEOID: 'VT00'
-									}],
-									'States': [{ STUSAB: 'VT' }],
-									'Census Tracts': [{ GEOID: '50007000100' }]
-								}
-							}]
-						}
-					})
-			});
+			// Shadow Atlas returns at-large district
+			mockShadowAtlasSuccess('vt', '00');
 
 			const result = await processCredentialResponse(
 				mdocData,
@@ -378,7 +348,7 @@ describe('mDL mdoc verification', () => {
 				// city is optional
 			});
 
-			mockCivicApiSuccess('ca', '12');
+			mockShadowAtlasSuccess('ca', '12');
 
 			const result = await processCredentialResponse(
 				mdocData,
@@ -524,7 +494,7 @@ describe('mDL mdoc verification', () => {
 				resident_state: 'XX'
 			});
 
-			mockCivicApiFailure();
+			mockShadowAtlasFailure();
 
 			const result = await processCredentialResponse(
 				mdocData,

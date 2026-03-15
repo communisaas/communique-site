@@ -6,7 +6,7 @@
  * 2. Rate limited: 5 req/min per IP
  * 3. Validates campaign existence (prevents blind address enumeration)
  * 4. Zod-validates address fields
- * 5. Proxies to Census Bureau geocoder
+ * 5. Resolves district via Shadow Atlas resolveAddress()
  * 6. Returns ONLY district code — no PII, no coordinates
  *
  * Security properties tested:
@@ -15,19 +15,20 @@
  * - Campaign existence validation
  * - Input validation (Zod)
  * - Privacy: response never contains address, coordinates, or PII
- * - At-large district handling (00 -> AL)
- * - Census geocoder error handling (timeout, no matches, service error)
+ * - At-large district handling
+ * - Shadow Atlas error handling (timeout, no matches, service error)
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // =============================================================================
 // MOCKS
 // =============================================================================
 
-const { mockFindFirst, mockRateLimiterCheck, mockFeatures } = vi.hoisted(() => ({
+const { mockFindFirst, mockRateLimiterCheck, mockFeatures, mockResolveAddress } = vi.hoisted(() => ({
 	mockFindFirst: vi.fn(),
 	mockRateLimiterCheck: vi.fn(),
+	mockResolveAddress: vi.fn(),
 	mockFeatures: {
 		DEBATE: true,
 		CONGRESSIONAL: true,
@@ -63,6 +64,10 @@ vi.mock('$lib/config/features', () => ({
 	FEATURES: mockFeatures
 }));
 
+vi.mock('$lib/core/shadow-atlas/client', () => ({
+	resolveAddress: (...args: unknown[]) => mockResolveAddress(...args)
+}));
+
 // Mock $types
 vi.mock('../../../../src/routes/api/c/[slug]/verify-district/$types', () => ({}));
 
@@ -72,16 +77,6 @@ const { POST } = await import('../../../src/routes/api/c/[slug]/verify-district/
 // =============================================================================
 // HELPERS
 // =============================================================================
-
-let savedFetch: typeof globalThis.fetch;
-
-beforeEach(() => {
-	savedFetch = globalThis.fetch;
-});
-
-afterEach(() => {
-	globalThis.fetch = savedFetch;
-});
 
 function createEvent(overrides: {
 	slug?: string;
@@ -105,38 +100,16 @@ function createEvent(overrides: {
 	};
 }
 
-function mockCensusResponse(data: unknown) {
-	globalThis.fetch = vi.fn().mockResolvedValue({
-		ok: true,
-		json: async () => data
+/** Build a mock Shadow Atlas resolveAddress() response */
+function mockShadowAtlasSuccess(districtCode: string, state: string) {
+	mockResolveAddress.mockResolvedValue({
+		geocode: { lat: 37.7749, lng: -122.4194, matched_address: 'MATCHED ADDRESS', confidence: 0.95, country: 'US' },
+		district: { id: districtCode, name: `District ${districtCode}`, jurisdiction: 'congressional', district_type: 'congressional' },
+		officials: { district_code: districtCode, state, officials: [], special_status: null, source: 'congress-legislators', cached: true },
+		cell_id: '872830828ffffff',
+		vintage: 'shadow-atlas-nominatim'
 	});
 }
-
-const VALID_CENSUS_RESPONSE = {
-	result: {
-		addressMatches: [
-			{
-				geographies: {
-					'119th Congressional Districts': [{ CD119: '12', GEOID: '0612' }],
-					States: [{ STUSAB: 'CA' }]
-				}
-			}
-		]
-	}
-};
-
-const AT_LARGE_CENSUS_RESPONSE = {
-	result: {
-		addressMatches: [
-			{
-				geographies: {
-					'119th Congressional Districts': [{ CD119: '0', GEOID: '5000' }],
-					States: [{ STUSAB: 'VT' }]
-				}
-			}
-		]
-	}
-};
 
 // =============================================================================
 // TESTS
@@ -148,7 +121,7 @@ describe('POST /api/c/[slug]/verify-district', () => {
 		mockFeatures.ADDRESS_SPECIFICITY = 'district';
 		mockRateLimiterCheck.mockResolvedValue({ allowed: true });
 		mockFindFirst.mockResolvedValue({ id: 'campaign-123' });
-		mockCensusResponse(VALID_CENSUS_RESPONSE);
+		mockShadowAtlasSuccess('CA-12', 'CA');
 	});
 
 	// =========================================================================
@@ -331,10 +304,10 @@ describe('POST /api/c/[slug]/verify-district', () => {
 	});
 
 	// =========================================================================
-	// Census Bureau Geocoder
+	// Shadow Atlas District Resolution
 	// =========================================================================
 
-	describe('Census Bureau Geocoder', () => {
+	describe('Shadow Atlas District Resolution', () => {
 		it('should return district code for valid address', async () => {
 			const event = createEvent();
 
@@ -347,8 +320,8 @@ describe('POST /api/c/[slug]/verify-district', () => {
 			expect(data.district.state).toBe('CA');
 		});
 
-		it('should handle at-large districts (00 -> AL)', async () => {
-			mockCensusResponse(AT_LARGE_CENSUS_RESPONSE);
+		it('should handle at-large districts', async () => {
+			mockShadowAtlasSuccess('VT-AL', 'VT');
 			const event = createEvent();
 
 			const response = await POST(event);
@@ -359,19 +332,8 @@ describe('POST /api/c/[slug]/verify-district', () => {
 			expect(data.district.code).toBe('VT-AL');
 		});
 
-		it('should handle district code 98 as at-large', async () => {
-			mockCensusResponse({
-				result: {
-					addressMatches: [
-						{
-							geographies: {
-								'119th Congressional Districts': [{ CD119: '98' }],
-								States: [{ STUSAB: 'DC' }]
-							}
-						}
-					]
-				}
-			});
+		it('should handle DC at-large district', async () => {
+			mockShadowAtlasSuccess('DC-AL', 'DC');
 			const event = createEvent();
 
 			const response = await POST(event);
@@ -380,33 +342,42 @@ describe('POST /api/c/[slug]/verify-district', () => {
 			expect(data.district.code).toBe('DC-AL');
 		});
 
-		it('should return error when no address matches found', async () => {
-			mockCensusResponse({ result: { addressMatches: [] } });
-			const event = createEvent();
-
-			const response = await POST(event);
-			const data = await response.json();
-
-			expect(data.resolved).toBe(false);
-			expect(data.error).toContain('Address not found');
-		});
-
-		it('should return 502 when Census API returns non-ok response', async () => {
-			globalThis.fetch = vi.fn().mockResolvedValue({
-				ok: false,
-				status: 503
+		it('should return error when district cannot be determined (no officials)', async () => {
+			mockResolveAddress.mockResolvedValue({
+				geocode: { lat: 37.7749, lng: -122.4194, matched_address: 'MATCHED', confidence: 0.9, country: 'US' },
+				district: null,
+				officials: null,
+				cell_id: null,
+				vintage: 'shadow-atlas-nominatim'
 			});
 			const event = createEvent();
 
 			const response = await POST(event);
 			const data = await response.json();
 
-			expect(response.status).toBe(502);
-			expect(data.error).toContain('service unavailable');
+			expect(data.resolved).toBe(false);
+			expect(data.error).toContain('could not be determined');
 		});
 
-		it('should return 500 when Census geocoder times out', async () => {
-			globalThis.fetch = vi.fn().mockRejectedValue(new DOMException('The operation was aborted', 'AbortError'));
+		it('should return error when officials exist but district_code is null', async () => {
+			mockResolveAddress.mockResolvedValue({
+				geocode: { lat: 37.7749, lng: -122.4194, matched_address: 'MATCHED', confidence: 0.9, country: 'US' },
+				district: { id: 'CA-12', name: 'District', jurisdiction: 'congressional', district_type: 'congressional' },
+				officials: { district_code: null, state: 'CA', officials: [], special_status: null, source: 'congress-legislators', cached: true },
+				cell_id: null,
+				vintage: 'shadow-atlas-nominatim'
+			});
+			const event = createEvent();
+
+			const response = await POST(event);
+			const data = await response.json();
+
+			expect(data.resolved).toBe(false);
+			expect(data.error).toContain('could not be determined');
+		});
+
+		it('should return 500 when Shadow Atlas throws (service unavailable)', async () => {
+			mockResolveAddress.mockRejectedValue(new Error('Nominatim geocoding returned 503'));
 			const event = createEvent();
 
 			const response = await POST(event);
@@ -416,78 +387,48 @@ describe('POST /api/c/[slug]/verify-district', () => {
 			expect(data.resolved).toBe(false);
 		});
 
-		it('should return error when district cannot be determined (no district data)', async () => {
-			mockCensusResponse({
-				result: {
-					addressMatches: [
-						{
-							geographies: {
-								States: [{ STUSAB: 'CA' }]
-							}
-						}
-					]
-				}
-			});
+		it('should return 500 when Shadow Atlas times out', async () => {
+			mockResolveAddress.mockRejectedValue(new DOMException('The operation was aborted', 'AbortError'));
 			const event = createEvent();
 
 			const response = await POST(event);
 			const data = await response.json();
 
+			expect(response.status).toBe(500);
 			expect(data.resolved).toBe(false);
-			expect(data.error).toContain('could not be determined');
 		});
 
-		it('should return error when stateCode is missing', async () => {
-			mockCensusResponse({
-				result: {
-					addressMatches: [
-						{
-							geographies: {
-								'119th Congressional Districts': [{ CD119: '12' }],
-								States: []
-							}
-						}
-					]
-				}
-			});
-			const event = createEvent();
-
-			const response = await POST(event);
-			const data = await response.json();
-
-			expect(data.resolved).toBe(false);
-			expect(data.error).toContain('could not be determined');
-		});
-
-		it('should call Census API with correct parameters', async () => {
+		it('should call resolveAddress with correct parameters', async () => {
 			const event = createEvent({
 				body: { street: '1600 Pennsylvania Ave', city: 'Washington', state: 'DC', zip: '20500' }
 			});
 
 			await POST(event);
 
-			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-			expect(fetchMock).toHaveBeenCalledTimes(1);
-
-			const calledUrl = new URL(fetchMock.mock.calls[0][0]);
-			expect(calledUrl.origin).toBe('https://geocoding.geo.census.gov');
-			expect(calledUrl.searchParams.get('street')).toBe('1600 Pennsylvania Ave');
-			expect(calledUrl.searchParams.get('city')).toBe('Washington');
-			expect(calledUrl.searchParams.get('state')).toBe('DC');
-			expect(calledUrl.searchParams.get('zip')).toBe('20500');
-			expect(calledUrl.searchParams.get('benchmark')).toBe('4');
-			expect(calledUrl.searchParams.get('vintage')).toBe('4');
-			expect(calledUrl.searchParams.get('format')).toBe('json');
+			expect(mockResolveAddress).toHaveBeenCalledTimes(1);
+			expect(mockResolveAddress).toHaveBeenCalledWith({
+				street: '1600 Pennsylvania Ave',
+				city: 'Washington',
+				state: 'DC',
+				zip: '20500'
+			});
 		});
 
-		it('should pass AbortSignal with timeout to fetch', async () => {
+		it('should use state from input when officials.state is missing', async () => {
+			mockResolveAddress.mockResolvedValue({
+				geocode: { lat: 37.7749, lng: -122.4194, matched_address: 'MATCHED', confidence: 0.9, country: 'US' },
+				district: { id: 'CA-12', name: 'District', jurisdiction: 'congressional', district_type: 'congressional' },
+				officials: { district_code: 'CA-12', state: undefined, officials: [], special_status: null, source: 'congress-legislators', cached: true },
+				cell_id: null,
+				vintage: 'shadow-atlas-nominatim'
+			});
 			const event = createEvent();
 
-			await POST(event);
+			const response = await POST(event);
+			const data = await response.json();
 
-			const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-			const options = fetchMock.mock.calls[0][1];
-			expect(options).toHaveProperty('signal');
+			expect(response.status).toBe(200);
+			expect(data.district.state).toBe('CA');
 		});
 	});
 
@@ -510,24 +451,12 @@ describe('POST /api/c/[slug]/verify-district', () => {
 		});
 
 		it('should never return coordinates in the response', async () => {
-			mockCensusResponse({
-				result: {
-					addressMatches: [
-						{
-							coordinates: { x: -122.4194, y: 37.7749 },
-							geographies: {
-								'119th Congressional Districts': [{ CD119: '12' }],
-								States: [{ STUSAB: 'CA' }]
-							}
-						}
-					]
-				}
-			});
 			const event = createEvent();
 
 			const response = await POST(event);
 			const text = await response.clone().text();
 
+			// Shadow Atlas returns coordinates internally but endpoint must strip them
 			expect(text).not.toContain('-122.4194');
 			expect(text).not.toContain('37.7749');
 			expect(text).not.toContain('coordinates');

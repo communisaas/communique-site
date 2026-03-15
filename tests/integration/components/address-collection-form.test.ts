@@ -2,98 +2,126 @@
  * Address Resolution Endpoint Contract Tests
  *
  * Tests POST /api/location/resolve-address — the unified server-side address
- * resolution endpoint that replaces client-side Nominatim geocoding.
+ * resolution endpoint backed by Shadow Atlas's resolveAddress().
  *
  * Pipeline under test:
- *   1. Shadow Atlas resolveAddress() (primary — returns 503 in test env, falls through)
- *   2. Census Bureau Geocoder (fallback) → standardized address + coords + district + cell_id
- *   3. Shadow Atlas getOfficials() → federal representatives (pre-ingested data)
+ *   1. Shadow Atlas resolveAddress() — Nominatim geocoding + H3 district + IPFS officials
  *
  * These tests import the POST handler directly and call it with mock
- * SvelteKit RequestEvents, using MSW to intercept external API calls.
+ * SvelteKit RequestEvents, using vi.mock to intercept the Shadow Atlas client.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { http, HttpResponse } from 'msw';
-import { server, createMockRequestEvent } from '../../setup/api-test-setup';
+import { createMockRequestEvent } from '../../setup/api-test-setup';
+import type { AddressResolutionResult } from '../../../src/lib/core/shadow-atlas/client';
+
+// ---------------------------------------------------------------------------
+// Mock the Shadow Atlas client module
+// ---------------------------------------------------------------------------
+
+const mockResolveAddress = vi.fn<
+	[{ street: string; city: string; state: string; zip: string; country?: 'US' | 'CA' }],
+	Promise<AddressResolutionResult>
+>();
+
+vi.mock('$lib/core/shadow-atlas/client', () => ({
+	resolveAddress: (...args: Parameters<typeof mockResolveAddress>) => mockResolveAddress(...args)
+}));
+
+// Import POST *after* vi.mock so the mock is active
 import { POST } from '../../../src/routes/api/location/resolve-address/+server';
 
 // ---------------------------------------------------------------------------
-// Census Bureau structured address response factory
+// Shadow Atlas response factories
 // ---------------------------------------------------------------------------
 
-interface CensusOverrides {
+interface ResolveOverrides {
 	matchedAddress?: string;
-	coordinates?: { x: number; y: number };
-	cd119?: string;
-	stateCode?: string;
-	stusab?: string;
-	blockGeoid?: string;
-	countyGeoid?: string;
+	lat?: number;
+	lng?: number;
+	confidence?: number;
+	country?: 'US' | 'CA';
+	districtId?: string;
+	districtName?: string;
+	districtJurisdiction?: string;
+	districtType?: string;
+	officials?: AddressResolutionResult['officials'];
+	cellId?: string | null;
+	vintage?: string;
 }
 
-function censusBureauResponse(overrides: CensusOverrides = {}) {
+function shadowAtlasResponse(overrides: ResolveOverrides = {}): AddressResolutionResult {
 	const {
 		matchedAddress = '123 MAIN ST, SPRINGFIELD, IL, 62704',
-		coordinates = { x: -89.6501, y: 39.7817 },
-		cd119 = '18',
-		stateCode = '17',
-		stusab = 'IL',
-		blockGeoid = '170010001001001',
-		countyGeoid = '17001'
+		lat = 39.7817,
+		lng = -89.6501,
+		confidence = 0.95,
+		country = 'US',
+		districtId = 'IL-18',
+		districtName = "Illinois's 18th Congressional District",
+		districtJurisdiction = 'congressional',
+		districtType = 'congressional',
+		officials = {
+			officials: [
+				{
+					bioguide_id: 'L000585',
+					name: 'Darin LaHood',
+					party: 'Republican',
+					chamber: 'house' as const,
+					state: 'IL',
+					district: '18',
+					office: 'U.S. Representative',
+					phone: '202-555-0100',
+					contact_form_url: null,
+					website_url: null,
+					cwc_code: 'IL18',
+					is_voting: true,
+					delegate_type: null
+				},
+				{
+					bioguide_id: 'D000622',
+					name: 'Tammy Duckworth',
+					party: 'Democratic',
+					chamber: 'senate' as const,
+					state: 'IL',
+					district: null,
+					office: 'U.S. Senator',
+					phone: '202-555-0101',
+					contact_form_url: null,
+					website_url: null,
+					cwc_code: null,
+					is_voting: true,
+					delegate_type: null
+				}
+			],
+			district_code: districtId,
+			state: 'IL',
+			special_status: null,
+			source: 'congress-legislators' as const,
+			cached: true
+		},
+		cellId = '872a10000ffffff',
+		vintage = 'shadow-atlas-nominatim'
 	} = overrides;
 
 	return {
-		result: {
-			addressMatches: [
-				{
-					matchedAddress,
-					coordinates,
-					geographies: {
-						'119th Congressional Districts': [
-							{ CD119: cd119, GEOID: `${stateCode}${cd119}`, STATE: stateCode }
-						],
-						States: [{ STUSAB: stusab }],
-						'2020 Census Blocks': [{ GEOID: blockGeoid, STATE: stateCode }],
-						Counties: [{ GEOID: countyGeoid }]
-					}
-				}
-			]
-		}
+		geocode: {
+			lat,
+			lng,
+			matched_address: matchedAddress,
+			confidence,
+			country
+		},
+		district: {
+			id: districtId,
+			name: districtName,
+			jurisdiction: districtJurisdiction,
+			district_type: districtType
+		},
+		officials,
+		cell_id: cellId,
+		vintage
 	};
-}
-
-/** Census response with no address matches */
-function censusEmptyResponse() {
-	return { result: { addressMatches: [] } };
-}
-
-// ---------------------------------------------------------------------------
-// MSW handler helpers
-// ---------------------------------------------------------------------------
-
-function mockCensusBureau(response: Record<string, unknown>, status = 200) {
-	server.use(
-		http.get('https://geocoding.geo.census.gov/geocoder/geographies/address', () => {
-			return HttpResponse.json(response, { status });
-		})
-	);
-}
-
-function mockCensusBureauError() {
-	server.use(
-		http.get('https://geocoding.geo.census.gov/geocoder/geographies/address', () => {
-			return HttpResponse.error();
-		})
-	);
-}
-
-function mockShadowAtlas() {
-	server.use(
-		http.get('http://localhost:3000/v1/lookup', () => {
-			return HttpResponse.json({ districts: [] });
-		})
-	);
 }
 
 // ---------------------------------------------------------------------------
@@ -127,8 +155,7 @@ function createResolveRequest(body: Record<string, unknown>, locals = authentica
 
 describe('POST /api/location/resolve-address', () => {
 	beforeEach(() => {
-		// Mock Shadow Atlas fire-and-forget lookup (non-blocking warmup call)
-		mockShadowAtlas();
+		mockResolveAddress.mockReset();
 	});
 
 	// ========================================================================
@@ -186,7 +213,7 @@ describe('POST /api/location/resolve-address', () => {
 		});
 
 		it('accepts 9-digit zip codes (ZIP+4)', async () => {
-			mockCensusBureau(censusBureauResponse());
+			mockResolveAddress.mockResolvedValueOnce(shadowAtlasResponse());
 
 			const event = createResolveRequest({
 				...testAddress,
@@ -197,18 +224,17 @@ describe('POST /api/location/resolve-address', () => {
 
 			// Should not be a 400 validation error
 			expect(response.status).not.toBe(400);
-			// Census may or may not match, but validation passed
 			expect(data).toBeDefined();
 		});
 	});
 
 	// ========================================================================
-	// Happy path: Census match + representatives
+	// Happy path: Shadow Atlas geocode + district + officials
 	// ========================================================================
 
 	describe('happy path', () => {
-		it('returns Census-standardized address with district and coordinates', async () => {
-			mockCensusBureau(censusBureauResponse());
+		it('returns geocoder-standardized address with district and coordinates', async () => {
+			mockResolveAddress.mockResolvedValueOnce(shadowAtlasResponse());
 
 			const event = createResolveRequest(testAddress);
 			const response = await POST(event as any);
@@ -217,7 +243,7 @@ describe('POST /api/location/resolve-address', () => {
 			expect(response.status).toBe(200);
 			expect(data.resolved).toBe(true);
 
-			// Census-standardized address
+			// Geocoder-standardized address
 			expect(data.address.matched).toBe('123 MAIN ST, SPRINGFIELD, IL, 62704');
 			expect(data.address.street).toBe('123 MAIN ST');
 			expect(data.address.city).toBe('SPRINGFIELD');
@@ -233,43 +259,34 @@ describe('POST /api/location/resolve-address', () => {
 			expect(data.district.state).toBe('IL');
 		});
 
-		it('returns cell_id from Census block GEOID (tract-level)', async () => {
-			mockCensusBureau(
-				censusBureauResponse({ blockGeoid: '170010001001001' })
+		it('returns cell_id from Shadow Atlas H3 cell', async () => {
+			mockResolveAddress.mockResolvedValueOnce(
+				shadowAtlasResponse({ cellId: '872a10000ffffff' })
 			);
 
 			const event = createResolveRequest(testAddress);
 			const response = await POST(event as any);
 			const data = await response.json();
 
-			expect(data.cell_id).toBe('17001000100'); // First 11 chars (tract-level)
+			expect(data.cell_id).toBe('872a10000ffffff');
 			expect(data.zk_eligible).toBe(true);
 		});
 
-		it('returns county FIPS code', async () => {
-			mockCensusBureau(
-				censusBureauResponse({ countyGeoid: '17001' })
+		it('returns zk_eligible=false when cell_id is null', async () => {
+			mockResolveAddress.mockResolvedValueOnce(
+				shadowAtlasResponse({ cellId: null })
 			);
 
 			const event = createResolveRequest(testAddress);
 			const response = await POST(event as any);
 			const data = await response.json();
 
-			expect(data.county_fips).toBe('17001');
-		});
-
-		it('returns district_source as census-fallback', async () => {
-			mockCensusBureau(censusBureauResponse());
-
-			const event = createResolveRequest(testAddress);
-			const response = await POST(event as any);
-			const data = await response.json();
-
-			expect(data.district_source).toBe('census-fallback');
+			expect(data.cell_id).toBeNull();
+			expect(data.zk_eligible).toBe(false);
 		});
 
 		it('returns officials array with house and senate members', async () => {
-			mockCensusBureau(censusBureauResponse());
+			mockResolveAddress.mockResolvedValueOnce(shadowAtlasResponse());
 
 			const event = createResolveRequest(testAddress);
 			const response = await POST(event as any);
@@ -278,53 +295,62 @@ describe('POST /api/location/resolve-address', () => {
 			expect(data.officials).toBeDefined();
 			expect(Array.isArray(data.officials)).toBe(true);
 
-			// Should have at least 1 official (may depend on Congress API mock data)
-			// The MSW mock returns members for IL, so we expect house + senate
-			if (data.officials.length > 0) {
-				const official = data.officials[0];
-				expect(official).toHaveProperty('name');
-				expect(official).toHaveProperty('chamber');
-				expect(official).toHaveProperty('party');
-				expect(official).toHaveProperty('bioguide_id');
-				expect(official).toHaveProperty('is_voting_member');
-			}
+			// Should have at least 1 official
+			expect(data.officials.length).toBeGreaterThanOrEqual(1);
+
+			const official = data.officials[0];
+			expect(official).toHaveProperty('name');
+			expect(official).toHaveProperty('chamber');
+			expect(official).toHaveProperty('party');
+			expect(official).toHaveProperty('bioguide_id');
+			expect(official).toHaveProperty('is_voting_member');
+		});
+
+		it('passes address fields to resolveAddress', async () => {
+			mockResolveAddress.mockResolvedValueOnce(shadowAtlasResponse());
+
+			const event = createResolveRequest(testAddress);
+			await POST(event as any);
+
+			expect(mockResolveAddress).toHaveBeenCalledWith({
+				street: '123 Main Street',
+				city: 'Springfield',
+				state: 'IL',
+				zip: '62704',
+				country: undefined
+			});
 		});
 	});
 
 	// ========================================================================
-	// Census no-match scenarios
+	// Shadow Atlas error scenarios
 	// ========================================================================
 
-	describe('Census no-match', () => {
-		it('returns resolved=false when Census returns no address matches', async () => {
-			mockCensusBureau(censusEmptyResponse());
+	describe('Shadow Atlas errors', () => {
+		it('returns 500 when resolveAddress throws an error', async () => {
+			mockResolveAddress.mockRejectedValueOnce(
+				new Error('Address not found. Please check your address and try again.')
+			);
 
 			const event = createResolveRequest(testAddress);
 			const response = await POST(event as any);
 			const data = await response.json();
 
-			expect(response.status).toBe(200);
+			expect(response.status).toBe(500);
 			expect(data.resolved).toBe(false);
-			expect(data.error).toContain('not found');
+			expect(data.error).toContain('temporarily unavailable');
 		});
 
-		it('returns resolved=false on Census Bureau network error', async () => {
-			mockCensusBureauError();
+		it('returns 500 when resolveAddress throws a network error', async () => {
+			mockResolveAddress.mockRejectedValueOnce(
+				new Error('Nominatim geocoding returned 503')
+			);
 
 			const event = createResolveRequest(testAddress);
 			const response = await POST(event as any);
 			const data = await response.json();
 
-			expect(data.resolved).toBe(false);
-		});
-
-		it('returns resolved=false on Census Bureau HTTP error', async () => {
-			mockCensusBureau({ error: 'service unavailable' }, 503);
-
-			const event = createResolveRequest(testAddress);
-			const response = await POST(event as any);
-			const data = await response.json();
-
+			expect(response.status).toBe(500);
 			expect(data.resolved).toBe(false);
 		});
 	});
@@ -334,13 +360,12 @@ describe('POST /api/location/resolve-address', () => {
 	// ========================================================================
 
 	describe('at-large districts', () => {
-		it('normalizes Census "00" district to "AL" in district code', async () => {
-			mockCensusBureau(
-				censusBureauResponse({
+		it('returns at-large district code from Shadow Atlas', async () => {
+			mockResolveAddress.mockResolvedValueOnce(
+				shadowAtlasResponse({
 					matchedAddress: '100 STATE ST, MONTPELIER, VT, 05602',
-					cd119: '00',
-					stateCode: '50',
-					stusab: 'VT'
+					districtId: 'VT-AL',
+					districtName: 'Vermont At-Large Congressional District'
 				})
 			);
 
@@ -364,13 +389,40 @@ describe('POST /api/location/resolve-address', () => {
 
 	describe('DC and territories', () => {
 		it('returns special_status for DC addresses', async () => {
-			mockCensusBureau(
-				censusBureauResponse({
+			mockResolveAddress.mockResolvedValueOnce(
+				shadowAtlasResponse({
 					matchedAddress: '1600 PENNSYLVANIA AVE NW, WASHINGTON, DC, 20500',
-					cd119: '98',
-					stateCode: '11',
-					stusab: 'DC',
-					blockGeoid: '110010001001001'
+					districtId: 'DC-00',
+					districtName: 'District of Columbia At-Large',
+					officials: {
+						officials: [
+							{
+								bioguide_id: 'N000147',
+								name: 'Eleanor Holmes Norton',
+								party: 'Democratic',
+								chamber: 'house',
+								state: 'DC',
+								district: '00',
+								office: 'Delegate',
+								phone: '202-555-0200',
+								contact_form_url: null,
+								website_url: null,
+								cwc_code: null,
+								is_voting: false,
+								delegate_type: 'delegate'
+							}
+						],
+						district_code: 'DC-00',
+						state: 'DC',
+						special_status: {
+							type: 'dc',
+							message: 'DC residents have no voting representation in Congress.',
+							has_senators: false,
+							has_voting_representative: false
+						},
+						source: 'congress-legislators',
+						cached: true
+					}
 				})
 			);
 
@@ -391,13 +443,40 @@ describe('POST /api/location/resolve-address', () => {
 		});
 
 		it('returns delegate for territory addresses', async () => {
-			mockCensusBureau(
-				censusBureauResponse({
+			mockResolveAddress.mockResolvedValueOnce(
+				shadowAtlasResponse({
 					matchedAddress: '100 SAN JUAN ST, SAN JUAN, PR, 00901',
-					cd119: '98',
-					stateCode: '72',
-					stusab: 'PR',
-					blockGeoid: '720070065003001'
+					districtId: 'PR-00',
+					districtName: 'Puerto Rico At-Large',
+					officials: {
+						officials: [
+							{
+								bioguide_id: 'G000582',
+								name: 'Jenniffer Gonzalez-Colon',
+								party: 'Republican',
+								chamber: 'house',
+								state: 'PR',
+								district: '00',
+								office: 'Resident Commissioner',
+								phone: '202-555-0300',
+								contact_form_url: null,
+								website_url: null,
+								cwc_code: null,
+								is_voting: false,
+								delegate_type: 'resident-commissioner'
+							}
+						],
+						district_code: 'PR-00',
+						state: 'PR',
+						special_status: {
+							type: 'territory',
+							message: 'Puerto Rico residents have non-voting representation in Congress.',
+							has_senators: false,
+							has_voting_representative: false
+						},
+						source: 'congress-legislators',
+						cached: true
+					}
 				})
 			);
 
@@ -415,64 +494,23 @@ describe('POST /api/location/resolve-address', () => {
 			expect(data.special_status.type).toBe('territory');
 
 			// Should have a delegate in officials
-			if (data.officials.length > 0) {
-				const delegate = data.officials.find(
-					(o: { chamber: string }) => o.chamber === 'house'
-				);
-				if (delegate) {
-					expect(delegate.is_voting_member).toBe(false);
-				}
-			}
-		});
-	});
-
-	// ========================================================================
-	// Privacy guarantee
-	// ========================================================================
-
-	describe('privacy', () => {
-		it('sends address to Census Bureau, not to any other external service', async () => {
-			const capturedUrls: string[] = [];
-
-			server.use(
-				http.get('https://geocoding.geo.census.gov/geocoder/geographies/address', ({ request }) => {
-					capturedUrls.push(request.url);
-					return HttpResponse.json(censusBureauResponse());
-				})
+			expect(data.officials.length).toBeGreaterThanOrEqual(1);
+			const delegate = data.officials.find(
+				(o: { chamber: string }) => o.chamber === 'house'
 			);
-
-			const event = createResolveRequest(testAddress);
-			await POST(event as any);
-
-			// Verify Census Bureau was called
-			const censusUrls = capturedUrls.filter((u) => u.includes('geocoding.geo.census.gov'));
-			expect(censusUrls.length).toBeGreaterThanOrEqual(1);
-
-			// Verify address params are sent to Census
-			const censusUrl = new URL(censusUrls[0]);
-			expect(censusUrl.searchParams.get('street')).toBe('123 Main Street');
-			expect(censusUrl.searchParams.get('city')).toBe('Springfield');
-			expect(censusUrl.searchParams.get('state')).toBe('IL');
-			expect(censusUrl.searchParams.get('zip')).toBe('62704');
+			expect(delegate).toBeDefined();
+			expect(delegate.is_voting_member).toBe(false);
 		});
 	});
 
 	// ========================================================================
-	// Shadow Atlas officials failure (graceful degradation)
+	// Officials unavailable (graceful degradation)
 	// ========================================================================
 
-	describe('Shadow Atlas officials failure', () => {
-		it('still returns address and district when officials lookup fails', async () => {
-			mockCensusBureau(censusBureauResponse());
-
-			// Override Shadow Atlas officials to fail
-			server.use(
-				http.get('http://localhost:3000/v1/officials', () => {
-					return HttpResponse.json(
-						{ success: false, error: { code: 'INTERNAL_ERROR', message: 'service unavailable' } },
-						{ status: 503 }
-					);
-				})
+	describe('officials unavailable', () => {
+		it('still returns resolved=true with address when officials are null', async () => {
+			mockResolveAddress.mockResolvedValueOnce(
+				shadowAtlasResponse({ officials: null })
 			);
 
 			const event = createResolveRequest(testAddress);
@@ -482,9 +520,11 @@ describe('POST /api/location/resolve-address', () => {
 			// Should still resolve with address data
 			expect(data.resolved).toBe(true);
 			expect(data.address.matched).toBeTruthy();
-			expect(data.district.code).toBeTruthy();
-			// Officials empty when Shadow Atlas officials fails
+			// District is null when officials is null (endpoint derives district_code from officials)
+			expect(data.district).toBeNull();
+			// Officials empty when Shadow Atlas returns null
 			expect(Array.isArray(data.officials)).toBe(true);
+			expect(data.officials).toHaveLength(0);
 		});
 	});
 
@@ -493,10 +533,11 @@ describe('POST /api/location/resolve-address', () => {
 	// ========================================================================
 
 	describe('matched address parsing', () => {
-		it('parses Census 4-part standardized address correctly', async () => {
-			mockCensusBureau(
-				censusBureauResponse({
-					matchedAddress: '12 MINT PLZ, SAN FRANCISCO, CA, 94103'
+		it('parses geocoder 4-part standardized address correctly', async () => {
+			mockResolveAddress.mockResolvedValueOnce(
+				shadowAtlasResponse({
+					matchedAddress: '12 MINT PLZ, SAN FRANCISCO, CA, 94103',
+					districtId: 'CA-11'
 				})
 			);
 

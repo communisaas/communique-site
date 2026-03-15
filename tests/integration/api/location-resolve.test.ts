@@ -7,9 +7,8 @@
  *
  * Test Coverage:
  * - Authentication (2 tests)
- * - Validation (6 tests)
+ * - Validation (5 tests)
  * - Privacy Guard (5 tests)
- * - Happy Path — Client Census (2 tests)
  * - Happy Path — Shadow Atlas (1 test)
  * - Happy Path — Composite Resolve (3 tests)
  * - Degradation (2 tests)
@@ -187,22 +186,7 @@ describe('POST /api/location/resolve', () => {
 				lng: -74,
 				signal_type: 'browser',
 				confidence: 0.5,
-				cell_id: '123' // must be exactly 15 digits
-			});
-			const response = await POST(event);
-
-			expect(response.status).toBe(400);
-			const data = await response.json();
-			expect(data.resolved).toBe(false);
-		});
-
-		it('returns 400 for invalid district_code format', async () => {
-			const event = createMockEvent({
-				lat: 40,
-				lng: -74,
-				signal_type: 'browser',
-				confidence: 0.5,
-				district_code: 'invalid' // must match /^[A-Z]{2}-(\d{2}|AL)$/
+				cell_id: '123' // must be 11-15 hex chars
 			});
 			const response = await POST(event);
 
@@ -278,62 +262,13 @@ describe('POST /api/location/resolve', () => {
 	});
 
 	// ========================================================================
-	// Happy Path — Client Census
-	// ========================================================================
-
-	describe('Happy Path — Client Census', () => {
-		it('resolves district from client-provided district_code', async () => {
-			mockedGetOfficials.mockResolvedValue(mockOfficialsResponse(3, 'CA-12'));
-
-			const event = createMockEvent(validBody({ district_code: 'CA-12' }));
-			const response = await POST(event);
-			const data = await response.json();
-
-			expect(response.status).toBe(200);
-			expect(data.resolved).toBe(true);
-			expect(data.district.code).toBe('CA-12');
-			expect(data.district_source).toBe('client_census');
-		});
-
-		it('returns officials from Shadow Atlas', async () => {
-			mockedGetOfficials.mockResolvedValue(mockOfficialsResponse(3, 'CA-12'));
-
-			const event = createMockEvent(validBody({ district_code: 'CA-12' }));
-			const response = await POST(event);
-			const data = await response.json();
-
-			expect(data.officials).toHaveLength(3);
-			for (const official of data.officials) {
-				expect(official).toHaveProperty('name');
-				expect(official).toHaveProperty('bioguide_id');
-				expect(official).toHaveProperty('chamber');
-				expect(official).toHaveProperty('party');
-				expect(official).toHaveProperty('state');
-			}
-		});
-
-		it('normalizes at-large district_code 00 → AL', async () => {
-			mockedGetOfficials.mockResolvedValue(mockOfficialsResponse(3, 'WY-AL'));
-
-			const event = createMockEvent(validBody({ district_code: 'WY-00' }));
-			const response = await POST(event);
-			const data = await response.json();
-
-			expect(response.status).toBe(200);
-			expect(data.resolved).toBe(true);
-			expect(data.district.code).toBe('WY-AL');
-			expect(data.district_source).toBe('client_census');
-			// getOfficials must receive the normalized code, not the raw 00
-			expect(mockedGetOfficials).toHaveBeenCalledWith('WY-AL');
-		});
-	});
-
-	// ========================================================================
 	// Happy Path — Shadow Atlas
 	// ========================================================================
 
 	describe('Happy Path — Shadow Atlas', () => {
-		it('resolves district via Shadow Atlas lookup', async () => {
+		it('resolves district via Shadow Atlas lookup (fallback path)', async () => {
+			// Composite call fails, falls back to separate lookupDistrict + getOfficials
+			mockedResolveLocation.mockRejectedValue(new Error('Composite unavailable'));
 			mockedLookupDistrict.mockResolvedValue({
 				district: {
 					id: 'NY-10',
@@ -357,7 +292,6 @@ describe('POST /api/location/resolve', () => {
 
 			expect(response.status).toBe(200);
 			expect(data.resolved).toBe(true);
-			expect(data.district_source).toBe('shadow_atlas');
 		});
 	});
 
@@ -391,7 +325,6 @@ describe('POST /api/location/resolve', () => {
 				}
 			});
 
-			// No district_code — forces Shadow Atlas composite path
 			const event = createMockEvent(validBody());
 			const response = await POST(event);
 			const data = await response.json();
@@ -399,7 +332,6 @@ describe('POST /api/location/resolve', () => {
 			expect(response.status).toBe(200);
 			expect(data.resolved).toBe(true);
 			expect(data.district.code).toBe('NY-10');
-			expect(data.district_source).toBe('shadow_atlas');
 			expect(data.officials).toHaveLength(3);
 			for (const official of data.officials) {
 				expect(official).toHaveProperty('name');
@@ -428,7 +360,6 @@ describe('POST /api/location/resolve', () => {
 			expect(response.status).toBe(200);
 			expect(data.resolved).toBe(true);
 			expect(data.district.code).toBe('NY-10');
-			expect(data.district_source).toBe('shadow_atlas');
 			// Officials resolved via separate getOfficials call
 			expect(data.officials).toHaveLength(3);
 			expect(mockedGetOfficials).toHaveBeenCalledWith('NY-10');
@@ -456,7 +387,6 @@ describe('POST /api/location/resolve', () => {
 			expect(response.status).toBe(200);
 			expect(data.resolved).toBe(true);
 			expect(data.district.code).toBe('NY-10');
-			expect(data.district_source).toBe('shadow_atlas');
 			// Fallback should use lookupDistrict + getOfficials
 			expect(mockedLookupDistrict).toHaveBeenCalledWith(40.7128, -74.006);
 			expect(mockedGetOfficials).toHaveBeenCalledWith('NY-10');
@@ -469,9 +399,9 @@ describe('POST /api/location/resolve', () => {
 
 	describe('Degradation', () => {
 		it('returns resolved: false when Shadow Atlas lookup fails', async () => {
+			mockedResolveLocation.mockRejectedValue(new Error('Composite endpoint unavailable'));
 			mockedLookupDistrict.mockRejectedValue(new Error('Shadow Atlas unreachable'));
 
-			// No district_code — forces Shadow Atlas path
 			const event = createMockEvent(validBody());
 			const response = await POST(event);
 			const data = await response.json();
@@ -480,10 +410,23 @@ describe('POST /api/location/resolve', () => {
 		});
 
 		it('returns empty officials when getOfficials fails', async () => {
+			// Composite resolves district but returns null officials
+			mockedResolveLocation.mockResolvedValue({
+				district: {
+					district: { id: 'CA-12', name: 'California 12th', jurisdiction: 'congressional', districtType: 'congressional' },
+					merkleProof: {
+						root: '0x1234',
+						leaf: '0x5678',
+						siblings: Array(20).fill('0x0000'),
+						pathIndices: Array(20).fill(0),
+						depth: 20
+					}
+				},
+				officials: null
+			});
 			mockedGetOfficials.mockRejectedValue(new Error('Officials service down'));
 
-			// Provide district_code so resolution succeeds but officials fail
-			const event = createMockEvent(validBody({ district_code: 'CA-12' }));
+			const event = createMockEvent(validBody());
 			const response = await POST(event);
 			const data = await response.json();
 
@@ -497,11 +440,32 @@ describe('POST /api/location/resolve', () => {
 	// ========================================================================
 
 	describe('ZK Eligibility', () => {
+		const mockCompositeResult = (districtCode: string) => ({
+			district: {
+				district: { id: districtCode, name: `District ${districtCode}`, jurisdiction: 'congressional', districtType: 'congressional' },
+				merkleProof: {
+					root: '0x1234',
+					leaf: '0x5678',
+					siblings: Array(20).fill('0x0000'),
+					pathIndices: Array(20).fill(0),
+					depth: 20
+				}
+			},
+			officials: {
+				officials: mockOfficialsResponse(1, districtCode).officials,
+				district_code: districtCode,
+				state: districtCode.split('-')[0],
+				special_status: null,
+				source: 'congress-legislators' as const,
+				cached: false
+			}
+		});
+
 		it('zk_eligible is true when cell_id provided', async () => {
-			mockedGetOfficials.mockResolvedValue(mockOfficialsResponse(1, 'CA-12'));
+			mockedResolveLocation.mockResolvedValue(mockCompositeResult('CA-12'));
 
 			const event = createMockEvent(
-				validBody({ district_code: 'CA-12', cell_id: '123456789012345' })
+				validBody({ cell_id: '8a2a1072b59ffff' })
 			);
 			const response = await POST(event);
 			const data = await response.json();
@@ -509,10 +473,10 @@ describe('POST /api/location/resolve', () => {
 			expect(data.zk_eligible).toBe(true);
 		});
 
-		it('zk_eligible is false when cell_id not provided', async () => {
-			mockedGetOfficials.mockResolvedValue(mockOfficialsResponse(1, 'CA-12'));
+		it('zk_eligible is false when cell_id not provided and Atlas returns none', async () => {
+			mockedResolveLocation.mockResolvedValue(mockCompositeResult('CA-12'));
 
-			const event = createMockEvent(validBody({ district_code: 'CA-12' }));
+			const event = createMockEvent(validBody());
 			const response = await POST(event);
 			const data = await response.json();
 
@@ -520,15 +484,15 @@ describe('POST /api/location/resolve', () => {
 		});
 
 		it('cell_id is returned in response when provided', async () => {
-			mockedGetOfficials.mockResolvedValue(mockOfficialsResponse(1, 'CA-12'));
+			mockedResolveLocation.mockResolvedValue(mockCompositeResult('CA-12'));
 
 			const event = createMockEvent(
-				validBody({ district_code: 'CA-12', cell_id: '123456789012345' })
+				validBody({ cell_id: '8a2a1072b59ffff' })
 			);
 			const response = await POST(event);
 			const data = await response.json();
 
-			expect(data.cell_id).toBe('123456789012345');
+			expect(data.cell_id).toBe('8a2a1072b59ffff');
 		});
 	});
 

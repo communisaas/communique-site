@@ -19,7 +19,7 @@ import {
 } from '$lib/core/location/types';
 
 // ---------------------------------------------------------------------------
-// Mock dependencies: storage, census-api, behavioral-tracker
+// Mock dependencies: storage, browser-location, behavioral-tracker
 // ---------------------------------------------------------------------------
 
 const mockStorage = {
@@ -41,7 +41,7 @@ vi.mock('$lib/core/location/storage', () => ({
 	LocationStorage: vi.fn()
 }));
 
-vi.mock('$lib/core/location/census-api', () => ({
+vi.mock('$lib/core/location/browser-location', () => ({
 	getBrowserGeolocation: (...args: unknown[]) => mockGetBrowserGeolocation(...args),
 	getTimezoneLocation: (...args: unknown[]) => mockGetTimezoneLocation(...args)
 }));
