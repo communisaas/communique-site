@@ -38,7 +38,9 @@
 		"db:migrate": "prisma migrate dev",
 		"db:studio": "prisma studio",
 		"db:seed": "tsx scripts/seed-database.ts",
-		"db:seed:core": "tsx scripts/seed-database.ts",
+		"db:seed:orgs": "tsx scripts/seed-database.ts && tsx scripts/seed-phase2.ts",
+		"db:seed:phase2": "tsx scripts/seed-phase2.ts",
+		"db:seed:org-templates": "tsx scripts/seed-org-templates.ts",
 		"db:test:push": "DATABASE_URL=postgresql://test:test@localhost:5432/test npx prisma db push",
 		"postinstall": "prisma generate && svelte-kit sync"
 	},
@@ -153,7 +155,7 @@
 		"satori": "^0.18.3",
 		"sharp": "^0.34.5",
 		"stripe": "^20.4.1",
-		"twilio": "^5.13.0",
-		"uuid": "^11.1.0"
+		"uuid": "^11.1.0",
+		"wrangler": "^4.73.0"
 	}
 }

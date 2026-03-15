@@ -53,7 +53,21 @@ export default defineConfig({
 				'redis',
 				// ai-evaluator lives in voter-protocol monorepo, dynamically imported with try/catch fallback.
 				// Not published to npm yet — evaluate endpoint returns 503 when unavailable.
-				'@voter-protocol/ai-evaluator'
+				'@voter-protocol/ai-evaluator',
+				// Twilio SDK is 6.7 MiB — dynamically imported in sms/twilio.ts.
+				// Externalized to stay under CF Workers 25 MiB bundle limit.
+				'twilio',
+				// Sharp requires native binaries not available on Workers.
+				'sharp',
+				// node-fetch is transitive (via @google/genai → google-auth-library → gaxios,
+				// and near-api-js). CF Workers has native fetch — this is dead weight.
+				'node-fetch',
+				// google-auth-library is transitive via @google/genai. Never instantiated
+				// because we always pass apiKey (not Vertex AI service account auth).
+				'google-auth-library',
+				// ethers is 1 MB. Used in 23+ wallet/debate files but doesn't need to be
+				// inlined — available at runtime via node_modules resolution.
+				'ethers'
 				// Note: @voter-protocol/noir-prover is stubbed via voter-protocol-ssr-stub plugin (SSR only).
 				// Client gets the real package for in-browser ZK proving.
 			]

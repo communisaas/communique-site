@@ -16,8 +16,11 @@ async function getClient() {
 		if (!accountSid || !authToken) {
 			throw new Error('TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN env vars are required');
 		}
-		// Dynamic import to avoid bundling in non-Twilio deployments
-		const twilio = await import('twilio');
+		// Dynamic import with variable path — prevents esbuild/Vite from
+		// statically resolving and bundling the 6.7 MiB Twilio SDK.
+		// SMS is feature-gated; this only runs when FEATURES.SMS is enabled.
+		const pkg = 'twilio';
+		const twilio = await import(/* @vite-ignore */ pkg);
 		twilioClient = twilio.default(accountSid, authToken);
 	}
 	return twilioClient;
