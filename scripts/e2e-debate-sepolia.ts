@@ -11,7 +11,7 @@
  * This script validates the contract wiring, USDC flows, and event parsing.
  *
  * Usage:
- *   cd communique
+ *   cd commons
  *   SCROLL_PRIVATE_KEY=0x... STAKING_TOKEN_ADDRESS=0x... npx tsx scripts/e2e-debate-sepolia.ts
  */
 

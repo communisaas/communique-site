@@ -27,7 +27,7 @@
  *     CI runs against a previously-expired debate).
  *
  * USAGE:
- *   cd communique
+ *   cd commons
  *   SCROLL_PRIVATE_KEY=0x... \
  *   DEBATE_MARKET_ADDRESS=0x... \
  *   DISTRICT_GATE_ADDRESS=0x... \

@@ -14,12 +14,12 @@
  *   npx tsx scripts/smoke-test-ai-resolution.ts [debateId]
  *
  * Environment:
- *   BASE_URL       - communique server URL (default: http://localhost:5173)
+ *   BASE_URL       - commons server URL (default: http://localhost:5173)
  *   CRON_SECRET    - operator auth token
  *   DEBATE_ID      - (optional) use existing debate instead of creating one
  *
  * Prerequisites:
- *   - communique dev server running (npm run dev)
+ *   - commons dev server running (npm run dev)
  *   - Prisma migration applied
  *   - .env populated with model API keys + signer keys
  */
